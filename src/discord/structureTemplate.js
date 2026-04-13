@@ -199,6 +199,13 @@ const CHANNEL_RENAMES = [
   { id: DISCOVERED.CH_CHAT_GERAL,       to: ch('💬', 'chat') },
   { id: DISCOVERED.CH_WOOD_COMUN,       to: ch('📢', 'comunicados') },
   { id: DISCOVERED.CH_COR_ORG,          to: ch('🚗', 'cor-org') },
+  // ── Voice channels ────────────────────────────────────────────────────
+  { id: DISCOVERED.CH_CHEFIA_VOZ,       to: ch('🔊', 'voz-chefia') },          // COMANDO
+  { id: DISCOVERED.CH_REUNIAO_VOZ,      to: ch('🔊', 'reunião') },             // GUETTO
+  { id: DISCOVERED.CH_CONVIVIO_MOR,     to: ch('🔊', 'convívio-moradores') }, // GUETTO
+  { id: DISCOVERED.CH_REDWOOD,          to: ch('🌲', 'redwood') },             // CALLS
+  { id: DISCOVERED.CH_REDWOOD2,         to: ch('🌲', 'redwood-2') },           // CALLS
+  { id: DISCOVERED.CH_CONVIVIO_GERAL,   to: ch('🔊', 'convívio-geral') },     // GERAL
 ];
 
 const CHANNEL_MOVES = [

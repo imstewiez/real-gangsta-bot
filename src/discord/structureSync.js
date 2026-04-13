@@ -30,6 +30,7 @@ const {
   CHANNEL_PERM_OVERRIDES,
   CHANNEL_PERM_OVERRIDES_BY_NAME,
   formatResidentChannelName,
+  bold,
   rolesFor,
 } = require('./structureTemplate');
 const { query } = require('../db');
@@ -257,6 +258,52 @@ async function runSync(guild, opts = {}) {
     }
   } catch (e) {
     errored('RENAME_RESIDENT_BULK', e);
+  }
+
+  // ── Phase 6d: auto-restyle untracked channels in template categories ──
+  // Apanha canais (incluindo spots de operações, calls customizados, etc.)
+  // que estejam em categorias do template mas não em CHANNEL_RENAMES nem
+  // CHANNELS_TO_CREATE. Detecta padrão `emoji[│┃|・]nome` e reformata para
+  // `emoji・𝗻𝗼𝗺𝗲` — uniformiza tudo. Canais sem padrão reconhecido ficam
+  // em paz (não arriscamos modificar nomes que não sabemos parsear).
+  const SEPARATOR_RE = /[│┃|・]/;
+  const knownChannelIds = new Set([
+    ...CHANNEL_RENAMES.map(r => r.id),
+    ...Object.keys(CHANNEL_PERM_OVERRIDES),
+  ]);
+  const knownChannelNames = new Set([
+    ...CHANNELS_TO_CREATE.map(c => c.name),
+    ...CHANNELS_TO_CREATE.flatMap(c => c.renameFrom || []),
+    ...Object.keys(CHANNEL_PERM_OVERRIDES_BY_NAME || {}),
+  ]);
+  const guettoIdForRestyle = CATEGORY_BY_KEY.GUETTO?.id;
+  const templateCatIdsForRestyle = new Set(CATEGORIES.map(c => c.id));
+
+  for (const [, anyCh] of guild.channels.cache) {
+    if (anyCh.type === ChannelType.GuildCategory) continue;
+    if (!anyCh.parentId || !templateCatIdsForRestyle.has(anyCh.parentId)) continue;
+    if (knownChannelIds.has(anyCh.id)) continue;
+    if (knownChannelNames.has(anyCh.name)) continue;
+    // GUETTO inteiro está reservado à Phase 6c (residentes) + renames fixos
+    if (anyCh.parentId === guettoIdForRestyle) continue;
+
+    const sepMatch = anyCh.name.match(SEPARATOR_RE);
+    if (!sepMatch) continue;  // sem padrão reconhecido → não tocar
+    const emojiPart = anyCh.name.slice(0, sepMatch.index).trim();
+    const namePart  = anyCh.name.slice(sepMatch.index + 1).trim();
+    if (!namePart) continue;
+    const newName = emojiPart
+      ? `${emojiPart}・${bold(namePart)}`
+      : `・${bold(namePart)}`;
+    if (newName === anyCh.name) continue;
+
+    act('RESTYLE_CHANNEL', { from: anyCh.name, to: newName });
+    if (apply) {
+      try {
+        await anyCh.setName(newName);
+        await new Promise(r => setTimeout(r, 350));
+      } catch (e) { errored(`RESTYLE:${anyCh.name}`, e); }
+    }
   }
 
   // ── Phase 7: reorder categories ────────────────────────────────────────
