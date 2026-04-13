@@ -9,6 +9,34 @@
 
 const CONFIG = require('../config');
 
+// ── Bold Unicode helper ───────────────────────────────────────────────────────
+// Converte texto normal para math sans-serif bold, mantendo acentos via
+// decomposição (letra base + combining diacritic) — espelha o estilo das
+// categorias (`𝗖𝗔𝗧𝗘𝗚𝗢𝗥𝗜𝗔`, `𝗜𝗡𝗩𝗘𝗡𝗧𝗔\u0301𝗥𝗜𝗢`).
+const _BOLD = {
+  a:'𝗮', b:'𝗯', c:'𝗰', d:'𝗱', e:'𝗲', f:'𝗳', g:'𝗴', h:'𝗵', i:'𝗶', j:'𝗷',
+  k:'𝗸', l:'𝗹', m:'𝗺', n:'𝗻', o:'𝗼', p:'𝗽', q:'𝗾', r:'𝗿', s:'𝘀', t:'𝘁',
+  u:'𝘂', v:'𝘃', w:'𝘄', x:'𝘅', y:'𝘆', z:'𝘇',
+  A:'𝗔', B:'𝗕', C:'𝗖', D:'𝗗', E:'𝗘', F:'𝗙', G:'𝗚', H:'𝗛', I:'𝗜', J:'𝗝',
+  K:'𝗞', L:'𝗟', M:'𝗠', N:'𝗡', O:'𝗢', P:'𝗣', Q:'𝗤', R:'𝗥', S:'𝗦', T:'𝗧',
+  U:'𝗨', V:'𝗩', W:'𝗪', X:'𝗫', Y:'𝗬', Z:'𝗭',
+  '0':'𝟬', '1':'𝟭', '2':'𝟮', '3':'𝟯', '4':'𝟰', '5':'𝟱', '6':'𝟲', '7':'𝟳', '8':'𝟴', '9':'𝟵',
+};
+const _ACCENT_DECOMPOSE = {
+  'á':'a\u0301','é':'e\u0301','í':'i\u0301','ó':'o\u0301','ú':'u\u0301',
+  'Á':'A\u0301','É':'E\u0301','Í':'I\u0301','Ó':'O\u0301','Ú':'U\u0301',
+  'ã':'a\u0303','õ':'o\u0303','Ã':'A\u0303','Õ':'O\u0303',
+  'â':'a\u0302','ê':'e\u0302','ô':'o\u0302','Â':'A\u0302','Ê':'E\u0302','Ô':'O\u0302',
+  'ç':'c\u0327','Ç':'C\u0327',
+};
+function bold(s) {
+  const decomposed = [...s].map(c => _ACCENT_DECOMPOSE[c] || c).join('');
+  return [...decomposed].map(c => _BOLD[c] || c).join('');
+}
+function ch(emoji, name) {
+  return `${emoji}・${bold(name)}`;
+}
+
 // IDs conhecidos do servidor actual (podem ser sobrepostos por env)
 const DISCOVERED = {
   // Categorias
@@ -90,52 +118,53 @@ const CATEGORIES = [
 
 const CATEGORY_BY_KEY = Object.fromEntries(CATEGORIES.map(c => [c.key, c]));
 
+// ── Channel renames (format: emoji・𝗻𝗼𝗺𝗲) ─────────────────────────────────
 const CHANNEL_RENAMES = [
   // ENTRADA
-  { id: DISCOVERED.CH_DIVULGACAO,       to: '📢│divulgação' },
-  { id: DISCOVERED.CH_ENTRADAS,         to: '📥│entradas' },
-  { id: DISCOVERED.CH_TAGS,             to: '🏷️│tags' },
-  { id: DISCOVERED.CH_REGRAS,           to: '📜│regras' },
-  { id: DISCOVERED.CH_INFO_GERAL,       to: 'ℹ️│informação-geral' },
-  { id: DISCOVERED.CH_SUGESTOES,        to: '💡│sugestões' },
+  { id: DISCOVERED.CH_DIVULGACAO,       to: ch('📢', 'divulgação') },
+  { id: DISCOVERED.CH_ENTRADAS,         to: ch('📥', 'entradas') },
+  { id: DISCOVERED.CH_TAGS,             to: ch('🏷️', 'tags') },
+  { id: DISCOVERED.CH_REGRAS,           to: ch('📜', 'regras') },
+  { id: DISCOVERED.CH_INFO_GERAL,       to: ch('ℹ️', 'informação-geral') },
+  { id: DISCOVERED.CH_SUGESTOES,        to: ch('💡', 'sugestões') },
   // COMANDO
-  { id: DISCOVERED.CH_CHEFIA_COMUN,     to: '📢│comunicados' },
-  { id: DISCOVERED.CH_CHEFIA_CHAT,      to: '💬│chefia' },
-  { id: DISCOVERED.CH_PRECOS_PARCERIA,  to: '💰│preços-parceria' },
-  { id: DISCOVERED.CH_LOGS,             to: '📋│logs' },
-  { id: DISCOVERED.CH_LOGS_BOT,         to: '🤖│logs-bot' },
+  { id: DISCOVERED.CH_CHEFIA_COMUN,     to: ch('📢', 'comunicados') },
+  { id: DISCOVERED.CH_CHEFIA_CHAT,      to: ch('💬', 'chefia') },
+  { id: DISCOVERED.CH_PRECOS_PARCERIA,  to: ch('💰', 'preços-parceria') },
+  { id: DISCOVERED.CH_LOGS,             to: ch('📋', 'logs') },
+  { id: DISCOVERED.CH_LOGS_BOT,         to: ch('🤖', 'logs-bot') },
   // OFICIAIS
-  { id: DISCOVERED.CH_CHAT_OFICIAIS,    to: '💬│chat-oficiais' },
-  { id: DISCOVERED.CH_DISPONIBILIDADE,  to: '📍│disponibilidade' },
-  { id: DISCOVERED.CH_AUSENCIAS,        to: '⏰│ausências' },
-  { id: DISCOVERED.CH_RADIO_OFIC,       to: '📻│rádio' },
-  { id: DISCOVERED.CH_COOLDOWN,         to: '🧊│cooldown' },
-  { id: DISCOVERED.CH_RESULTADOS,       to: '📕│resultados' },
-  { id: DISCOVERED.CH_BAU_OFIC,         to: '🧰│baú' },
+  { id: DISCOVERED.CH_CHAT_OFICIAIS,    to: ch('💬', 'chat-oficiais') },
+  { id: DISCOVERED.CH_DISPONIBILIDADE,  to: ch('📍', 'disponibilidade') },
+  { id: DISCOVERED.CH_AUSENCIAS,        to: ch('⏰', 'ausências') },
+  { id: DISCOVERED.CH_RADIO_OFIC,       to: ch('📻', 'rádio') },
+  { id: DISCOVERED.CH_COOLDOWN,         to: ch('🧊', 'cooldown') },
+  { id: DISCOVERED.CH_RESULTADOS,       to: ch('📕', 'resultados') },
+  { id: DISCOVERED.CH_BAU_OFIC,         to: ch('🧰', 'baú') },
   // GUETTO
-  { id: DISCOVERED.CH_CHEFIA_MOR_CHAT,  to: '💬│chefia-moradores' },
-  { id: DISCOVERED.CH_BAU_CASA,         to: '📦│baú-casa' },
-  { id: DISCOVERED.CH_REG_ENCOMENDAS,   to: '🧾│registo-encomendas' },
-  { id: DISCOVERED.CH_MATERIAL_ENTREG,  to: '📥│material-entregue' },
-  { id: DISCOVERED.CH_RADIO_MOR,        to: '📻│rádio' },
-  { id: DISCOVERED.CH_ROUPA,            to: '👕│roupa' },
-  { id: DISCOVERED.CH_CHAT_MOR,         to: '💬│chat' },
+  { id: DISCOVERED.CH_CHEFIA_MOR_CHAT,  to: ch('💬', 'chefia-moradores') },
+  { id: DISCOVERED.CH_BAU_CASA,         to: ch('📦', 'baú-casa') },
+  { id: DISCOVERED.CH_REG_ENCOMENDAS,   to: ch('🧾', 'registo-encomendas') },
+  { id: DISCOVERED.CH_MATERIAL_ENTREG,  to: ch('📥', 'material-entregue') },
+  { id: DISCOVERED.CH_RADIO_MOR,        to: ch('📻', 'rádio-moradores') },
+  { id: DISCOVERED.CH_ROUPA,            to: ch('👕', 'roupa') },
+  { id: DISCOVERED.CH_CHAT_MOR,         to: ch('💬', 'chat-moradores') },
   // ARSENAL
-  { id: DISCOVERED.CH_AMMUNATION,       to: '💣│munições' },
-  { id: DISCOVERED.CH_ARMAS,            to: '🔫│armas' },
-  { id: DISCOVERED.CH_CARREGADORES,     to: '🧷│carregadores' },
-  { id: DISCOVERED.CH_DROGA,            to: '🌿│droga' },
+  { id: DISCOVERED.CH_AMMUNATION,       to: ch('💣', 'munições') },
+  { id: DISCOVERED.CH_ARMAS,            to: ch('🔫', 'armas') },
+  { id: DISCOVERED.CH_CARREGADORES,     to: ch('🧷', 'carregadores') },
+  { id: DISCOVERED.CH_DROGA,            to: ch('🌿', 'droga') },
   // ECONOMIA
-  { id: DISCOVERED.CH_META_SEMANAL,     to: '📈│meta-semanal' },
-  { id: DISCOVERED.CH_OFERTAS_ORG,      to: '🤝│ofertas-org' },
-  { id: DISCOVERED.CH_PREMIOS_SEMANAIS, to: '🎁│prémios-semanais' },
+  { id: DISCOVERED.CH_META_SEMANAL,     to: ch('📈', 'meta-semanal') },
+  { id: DISCOVERED.CH_OFERTAS_ORG,      to: ch('🤝', 'ofertas-org') },
+  { id: DISCOVERED.CH_PREMIOS_SEMANAIS, to: ch('🎁', 'prémios-semanais') },
   // REPUTAÇÃO
-  { id: DISCOVERED.CH_CEMITERIO,        to: '☠️│cemitério' },
-  { id: DISCOVERED.CH_CLIPS,            to: '🎬│clips' },
+  { id: DISCOVERED.CH_CEMITERIO,        to: ch('☠️', 'cemitério') },
+  { id: DISCOVERED.CH_CLIPS,            to: ch('🎬', 'clips') },
   // GERAL
-  { id: DISCOVERED.CH_CHAT_GERAL,       to: '💬│chat' },
-  { id: DISCOVERED.CH_WOOD_COMUN,       to: '📢│comunicados' },
-  { id: DISCOVERED.CH_COR_ORG,          to: '🚗│cor-org' },
+  { id: DISCOVERED.CH_CHAT_GERAL,       to: ch('💬', 'chat') },
+  { id: DISCOVERED.CH_WOOD_COMUN,       to: ch('📢', 'comunicados') },
+  { id: DISCOVERED.CH_COR_ORG,          to: ch('🚗', 'cor-org') },
 ];
 
 const CHANNEL_MOVES = [
@@ -165,25 +194,29 @@ const CHANNEL_MOVES = [
   { id: DISCOVERED.CH_CONVIVIO_MOR,     toCategoryKey: 'GUETTO',     reason: 'Call convívio moradores' },
 ];
 
+// ── Channels to create ────────────────────────────────────────────────────────
+// `renameFrom` permite que um sync anterior (que criou com nome antigo) seja
+// convergido ao novo nome em vez de duplicar o canal.
+const SEPARATOR_NAME = `━━━━・${bold('Tópicos Moradores')}・━━━━`;
+
 const CHANNELS_TO_CREATE = [
   // Inventário — canais novos para publicação automática
-  { name: '📊│resumo-stock',     categoryKey: 'INVENTARIO', reason: 'Canal para resumos automáticos de stock' },
-  { name: '📥│entradas-stock',   categoryKey: 'INVENTARIO', reason: 'Movimentos de entrada de stock (auditoria)' },
-  { name: '📤│saídas-stock',     categoryKey: 'INVENTARIO', reason: 'Movimentos de saída de stock (auditoria)' },
-  { name: '🧾│ajustes-stock',    categoryKey: 'INVENTARIO', reason: 'Ajustes manuais de stock' },
+  { name: ch('📊', 'resumo-stock'),         categoryKey: 'INVENTARIO', renameFrom: ['📊│resumo-stock'],         reason: 'Canal para resumos automáticos de stock' },
+  { name: ch('📥', 'entradas-stock'),       categoryKey: 'INVENTARIO', renameFrom: ['📥│entradas-stock'],       reason: 'Movimentos de entrada de stock (auditoria)' },
+  { name: ch('📤', 'saídas-stock'),         categoryKey: 'INVENTARIO', renameFrom: ['📤│saídas-stock'],         reason: 'Movimentos de saída de stock (auditoria)' },
+  { name: ch('🧾', 'ajustes-stock'),        categoryKey: 'INVENTARIO', renameFrom: ['🧾│ajustes-stock'],        reason: 'Ajustes manuais de stock' },
   // Operações — canais
-  { name: '🗺️│mapas-spots',      categoryKey: 'OPERACOES',  reason: 'Mapas e spots de saídas' },
-  { name: '🎯│spots',            categoryKey: 'OPERACOES',  reason: 'Lista de spots disponíveis' },
-  { name: '📋│planeamento',      categoryKey: 'OPERACOES',  reason: 'Planeamento de operações' },
-  { name: '📊│resultados-operações', categoryKey: 'OPERACOES', reason: 'Resultados publicados pelo bot' },
+  { name: ch('🗺️', 'mapas-spots'),         categoryKey: 'OPERACOES',  renameFrom: ['🗺️│mapas-spots'],         reason: 'Mapas e spots de saídas' },
+  { name: ch('🎯', 'spots'),                categoryKey: 'OPERACOES',  renameFrom: ['🎯│spots'],                reason: 'Lista de spots disponíveis' },
+  { name: ch('📋', 'planeamento'),          categoryKey: 'OPERACOES',  renameFrom: ['📋│planeamento'],          reason: 'Planeamento de operações' },
+  { name: ch('📊', 'resultados-operações'), categoryKey: 'OPERACOES',  renameFrom: ['📊│resultados-operações'], reason: 'Resultados publicados pelo bot' },
   // Economia
-  { name: '🏆│tops-semanais',    categoryKey: 'ECONOMIA',   reason: 'Tops semanais auto-publicados' },
+  { name: ch('🏆', 'tops-semanais'),        categoryKey: 'ECONOMIA',   renameFrom: ['🏆│tops-semanais'],        reason: 'Tops semanais auto-publicados' },
+  // GUETTO — separador visual antes dos canais individuais dos moradores
+  { name: SEPARATOR_NAME, categoryKey: 'GUETTO', position: 7, reason: 'Separador visual — Tópicos Moradores' },
 ];
 
-/**
- * Permissões por categoria — estrutura lê-se como RBAC declarativo.
- * `allow: [{ roleSource, perms }]` onde `roleSource` é uma função que lê CONFIG.
- */
+// ── Role groups ───────────────────────────────────────────────────────────────
 function rolesFor(key) {
   switch (key) {
     case 'command':         return CONFIG.COMMAND_ROLE_IDS;
@@ -198,11 +231,16 @@ function rolesFor(key) {
   }
 }
 
+// ── Category permissions ──────────────────────────────────────────────────────
+// Moradores (tiers + base) estão em lockdown: só veem ENTRADA, GUETTO, REPUTAÇÃO,
+// GERAL. Tudo o resto (INVENTÁRIO, ARSENAL, OPERAÇÕES, ECONOMIA, CALLS,
+// OFICIAIS, COMANDO) é staff-only.
 const CATEGORY_PERMS = {
   ENTRADA: {
     denyEveryone: ['ViewChannel'],
     allow: [
-      { roleSources: ['command', 'supervisor', 'chefe_moradores', 'morador_tiers', 'moradores_base', 'tropinhas', 'patrulha_pata', 'bot'], perms: ['ViewChannel'] },
+      { roleSources: ['command', 'supervisor', 'chefe_moradores', 'morador_tiers', 'moradores_base'], perms: ['ViewChannel'] },
+      { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
   },
   COMANDO: {
@@ -231,7 +269,6 @@ const CATEGORY_PERMS = {
     denyEveryone: ['ViewChannel', 'Connect'],
     allow: [
       { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'Connect', 'SendMessages'] },
-      { roleSources: ['morador_tiers', 'moradores_base'], perms: ['ViewChannel'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
   },
@@ -246,7 +283,6 @@ const CATEGORY_PERMS = {
     denyEveryone: ['ViewChannel'],
     allow: [
       { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'SendMessages'] },
-      { roleSources: ['morador_tiers', 'moradores_base'], perms: ['ViewChannel'] },
       { roleSources: ['bot'], perms: ['ViewChannel'] },
     ],
   },
@@ -254,14 +290,14 @@ const CATEGORY_PERMS = {
     denyEveryone: ['ViewChannel'],
     allow: [
       { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'SendMessages'] },
-      { roleSources: ['morador_tiers', 'moradores_base'], perms: ['ViewChannel'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
   },
   REPUTACAO: {
     denyEveryone: ['ViewChannel'],
     allow: [
-      { roleSources: ['command', 'supervisor', 'chefe_moradores', 'morador_tiers', 'moradores_base'], perms: ['ViewChannel', 'SendMessages'] },
+      { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'SendMessages'] },
+      { roleSources: ['morador_tiers', 'moradores_base'], perms: ['ViewChannel', 'SendMessages'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
   },
@@ -269,7 +305,6 @@ const CATEGORY_PERMS = {
     denyEveryone: ['ViewChannel', 'Connect'],
     allow: [
       { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'Connect'] },
-      { roleSources: ['morador_tiers', 'moradores_base'], perms: ['ViewChannel', 'Connect'] },
     ],
   },
   GERAL: {
@@ -281,8 +316,11 @@ const CATEGORY_PERMS = {
   },
 };
 
-// Canais com overrides específicos (são aplicados DEPOIS dos da categoria)
+// ── Channel-specific overrides (por ID) ──────────────────────────────────────
+// Aplicados DEPOIS dos da categoria — restringem ainda mais o acesso ou
+// excepcionam canais sensíveis dentro de categorias abertas.
 const CHANNEL_PERM_OVERRIDES = {
+  // GUETTO: chefia-moradores é privado — moradores não vêem
   [DISCOVERED.CH_CHEFIA_MOR_CHAT]: {
     denyEveryone: ['ViewChannel'],
     allow: [
@@ -291,9 +329,53 @@ const CHANNEL_PERM_OVERRIDES = {
     ],
     reason: 'chefia-moradores é privado — só chefia + patrão di zona',
   },
+  // ENTRADA: tags é workflow de aprovação — moradores não vêem
+  [DISCOVERED.CH_TAGS]: {
+    denyEveryone: ['ViewChannel'],
+    allow: [
+      { roleSources: ['command', 'supervisor'], perms: ['ViewChannel', 'SendMessages'] },
+      { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
+    ],
+    reason: 'tags — staff only para aprovações de onboarding',
+  },
+  // ENTRADA: entradas é canal de auditoria — staff only
+  [DISCOVERED.CH_ENTRADAS]: {
+    denyEveryone: ['ViewChannel'],
+    allow: [
+      { roleSources: ['command', 'supervisor'], perms: ['ViewChannel'] },
+      { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
+    ],
+    reason: 'entradas — auditoria staff only',
+  },
+  // REPUTACAO: cemitério — moradores só vêem; posts vindos do bot (/rg-kill)
+  [DISCOVERED.CH_CEMITERIO]: {
+    denyEveryone: ['ViewChannel', 'SendMessages'],
+    allow: [
+      { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'SendMessages'] },
+      { roleSources: ['morador_tiers', 'moradores_base'], perms: ['ViewChannel'] },
+      { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
+    ],
+    reason: 'Cemitério — moradores só vêem; staff e bot postam kills',
+  },
+};
+
+// ── Channel-specific overrides (por nome) ────────────────────────────────────
+// Usado para canais criados dinamicamente (ex.: o separador do GUETTO) cujo
+// ID só é conhecido após o primeiro sync. Sync resolve por nome.
+const CHANNEL_PERM_OVERRIDES_BY_NAME = {
+  [SEPARATOR_NAME]: {
+    denyEveryone: ['SendMessages', 'AddReactions', 'CreatePublicThreads', 'CreatePrivateThreads', 'SendMessagesInThreads'],
+    allow: [
+      { roleSources: ['command'], perms: ['SendMessages'] },
+      { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
+    ],
+    reason: 'Separador visual — read-only (só staff top pode postar)',
+  },
 };
 
 module.exports = {
+  bold,
+  SEPARATOR_NAME,
   DISCOVERED,
   CATEGORIES,
   CATEGORY_BY_KEY,
@@ -302,5 +384,6 @@ module.exports = {
   CHANNELS_TO_CREATE,
   CATEGORY_PERMS,
   CHANNEL_PERM_OVERRIDES,
+  CHANNEL_PERM_OVERRIDES_BY_NAME,
   rolesFor,
 };

@@ -28,6 +28,7 @@ const {
   CHANNELS_TO_CREATE,
   CATEGORY_PERMS,
   CHANNEL_PERM_OVERRIDES,
+  CHANNEL_PERM_OVERRIDES_BY_NAME,
   rolesFor,
 } = require('./structureTemplate');
 
@@ -134,18 +135,51 @@ async function runSync(guild, opts = {}) {
     }
   }
 
-  // ── Phase 4: create missing channels ───────────────────────────────────
+  // ── Phase 4: create (or converge) channels ─────────────────────────────
   for (const def of CHANNELS_TO_CREATE) {
     const target = CATEGORY_BY_KEY[def.categoryKey];
     if (!target) { act('SKIP_CREATE_CAT_MISSING', def); continue; }
-    const existing = guild.channels.cache.find(c => c.parentId === target.id && c.name === def.name);
-    if (existing) continue;
-    act('CREATE_CHANNEL', { name: def.name, category: target.name, reason: def.reason });
-    if (apply) {
-      try {
-        await guild.channels.create({ name: def.name, type: ChannelType.GuildText, parent: target.id });
-        await new Promise(r => setTimeout(r, 800));
-      } catch (e) { errored(`CREATE_CHANNEL:${def.name}`, e); }
+
+    // Existe já com o nome novo?
+    let existing = guild.channels.cache.find(c => c.parentId === target.id && c.name === def.name);
+
+    // Existe com nome antigo? (sync anterior criou-o assim) → renomear em vez de duplicar
+    if (!existing && Array.isArray(def.renameFrom) && def.renameFrom.length) {
+      for (const oldName of def.renameFrom) {
+        const found = guild.channels.cache.find(c => c.parentId === target.id && c.name === oldName);
+        if (found) {
+          act('RENAME_CREATED_CHANNEL', { from: oldName, to: def.name });
+          if (apply) {
+            try {
+              await found.setName(def.name);
+              await new Promise(r => setTimeout(r, 350));
+            } catch (e) { errored(`RENAME_CREATED:${def.name}`, e); }
+          }
+          existing = found;
+          break;
+        }
+      }
+    }
+
+    if (!existing) {
+      act('CREATE_CHANNEL', { name: def.name, category: target.name, reason: def.reason });
+      if (apply) {
+        try {
+          existing = await guild.channels.create({ name: def.name, type: ChannelType.GuildText, parent: target.id });
+          await new Promise(r => setTimeout(r, 800));
+        } catch (e) { errored(`CREATE_CHANNEL:${def.name}`, e); existing = null; }
+      }
+    }
+
+    // Posição dentro da categoria (após criar ou se já existia)
+    if (existing && def.position !== undefined && existing.position !== def.position) {
+      act('REORDER_CHANNEL', { channel: def.name, position: def.position });
+      if (apply) {
+        try {
+          await existing.setPosition(def.position);
+          await new Promise(r => setTimeout(r, 300));
+        } catch (e) { errored(`REORDER_CHANNEL:${def.name}`, e); }
+      }
     }
   }
 
@@ -164,7 +198,7 @@ async function runSync(guild, opts = {}) {
     }
   }
 
-  // ── Phase 6: channel-specific overrides ────────────────────────────────
+  // ── Phase 6: channel-specific overrides (por ID) ───────────────────────
   for (const [chId, permCfg] of Object.entries(CHANNEL_PERM_OVERRIDES)) {
     const ch = guild.channels.cache.get(chId);
     if (!ch) continue;
@@ -173,6 +207,19 @@ async function runSync(guild, opts = {}) {
     if (apply) {
       try { await ch.permissionOverwrites.set(overwrites); }
       catch (e) { errored(`PERM_CHANNEL:${ch.name}`, e); }
+    }
+  }
+
+  // ── Phase 6b: channel-specific overrides (por nome) ────────────────────
+  // Para canais criados dinamicamente cujo ID só fica conhecido após criação.
+  for (const [chName, permCfg] of Object.entries(CHANNEL_PERM_OVERRIDES_BY_NAME || {})) {
+    const ch = guild.channels.cache.find(c => c.name === chName);
+    if (!ch) { act('SKIP_PERM_BY_NAME_MISSING', { name: chName }); continue; }
+    const overwrites = buildOverwrites(guild, permCfg);
+    act('PERM_CHANNEL', { channel: ch.name, reason: permCfg.reason, overwrites: overwrites.length });
+    if (apply) {
+      try { await ch.permissionOverwrites.set(overwrites); }
+      catch (e) { errored(`PERM_CHANNEL_BY_NAME:${ch.name}`, e); }
     }
   }
 
@@ -202,6 +249,7 @@ async function runSync(guild, opts = {}) {
     ...CHANNEL_MOVES.map(m => m.id),
     ...Object.keys(CHANNEL_PERM_OVERRIDES),
   ]);
+  const templateChannelNames = new Set(CHANNELS_TO_CREATE.map(c => c.name));
 
   for (const [, ch] of guild.channels.cache) {
     if (ch.type === ChannelType.GuildCategory) {
@@ -212,9 +260,9 @@ async function runSync(guild, opts = {}) {
       // Canais individuais de moradores ficam na categoria GUETTO — ignorar
       const guettoId = CATEGORY_BY_KEY.GUETTO?.id;
       if (ch.parentId === guettoId) continue;
-      if (!templateChannelIds.has(ch.id)) {
-        report.extras.channels.push({ id: ch.id, name: ch.name, parent: ch.parent?.name });
-      }
+      if (templateChannelIds.has(ch.id)) continue;
+      if (templateChannelNames.has(ch.name)) continue;
+      report.extras.channels.push({ id: ch.id, name: ch.name, parent: ch.parent?.name });
     }
   }
 
