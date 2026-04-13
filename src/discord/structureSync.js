@@ -226,34 +226,125 @@ async function runSync(guild, opts = {}) {
     }
   }
 
-  // ── Phase 6c: bulk rename resident channels (GUETTO) ───────────────────
-  // Cada morador tem um canal individual em GUETTO. O nome canónico é
-  // `emoji・𝗧𝗶𝗲𝗿 - 𝗡𝗶𝗰𝗸` (formatResidentChannelName). Aqui convergimos
-  // os existentes — cobre tanto a re-estilização inicial como qualquer
-  // membro cujo canal esteja desactualizado (ex: promovido sem renomear).
+  // ── Phase 6c: rename morador (resident) channels in GUETTO ─────────────
+  // Cada morador tem um canal individual em GUETTO. Nome canónico:
+  // `emoji・𝗧𝗶𝗲𝗿 - 𝗡𝗶𝗰𝗸` (formatResidentChannelName).
+  //
+  // Discovery em 3 passos:
+  //   A) DB resident_channels (fonte de verdade quando bot criou o canal)
+  //   B) Fallback via permission overwrites (canais antigos criados manualmente)
+  //   C) Fallback por correspondência de nome do canal a nickname/display_name
+  //
+  // Quando descobre via B/C, persiste em resident_channels para que
+  // operações futuras (auto-promoção, etc.) saibam do canal.
   try {
-    const res = await query(`
-      SELECT rc.channel_id, rc.channel_name AS db_name,
-             m.id AS member_id, m.tier, m.nickname, m.display_name
-        FROM resident_channels rc
-        JOIN members m ON m.id = rc.member_id
-       WHERE rc.status = 'active'
-    `);
-    for (const row of res.rows) {
-      const ch = guild.channels.cache.get(row.channel_id);
-      if (!ch) { act('SKIP_RESIDENT_MISSING', { channelId: row.channel_id, member: row.display_name }); continue; }
-      const expected = formatResidentChannelName(row.tier || 'young_blood', row.nickname || row.display_name);
-      if (ch.name === expected) continue;
-      act('RENAME_RESIDENT', { from: ch.name, to: expected, member: row.display_name });
-      if (apply) {
-        try {
-          await ch.setName(expected);
+    const guettoId = CATEGORY_BY_KEY.GUETTO?.id;
+    if (guettoId) {
+      // (A) Carrega tudo o que já está no DB
+      const dbRes = await query(`
+        SELECT rc.channel_id, rc.member_id, m.discord_id, m.tier, m.nickname, m.display_name
+          FROM resident_channels rc
+          JOIN members m ON m.id = rc.member_id
+         WHERE rc.status = 'active'
+      `);
+      const dbResMap = new Map(dbRes.rows.map(r => [r.channel_id, r]));
+
+      // Skip lists — canais cobertos por outras fases
+      const skipResIds = new Set([
+        ...CHANNEL_RENAMES.map(r => r.id),
+        ...Object.keys(CHANNEL_PERM_OVERRIDES),
+      ]);
+      const skipResNames = new Set([
+        ...CHANNELS_TO_CREATE.map(c => c.name),
+        ...CHANNELS_TO_CREATE.flatMap(c => c.renameFrom || []),
+        ...Object.keys(CHANNEL_PERM_OVERRIDES_BY_NAME || {}),
+      ]);
+
+      for (const [chId, ch] of guild.channels.cache) {
+        if (ch.type !== ChannelType.GuildText) continue;
+        if (ch.parentId !== guettoId) continue;
+        if (skipResIds.has(chId)) continue;
+        if (skipResNames.has(ch.name)) continue;
+
+        let info = dbResMap.get(chId);
+        let needsDbInsert = false;
+
+        // (B) Descoberta via permission overwrites — procura um user
+        //     com ViewChannel allow (esse é o dono do canal individual).
+        if (!info) {
+          const memberOws = [...ch.permissionOverwrites.cache.values()]
+            .filter(o => o.type === 1 /* member */);
+          for (const ow of memberOws) {
+            if (ow.allow.has(PermissionFlagsBits.ViewChannel)) {
+              const r = await query(
+                `SELECT id AS member_id, discord_id, tier, nickname, display_name
+                   FROM members WHERE discord_id = $1`,
+                [ow.id]
+              );
+              if (r.rowCount > 0) { info = r.rows[0]; needsDbInsert = true; break; }
+            }
+          }
+        }
+
+        // (C) Fallback por nome — canal `joao-silva` → procura member com
+        //     nickname ou display_name correspondente. Só aceita match único.
+        if (!info) {
+          const baseName = ch.name.toLowerCase();
+          const r = await query(
+            `SELECT id AS member_id, discord_id, tier, nickname, display_name
+               FROM members
+              WHERE LOWER(nickname) = $1
+                 OR LOWER(REPLACE(display_name, ' ', '-')) = $1
+                 OR LOWER(full_name) = $1
+              LIMIT 2`,
+            [baseName]
+          );
+          if (r.rowCount === 1) { info = r.rows[0]; needsDbInsert = true; }
+        }
+
+        if (!info) {
+          act('SKIP_RESIDENT_UNKNOWN', { channel: ch.name });
+          continue;
+        }
+
+        const expected = formatResidentChannelName(
+          info.tier || 'young_blood',
+          info.nickname || info.display_name
+        );
+
+        // Renomear se necessário
+        if (ch.name !== expected) {
+          act('RENAME_RESIDENT', { from: ch.name, to: expected, member: info.display_name });
+          if (apply) {
+            try {
+              await ch.setName(expected);
+              await new Promise(r => setTimeout(r, 350));
+            } catch (e) { errored(`RENAME_RESIDENT:${info.display_name}`, e); }
+          }
+        }
+
+        // Persistir descoberta no DB (cobre canais legacy criados manualmente)
+        if (apply && needsDbInsert) {
+          try {
+            await query(
+              `INSERT INTO resident_channels (member_id, discord_id, channel_id, channel_name, category_id)
+               VALUES ($1, $2, $3, $4, $5)
+               ON CONFLICT (channel_id) DO UPDATE SET channel_name = EXCLUDED.channel_name, status = 'active'`,
+              [info.member_id, info.discord_id, chId, expected, guettoId]
+            );
+            await query(
+              `UPDATE members SET channel_id = $1 WHERE id = $2 AND (channel_id IS NULL OR channel_id = '')`,
+              [chId, info.member_id]
+            );
+            act('REGISTER_RESIDENT_CHANNEL', { member: info.display_name, channel: expected });
+          } catch (e) { errored(`REGISTER_RESIDENT:${info.display_name}`, e); }
+        } else if (apply && info && ch.name !== expected) {
+          // Sync DB name para residentes já conhecidos
           await query(
             `UPDATE resident_channels SET channel_name = $1 WHERE channel_id = $2 AND status = 'active'`,
-            [expected, row.channel_id]
-          );
-          await new Promise(r => setTimeout(r, 350));
-        } catch (e) { errored(`RENAME_RESIDENT:${row.display_name}`, e); }
+            [expected, chId]
+          ).catch(() => {});
+        }
       }
     }
   } catch (e) {
