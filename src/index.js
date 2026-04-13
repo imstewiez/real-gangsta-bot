@@ -236,7 +236,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
           const i = icon[r.status] || '❔';
           let line = `${i} \`${r.key}\` — ${r.status}`;
           if (r.channelId) line += ` em <#${r.channelId}>`;
-          if (r.reason) line += ` _(${r.reason})_`;
+          // Escapa o reason em backticks para evitar que underscores em nomes
+          // de env vars (ex: PANEL_X_CHANNEL_ID) sejam interpretados como
+          // itálico do Markdown e parta o nome.
+          if (r.reason) line += ` — \`${r.reason}\``;
           lines.push(line);
         }
         const counts = results.reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
