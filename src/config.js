@@ -129,16 +129,21 @@ const CONFIG = {
   // ── Disponibilidade diária ────────────────────────────────────────────────
   // Canal onde a mensagem de "chamada para a rua" é publicada todos os dias.
   AVAILABILITY_CHANNEL_ID: optId('AVAILABILITY_CHANNEL_ID'),
-  // Slots default — formato "HH:MM,HH:MM,...". Máximo 8 (limitação do select).
+  // Slots default — 12:00 → 02:00 com saltos de 2h. Máximo 8 (limite do select
+  // Discord = 25 opções e usamos 3 estados por slot).
   AVAILABILITY_SLOTS: (process.env.AVAILABILITY_SLOTS ||
-    '20:30,21:30,22:30,23:30,00:30,01:30,02:30,03:30')
+    '12:00,14:00,16:00,18:00,20:00,22:00,00:00,02:00')
     .split(',').map(s => s.trim()).filter(Boolean).slice(0, 8),
-  // Roles a mencionar ao publicar (separadas por vírgula).
+  // Roles a mencionar ao publicar (separadas por vírgula). Se vazio, o engine
+  // faz fallback para [MORADORES_BASE_ROLE_ID] automaticamente — todos os
+  // moradores são alertados.
   AVAILABILITY_MENTION_ROLE_IDS: (process.env.AVAILABILITY_MENTION_ROLE_IDS || '')
     .split(',').map(s => s.trim()).filter(Boolean),
-  // Job auto-publish. Hora local (servidor) à qual a sessão diária é criada.
-  AVAILABILITY_AUTO_PUBLISH_ENABLED: optBool('AVAILABILITY_AUTO_PUBLISH_ENABLED', false),
-  AVAILABILITY_AUTO_PUBLISH_HOUR: Number(process.env.AVAILABILITY_AUTO_PUBLISH_HOUR || 17),
+  // Job auto-publish — default ligado, dispara à meia-noite local do servidor.
+  // O job corre de 5 em 5 min e age só na hora indicada (idempotente via uq
+  // index). Se o bot reiniciar entre 00:00-00:59 publica na mesma.
+  AVAILABILITY_AUTO_PUBLISH_ENABLED: optBool('AVAILABILITY_AUTO_PUBLISH_ENABLED', true),
+  AVAILABILITY_AUTO_PUBLISH_HOUR: Number(process.env.AVAILABILITY_AUTO_PUBLISH_HOUR || 0),
 
   // ── Branding ──────────────────────────────────────────────────────────────
   BOT_DISPLAY_NAME: process.env.BOT_DISPLAY_NAME || 'Real Gangsta',

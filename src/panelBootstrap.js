@@ -18,13 +18,15 @@ const PANELS = [
 
 async function bootstrapPanel(client, panelDef) {
   const channelId = CONFIG[panelDef.channelKey];
-  if (!channelId) return;
+  if (!channelId) {
+    return { key: panelDef.key, status: 'skipped', reason: `${panelDef.channelKey} não configurado no .env` };
+  }
 
   try {
     const channel = await client.channels.fetch(channelId).catch(() => null);
     if (!channel) {
-      warn(`[PANELS] Canal ${panelDef.channelKey} não encontrado.`);
-      return;
+      warn(`[PANELS] Canal ${panelDef.channelKey} (${channelId}) não encontrado.`);
+      return { key: panelDef.key, status: 'failed', reason: `canal ${channelId} não encontrado (bot sem acesso?)` };
     }
 
     const panelMessages = await getStateKey('panelMessages', {});
@@ -35,34 +37,41 @@ async function bootstrapPanel(client, panelDef) {
       try {
         const msg = await channel.messages.fetch(existingMessageId);
         await msg.edit(payload);
-        log(`[PANELS] Painel '${panelDef.key}' atualizado.`);
-        return;
+        log(`[PANELS] Painel '${panelDef.key}' atualizado (msg ${existingMessageId}).`);
+        return { key: panelDef.key, status: 'edited', channelId, messageId: existingMessageId };
       } catch {
         // Message gone, will create new
       }
     }
 
-    const messages = await channel.messages.fetch({ limit: 10 });
-    const botMessages = messages.filter(m => m.author.id === client.user.id);
-    for (const [, msg] of botMessages) {
-      await msg.delete().catch(() => {});
+    const messages = await channel.messages.fetch({ limit: 10 }).catch(() => null);
+    if (messages) {
+      const botMessages = messages.filter(m => m.author.id === client.user.id);
+      for (const [, msg] of botMessages) {
+        await msg.delete().catch(() => {});
+      }
     }
 
     const newMsg = await channel.send(payload);
     panelMessages[panelDef.key] = newMsg.id;
     await setStateKey('panelMessages', panelMessages);
-    log(`[PANELS] Painel '${panelDef.key}' publicado.`);
+    log(`[PANELS] Painel '${panelDef.key}' publicado (msg ${newMsg.id}).`);
+    return { key: panelDef.key, status: 'created', channelId, messageId: newMsg.id };
   } catch (e) {
     warn(`[PANELS] Falha ao publicar '${panelDef.key}': ${e.message}`);
+    return { key: panelDef.key, status: 'failed', reason: e.message };
   }
 }
 
 async function bootstrapAll(client) {
   log('[PANELS] A inicializar painéis...');
+  const results = [];
   for (const panel of PANELS) {
-    await bootstrapPanel(client, panel);
+    results.push(await bootstrapPanel(client, panel));
   }
-  log('[PANELS] Painéis inicializados.');
+  const counts = results.reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
+  log(`[PANELS] Painéis inicializados — ${JSON.stringify(counts)}.`);
+  return results;
 }
 
 module.exports = { bootstrapAll, bootstrapPanel, PANELS };

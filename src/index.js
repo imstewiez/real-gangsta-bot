@@ -226,18 +226,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
       metrics.commandInvocationsTotal.inc();
       const cmd = interaction.commandName;
 
-      if (cmd === 'rg-setup') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('setup'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+      if (cmd === 'rg-setup' || cmd === 'rg-sync-panels') {
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION(cmd === 'rg-setup' ? 'setup' : 'sync panels'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        await bootstrapAll(client);
-        return safeReply(interaction, { content: 'Painéis configurados com sucesso.' }, { dismissible: true });
-      }
-
-      if (cmd === 'rg-sync-panels') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync panels'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        await bootstrapAll(client);
-        return safeReply(interaction, { content: 'Painéis sincronizados.' }, { dismissible: true });
+        const results = await bootstrapAll(client);
+        const icon = { created: '✅', edited: '✏️', skipped: '⚪', failed: '❌' };
+        const lines = ['**Bootstrap painéis** — relatório:'];
+        for (const r of results) {
+          const i = icon[r.status] || '❔';
+          let line = `${i} \`${r.key}\` — ${r.status}`;
+          if (r.channelId) line += ` em <#${r.channelId}>`;
+          if (r.reason) line += ` _(${r.reason})_`;
+          lines.push(line);
+        }
+        const counts = results.reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
+        lines.push('', `**Resumo:** ${JSON.stringify(counts)}`);
+        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
       }
 
       if (cmd === 'rg-stock') {
