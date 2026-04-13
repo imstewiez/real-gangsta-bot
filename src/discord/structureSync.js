@@ -312,6 +312,72 @@ async function runSync(guild, opts = {}) {
           if (r.rowCount === 1) { info = r.rows[0]; needsDbInsert = true; }
         }
 
+        // (F) Procura no Discord guild — membro cujo display name (ou
+        //     username) bate com o nome do canal. Se achar, infere o tier
+        //     pelas roles que tem e cria entrada no DB.
+        let discoveredFromGuild = null;
+        if (!info) {
+          const target = ch.name.toLowerCase();
+          for (const [, gm] of guild.members.cache) {
+            const display = (gm.displayName || '').toLowerCase();
+            const username = (gm.user?.username || '').toLowerCase();
+            const nick = (gm.nickname || '').toLowerCase();
+            if (display === target || username === target || nick === target
+                || display.includes(target) || nick.includes(target)) {
+              discoveredFromGuild = gm;
+              break;
+            }
+          }
+          if (discoveredFromGuild) {
+            // Infere tier a partir das roles do membro
+            const rolesIds = discoveredFromGuild.roles.cache;
+            let inferredTier = 'young_blood';
+            if (rolesIds.has(CONFIG.GANGSTER_FODIDO_ROLE_ID)) inferredTier = 'gangster_fodido';
+            else if (rolesIds.has(CONFIG.O_GUNAO_ROLE_ID)) inferredTier = 'o_gunao';
+            else if (rolesIds.has(CONFIG.YOUNG_BLOOD_ROLE_ID)) inferredTier = 'young_blood';
+            else if (rolesIds.has(CONFIG.PATRAO_DI_ZONA_ROLE_ID)) inferredTier = 'patrao_di_zona';
+
+            // Cria entrada em members (ou actualiza se já existe por outro motivo)
+            try {
+              const existing = await query(
+                `SELECT id FROM members WHERE discord_id = $1 LIMIT 1`,
+                [discoveredFromGuild.id]
+              );
+              let memberId;
+              if (existing.rowCount > 0) {
+                memberId = existing.rows[0].id;
+                await query(
+                  `UPDATE members SET tier = COALESCE(NULLIF(tier, ''), $1),
+                                       nickname = COALESCE(NULLIF(nickname, ''), $2),
+                                       display_name = COALESCE(NULLIF(display_name, ''), $3),
+                                       updated_at = NOW()
+                     WHERE id = $4`,
+                  [inferredTier, ch.name, discoveredFromGuild.displayName || ch.name, memberId]
+                );
+              } else {
+                const ins = await query(
+                  `INSERT INTO members (discord_id, username, display_name, role, tier, nickname)
+                   VALUES ($1, $2, $3, 'morador', $4, $5)
+                   RETURNING id`,
+                  [discoveredFromGuild.id, discoveredFromGuild.user?.username || '', discoveredFromGuild.displayName || ch.name, inferredTier, ch.name]
+                );
+                memberId = ins.rows[0].id;
+              }
+              info = {
+                member_id: memberId,
+                discord_id: discoveredFromGuild.id,
+                tier: inferredTier,
+                nickname: ch.name,
+                display_name: discoveredFromGuild.displayName || ch.name,
+              };
+              needsDbInsert = true;
+              act('IMPORTED_MEMBER_FROM_GUILD', { member: discoveredFromGuild.displayName, channel: ch.name, tier: inferredTier });
+            } catch (e) {
+              errored(`IMPORT_MEMBER:${ch.name}`, e);
+            }
+          }
+        }
+
         // (E) Fuzzy match — descasca emojis/separadores/bold do nome,
         //     reduz a [a-z0-9-], e tenta bater contra nickname/display.
         //     Cobre canais já estilizados ou com prefixos/emojis arbitrários.
@@ -349,8 +415,24 @@ async function runSync(guild, opts = {}) {
           }
         }
 
+        // (G) Last resort — só renomeia cosmeticamente, sem persistir no DB.
+        //     Garante que TODOS os canais em GUETTO ficam com estilo uniforme,
+        //     mesmo que não consigamos identificar o dono. Tier defaultado a
+        //     young_blood; se for o tier errado, basta o admin promover via
+        //     /rg-* ou ajustar manualmente — o nome convergirá no próximo sync.
         if (!info) {
-          act('SKIP_RESIDENT_UNKNOWN', { channel: ch.name });
+          const fallbackName = formatResidentChannelName('young_blood', ch.name);
+          if (ch.name !== fallbackName) {
+            act('RENAME_RESIDENT_FALLBACK', { from: ch.name, to: fallbackName });
+            if (apply) {
+              try {
+                await ch.setName(fallbackName);
+                await new Promise(r => setTimeout(r, 350));
+              } catch (e) { errored(`RENAME_RESIDENT_FALLBACK:${ch.name}`, e); }
+            }
+          } else {
+            act('SKIP_RESIDENT_ALREADY_FORMATTED', { channel: ch.name });
+          }
           continue;
         }
 
