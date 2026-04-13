@@ -269,7 +269,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const { closeOperation } = require('./operations/operationEngine');
         const op = await closeOperation(opId, {}, interaction.user.id);
         if (!op) return safeReply(interaction, { content: MESSAGES.OPERATION_NOT_FOUND() }, { dismissible: true });
-        return safeReply(interaction, { content: `Operação #${opId} concluída.` }, { dismissible: true });
+        const r = op.reconciliation || {};
+        const lines = [`✅ Operação #${opId} concluída.`];
+        lines.push(`📦 Material — fornecido: ${r.fornecido || 0}, devolvido: ${r.devolvido || 0}, perdido: ${r.perdido || 0}, consumido: ${r.consumido || 0}.`);
+        if (r.unaccounted > 0) {
+          lines.push(`⚠️ **${r.unaccounted}** unidades por contabilizar — usa \`/rg-create-operation\` ou os botões de custody para acertar.`);
+        }
+        return safeReply(interaction, { content: lines.join('\n') }, { dismissible: true });
       }
 
       if (cmd === 'rg-audit') {
@@ -713,6 +719,41 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (id === 'chefia::ver_stock') return handleStockCommand(interaction);
       if (id === 'chefia::ajustar_stock') return handleAdjustStockButton(interaction);
       if (id === 'chefia::gerir_materiais') return handleGerirMateriaisButton(interaction);
+
+      // Chefia — novos sistemas (disponibilidade / rádio / stickys)
+      if (id === 'chefia::abrir_disponibilidade') {
+        if (!isChefia(interaction.member) && !isChefeMoradores(interaction.member))
+          return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('disponibilidade'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const channelId = CONFIG.AVAILABILITY_CHANNEL_ID;
+        if (!channelId) return safeReply(interaction, { content: 'Define `AVAILABILITY_CHANNEL_ID` no .env primeiro.' }, { dismissible: true });
+        try {
+          const { session, alreadyOpen } = await availCreateSession({
+            client, channelId, createdBy: interaction.user.id,
+          });
+          if (alreadyOpen) return safeReply(interaction, { content: `Já existe sessão #${session.id} aberta hoje.` }, { dismissible: true });
+          return safeReply(interaction, { content: `✅ Sessão #${session.id} publicada em <#${channelId}>.` }, { dismissible: true });
+        } catch (e) { return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true }); }
+      }
+
+      if (id === 'chefia::publicar_radio') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const states = await radioRepo.getAllStates();
+        const targetCh = CONFIG.RADIO_PUBLISH_CHANNEL_ID
+          ? await client.channels.fetch(CONFIG.RADIO_PUBLISH_CHANNEL_ID).catch(() => null)
+          : interaction.channel;
+        if (!targetCh?.isTextBased?.()) return safeReply(interaction, { content: 'Canal de publicação não disponível.' }, { dismissible: true });
+        await targetCh.send({ embeds: [radioEmbed(states)], components: radioComponents() });
+        return safeReply(interaction, { content: `📻 Painel publicado em <#${targetCh.id}>.` }, { dismissible: true });
+      }
+
+      if (id === 'chefia::listar_stickys') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const all = await stickyRepo.listActive();
+        if (!all.length) return safeReply(interaction, { content: 'Sem stickys activas.' }, { dismissible: true });
+        const lines = all.map(s => `• <#${s.channel_id}> — \`${s.source_key}\` (${s.mode})`);
+        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
+      }
 
       if (id === 'chefia::ver_tops') {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });

@@ -39,15 +39,37 @@ async function closeOperation(opId, resultData, actorId) {
 
   metrics.operationsClosed.inc();
 
+  // Reconciliação de materiais: alerta para chefe se ficou material por
+  // contabilizar (fornecido > devolvido + perdido + consumido).
+  const recon = await reconcileOperationMaterials(opId);
+
   await logAudit({
     action: 'operation_closed',
     entityType: 'operation',
     entityId: String(opId),
     actorId,
-    afterState: resultData,
+    afterState: { ...resultData, reconciliation: recon },
+    context: recon.unaccounted > 0
+      ? `Fechou com ${recon.unaccounted} unidades não contabilizadas (fornecido=${recon.fornecido}, devolvido=${recon.devolvido}, perdido=${recon.perdido}, consumido=${recon.consumido}).`
+      : undefined,
   });
 
-  return op;
+  return { ...op, reconciliation: recon };
+}
+
+/**
+ * Calcula totais de material por direction e devolve `unaccounted` —
+ * unidades que saíram da org mas não foram devolvidas/perdidas/consumidas.
+ * Apenas informativo; não bloqueia o fecho.
+ */
+async function reconcileOperationMaterials(opId) {
+  const summary = await operationRepo.getMaterialSummary(opId);
+  const fornecido = summary.fornecido?.total || 0;
+  const devolvido = summary.devolvido?.total || 0;
+  const perdido = summary.perdido?.total || 0;
+  const consumido = summary.consumido?.total || 0;
+  const unaccounted = Math.max(0, fornecido - devolvido - perdido - consumido);
+  return { fornecido, devolvido, perdido, consumido, unaccounted };
 }
 
 async function cancelOperation(opId, actorId) {
@@ -284,5 +306,5 @@ module.exports = {
   createOperation, startOperation, closeOperation, cancelOperation,
   addParticipant, updateParticipantResult, registerOperationMaterial,
   issueMaterialToParticipant, settleParticipantCustody,
-  getOperationSummary,
+  getOperationSummary, reconcileOperationMaterials,
 };
