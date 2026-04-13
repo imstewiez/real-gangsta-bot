@@ -8,4 +8,5 @@ module.exports = {
   auditRepo: require('./audit'),
   jobRepo: require('./job'),
   availabilityRepo: require('./availability'),
+  radioRepo: require('./radio'),
 };

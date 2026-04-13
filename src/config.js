@@ -117,6 +117,15 @@ const CONFIG = {
   PANEL_BOOTSTRAP_ON_READY: optBool('PANEL_BOOTSTRAP_ON_READY', true),
   AUTO_PUBLISH_WEEKLY_TOP: optBool('AUTO_PUBLISH_WEEKLY_TOP', true),
 
+  // ── Rádio ─────────────────────────────────────────────────────────────────
+  // Canal onde o painel de rádio é publicado/actualizado.
+  RADIO_PUBLISH_CHANNEL_ID: optId('RADIO_PUBLISH_CHANNEL_ID'),
+  // Range para geração aleatória (default: 1000-9999, números curtos sem zero).
+  RADIO_RANDOM_MIN: Number(process.env.RADIO_RANDOM_MIN || 1000),
+  RADIO_RANDOM_MAX: Number(process.env.RADIO_RANDOM_MAX || 9999),
+  // Permite explicitamente 0/0000 como rádio válida (default: não).
+  RADIO_ALLOW_ZERO: optBool('RADIO_ALLOW_ZERO', false),
+
   // ── Disponibilidade diária ────────────────────────────────────────────────
   // Canal onde a mensagem de "chamada para a rua" é publicada todos os dias.
   AVAILABILITY_CHANNEL_ID: optId('AVAILABILITY_CHANNEL_ID'),

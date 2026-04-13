@@ -98,6 +98,30 @@ const commands = [
     .addStringOption(opt => opt.setName('modo').setDescription('dry-run (default) ou apply').setRequired(false)
       .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
 
+  // ── Rádio ─────────────────────────────────────────────────────────────────
+  new SlashCommandBuilder()
+    .setName('rg-radio')
+    .setDescription('Mostra o painel de rádio (publica no canal actual ou em RADIO_PUBLISH_CHANNEL_ID)'),
+
+  new SlashCommandBuilder()
+    .setName('rg-radio-set')
+    .setDescription('Define o valor de uma rádio')
+    .addStringOption(opt => opt.setName('tipo').setDescription('principal ou parceria').setRequired(true)
+      .addChoices({ name: 'Principal', value: 'principal' }, { name: 'Parceria', value: 'parceria' }))
+    .addStringOption(opt => opt.setName('valor').setDescription('Valor da rádio (4 dígitos default 1000-9999)').setRequired(true))
+    .addStringOption(opt => opt.setName('nota').setDescription('Nota opcional').setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('rg-radio-random')
+    .setDescription('Gera uma rádio aleatória para o tipo indicado')
+    .addStringOption(opt => opt.setName('tipo').setDescription('principal ou parceria').setRequired(true)
+      .addChoices({ name: 'Principal', value: 'principal' }, { name: 'Parceria', value: 'parceria' })),
+
+  new SlashCommandBuilder()
+    .setName('rg-radio-history')
+    .setDescription('Mostra o histórico de alterações de rádio')
+    .addIntegerOption(opt => opt.setName('limite').setDescription('Número de registos (default 15)').setRequired(false)),
+
   // ── Disponibilidade diária ────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName('rg-availability-create')

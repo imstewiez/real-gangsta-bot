@@ -65,7 +65,20 @@ const {
   handleSummary: availHandleSummary,
   handleRefresh: availHandleRefresh,
 } = require('./availability/availabilityHandlers');
-const { availabilityRepo } = require('./repositories');
+const { availabilityRepo, radioRepo } = require('./repositories');
+const {
+  setRadio: radioSet, setRandom: radioSetRandom,
+  buildEmbed: radioEmbed, buildComponents: radioComponents,
+  publishToChannel: radioPublish, historyText: radioHistoryText,
+} = require('./radio/radioEngine');
+const {
+  handleRandom: radioHandleRandom,
+  handleSet: radioHandleSet,
+  handleSetModal: radioHandleSetModal,
+  handleSwap: radioHandleSwap,
+  handleHistory: radioHandleHistory,
+  handleRefresh: radioHandleRefresh,
+} = require('./radio/radioHandlers');
 const { bootstrapStock } = require('./inventory/stockBootstrap');
 const {
   handleRegisterKillButton, handleKillModal, handleLeaderboardButton,
@@ -326,6 +339,48 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
       }
 
+      if (cmd === 'rg-radio') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const states = await radioRepo.getAllStates();
+        // Tenta publicar no RADIO_PUBLISH_CHANNEL_ID se existir, senão no canal actual
+        const targetCh = CONFIG.RADIO_PUBLISH_CHANNEL_ID
+          ? await client.channels.fetch(CONFIG.RADIO_PUBLISH_CHANNEL_ID).catch(() => null)
+          : interaction.channel;
+        if (!targetCh?.isTextBased?.()) return safeReply(interaction, { content: 'Canal de publicação não disponível.' }, { dismissible: true });
+        await targetCh.send({ embeds: [radioEmbed(states)], components: radioComponents() });
+        return safeReply(interaction, { content: `📻 Painel publicado em <#${targetCh.id}>.` }, { dismissible: true });
+      }
+
+      if (cmd === 'rg-radio-set') {
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('definir rádio'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const tipo = interaction.options.getString('tipo');
+        const valor = interaction.options.getString('valor');
+        const nota = interaction.options.getString('nota') || '';
+        try {
+          const r = await radioSet({ type: tipo, value: valor, mode: 'manual', actorId: interaction.user.id, note: nota });
+          return safeReply(interaction, { content: `📻 ${tipo}: \`${r.previous || '∅'}\` → \`${r.value}\`.` }, { dismissible: true });
+        } catch (e) { return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true }); }
+      }
+
+      if (cmd === 'rg-radio-random') {
+        if (!isChefia(interaction.member) && !isChefeMoradores(interaction.member))
+          return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('rádio aleatória'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const tipo = interaction.options.getString('tipo');
+        try {
+          const r = await radioSetRandom({ type: tipo, actorId: interaction.user.id });
+          return safeReply(interaction, { content: `🎲 ${tipo}: \`${r.previous || '∅'}\` → \`${r.value}\`.` }, { dismissible: true });
+        } catch (e) { return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true }); }
+      }
+
+      if (cmd === 'rg-radio-history') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const limit = interaction.options.getInteger('limite') || 15;
+        const text = await radioHistoryText(limit);
+        return safeReply(interaction, { content: text.slice(0, 1900) }, { dismissible: true });
+      }
+
       if (cmd === 'rg-availability-create') {
         if (!isChefia(interaction.member) && !isChefeMoradores(interaction.member))
           return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('criar disponibilidade'), flags: MessageFlags.Ephemeral }, { dismissible: true });
@@ -542,6 +597,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (id.startsWith('avail::summary::')) return availHandleSummary(interaction);
       if (id.startsWith('avail::refresh::')) return availHandleRefresh(interaction);
 
+      // Radio — painel
+      if (id.startsWith('radio::random::')) return radioHandleRandom(interaction);
+      if (id.startsWith('radio::set::')) return radioHandleSet(interaction);
+      if (id === 'radio::swap') return radioHandleSwap(interaction);
+      if (id === 'radio::history') return radioHandleHistory(interaction);
+      if (id === 'radio::refresh') return radioHandleRefresh(interaction);
+
       // Onboarding — pedir tag
       if (id === 'onboard::pedir_tag') return handlePedirTagButton(interaction);
       // Onboarding — approve/deny (dynamic IDs)
@@ -691,6 +753,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       // Cemetery modal
       if (id === 'cemetery::modal_kill') return handleKillModal(interaction);
+
+      // Radio modal
+      if (id.startsWith('radio::modal_set::')) return radioHandleSetModal(interaction);
 
       return;
     }
