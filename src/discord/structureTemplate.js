@@ -41,7 +41,7 @@ function ch(emoji, name) {
 // Cada tier tem um emoji/sigla com sabor gangsta. Aplicado a canais
 // individuais de moradores no GUETTO. Format final: `emoji・𝗧𝗶𝗲𝗿 - 𝗡𝗶𝗰𝗸`.
 const TIER_EMOJI = {
-  young_blood:     '🐺',  // Lobo solitário — jovem faminto
+  young_blood:     '🍼',  // Tag oficial Young Blood
   o_gunao:         '🔫',  // O gun
   gangster_fodido: '💀',  // Topo da hierarquia morador
   patrao_di_zona:  '👑',  // Patrão da zona (não tem canal individual, mas reservado)
