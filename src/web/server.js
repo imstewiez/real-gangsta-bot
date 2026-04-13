@@ -11,10 +11,19 @@ function createServer(port = 3000) {
   const server = http.createServer(async (req, res) => {
     const url = req.url?.split('?')[0];
 
-    if (url === '/health' || url === '/ready' || url === '/live') {
+    // Liveness: process is alive. Does NOT require Discord to be connected,
+    // so platform healthchecks don't flap while we wait on singleton lock etc.
+    if (url === '/health' || url === '/live') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok', bot: 'Real Gangsta' }));
+      return;
+    }
+
+    // Readiness: bot is fully operational (Discord connected).
+    if (url === '/ready') {
       const ok = _client?.isReady?.() ?? false;
       res.writeHead(ok ? 200 : 503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: ok ? 'ok' : 'not_ready', bot: 'Real Gangsta' }));
+      res.end(JSON.stringify({ status: ok ? 'ready' : 'not_ready', bot: 'Real Gangsta' }));
       return;
     }
 

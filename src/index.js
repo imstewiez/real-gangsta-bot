@@ -77,6 +77,11 @@ const client = new Client({
 async function boot() {
   log(`[BOOT] Real Gangsta a iniciar...`);
 
+  // Subir o web server o mais cedo possível — a healthcheck da plataforma
+  // precisa de 200 em /health para autorizar o Railway a matar o container
+  // anterior; só assim o lock singleton fica livre para esta nova instância.
+  createServer(Number(process.env.PORT) || 3000);
+
   // 1. Garantir tabela de instâncias (idempotente) e limpar linhas stale.
   await ensureInstanceTable();
   await cleanupStaleInstances();
@@ -125,9 +130,8 @@ client.once(Events.ClientReady, async () => {
   // Start background jobs
   startScheduler(client);
 
-  // Start web server
+  // Web server já arrancou em boot(); ligar a referência ao client para /ready.
   setWebClient(client);
-  createServer(Number(process.env.PORT) || 3000);
 
   // Start instance heartbeat + preemption watcher
   startHeartbeat((reason) => {
