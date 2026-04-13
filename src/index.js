@@ -1,5 +1,5 @@
 'use strict';
-const { Client, GatewayIntentBits, Events, REST, Routes, MessageFlags, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Events, REST, Routes, MessageFlags } = require('discord.js');
 const CONFIG = require('./config');
 const { pool, acquireInstanceLockWithRetry, releaseInstanceLock } = require('./db');
 const { runMigrations } = require('./dbMigrate');
@@ -107,15 +107,20 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
     const oldRoles = oldMember.roles.cache;
     const newRoles = newMember.roles.cache;
 
-    // Morador role added
-    if (CONFIG.MORADOR_ROLE_ID && !oldRoles.has(CONFIG.MORADOR_ROLE_ID) && newRoles.has(CONFIG.MORADOR_ROLE_ID)) {
+    // Young Blood role added → onboarding (canal individual)
+    const youngBloodId = CONFIG.YOUNG_BLOOD_ROLE_ID;
+    if (youngBloodId && !oldRoles.has(youngBloodId) && newRoles.has(youngBloodId)) {
       await handleMoradorRoleAdded(newMember, client);
     }
 
-    // Oficial role added (promotion from morador)
-    if (CONFIG.OFICIAL_ROLE_ID && !oldRoles.has(CONFIG.OFICIAL_ROLE_ID) && newRoles.has(CONFIG.OFICIAL_ROLE_ID)) {
-      if (oldRoles.has(CONFIG.MORADOR_ROLE_ID)) {
-        await handlePromotionToOficial(newMember, client);
+    // Any oficial role added (OG or Real Gangster) — promotion from morador tier
+    for (const oficialId of CONFIG.OFICIAL_ROLE_IDS) {
+      if (!oldRoles.has(oficialId) && newRoles.has(oficialId)) {
+        const wasMorador = CONFIG.ALL_MORADOR_TIER_IDS.some(id => oldRoles.has(id));
+        if (wasMorador) {
+          await handlePromotionToOficial(newMember, client);
+          break;
+        }
       }
     }
   } catch (e) {
@@ -221,6 +226,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (existing) return interaction.editReply({ content: `Item "${nome}" já existe.` });
         await inventoryRepo.createItem({ name: nome, category: categoria, unit: unidade, estimatedValue: valor });
         return interaction.editReply({ content: `Item **${nome}** adicionado ao catálogo.` });
+      }
+
+      if (cmd === 'rg-sync-sheets') {
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync sheets'), flags: MessageFlags.Ephemeral });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const { syncAll } = require('./sheets/inventorySync');
+        await syncAll();
+        return interaction.editReply({ content: 'Dados exportados para Google Sheets com sucesso.' });
       }
 
       return;

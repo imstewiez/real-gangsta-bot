@@ -37,6 +37,12 @@ function startAll(client) {
   registerJob('weekly_rankings', 60 * 60 * 1000, publishWeeklyTop);
   registerJob('daily_summary', 60 * 60 * 1000, publishDailySummary);
 
+  // Sync para Google Sheets a cada 30 minutos
+  if (CONFIG.SPREADSHEET_ID) {
+    const { syncAll } = require('../sheets/inventorySync');
+    registerJob('sheets_sync', 30 * 60 * 1000, async () => { await syncAll(); });
+  }
+
   for (const job of jobs) {
     job.timer = setInterval(() => runJob(job), job.intervalMs);
     job.timer.unref();

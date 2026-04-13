@@ -4,7 +4,7 @@ const {
   ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle,
 } = require('discord.js');
 const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
-const { successEmbed, errorEmbed, operationEmbed, brandEmbed } = require('../shared/embedBuilders');
+const { successEmbed, brandEmbed } = require('../shared/embedBuilders');
 const { buildItemSelectMenu } = require('../inventory/inventoryMenus');
 const { isChefia, isOficial } = require('../permissions/permissionEngine');
 const { operationRepo } = require('../repositories');

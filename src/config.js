@@ -95,6 +95,10 @@ const CONFIG = {
   DEBUG_LOG_DIR: process.env.DEBUG_LOG_DIR || './logs',
   DEBUG_LOG_FILE: process.env.DEBUG_LOG_FILE || 'realgangsta-debug.log',
 
+  // ── Google Sheets ──────────────────────────────────────────────────────────
+  GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON || '',
+  SPREADSHEET_ID: process.env.SPREADSHEET_ID || '',
+
   // ── Paths ─────────────────────────────────────────────────────────────────
   STATE_FILE: process.env.STATE_FILE || './state.json',
 };

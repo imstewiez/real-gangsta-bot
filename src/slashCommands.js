@@ -50,6 +50,10 @@ const commands = [
     .addStringOption(opt => opt.setName('categoria').setDescription('Categoria').setRequired(true))
     .addStringOption(opt => opt.setName('unidade').setDescription('Unidade de medida').setRequired(false))
     .addNumberOption(opt => opt.setName('valor').setDescription('Valor estimado').setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('rg-sync-sheets')
+    .setDescription('Exporta dados para Google Sheets'),
 ];
 
 module.exports = { commands };

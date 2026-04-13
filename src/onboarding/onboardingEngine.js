@@ -47,15 +47,15 @@ async function handleMoradorRoleAdded(member, client) {
     { id: botMember.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageMessages] },
   ];
 
-  if (CONFIG.CHEFE_MORADORES_ROLE_ID) {
+  for (const roleId of CONFIG.CHEFE_MORADORES_ROLE_IDS) {
     permissionOverwrites.push({
-      id: CONFIG.CHEFE_MORADORES_ROLE_ID,
+      id: roleId,
       allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageMessages],
     });
   }
-  if (CONFIG.CHEFIA_ROLE_ID) {
+  for (const roleId of CONFIG.CHEFIA_ROLE_IDS) {
     permissionOverwrites.push({
-      id: CONFIG.CHEFIA_ROLE_ID,
+      id: roleId,
       allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageMessages, PermissionFlagsBits.ManageChannels],
     });
   }
