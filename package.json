@@ -1,0 +1,21 @@
+{
+  "name": "real-gangsta-bot",
+  "version": "1.0.0",
+  "description": "Real Gangsta — Bot de gestão de bairro/grupo RP para Discord",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "db:migrate": "node -e \"require('./src/dbMigrate').runMigrations().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); })\"",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.19.3",
+    "dotenv": "^16.4.5",
+    "pg": "^8.20.0"
+  }
+}
