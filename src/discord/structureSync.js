@@ -29,8 +29,10 @@ const {
   CATEGORY_PERMS,
   CHANNEL_PERM_OVERRIDES,
   CHANNEL_PERM_OVERRIDES_BY_NAME,
+  formatResidentChannelName,
   rolesFor,
 } = require('./structureTemplate');
+const { query } = require('../db');
 
 const EVERYONE = '@everyone'; // resolvido via guild.roles.everyone.id
 
@@ -221,6 +223,40 @@ async function runSync(guild, opts = {}) {
       try { await ch.permissionOverwrites.set(overwrites); }
       catch (e) { errored(`PERM_CHANNEL_BY_NAME:${ch.name}`, e); }
     }
+  }
+
+  // ── Phase 6c: bulk rename resident channels (GUETTO) ───────────────────
+  // Cada morador tem um canal individual em GUETTO. O nome canónico é
+  // `emoji・𝗧𝗶𝗲𝗿 - 𝗡𝗶𝗰𝗸` (formatResidentChannelName). Aqui convergimos
+  // os existentes — cobre tanto a re-estilização inicial como qualquer
+  // membro cujo canal esteja desactualizado (ex: promovido sem renomear).
+  try {
+    const res = await query(`
+      SELECT rc.channel_id, rc.channel_name AS db_name,
+             m.id AS member_id, m.tier, m.nickname, m.display_name
+        FROM resident_channels rc
+        JOIN members m ON m.id = rc.member_id
+       WHERE rc.status = 'active'
+    `);
+    for (const row of res.rows) {
+      const ch = guild.channels.cache.get(row.channel_id);
+      if (!ch) { act('SKIP_RESIDENT_MISSING', { channelId: row.channel_id, member: row.display_name }); continue; }
+      const expected = formatResidentChannelName(row.tier || 'young_blood', row.nickname || row.display_name);
+      if (ch.name === expected) continue;
+      act('RENAME_RESIDENT', { from: ch.name, to: expected, member: row.display_name });
+      if (apply) {
+        try {
+          await ch.setName(expected);
+          await query(
+            `UPDATE resident_channels SET channel_name = $1 WHERE channel_id = $2 AND status = 'active'`,
+            [expected, row.channel_id]
+          );
+          await new Promise(r => setTimeout(r, 350));
+        } catch (e) { errored(`RENAME_RESIDENT:${row.display_name}`, e); }
+      }
+    }
+  } catch (e) {
+    errored('RENAME_RESIDENT_BULK', e);
   }
 
   // ── Phase 7: reorder categories ────────────────────────────────────────

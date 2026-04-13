@@ -82,7 +82,10 @@ async function processApproval(tagRequest, approverMember, client) {
   );
 
   // ── 5. Create individual channel ───────────────────────────────────────
-  const channelName = nickname.toLowerCase().replace(/[^a-z0-9\u00e0-\u00ff]/g, '-').replace(/-+/g, '-').slice(0, 80);
+  // Format: emoji・𝗧𝗶𝗲𝗿 - 𝗡𝗶𝗰𝗸 (mantido em sincronia em auto-promoção e
+  // bulk-rename via /rg-sync-structure).
+  const { formatResidentChannelName } = require('../discord/structureTemplate');
+  const channelName = formatResidentChannelName('young_blood', nickname);
 
   if (CONFIG.MORADOR_TOPICOS_CATEGORY_ID) {
     try {

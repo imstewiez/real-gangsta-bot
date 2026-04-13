@@ -37,6 +37,40 @@ function ch(emoji, name) {
   return `${emoji}・${bold(name)}`;
 }
 
+// ── Tier emoji + resident channel naming ─────────────────────────────────────
+// Cada tier tem um emoji/sigla com sabor gangsta. Aplicado a canais
+// individuais de moradores no GUETTO. Format final: `emoji・𝗧𝗶𝗲𝗿 - 𝗡𝗶𝗰𝗸`.
+const TIER_EMOJI = {
+  young_blood:     '🐺',  // Lobo solitário — jovem faminto
+  o_gunao:         '🔫',  // O gun
+  gangster_fodido: '💀',  // Topo da hierarquia morador
+  patrao_di_zona:  '👑',  // Patrão da zona (não tem canal individual, mas reservado)
+  real_gangster:   '🥷',  // Stealth/elite
+  og:              '🏆',  // OG status
+  kingpin:         '💎',  // Pino-rei
+  manda_chuva:     '🐉',  // O dragão, lenda
+};
+const TIER_LABEL = {
+  young_blood:     'Young Blood',
+  o_gunao:         'O Gunão',
+  gangster_fodido: 'Gangster Fodido',
+  patrao_di_zona:  'Patrão di Zona',
+  real_gangster:   'Real Gangster',
+  og:              'OG',
+  kingpin:         'Kingpin',
+  manda_chuva:     'Manda-Chuva',
+};
+
+function formatResidentChannelName(tier, nickname) {
+  const emoji = TIER_EMOJI[tier] || TIER_EMOJI.young_blood;
+  const label = TIER_LABEL[tier] || 'Morador';
+  const safeNick = (nickname || '').trim() || 'sem-nome';
+  // Discord channel name limit = 100 chars. Trunca o nick se necessário.
+  const maxNickChars = 30;
+  const truncatedNick = safeNick.length > maxNickChars ? `${safeNick.slice(0, maxNickChars)}…` : safeNick;
+  return `${emoji}・${bold(label)} - ${bold(truncatedNick)}`;
+}
+
 // IDs conhecidos do servidor actual (podem ser sobrepostos por env)
 const DISCOVERED = {
   // Categorias
@@ -375,6 +409,9 @@ const CHANNEL_PERM_OVERRIDES_BY_NAME = {
 
 module.exports = {
   bold,
+  TIER_EMOJI,
+  TIER_LABEL,
+  formatResidentChannelName,
   SEPARATOR_NAME,
   DISCOVERED,
   CATEGORIES,

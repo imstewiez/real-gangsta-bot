@@ -2,7 +2,7 @@
 const CONFIG = require('../config');
 const { memberRepo, inventoryRepo } = require('../repositories');
 const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
-const { queueMemberOp } = require('../discordQueue');
+const { queueMemberOp, queueChannelOp } = require('../discordQueue');
 const { log, warn } = require('../logger');
 
 // ── Thresholds ──────────────────────────────────────────────────────────────
@@ -97,6 +97,28 @@ async function checkAndPromote(discordId, guild, client) {
 
     // Atualizar DB
     await memberRepo.update(dbMember.id, { tier: promotion.to });
+
+    // Renomear canal individual para reflectir novo tier (se existir)
+    if (dbMember.channel_id) {
+      try {
+        const { formatResidentChannelName } = require('../discord/structureTemplate');
+        const { query: dbQuery } = require('../db');
+        const channel = await guild.channels.fetch(dbMember.channel_id).catch(() => null);
+        if (channel) {
+          const newName = formatResidentChannelName(promotion.to, dbMember.nickname || dbMember.display_name);
+          if (channel.name !== newName) {
+            await queueChannelOp(() => channel.setName(newName));
+            await dbQuery(
+              `UPDATE resident_channels SET channel_name = $1 WHERE channel_id = $2 AND status = 'active'`,
+              [newName, dbMember.channel_id]
+            );
+            log(`[AUTO-PROMO] Canal de ${dbMember.display_name} renomeado: ${newName}`);
+          }
+        }
+      } catch (e) {
+        warn(`[AUTO-PROMO] Falha a renomear canal de ${dbMember.display_name}: ${e.message}`);
+      }
+    }
 
     await logAudit({
       action: 'auto_promotion',
