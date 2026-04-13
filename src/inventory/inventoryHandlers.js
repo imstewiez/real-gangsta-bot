@@ -466,6 +466,80 @@ async function handleReactivateItemSelect(interaction) {
   return interaction.editReply({ embeds: [embed] });
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ENCOMENDAS (orders)
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function handleEncomendasButton(interaction) {
+  const menu = await buildItemSelectMenu('inv::select_encomenda', 'Que material queres encomendar?');
+  await safeReply(interaction, { content: 'Seleciona o material que queres encomendar:', components: [menu], flags: MessageFlags.Ephemeral });
+}
+
+async function handleEncomendaSelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const itemId = parseInt(interaction.values[0]);
+  if (!itemId || itemId === 'none') return;
+
+  const item = await inventoryRepo.getItemById(itemId);
+  if (!item) return safeReply(interaction, { content: MESSAGES.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral });
+
+  pendingItemSelections.set(interaction.user.id, { itemId, itemName: item.name, action: 'order' });
+
+  const modal = new ModalBuilder()
+    .setCustomId('inv::modal_encomenda')
+    .setTitle(`Encomendar ${item.name}`)
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder().setCustomId('quantity').setLabel('Quantidade')
+          .setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(10).setPlaceholder('Ex: 5')
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder().setCustomId('notes').setLabel('Notas (opcional)')
+          .setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(300)
+      ),
+    );
+
+  await safeShowModal(interaction, modal);
+}
+
+async function handleEncomendaModal(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const pending = pendingItemSelections.get(interaction.user.id);
+  if (!pending || pending.action !== 'order') return interaction.editReply({ content: 'Sessão expirada.' });
+
+  const quantityStr = getModalField(interaction, 'quantity');
+  const notes = getModalField(interaction, 'notes');
+  const quantity = parseInt(quantityStr);
+
+  if (isNaN(quantity) || quantity <= 0) return interaction.editReply({ content: MESSAGES.INVALID_QUANTITY() });
+
+  const member = await memberRepo.findByDiscordId(interaction.user.id);
+  if (!member) return interaction.editReply({ content: 'Não estás registado no sistema.' });
+
+  const { query } = require('../db');
+  await query(
+    `INSERT INTO orders (member_id, item_id, quantity, notes) VALUES ($1, $2, $3, $4)`,
+    [member.id, pending.itemId, quantity, notes]
+  );
+
+  pendingItemSelections.delete(interaction.user.id);
+
+  const { logAudit } = require('../audit/auditEngine');
+  await logAudit({
+    action: 'order_created', entityType: 'order', entityId: String(member.id),
+    actorId: interaction.user.id,
+    afterState: { item: pending.itemName, quantity, notes },
+  });
+
+  const embed = successEmbed('Encomenda Registada',
+    `**${quantity}x** ${pending.itemName}\nEstado: Pendente\n${notes ? `Notas: ${notes}` : ''}\n\nA chefia será notificada.`
+  );
+
+  return interaction.editReply({ embeds: [embed] });
+}
+
 module.exports = {
   handleRegistarMaterialButton,
   handleTipoRegistoSelect,
@@ -482,5 +556,8 @@ module.exports = {
   handleEditPriceModal,
   handleDeactivateItemSelect,
   handleReactivateItemSelect,
+  handleEncomendasButton,
+  handleEncomendaSelect,
+  handleEncomendaModal,
   pendingItemSelections,
 };

@@ -6,8 +6,10 @@ const { buildMoradorPanel } = require('./panels/moradorPanel');
 const { buildOficialPanel } = require('./panels/oficialPanel');
 const { buildChefiaPanel } = require('./panels/chefiaPanel');
 const { buildChefeMoradoresPanel } = require('./panels/chefeMoradoresPanel');
+const { buildEntradaPanel } = require('./panels/entradaPanel');
 
 const PANELS = [
+  { key: 'panel_entrada', channelKey: 'PANEL_ENTRADA_CHANNEL_ID', build: buildEntradaPanel },
   { key: 'panel_moradores', channelKey: 'PANEL_MORADORES_CHANNEL_ID', build: buildMoradorPanel },
   { key: 'panel_oficiais', channelKey: 'PANEL_OFICIAIS_CHANNEL_ID', build: buildOficialPanel },
   { key: 'panel_chefia', channelKey: 'PANEL_CHEFIA_CHANNEL_ID', build: buildChefiaPanel },

@@ -12,8 +12,14 @@ const { startAll: startScheduler, stopAll: stopScheduler } = require('./jobs/sch
 const { createServer, setClient: setWebClient } = require('./web/server');
 
 // ── Domain handlers ─────────────────────────────────────────────────────────
-const { handleMoradorRoleAdded, handlePromotionToOficial } = require('./onboarding/onboardingEngine');
-const { handleMemberCommand, handleMemberHistoryButton, handleMemberTotalsButton } = require('./members/memberHandlers');
+const { handlePromotionToOficial } = require('./onboarding/onboardingEngine');
+const {
+  handlePedirTagButton, handleTagModal, handleApproveButton, handleDenyButton,
+} = require('./onboarding/onboardingHandlers');
+const {
+  handleMemberCommand, handleMemberHistoryButton, handleMemberTotalsButton,
+  handleProgressButton, handleTopSemanalButton,
+} = require('./members/memberHandlers');
 const {
   handleRegistarMaterialButton, handleTipoRegistoSelect,
   handleItemSelect, handleQuantityModal,
@@ -22,6 +28,7 @@ const {
   handleGerirMateriaisButton, handleGerirActionSelect,
   handleAddItemModal, handleEditItemSelect, handleEditPriceModal,
   handleDeactivateItemSelect, handleReactivateItemSelect,
+  handleEncomendasButton, handleEncomendaSelect, handleEncomendaModal,
 } = require('./inventory/inventoryHandlers');
 const {
   handleCreateOperationButton, handleCreateOperationModal,
@@ -107,11 +114,8 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
     const oldRoles = oldMember.roles.cache;
     const newRoles = newMember.roles.cache;
 
-    // Young Blood role added → onboarding (canal individual)
-    const youngBloodId = CONFIG.YOUNG_BLOOD_ROLE_ID;
-    if (youngBloodId && !oldRoles.has(youngBloodId) && newRoles.has(youngBloodId)) {
-      await handleMoradorRoleAdded(newMember, client);
-    }
+    // Onboarding is now via modal approval (not role-based trigger)
+    // Only detect promotion to oficial (for channel archival)
 
     // Any oficial role added (OG or Real Gangster) — promotion from morador tier
     for (const oficialId of CONFIG.OFICIAL_ROLE_IDS) {
@@ -243,10 +247,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton()) {
       const id = interaction.customId;
 
+      // Onboarding — pedir tag
+      if (id === 'onboard::pedir_tag') return handlePedirTagButton(interaction);
+      // Onboarding — approve/deny (dynamic IDs)
+      if (id.startsWith('onboard::approve::')) return handleApproveButton(interaction, parseInt(id.split('::')[2]));
+      if (id.startsWith('onboard::deny::')) return handleDenyButton(interaction, parseInt(id.split('::')[2]));
+
       // Morador / Oficial — registar material (entrega ou venda)
       if (id === 'morador::registar_material') return handleRegistarMaterialButton(interaction);
+      if (id === 'morador::encomendar') return handleEncomendasButton(interaction);
       if (id === 'morador::historico') return handleMemberHistoryButton(interaction);
       if (id === 'morador::totais') return handleMemberTotalsButton(interaction);
+      if (id === 'morador::progresso') return handleProgressButton(interaction);
+      if (id === 'morador::top_semanal') return handleTopSemanalButton(interaction);
 
       // Oficial buttons
       if (id === 'oficial::ver_operacoes') return handleViewOperationsButton(interaction);
@@ -333,6 +346,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (id === 'inv::select_tipo_registo') return handleTipoRegistoSelect(interaction);
       if (id === 'inv::select_item_entrega' || id === 'inv::select_item_venda') return handleItemSelect(interaction);
       if (id === 'inv::select_ajuste') return handleAdjustSelect(interaction);
+      if (id === 'inv::select_encomenda') return handleEncomendaSelect(interaction);
 
       // Inventory — gestão de materiais (chefia)
       if (id === 'inv::select_gerir_action') return handleGerirActionSelect(interaction);
@@ -354,11 +368,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction.isModalSubmit()) {
       const id = interaction.customId;
 
+      // Onboarding modal
+      if (id === 'onboard::modal_tag') return handleTagModal(interaction);
+
       // Inventory modals
       if (id === 'inv::modal_entrega_morador' || id === 'inv::modal_venda_morador') return handleQuantityModal(interaction);
       if (id === 'inv::modal_ajuste_manual') return handleAdjustModal(interaction);
       if (id === 'inv::modal_add_item') return handleAddItemModal(interaction);
       if (id === 'inv::modal_edit_price') return handleEditPriceModal(interaction);
+      if (id === 'inv::modal_encomenda') return handleEncomendaModal(interaction);
 
       // Operation modals
       if (id === 'op::modal_create') return handleCreateOperationModal(interaction);

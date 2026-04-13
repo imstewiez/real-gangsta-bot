@@ -101,4 +101,91 @@ async function handleMemberTotalsButton(interaction) {
   return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
-module.exports = { handleMemberCommand, handleMemberHistoryButton, handleMemberTotalsButton };
+async function handleProgressButton(interaction) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const member = await memberRepo.findByDiscordId(interaction.user.id);
+  if (!member) return interaction.editReply({ content: 'Não estás registado no sistema.' });
+
+  const { getPromotionProgress, formatTierName } = require('./autoPromotionEngine');
+  const progress = await getPromotionProgress(interaction.user.id);
+  if (!progress) return interaction.editReply({ content: 'Sem dados de progresso.' });
+
+  const lines = [];
+  lines.push(`\uD83C\uDFAD **Rank:** ${progress.currentTierName}`);
+  lines.push(`\uD83D\uDC8E **Material Total:** ${progress.totalValue.toLocaleString('pt-PT')}\u20AC`);
+  lines.push('');
+
+  if (!progress.maxedOut) {
+    const filled = Math.round(parseFloat(progress.progress) / 10);
+    const empty = 10 - filled;
+    const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(empty);
+    lines.push(`\uD83C\uDFAF **Próximo Rank:** ${progress.nextTierName}`);
+    lines.push(`${bar} **${progress.progress}%**`);
+    lines.push(`Meta: **${progress.threshold.toLocaleString('pt-PT')}\u20AC** \u2014 Falta: **${progress.remaining.toLocaleString('pt-PT')}\u20AC**`);
+  } else {
+    lines.push('\u2705 **Nível máximo automático atingido!**');
+    lines.push('Promoções acima deste rank são manuais pela chefia.');
+  }
+
+  // Position in weekly ranking
+  const { weekBounds } = require('../util');
+  const { start } = weekBounds();
+  const weekStart = start.toISOString().split('T')[0];
+  const { rankingRepo } = require('../repositories');
+  const rankings = await rankingRepo.getWeekRanking(weekStart, 50);
+  const myRank = rankings.findIndex(r => r.discord_id === interaction.user.id);
+  if (myRank >= 0) {
+    lines.push('');
+    lines.push(`\uD83C\uDFC6 **Posição no Top Semanal:** #${myRank + 1} de ${rankings.length}`);
+  }
+
+  const embed = brandEmbed()
+    .setTitle(`\uD83D\uDCCA Progresso \u2014 ${member.display_name || member.full_name}`)
+    .setDescription(lines.join('\n'));
+
+  return interaction.editReply({ embeds: [embed] });
+}
+
+async function handleTopSemanalButton(interaction) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const { weekBounds } = require('../util');
+  const { start, end } = weekBounds();
+  const weekStart = start.toISOString().split('T')[0];
+  const { rankingRepo } = require('../repositories');
+  const rankings = await rankingRepo.getWeekRanking(weekStart, 10);
+
+  if (!rankings.length) return interaction.editReply({ content: 'Sem dados de ranking esta semana.' });
+
+  const medals = ['\uD83E\uDD47', '\uD83E\uDD48', '\uD83E\uDD49'];
+  const lines = rankings.map((r, i) => {
+    const prefix = medals[i] || `**${i + 1}.**`;
+    const isMe = r.discord_id === interaction.user.id ? ' \u2190 **TU**' : '';
+    return `${prefix} <@${r.discord_id}> \u2014 **${parseFloat(r.weighted_value).toLocaleString('pt-PT')}\u20AC** (${r.deliveries} entregas, ${r.sales} vendas)${isMe}`;
+  });
+
+  // Check if user is in top 10
+  const myRank = rankings.findIndex(r => r.discord_id === interaction.user.id);
+  if (myRank < 0) {
+    const allRankings = await rankingRepo.getWeekRanking(weekStart, 100);
+    const myPos = allRankings.findIndex(r => r.discord_id === interaction.user.id);
+    if (myPos >= 0) {
+      lines.push('');
+      lines.push(`\u2500\u2500\u2500`);
+      lines.push(`**${myPos + 1}.** <@${interaction.user.id}> \u2014 **${parseFloat(allRankings[myPos].weighted_value).toLocaleString('pt-PT')}\u20AC** \u2190 **TU**`);
+    }
+  }
+
+  const weekLabel = `${start.toISOString().split('T')[0]} a ${end.toISOString().split('T')[0]}`;
+  const embed = brandEmbed()
+    .setTitle(`\uD83C\uDFC6 Top Semanal \u2014 ${weekLabel}`)
+    .setDescription(lines.join('\n'));
+
+  return interaction.editReply({ embeds: [embed] });
+}
+
+module.exports = {
+  handleMemberCommand, handleMemberHistoryButton, handleMemberTotalsButton,
+  handleProgressButton, handleTopSemanalButton,
+};
