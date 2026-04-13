@@ -1,6 +1,7 @@
 'use strict';
 const { inventoryRepo, memberRepo } = require('../repositories');
 const { logAudit } = require('../audit/auditEngine');
+const { notifyMovement } = require('./stockNotifier');
 const metrics = require('../lib/metrics');
 const { warn } = require('../logger');
 
@@ -41,6 +42,14 @@ async function recordDelivery({ discordId, itemId, quantity, movementType, notes
     context: notes,
   });
 
+  // Fire-and-forget notify nos canais de stock
+  const balanceAfter = await inventoryRepo.getStockForItem(itemId).catch(() => null);
+  notifyMovement({
+    movementType, itemName: item.name, quantity,
+    memberName: member.display_name, memberDiscordId: member.discord_id,
+    actorId: createdBy, operationId, balanceAfter, context: notes,
+  }).catch(() => {});
+
   return { movement, member, item };
 }
 
@@ -63,6 +72,12 @@ async function adjustStock({ itemId, quantity, notes, createdBy }) {
     actorId: createdBy,
     afterState: { itemName: item.name, quantity, notes },
   });
+
+  const balanceAfter = await inventoryRepo.getStockForItem(itemId).catch(() => null);
+  notifyMovement({
+    movementType: 'ajuste_manual', itemName: item.name, quantity,
+    actorId: createdBy, balanceAfter, context: notes,
+  }).catch(() => {});
 
   return movement;
 }

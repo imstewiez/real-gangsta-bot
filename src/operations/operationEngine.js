@@ -1,8 +1,22 @@
 'use strict';
 const { operationRepo, memberRepo, inventoryRepo } = require('../repositories');
 const { logAudit } = require('../audit/auditEngine');
+const { notifyMovement } = require('../inventory/stockNotifier');
 const metrics = require('../lib/metrics');
 const { warn } = require('../logger');
+
+async function _notifyOpMovement({ movementType, itemId, quantity, memberId, operationId, actorId, notes }) {
+  try {
+    const item = await inventoryRepo.getItemById(itemId);
+    const member = memberId ? await memberRepo.findById(memberId).catch(() => null) : null;
+    const balanceAfter = await inventoryRepo.getStockForItem(itemId).catch(() => null);
+    await notifyMovement({
+      movementType, itemName: item?.name, quantity,
+      memberName: member?.display_name, memberDiscordId: member?.discord_id,
+      actorId, operationId, balanceAfter, context: notes,
+    });
+  } catch (_) { /* fire-and-forget */ }
+}
 
 async function createOperation({ date, scheduledTime, spot, operationType, leaderDiscordId, groupNumber, maxParticipants, notes, createdBy }) {
   let leaderId = null;
@@ -147,6 +161,11 @@ async function registerOperationMaterial(opId, itemId, direction, quantity, disc
     afterState: { itemId, direction, quantity },
   });
 
+  _notifyOpMovement({
+    movementType: movementTypeMap[direction] || 'consumo_operacao',
+    itemId, quantity, memberId, operationId: opId, actorId, notes,
+  });
+
   return mat;
 }
 
@@ -218,6 +237,11 @@ async function issueMaterialToParticipant(opId, discordId, itemId, quantity, act
     afterState: { member: discordId, itemId, quantity },
   });
 
+  _notifyOpMovement({
+    movementType: 'fornecimento_org', itemId, quantity,
+    memberId: member.id, operationId: opId, actorId, notes,
+  });
+
   return { opId, member: discordId, itemId, quantity };
 }
 
@@ -252,6 +276,7 @@ async function settleParticipantCustody(opId, discordId, outcome, actorId) {
       context: `Operação #${opId} — devolução`,
       operationId: opId, createdBy: actorId,
     });
+    _notifyOpMovement({ movementType: 'devolucao_operacao', itemId: r.itemId, quantity: r.qty, memberId: member.id, operationId: opId, actorId, notes: 'devolução' });
   }
 
   for (const r of lost) {
@@ -266,6 +291,7 @@ async function settleParticipantCustody(opId, discordId, outcome, actorId) {
       context: `Operação #${opId} — perda`,
       operationId: opId, createdBy: actorId,
     });
+    _notifyOpMovement({ movementType: 'perda_operacao', itemId: r.itemId, quantity: r.qty, memberId: member.id, operationId: opId, actorId, notes: 'perda' });
   }
 
   for (const r of diedWith) {
@@ -280,6 +306,7 @@ async function settleParticipantCustody(opId, discordId, outcome, actorId) {
       context: `Operação #${opId} — morto com material`,
       operationId: opId, createdBy: actorId,
     });
+    _notifyOpMovement({ movementType: 'perda_operacao', itemId: r.itemId, quantity: r.qty, memberId: member.id, operationId: opId, actorId, notes: 'morto com material' });
   }
 
   await operationRepo.updateParticipant(opId, member.id, {

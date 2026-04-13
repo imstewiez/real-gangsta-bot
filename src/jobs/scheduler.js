@@ -63,6 +63,15 @@ function startAll(client) {
     return await runTimeBasedRefresh(client);
   });
 
+  // Stock summary — snapshot periódico no canal resumo-stock
+  if (CONFIG.STOCK_NOTIFY_ENABLED) {
+    const intervalMs = (CONFIG.STOCK_SUMMARY_INTERVAL_HOURS || 4) * 60 * 60 * 1000;
+    registerJob('stock_summary', intervalMs, async () => {
+      const { publishStockSummary } = require('../inventory/stockNotifier');
+      return await publishStockSummary();
+    });
+  }
+
   // Auto-publish disponibilidade diária — corre de 5 em 5 min e age só na hora
   // configurada (idempotente por canal+data via índice único da DB).
   if (CONFIG.AVAILABILITY_AUTO_PUBLISH_ENABLED && CONFIG.AVAILABILITY_CHANNEL_ID) {

@@ -117,6 +117,14 @@ const CONFIG = {
   PANEL_BOOTSTRAP_ON_READY: optBool('PANEL_BOOTSTRAP_ON_READY', true),
   AUTO_PUBLISH_WEEKLY_TOP: optBool('AUTO_PUBLISH_WEEKLY_TOP', true),
 
+  // ── Stock notifier ────────────────────────────────────────────────────────
+  // Publica embeds dos movimentos de inventário nos canais entradas-stock,
+  // saídas-stock e ajustes-stock da categoria INVENTÁRIO. Auto-cria canais
+  // em falta. Resumo periódico no resumo-stock via job stock_summary.
+  STOCK_NOTIFY_ENABLED: optBool('STOCK_NOTIFY_ENABLED', true),
+  STOCK_AUTOCREATE: optBool('STOCK_AUTOCREATE', true),
+  STOCK_SUMMARY_INTERVAL_HOURS: Number(process.env.STOCK_SUMMARY_INTERVAL_HOURS || 4),
+
   // ── Rádio ─────────────────────────────────────────────────────────────────
   // Canal onde o painel de rádio é publicado/actualizado.
   RADIO_PUBLISH_CHANNEL_ID: optId('RADIO_PUBLISH_CHANNEL_ID'),

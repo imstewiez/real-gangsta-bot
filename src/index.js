@@ -71,6 +71,7 @@ const {
   onMessageCreate: stickyOnMessage, listRenderers: stickyListRenderers,
 } = require('./sticky/stickyEngine');
 const { registerBuiltinRenderers } = require('./sticky/stickyRenderers');
+const { setClient: setStockClient } = require('./inventory/stockNotifier');
 const {
   setRadio: radioSet, setRandom: radioSetRandom,
   buildEmbed: radioEmbed, buildComponents: radioComponents,
@@ -159,6 +160,9 @@ client.once(Events.ClientReady, async () => {
 
   // Renderers de sticky têm de estar registados antes de qualquer refresh.
   registerBuiltinRenderers();
+
+  // Stock notifier precisa do client para auto-discover/criar canais.
+  setStockClient(client);
 
   // Bootstrap panels
   if (CONFIG.PANEL_BOOTSTRAP_ON_READY) {
