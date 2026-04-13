@@ -97,6 +97,24 @@ const commands = [
     .setDescription('Reverte canais de moradores ao nome anterior aos renames do bot (via audit log)')
     .addStringOption(opt => opt.setName('modo').setDescription('dry-run (default) ou apply').setRequired(false)
       .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
+
+  // ── Disponibilidade diária ────────────────────────────────────────────────
+  new SlashCommandBuilder()
+    .setName('rg-availability-create')
+    .setDescription('Publica a chamada de disponibilidade do dia')
+    .addChannelOption(opt => opt.setName('canal').setDescription('Canal onde publicar (default: AVAILABILITY_CHANNEL_ID)').setRequired(false))
+    .addStringOption(opt => opt.setName('horarios').setDescription('Horários separados por vírgula (ex: 20:30,21:30,22:30)').setRequired(false))
+    .addStringOption(opt => opt.setName('cabecalho').setDescription('Cabeçalho/título (default: aleatório)').setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('rg-availability-close')
+    .setDescription('Fecha a sessão de disponibilidade do dia')
+    .addIntegerOption(opt => opt.setName('id').setDescription('ID da sessão (default: última do canal)').setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('rg-availability-summary')
+    .setDescription('Mostra o resumo de votos de uma sessão')
+    .addIntegerOption(opt => opt.setName('id').setDescription('ID da sessão (default: última do canal)').setRequired(false)),
 ];
 
 module.exports = { commands };

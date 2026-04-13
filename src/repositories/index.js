@@ -7,4 +7,5 @@ module.exports = {
   rankingRepo: require('./ranking'),
   auditRepo: require('./audit'),
   jobRepo: require('./job'),
+  availabilityRepo: require('./availability'),
 };

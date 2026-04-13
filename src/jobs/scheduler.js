@@ -57,6 +57,26 @@ function startAll(client) {
     registerJob('sheets_sync', 30 * 60 * 1000, async () => { await syncAll(); });
   }
 
+  // Auto-publish disponibilidade diária — corre de 5 em 5 min e age só na hora
+  // configurada (idempotente por canal+data via índice único da DB).
+  if (CONFIG.AVAILABILITY_AUTO_PUBLISH_ENABLED && CONFIG.AVAILABILITY_CHANNEL_ID) {
+    const { availabilityRepo } = require('../repositories');
+    const { createSession, todayDateString } = require('../availability/availabilityEngine');
+    registerJob('availability_auto_publish', 5 * 60 * 1000, async (client) => {
+      const now = new Date();
+      if (now.getHours() !== CONFIG.AVAILABILITY_AUTO_PUBLISH_HOUR) return { skipped: 'wrong_hour' };
+      const date = todayDateString();
+      const existing = await availabilityRepo.getOpenSession(CONFIG.AVAILABILITY_CHANNEL_ID, date);
+      if (existing) return { skipped: 'already_open', sessionId: existing.id };
+      const { session } = await createSession({
+        client,
+        channelId: CONFIG.AVAILABILITY_CHANNEL_ID,
+        createdBy: 'system:auto-publish',
+      });
+      return { sessionId: session.id };
+    });
+  }
+
   for (const job of jobs) {
     job.timer = setInterval(() => runJob(job), job.intervalMs);
     job.timer.unref();

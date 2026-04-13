@@ -117,6 +117,20 @@ const CONFIG = {
   PANEL_BOOTSTRAP_ON_READY: optBool('PANEL_BOOTSTRAP_ON_READY', true),
   AUTO_PUBLISH_WEEKLY_TOP: optBool('AUTO_PUBLISH_WEEKLY_TOP', true),
 
+  // ── Disponibilidade diária ────────────────────────────────────────────────
+  // Canal onde a mensagem de "chamada para a rua" é publicada todos os dias.
+  AVAILABILITY_CHANNEL_ID: optId('AVAILABILITY_CHANNEL_ID'),
+  // Slots default — formato "HH:MM,HH:MM,...". Máximo 8 (limitação do select).
+  AVAILABILITY_SLOTS: (process.env.AVAILABILITY_SLOTS ||
+    '20:30,21:30,22:30,23:30,00:30,01:30,02:30,03:30')
+    .split(',').map(s => s.trim()).filter(Boolean).slice(0, 8),
+  // Roles a mencionar ao publicar (separadas por vírgula).
+  AVAILABILITY_MENTION_ROLE_IDS: (process.env.AVAILABILITY_MENTION_ROLE_IDS || '')
+    .split(',').map(s => s.trim()).filter(Boolean),
+  // Job auto-publish. Hora local (servidor) à qual a sessão diária é criada.
+  AVAILABILITY_AUTO_PUBLISH_ENABLED: optBool('AVAILABILITY_AUTO_PUBLISH_ENABLED', false),
+  AVAILABILITY_AUTO_PUBLISH_HOUR: Number(process.env.AVAILABILITY_AUTO_PUBLISH_HOUR || 17),
+
   // ── Branding ──────────────────────────────────────────────────────────────
   BOT_DISPLAY_NAME: process.env.BOT_DISPLAY_NAME || 'Real Gangsta',
   BOT_LOGO_URL: process.env.BOT_LOGO_URL || '',
