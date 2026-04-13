@@ -29,7 +29,7 @@ const CONFIG = {
   DISCORD_GUILD_ID: req('DISCORD_GUILD_ID'),
 
   // ── Database ──────────────────────────────────────────────────────────────
-  DATABASE_URL: req('DATABASE_URL'),
+  DATABASE_URL: process.env.DATABASE_URL || '',
 
   // ── Role IDs — Hierarquia completa ────────────────────────────────────────
   // Chefia
