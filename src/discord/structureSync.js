@@ -30,6 +30,7 @@ const {
   CHANNEL_PERM_OVERRIDES,
   CHANNEL_PERM_OVERRIDES_BY_NAME,
   formatResidentChannelName,
+  extractNicknameFromFormatted,
   bold,
   rolesFor,
 } = require('./structureTemplate');
@@ -269,6 +270,11 @@ async function runSync(guild, opts = {}) {
         let info = dbResMap.get(chId);
         let needsDbInsert = false;
 
+        // Nick limpo: se o canal já tinha sido formatado por sync anterior,
+        // extraímos o nick original — evita aninhamento `🍼・YB - 🐺・YB - X`.
+        const cleanNick = extractNicknameFromFormatted(ch.name) || ch.name;
+        const cleanNickLower = cleanNick.toLowerCase();
+
         // (B) Descoberta via permission overwrites — procura um user
         //     com ViewChannel allow (esse é o dono do canal individual).
         if (!info) {
@@ -288,17 +294,19 @@ async function runSync(guild, opts = {}) {
 
         // (C) Fallback por nome — exact match contra DB
         if (!info) {
-          const baseName = ch.name.toLowerCase();
-          const r = await query(
-            `SELECT id AS member_id, discord_id, tier, nickname, display_name
-               FROM members
-              WHERE LOWER(nickname) = $1
-                 OR LOWER(REPLACE(display_name, ' ', '-')) = $1
-                 OR LOWER(full_name) = $1
-              LIMIT 2`,
-            [baseName]
-          );
-          if (r.rowCount === 1) { info = r.rows[0]; needsDbInsert = true; }
+          // Tenta tanto o nome bruto como o cleanNick (sem formatação)
+          for (const candidate of new Set([ch.name.toLowerCase(), cleanNickLower])) {
+            const r = await query(
+              `SELECT id AS member_id, discord_id, tier, nickname, display_name
+                 FROM members
+                WHERE LOWER(nickname) = $1
+                   OR LOWER(REPLACE(display_name, ' ', '-')) = $1
+                   OR LOWER(full_name) = $1
+                LIMIT 2`,
+              [candidate]
+            );
+            if (r.rowCount === 1) { info = r.rows[0]; needsDbInsert = true; break; }
+          }
         }
 
         // (D) members.channel_id directo (canais migrados/manuais cuja
@@ -317,16 +325,16 @@ async function runSync(guild, opts = {}) {
         //     pelas roles que tem e cria entrada no DB.
         let discoveredFromGuild = null;
         if (!info) {
-          const target = ch.name.toLowerCase();
+          const targets = new Set([ch.name.toLowerCase(), cleanNickLower].filter(Boolean));
           for (const [, gm] of guild.members.cache) {
             const display = (gm.displayName || '').toLowerCase();
             const username = (gm.user?.username || '').toLowerCase();
             const nick = (gm.nickname || '').toLowerCase();
-            if (display === target || username === target || nick === target
-                || display.includes(target) || nick.includes(target)) {
-              discoveredFromGuild = gm;
-              break;
-            }
+            const matches = [...targets].some(t =>
+              display === t || username === t || nick === t
+              || (t && (display.includes(t) || nick.includes(t)))
+            );
+            if (matches) { discoveredFromGuild = gm; break; }
           }
           if (discoveredFromGuild) {
             // Infere tier a partir das roles do membro
@@ -352,14 +360,14 @@ async function runSync(guild, opts = {}) {
                                        display_name = COALESCE(NULLIF(display_name, ''), $3),
                                        updated_at = NOW()
                      WHERE id = $4`,
-                  [inferredTier, ch.name, discoveredFromGuild.displayName || ch.name, memberId]
+                  [inferredTier, cleanNick, discoveredFromGuild.displayName || cleanNick, memberId]
                 );
               } else {
                 const ins = await query(
                   `INSERT INTO members (discord_id, username, display_name, role, tier, nickname)
                    VALUES ($1, $2, $3, 'morador', $4, $5)
                    RETURNING id`,
-                  [discoveredFromGuild.id, discoveredFromGuild.user?.username || '', discoveredFromGuild.displayName || ch.name, inferredTier, ch.name]
+                  [discoveredFromGuild.id, discoveredFromGuild.user?.username || '', discoveredFromGuild.displayName || cleanNick, inferredTier, cleanNick]
                 );
                 memberId = ins.rows[0].id;
               }
@@ -367,8 +375,8 @@ async function runSync(guild, opts = {}) {
                 member_id: memberId,
                 discord_id: discoveredFromGuild.id,
                 tier: inferredTier,
-                nickname: ch.name,
-                display_name: discoveredFromGuild.displayName || ch.name,
+                nickname: cleanNick,
+                display_name: discoveredFromGuild.displayName || cleanNick,
               };
               needsDbInsert = true;
               act('IMPORTED_MEMBER_FROM_GUILD', { member: discoveredFromGuild.displayName, channel: ch.name, tier: inferredTier });
@@ -416,12 +424,12 @@ async function runSync(guild, opts = {}) {
         }
 
         // (G) Last resort — só renomeia cosmeticamente, sem persistir no DB.
-        //     Garante que TODOS os canais em GUETTO ficam com estilo uniforme,
-        //     mesmo que não consigamos identificar o dono. Tier defaultado a
-        //     young_blood; se for o tier errado, basta o admin promover via
-        //     /rg-* ou ajustar manualmente — o nome convergirá no próximo sync.
+        //     Usa SEMPRE o cleanNick (extracção do formatado anterior, ou nome
+        //     cru se nunca foi formatado) para garantir idempotência: aplicar
+        //     o sync N vezes converge para `🍼・Young Blood - simão` em vez de
+        //     aninhar `🍼・YB - 🍼・YB - simão`.
         if (!info) {
-          const fallbackName = formatResidentChannelName('young_blood', ch.name);
+          const fallbackName = formatResidentChannelName('young_blood', cleanNick);
           if (ch.name !== fallbackName) {
             act('RENAME_RESIDENT_FALLBACK', { from: ch.name, to: fallbackName });
             if (apply) {

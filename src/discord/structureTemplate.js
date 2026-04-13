@@ -37,6 +37,29 @@ function ch(emoji, name) {
   return `${emoji}・${bold(name)}`;
 }
 
+// Inverso de bold: math-bold → ASCII normal. Necessário para parsear nomes
+// que já passaram pelo formatador e voltar a ter o nick original limpo.
+const _UNBOLD = Object.fromEntries(Object.entries(_BOLD).map(([k, v]) => [v, k]));
+function unbold(s) {
+  return [...s].map(c => _UNBOLD[c] || c).join('').normalize('NFC');
+}
+
+/**
+ * Se `channelName` parece já estar no formato `xxx・𝗧𝗶𝗲𝗿 - 𝗡𝗶𝗰𝗸`,
+ * extrai e devolve o nick original (unbolded). Caso contrário devolve null.
+ *
+ * Garante idempotência do sync: se um canal já foi formatado anteriormente
+ * (mesmo com emoji errado / tier errado), recuperamos sempre o nick base
+ * em vez de re-aninhar `🍼・YB - 🐺・YB - simão`.
+ */
+function extractNicknameFromFormatted(channelName) {
+  const lastDash = channelName.lastIndexOf(' - ');
+  if (lastDash === -1) return null;
+  const tail = channelName.slice(lastDash + 3).trim();
+  if (!tail) return null;
+  return unbold(tail);
+}
+
 // ── Tier emoji + resident channel naming ─────────────────────────────────────
 // Cada tier tem um emoji/sigla com sabor gangsta. Aplicado a canais
 // individuais de moradores no GUETTO. Format final: `emoji・𝗧𝗶𝗲𝗿 - 𝗡𝗶𝗰𝗸`.
@@ -416,6 +439,8 @@ const CHANNEL_PERM_OVERRIDES_BY_NAME = {
 
 module.exports = {
   bold,
+  unbold,
+  extractNicknameFromFormatted,
   TIER_EMOJI,
   TIER_LABEL,
   formatResidentChannelName,
