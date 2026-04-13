@@ -5,30 +5,30 @@ const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
 const { queueMemberOp, queueChannelOp } = require('../discordQueue');
 const { log, warn } = require('../logger');
 
-// ── Thresholds ──────────────────────────────────────────────────────────────
-// Young Blood → O Gunão:        25.000€ de material
-// O Gunão → Gangster Fodido:    50.000€ de material
-// Gangster Fodido → cima:       manual (Patrão di Zona, Real Gangster, OG, etc.)
+// ── Thresholds (entrega/venda acumulada em material) ────────────────────────
+// O Gunão (entry) → Young Blood:        25.000€
+// Young Blood → Gangster Fodido:        50.000€
+// Gangster Fodido → cima:               manual (Patrão di Zona, Real Gangster, OG, etc.)
 
 const TIERS = [
-  { tier: 'young_blood', roleIdKey: 'YOUNG_BLOOD_ROLE_ID', dbRole: 'morador', level: 1 },
-  { tier: 'o_gunao', roleIdKey: 'O_GUNAO_ROLE_ID', dbRole: 'morador', level: 2 },
+  { tier: 'o_gunao', roleIdKey: 'O_GUNAO_ROLE_ID', dbRole: 'morador', level: 1 },
+  { tier: 'young_blood', roleIdKey: 'YOUNG_BLOOD_ROLE_ID', dbRole: 'morador', level: 2 },
   { tier: 'gangster_fodido', roleIdKey: 'GANGSTER_FODIDO_ROLE_ID', dbRole: 'morador', level: 3 },
 ];
 
 const PROMOTIONS = [
   {
-    from: 'young_blood',
-    to: 'o_gunao',
-    thresholdKey: 'PROMO_YOUNG_BLOOD_TO_GUNAO',
-    fromRoleKey: 'YOUNG_BLOOD_ROLE_ID',
-    toRoleKey: 'O_GUNAO_ROLE_ID',
+    from: 'o_gunao',
+    to: 'young_blood',
+    thresholdKey: 'PROMO_GUNAO_TO_YOUNG_BLOOD',
+    fromRoleKey: 'O_GUNAO_ROLE_ID',
+    toRoleKey: 'YOUNG_BLOOD_ROLE_ID',
   },
   {
-    from: 'o_gunao',
+    from: 'young_blood',
     to: 'gangster_fodido',
-    thresholdKey: 'PROMO_GUNAO_TO_GANGSTER_FODIDO',
-    fromRoleKey: 'O_GUNAO_ROLE_ID',
+    thresholdKey: 'PROMO_YOUNG_BLOOD_TO_GANGSTER_FODIDO',
+    fromRoleKey: 'YOUNG_BLOOD_ROLE_ID',
     toRoleKey: 'GANGSTER_FODIDO_ROLE_ID',
   },
 ];
@@ -63,7 +63,7 @@ async function checkAndPromote(discordId, guild, client) {
   if (!dbMember) return null;
 
   // Determinar tier atual pela DB
-  const currentTier = dbMember.role === 'morador' ? (dbMember.tier || 'young_blood') : null;
+  const currentTier = dbMember.role === 'morador' ? (dbMember.tier || CONFIG.MORADOR_DEFAULT_TIER) : null;
   if (!currentTier) return null; // Não é morador, não aplica
 
   // Ver se há promoção disponível para este tier
@@ -167,7 +167,7 @@ async function getPromotionProgress(discordId) {
   const dbMember = await memberRepo.findByDiscordId(discordId);
   if (!dbMember) return null;
 
-  const currentTier = dbMember.tier || 'young_blood';
+  const currentTier = dbMember.tier || CONFIG.MORADOR_DEFAULT_TIER;
   const promotion = PROMOTIONS.find(p => p.from === currentTier);
 
   const totalValue = await getMemberMaterialValue(dbMember.id);

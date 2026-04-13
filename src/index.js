@@ -53,6 +53,7 @@ const {
 } = require('./permissions/permissionEngine');
 const { runSync, summarize } = require('./discord/structureSync');
 const { reconcileAllMembers } = require('./members/roleInvariants');
+const { fixTiers } = require('./members/tierFixCommand');
 const { bootstrapStock } = require('./inventory/stockBootstrap');
 const {
   handleRegisterKillButton, handleKillModal, handleLeaderboardButton,
@@ -310,6 +311,38 @@ client.on(Events.InteractionCreate, async (interaction) => {
             lines.push(`• <@${d.member}> — ${d.violations.join(', ')}`);
           }
         }
+        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
+      }
+
+      if (cmd === 'rg-fix-tiers') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('migrar tiers'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const modo = interaction.options.getString('modo') || 'dry-run';
+        const dryRun = modo !== 'apply';
+        const report = await fixTiers(interaction.guild, { dryRun, actor: interaction.user.id });
+        const lines = [
+          `**Modo:** \`${report.mode.toUpperCase()}\``,
+          `**Scan:** ${report.scanned} membros`,
+          `**Afectados (YB ou O Gunão):** ${report.affected}`,
+        ];
+        if (!dryRun) {
+          lines.push(
+            `**Roles trocadas:** ${report.swapped}`,
+            `**DB actualizada:** ${report.dbUpdated}`,
+            `**Canais renomeados:** ${report.channelRenamed}`,
+            `**Falhas:** ${report.failed}`,
+          );
+        }
+        const sample = report.details.slice(0, 10);
+        if (sample.length) {
+          lines.push('', '**Primeiros 10:**');
+          for (const d of sample) {
+            const arrow = `${d.from} → ${d.to}`;
+            const tag = d.error ? ` ❌ ${d.error}` : (dryRun ? ' (dry)' : '');
+            lines.push(`• <@${d.member}> — ${arrow}${tag}`);
+          }
+        }
+        if (dryRun) lines.push('', '> _Dry-run — usa `modo:apply` para aplicar._');
         return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
       }
 

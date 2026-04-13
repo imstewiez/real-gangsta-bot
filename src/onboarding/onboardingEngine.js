@@ -12,9 +12,9 @@ const { buildMoradorChannelPanel } = require('./onboardingHandlers');
 
 /**
  * Process an approved tag request:
- * 1. Add Moradores (base) + Young Blood roles
+ * 1. Add Moradores (base) + tier de entrada (O Gunão) roles
  * 2. Try to set nickname to "FullName (Nickname)"
- * 3. Create/update member in DB (tier=young_blood)
+ * 3. Create/update member in DB (tier=o_gunao por defeito)
  * 4. Create individual channel in GUETTO
  * 5. Send welcome panel in channel
  * 6. Enforce role invariants
@@ -34,13 +34,20 @@ async function processApproval(tagRequest, approverMember, client) {
     return result;
   }
 
-  // ── 2. Add roles (Moradores base + Young Blood) ────────────────────────
+  // ── 2. Add roles (Moradores base + tier de entrada) ────────────────────
+  // O tier de entrada é resolvido por nome a partir de MORADOR_DEFAULT_TIER
+  // para acompanhar mudanças de hierarquia sem editar o engine.
+  const entryTier = CONFIG.MORADOR_DEFAULT_TIER || 'o_gunao';
+  const entryRoleKey = `${entryTier.toUpperCase()}_ROLE_ID`;
+  const entryRoleId = CONFIG[entryRoleKey];
   try {
     if (CONFIG.MORADORES_BASE_ROLE_ID) {
       await queueMemberOp(() => guildMember.roles.add(CONFIG.MORADORES_BASE_ROLE_ID, 'Onboarding: role base Moradores'));
     }
-    if (CONFIG.YOUNG_BLOOD_ROLE_ID) {
-      await queueMemberOp(() => guildMember.roles.add(CONFIG.YOUNG_BLOOD_ROLE_ID, 'Onboarding: tier Young Blood'));
+    if (entryRoleId) {
+      await queueMemberOp(() => guildMember.roles.add(entryRoleId, `Onboarding: tier ${entryTier}`));
+    } else {
+      warn(`[ONBOARDING] ${entryRoleKey} não configurado — tier de entrada não foi atribuído.`);
     }
     result.rolesAdded = true;
     log(`[ONBOARDING] Roles adicionadas a ${fullName} (${discordId}).`);
@@ -78,14 +85,14 @@ async function processApproval(tagRequest, approverMember, client) {
   }
   await query(
     'UPDATE members SET full_name = $1, nickname = $2, display_name = $3, tier = $4, updated_at = NOW() WHERE id = $5',
-    [fullName, nickname, fullName, 'young_blood', dbMember.id]
+    [fullName, nickname, fullName, entryTier, dbMember.id]
   );
 
   // ── 5. Create individual channel ───────────────────────────────────────
   // Format: emoji・𝗧𝗶𝗲𝗿 - 𝗡𝗶𝗰𝗸 (mantido em sincronia em auto-promoção e
   // bulk-rename via /rg-sync-structure).
-  const { formatResidentChannelName } = require('../discord/structureTemplate');
-  const channelName = formatResidentChannelName('young_blood', nickname);
+  const { formatResidentChannelName, TIER_LABEL } = require('../discord/structureTemplate');
+  const channelName = formatResidentChannelName(entryTier, nickname);
 
   if (CONFIG.MORADOR_TOPICOS_CATEGORY_ID) {
     try {
@@ -167,7 +174,7 @@ async function processApproval(tagRequest, approverMember, client) {
 
   await sendAuditToChannel(client, {
     title: '\uD83C\uDFF7\uFE0F Novo Morador — Tag Aprovada',
-    description: `<@${discordId}> entrou como **Young Blood** (tier 1)\nNome: **${fullName} (${nickname})**${result.channelCreated ? `\nCanal: <#${result.channelId}>` : ''}`,
+    description: `<@${discordId}> entrou como **${TIER_LABEL[entryTier] || entryTier}** (tier 1)\nNome: **${fullName} (${nickname})**${result.channelCreated ? `\nCanal: <#${result.channelId}>` : ''}`,
     color: 0x2ECC71,
   });
 

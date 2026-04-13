@@ -68,6 +68,12 @@ const commands = [
       .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
 
   new SlashCommandBuilder()
+    .setName('rg-fix-tiers')
+    .setDescription('Migra moradores para a nova ordem de tiers (O Gunão = entry, Young Blood = mid)')
+    .addStringOption(opt => opt.setName('modo').setDescription('dry-run (default) ou apply').setRequired(false)
+      .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
+
+  new SlashCommandBuilder()
     .setName('rg-bootstrap-stock')
     .setDescription('Importa stock inicial de full-inventory.json (auditável)')
     .addStringOption(opt => opt.setName('modo').setDescription('dry-run (default) ou apply').setRequired(false)

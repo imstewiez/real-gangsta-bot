@@ -261,7 +261,14 @@ const CHANNEL_MOVES = [
 // ── Channels to create ────────────────────────────────────────────────────────
 // `renameFrom` permite que um sync anterior (que criou com nome antigo) seja
 // convergido ao novo nome em vez de duplicar o canal.
-const SEPARATOR_NAME = `━━━━・${bold('Tópicos Moradores')}・━━━━`;
+// Text channels no Discord convertem espaços em `-` server-side, o que
+// partia o match exacto no sync (Phase 4 create + Phase 6b perms by name) e
+// deixava o separador visual com um hífen no meio do título.
+const SEPARATOR_NAME = `━━━━・${bold('Tópicos')}・${bold('Moradores')}・━━━━`;
+const SEPARATOR_LEGACY_NAMES = [
+  `━━━━・${bold('Tópicos')}-${bold('Moradores')}・━━━━`, // espaço → hífen via sanitização Discord
+  `━━━━・${bold('Tópicos Moradores')}・━━━━`,            // pré-sanitização (cache antes de refetch)
+];
 
 const CHANNELS_TO_CREATE = [
   // Inventário — canais novos para publicação automática
@@ -277,7 +284,7 @@ const CHANNELS_TO_CREATE = [
   // Economia
   { name: ch('🏆', 'tops-semanais'),        categoryKey: 'ECONOMIA',   renameFrom: ['🏆│tops-semanais'],        reason: 'Tops semanais auto-publicados' },
   // GUETTO — separador visual antes dos canais individuais dos moradores
-  { name: SEPARATOR_NAME, categoryKey: 'GUETTO', position: 7, reason: 'Separador visual — Tópicos Moradores' },
+  { name: SEPARATOR_NAME, categoryKey: 'GUETTO', position: 7, renameFrom: SEPARATOR_LEGACY_NAMES, reason: 'Separador visual — Tópicos Moradores' },
 ];
 
 // ── Role groups ───────────────────────────────────────────────────────────────

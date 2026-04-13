@@ -39,9 +39,9 @@ const CONFIG = {
   REAL_GANGSTER_ROLE_ID: optId('REAL_GANGSTER_ROLE_ID', '1491223266487173311'),
   // Chefe do Guetto
   PATRAO_DI_ZONA_ROLE_ID: optId('PATRAO_DI_ZONA_ROLE_ID', '1490397679753101312'),
-  // Moradores — tier ordering: young_blood=1 → o_gunao=2 → gangster_fodido=3
-  YOUNG_BLOOD_ROLE_ID: optId('YOUNG_BLOOD_ROLE_ID', '1491213753235275806'),
+  // Moradores — tier ordering (entry → topo): o_gunao=1 → young_blood=2 → gangster_fodido=3
   O_GUNAO_ROLE_ID: optId('O_GUNAO_ROLE_ID', '1491213423613317220'),
+  YOUNG_BLOOD_ROLE_ID: optId('YOUNG_BLOOD_ROLE_ID', '1491213753235275806'),
   GANGSTER_FODIDO_ROLE_ID: optId('GANGSTER_FODIDO_ROLE_ID', '1491213170961022997'),
   // Role base obrigatória para qualquer morador (invariante)
   MORADORES_BASE_ROLE_ID: optId('MORADORES_BASE_ROLE_ID', '1490397684597653634'),
@@ -70,17 +70,27 @@ const CONFIG = {
   get CHEFE_MORADORES_ROLE_IDS() {
     return [this.PATRAO_DI_ZONA_ROLE_ID].filter(Boolean);
   },
-  /** Tiers de morador (ordem: 1 → 3) */
+  /** Tiers de morador (ordem: entry → topo) */
   get MORADOR_TIER_ROLE_IDS() {
-    return [this.YOUNG_BLOOD_ROLE_ID, this.O_GUNAO_ROLE_ID, this.GANGSTER_FODIDO_ROLE_ID].filter(Boolean);
+    return [this.O_GUNAO_ROLE_ID, this.YOUNG_BLOOD_ROLE_ID, this.GANGSTER_FODIDO_ROLE_ID].filter(Boolean);
   },
   /** Legado — alguns módulos ainda usam este nome */
   get MORADOR_ROLE_IDS() { return this.MORADOR_TIER_ROLE_IDS; },
   get ALL_MORADOR_TIER_IDS() { return this.MORADOR_TIER_ROLE_IDS; },
 
+  /** Tier por defeito para entrada no GUETTO (set pela onboardingEngine). */
+  MORADOR_DEFAULT_TIER: 'o_gunao',
+
   // ── Promoção automática por material (valor em €) ─────────────────────────
-  PROMO_YOUNG_BLOOD_TO_GUNAO: Number(process.env.PROMO_YOUNG_BLOOD_TO_GUNAO || 25000),
-  PROMO_GUNAO_TO_GANGSTER_FODIDO: Number(process.env.PROMO_GUNAO_TO_GANGSTER_FODIDO || 50000),
+  // Nomes novos refletem a ordem correcta. Os antigos (PROMO_YOUNG_BLOOD_TO_GUNAO,
+  // PROMO_GUNAO_TO_GANGSTER_FODIDO) ainda são lidos como fallback para não
+  // partir Railway/produção sem editar o .env primeiro.
+  PROMO_GUNAO_TO_YOUNG_BLOOD: Number(
+    process.env.PROMO_GUNAO_TO_YOUNG_BLOOD || process.env.PROMO_YOUNG_BLOOD_TO_GUNAO || 25000
+  ),
+  PROMO_YOUNG_BLOOD_TO_GANGSTER_FODIDO: Number(
+    process.env.PROMO_YOUNG_BLOOD_TO_GANGSTER_FODIDO || process.env.PROMO_GUNAO_TO_GANGSTER_FODIDO || 50000
+  ),
 
   // ── Category IDs ──────────────────────────────────────────────────────────
   MORADOR_TOPICOS_CATEGORY_ID: optId('MORADOR_TOPICOS_CATEGORY_ID', '1491543491233448006'),

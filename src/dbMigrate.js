@@ -355,6 +355,16 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_bot_instances_started_at ON bot_instances(started_at DESC);
       CREATE INDEX IF NOT EXISTS idx_bot_instances_heartbeat ON bot_instances(last_heartbeat DESC);
     `
+  },
+  {
+    id: 6,
+    name: 'tier_default_o_gunao',
+    // A hierarquia foi corrigida: O Gunão é o tier de entrada, não Young Blood.
+    // Só altera o DEFAULT da coluna — dados existentes ficam intactos e são
+    // migrados controladamente via /rg-fix-tiers.
+    up: `
+      ALTER TABLE members ALTER COLUMN tier SET DEFAULT 'o_gunao';
+    `
   }
 ];
 

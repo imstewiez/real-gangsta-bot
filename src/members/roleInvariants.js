@@ -74,8 +74,8 @@ async function ensureInvariants(guildMember, opts = {}) {
   if (tierIds.length > 1) {
     violations.push('multiple_tiers');
     if (!dryRun && CONFIG.ENFORCE_ROLE_INVARIANTS) {
-      // Mantém o tier mais alto (gangster_fodido > o_gunao > young_blood)
-      const order = [CONFIG.GANGSTER_FODIDO_ROLE_ID, CONFIG.O_GUNAO_ROLE_ID, CONFIG.YOUNG_BLOOD_ROLE_ID];
+      // Mantém o tier mais alto (gangster_fodido > young_blood > o_gunao)
+      const order = [CONFIG.GANGSTER_FODIDO_ROLE_ID, CONFIG.YOUNG_BLOOD_ROLE_ID, CONFIG.O_GUNAO_ROLE_ID];
       const keep = order.find(id => id && guildMember.roles.cache.has(id));
       for (const id of tierIds) {
         if (id === keep) continue;

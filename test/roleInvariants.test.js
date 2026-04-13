@@ -86,9 +86,18 @@ describe('roleInvariants', () => {
     const gm = fakeGuildMember({ roleIds: ['R_YB', 'R_GUN', 'R_GF', 'R_MOR_BASE'] });
     const result = await ensureInvariants(gm);
     assert.equal(result.violations.includes('multiple_tiers'), true);
-    // Keeps gangster_fodido, removes o_gunao and young_blood
+    // Keeps gangster_fodido (R_GF), removes young_blood + o_gunao
     const removed = gm._calls.remove.map(r => r.roleId).sort();
     assert.deepEqual(removed, ['R_GUN', 'R_YB']);
+  });
+
+  it('com YB+Gun (sem GF) mantém YB (mid > entry)', async () => {
+    const gm = fakeGuildMember({ roleIds: ['R_YB', 'R_GUN', 'R_MOR_BASE'] });
+    const result = await ensureInvariants(gm);
+    assert.equal(result.violations.includes('multiple_tiers'), true);
+    const removed = gm._calls.remove.map(r => r.roleId);
+    assert.deepEqual(removed, ['R_GUN']);
+    assert.equal(gm.roles.cache.has('R_YB'), true);
   });
 
   it('dry-run não aplica mudanças', async () => {
