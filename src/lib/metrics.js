@@ -30,7 +30,19 @@ function gauge(name, help) {
   };
 }
 
+function _snapshotPoolStats() {
+  // Lazy require para evitar que o módulo metrics dependa de db.js no load.
+  try {
+    const { pool } = require('../db');
+    if (!pool) return;
+    dbPoolTotal.set(pool.totalCount || 0);
+    dbPoolIdle.set(pool.idleCount || 0);
+    dbPoolWaiting.set(pool.waitingCount || 0);
+  } catch { /* db ainda não carregado */ }
+}
+
 function toPrometheusText() {
+  _snapshotPoolStats();
   const lines = [];
   lines.push(`# Real Gangsta \u2014 metrics snapshot ${new Date().toISOString()}\n`);
 
@@ -74,9 +86,14 @@ const operationsClosed = counter('rg_operations_closed_total', 'Operations close
 const membersOnboarded = counter('rg_members_onboarded_total', 'Members onboarded');
 const advisoryLockAcquired = counter('rg_advisory_lock_acquired_total', 'Advisory locks acquired');
 const advisoryLockTimeout = counter('rg_advisory_lock_timeout_total', 'Advisory lock timeouts');
+const interactionErrorsTotal = counter('rg_interaction_errors_total', 'Unhandled interaction handler errors');
+const logRotationsTotal = counter('rg_log_rotations_total', 'Log file rotations performed');
 
 const membersActive = gauge('rg_members_active', 'Active members');
 const discordPingMs = gauge('rg_discord_ping_ms', 'Discord WS ping ms');
+const dbPoolTotal = gauge('rg_db_pool_total', 'DB connections currently in pool (total)');
+const dbPoolIdle = gauge('rg_db_pool_idle', 'DB connections currently idle');
+const dbPoolWaiting = gauge('rg_db_pool_waiting', 'Queries waiting for DB connection');
 
 module.exports = {
   counter, gauge, toPrometheusText, toJson,
@@ -85,5 +102,7 @@ module.exports = {
   panelRefreshSuccess, panelRefreshFail,
   inventoryMovements, operationsCreated, operationsClosed, membersOnboarded,
   advisoryLockAcquired, advisoryLockTimeout,
+  interactionErrorsTotal, logRotationsTotal,
   membersActive, discordPingMs,
+  dbPoolTotal, dbPoolIdle, dbPoolWaiting,
 };

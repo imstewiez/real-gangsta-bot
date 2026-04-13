@@ -7,7 +7,7 @@ const {
   ensureInstanceTable, cleanupStaleInstances, registerInstance,
   startHeartbeat, deregisterInstance, getCurrentInstance,
 } = require('./instanceCoordinator');
-const { log, warn, error } = require('./logger');
+const { log, warn, error, startLogMaintenance, stopLogMaintenance } = require('./logger');
 const metrics = require('./lib/metrics');
 const { commands } = require('./slashCommands');
 const { bootstrapAll } = require('./panelBootstrap');
@@ -76,6 +76,9 @@ const client = new Client({
 // ── Boot ────────────────────────────────────────────────────────────────────
 async function boot() {
   log(`[BOOT] Real Gangsta a iniciar...`);
+
+  // Limpa sessões velhas e inicia rotação periódica do log principal.
+  startLogMaintenance();
 
   // Subir o web server o mais cedo possível — a healthcheck da plataforma
   // precisa de 200 em /health para autorizar o Railway a matar o container
@@ -165,7 +168,7 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
       }
     }
   } catch (e) {
-    warn(`[ROLE_UPDATE] Error: ${e.message}`);
+    error(`[ROLE_UPDATE] Error processing ${newMember?.id}: ${e.message}`, e);
   }
 });
 
@@ -519,8 +522,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
   } catch (e) {
-    error(`[INTERACTION] Unhandled error: ${e.message}`, e);
-    await safeReply(interaction, { content: 'Ocorreu um erro interno.', flags: MessageFlags.Ephemeral }, { dismissible: true }).catch(() => {});
+    metrics.interactionErrorsTotal.inc();
+    // Identifica tipo + ID para diagnóstico — tipo da interação determina onde olhar
+    const ctx = interaction.isChatInputCommand?.()
+      ? `cmd=/${interaction.commandName}`
+      : interaction.isButton?.()
+        ? `button=${interaction.customId}`
+        : interaction.isModalSubmit?.()
+          ? `modal=${interaction.customId}`
+          : interaction.isAnySelectMenu?.()
+            ? `select=${interaction.customId}`
+            : `type=${interaction.type}`;
+    error(`[INTERACTION] Unhandled error (${ctx}, user=${interaction.user?.id}): ${e.message}`, e);
+    await safeReply(interaction, { content: 'Ocorreu um erro interno. A equipa foi notificada.', flags: MessageFlags.Ephemeral }, { dismissible: true }).catch(() => {});
   }
 });
 
@@ -531,6 +545,7 @@ async function shutdown(signal) {
   _shuttingDown = true;
   log(`[SHUTDOWN] ${signal} received. Shutting down...`);
   try { stopScheduler(); } catch (_) {}
+  try { stopLogMaintenance(); } catch (_) {}
   try { client.destroy(); } catch (_) {}
   await deregisterInstance(signal).catch(() => {});
   await releaseInstanceLock().catch(() => {});

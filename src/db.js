@@ -9,10 +9,12 @@ if (!process.env.DATABASE_URL) {
 
 const SSL_CFG = process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false;
 
+const POOL_MAX = parseInt(process.env.DB_POOL_MAX, 10) || 20;
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: SSL_CFG,
-  max: 10,
+  max: POOL_MAX,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
 });
@@ -48,7 +50,9 @@ async function queryWithTransaction(callback) {
 // ── Singleton lock via PostgreSQL advisory lock ──────────────────────────────
 // Usa uma conexão dedicada (não do pool) para que o lock seja libertado
 // automaticamente quando o processo termina — impede duas instâncias simultâneas.
-const ADVISORY_LOCK_ID = 985432107; // ID fixo único para este bot
+// Configurável via INSTANCE_LOCK_ID env (default: 985432107) para evitar colisão
+// se partilhares a mesma DB com outro bot.
+const ADVISORY_LOCK_ID = parseInt(process.env.INSTANCE_LOCK_ID, 10) || 985432107;
 let _lockClient = null;
 
 // Tenta adquirir o lock com retry — aguarda até maxWaitMs pelo container anterior terminar
