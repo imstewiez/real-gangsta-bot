@@ -31,11 +31,13 @@ npm test
  4. Real Gangster    │
  5. Patrão di Zona   │ Chefe do Guetto     (isChefeMoradores)
  6. Gangster Fodido  │ tier 3 (topo)       ┐
- 7. O Gunão          │ tier 2              ├─ Moradores
- 8. Young Blood      │ tier 1 (entrada)    ┘
+ 7. Young Blood      │ tier 2 (mid)        ├─ Moradores
+ 8. O Gunão          │ tier 1 (entrada)    ┘
 ```
 
-**Invariante core**: qualquer tier (YB/OG/GF) ⇒ role base **Moradores**. Aplicada em onboarding, promoções e via job diário.
+**Invariante core**: qualquer tier (Gun/YB/GF) ⇒ role base **Moradores**. Aplicada em onboarding, promoções e via job diário.
+
+A ordem foi corrigida na Fase 2 (era inversa). Membros existentes em produção podem ser migrados via `/rg-fix-tiers modo:dry-run` → `apply` (swap YB↔O Gunão + DB tier + rename do canal individual).
 
 ## Fluxos
 
@@ -50,9 +52,11 @@ npm test
    - reforça invariantes
 
 ### Promoção automática
-- `25.000€` de material acumulado (entregas + vendas) → promove YB → O Gunão
-- `50.000€` → O Gunão → Gangster Fodido
+- `25.000€` de material acumulado (entregas + vendas) → promove **O Gunão → Young Blood**
+- `50.000€` → **Young Blood → Gangster Fodido**
 - Acima disso é manual.
+
+Env vars: `PROMO_GUNAO_TO_YOUNG_BLOOD` e `PROMO_YOUNG_BLOOD_TO_GANGSTER_FODIDO` (com fallback para os nomes antigos `PROMO_YOUNG_BLOOD_TO_GUNAO` / `PROMO_GUNAO_TO_GANGSTER_FODIDO`).
 
 ### Promoção a Oficial
 - Detectada via `GuildMemberUpdate` (adição de role OG / Real Gangster).
@@ -75,6 +79,25 @@ Stock é sempre calculado a partir do ledger — nunca sobreposto.
 ### Tops semanais
 - Publicação automática domingo 23h no `WEEKLY_TOP_CHANNEL_ID` (controlada por `AUTO_PUBLISH_WEEKLY_TOP`).
 
+### Disponibilidade diária (Fase 3)
+- `/rg-availability-create` publica uma sessão com SelectMenu (até 8 slots × 3 estados: ✅/❌/⏰) + botões "Apareço/Talvez/Não dá" para todos os slots + Resumo + Atualizar.
+- Cada voto é upsert na DB; a mensagem **edita-se em vez de spammar**.
+- Job opcional `availability_auto_publish` (5min interval) age só na hora indicada por `AVAILABILITY_AUTO_PUBLISH_HOUR` se `AVAILABILITY_AUTO_PUBLISH_ENABLED=true`.
+- Slots default: `20:30,21:30,22:30,23:30,00:30,01:30,02:30,03:30` (configurável via `AVAILABILITY_SLOTS`).
+- 10 cabeçalhos rotativos com tom de bairro — sem cringe.
+
+### Rádio (Fase 4)
+- `/rg-radio` publica painel com **Principal** + **Parceria** e botões aleatória/set/swap/history/refresh.
+- Geração aleatória entre `RADIO_RANDOM_MIN`/`MAX` (default 1000-9999) com anti-colisão.
+- Histórico em `radio_history` com quem mudou e modo (manual/random).
+- `/rg-radio-set`, `/rg-radio-random`, `/rg-radio-history` para CLI rápido.
+
+### Sticky messages (Fase 5)
+- 2 modos: `update` (edita a mesma mensagem) e `repost` (republica após N mensagens novas e/ou Y minutos).
+- `/rg-sticky-set canal:#X source:radio:current modo:update` mantém o painel da rádio sempre visível.
+- `availability:daily` e `radio:current` são source_keys built-in com renderers automáticos — qualquer mudança refresca a sticky.
+- `/rg-sticky-list`, `/rg-sticky-remove`, `/rg-sticky-refresh`.
+
 ## Slash commands
 
 | Comando | Destinatário | Descrição |
@@ -95,6 +118,16 @@ Stock é sempre calculado a partir do ledger — nunca sobreposto.
 | `/rg-sync-sheets` | Comando | Export para Sheets (opcional) |
 | `/rg-kill` | Todos | Registar kill |
 | `/rg-cemetery` | Todos | Leaderboard cemitério |
+| `/rg-fix-tiers modo:[dry-run|apply]` | Comando | Migração da nova ordem de tiers (Fase 2) |
+| `/rg-availability-create` | Chefia/Chefe Mor | Publica disponibilidade do dia |
+| `/rg-availability-close` | Chefia/Chefe Mor | Fecha sessão (votos congelados) |
+| `/rg-availability-summary` | Todos | Resumo detalhado por slot |
+| `/rg-radio` | Todos | Publica painel da rádio |
+| `/rg-radio-set tipo:.. valor:..` | Chefia | Define rádio manualmente |
+| `/rg-radio-random tipo:..` | Chefia/Chefe Mor | Gera rádio aleatória |
+| `/rg-radio-history` | Todos | Histórico de alterações |
+| `/rg-sticky-set canal:.. source:.. modo:..` | Comando | Configura sticky |
+| `/rg-sticky-remove` / `refresh` / `list` | Comando | Gestão de stickys |
 
 ## CLI scripts
 
@@ -146,3 +179,5 @@ Sync idempotente: nunca apaga, apenas renomeia/move/cria. Canais fora do templat
 ## Secrets
 
 `.env`, `juri-490201-54e5053bd43a.json` (service account Google) e `logs/` estão em `.gitignore`. Nunca commitar secrets.
+
+> **Nota**: a auditoria inicial (Fase 1) sinalizou o ficheiro de credenciais como crítico. Verificámos: o `.gitignore` está bem configurado e o ficheiro **nunca foi pushed para git history** — está apenas no working directory local, como suposto. Se algum dia for commitado por engano, usa `git filter-repo --path bot/juri-490201-54e5053bd43a.json --invert-paths` (ou BFG) e revoga a key no GCP imediatamente.

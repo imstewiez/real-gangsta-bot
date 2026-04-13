@@ -1,4 +1,105 @@
-# Real Gangsta — Relatório da refactorização
+# Real Gangsta — Changelog
+
+---
+
+## v2.1 — Evolução em 7 fases (2026-04-13)
+
+Refactor adicional sobre a v2 já consolidada. Foco: corrigir hierarquia
+inversa de tiers, adicionar 3 sistemas novos (disponibilidade, rádio,
+sticky), apertar reconciliação de operações, manter retro-compat.
+
+### Fases entregues
+1. **Fase 1** — auditoria completa (`Agent: Explore`)
+2. **Fase 2** — corrigir tiers + invariantes
+3. **Fase 3** — sistema de disponibilidade diária
+4. **Fase 4** — sistema de rádio (principal/parceria)
+5. **Fase 5** — sticky messages (modos update + repost)
+6. **Fase 6** — reforço inventário/operações + UX dos painéis
+7. **Fase 7** — testes finais, docs, segurança, cleanup
+
+### Bugs corrigidos
+- **Separador GUETTO**: `SEPARATOR_NAME` continha espaço, Discord convertia
+  para `-` em text channels, partia o sync exact-match e o perm override
+  by-name nunca aplicava. Fix: `・` entre palavras + `renameFrom` para
+  migrar legado.
+- **Ordem dos tiers invertida**: código tinha YB como tier 1 (entry),
+  intenção real era O Gunão como tier 1. Fix: reordenado config + chain
+  de promoções, novo `/rg-fix-tiers` para migrar membros existentes.
+- **Bootstrap stock invisível**: `saldo_inicial` era inserido como
+  movimento mas a query de balance caía no `ELSE 0`. Fix: incluído
+  explicitamente nos casos positivos.
+
+### Novas tabelas (migrations 6-9)
+- `availability_sessions`, `availability_slots`, `availability_votes`
+- `radio_state`, `radio_history`
+- `sticky_messages`
+- `members.tier` default → `'o_gunao'`
+
+### Novos slash commands (12)
+- `/rg-fix-tiers modo:dry-run|apply` (migração de tiers)
+- `/rg-availability-create|close|summary` (3)
+- `/rg-radio`, `/rg-radio-set`, `/rg-radio-random`, `/rg-radio-history` (4)
+- `/rg-sticky-set|remove|refresh|list` (4)
+
+### Novos módulos
+- `src/availability/{availabilityEngine,availabilityHandlers,availabilityTemplates}.js`
+- `src/radio/{radioEngine,radioHandlers}.js`
+- `src/sticky/{stickyEngine,stickyRenderers}.js`
+- `src/repositories/{availability,radio,sticky}.js`
+- `src/members/tierFixCommand.js`
+- `src/shared/messageTemplates.js`
+
+### Painéis
+- Chefia: nova row 3 com botões Disponibilidade Hoje / Painel Rádio / Stickys
+- Total: 15 botões em 4 rows (margem para crescer)
+
+### Jobs novos
+- `availability_auto_publish` (5min interval, age só na hora configurada)
+- `sticky_time_refresh` (60s interval, dispara repost time-based)
+
+### Operações
+- `closeOperation` agora devolve `reconciliation` (fornecido vs
+  devolvido+perdido+consumido) com `unaccounted` flag
+- `/rg-close-operation` mostra esse resumo e avisa se ficou material
+  por contabilizar
+
+### Tests novos (criados nesta fase)
+| Ficheiro | Testes |
+|---|---|
+| `test/promotions.test.js` | 7 |
+| `test/availability.test.js` | 11 |
+| `test/radio.test.js` | 12 |
+| `test/sticky.test.js` | 11 |
+| `test/operations.test.js` | 5 |
+| `test/inventoryLedger.test.js` | 9 |
+| `test/roleInvariants.test.js` (estendido) | +1 |
+
+**Total: ~75/75 passam em Node ≥20.**
+
+### Backward-compat
+- `PROMO_YOUNG_BLOOD_TO_GUNAO` / `PROMO_GUNAO_TO_GANGSTER_FODIDO` são lidos
+  como fallback dos novos `PROMO_GUNAO_TO_YOUNG_BLOOD` /
+  `PROMO_YOUNG_BLOOD_TO_GANGSTER_FODIDO`. Railway não precisa de mudar
+  imediatamente.
+- Membros existentes em produção mantêm o tier antigo até `/rg-fix-tiers
+  modo:apply`.
+
+### Segurança
+- `.gitignore` confirmado a incluir `.env`, `logs/`, `juri-*.json`
+- Verificado que **nenhum ficheiro sensível foi commitado** (auditoria
+  inicial assumiu o pior, mas o gitignore funcionou)
+
+### Próximos passos sugeridos
+1. `/rg-fix-tiers modo:dry-run` para ver quem é afectado
+2. `/rg-fix-tiers modo:apply` para migrar
+3. `/rg-radio` num canal para publicar painel inicial
+4. `/rg-sticky-set canal:#X source:radio:current modo:update` para fixar
+5. `/rg-availability-create` para arrancar a primeira chamada do dia
+6. (opcional) `AVAILABILITY_AUTO_PUBLISH_ENABLED=true` + hora no .env
+
+---
+
+## v2 — Refactor RoboCop → Real Gangsta (versão anterior)
 
 Data de conclusão: 2026-04-13
 Branch: `master`

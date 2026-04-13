@@ -55,17 +55,26 @@ async function recordMovement({ movementType, itemId, quantity, memberId = null,
   return res.rows[0];
 }
 
+// ── Stock balance — sinal por movement_type ─────────────────────────────────
+// IMPORTANTE: saldo_inicial conta como positivo (era o bug pré-Fase 7 — o
+// bootstrap inseria movimentos `saldo_inicial` mas o CASE caía no ELSE 0).
+// Inclui também todas as direcções inversas explicitamente; ELSE 0 fica como
+// rede de segurança para movement_types desconhecidos.
 async function getStock() {
   const res = await query(`
     SELECT i.id, i.name, i.category, i.unit, i.estimated_value,
       COALESCE(SUM(
-        CASE WHEN im.movement_type IN ('entrega_morador', 'venda_morador', 'entrega_oficial', 'devolucao_operacao', 'apreendido', 'craftado')
-          THEN im.quantity
-        WHEN im.movement_type IN ('fornecimento_org', 'consumo_operacao', 'perda_operacao')
-          THEN -im.quantity
-        WHEN im.movement_type = 'ajuste_manual'
-          THEN im.quantity
-        ELSE 0 END
+        CASE
+          WHEN im.movement_type IN (
+            'saldo_inicial', 'entrega_morador', 'venda_morador', 'entrega_oficial',
+            'devolucao_operacao', 'apreendido', 'craftado'
+          ) THEN im.quantity
+          WHEN im.movement_type IN ('fornecimento_org', 'consumo_operacao', 'perda_operacao')
+            THEN -im.quantity
+          WHEN im.movement_type = 'ajuste_manual'
+            THEN im.quantity
+          ELSE 0
+        END
       ), 0) as balance
     FROM items i
     LEFT JOIN inventory_movements im ON im.item_id = i.id
@@ -79,13 +88,17 @@ async function getStock() {
 async function getStockForItem(itemId) {
   const res = await query(`
     SELECT COALESCE(SUM(
-      CASE WHEN movement_type IN ('entrega_morador', 'venda_morador', 'entrega_oficial', 'devolucao_operacao', 'apreendido', 'craftado')
-        THEN quantity
-      WHEN movement_type IN ('fornecimento_org', 'consumo_operacao', 'perda_operacao')
-        THEN -quantity
-      WHEN movement_type = 'ajuste_manual'
-        THEN quantity
-      ELSE 0 END
+      CASE
+        WHEN movement_type IN (
+          'saldo_inicial', 'entrega_morador', 'venda_morador', 'entrega_oficial',
+          'devolucao_operacao', 'apreendido', 'craftado'
+        ) THEN quantity
+        WHEN movement_type IN ('fornecimento_org', 'consumo_operacao', 'perda_operacao')
+          THEN -quantity
+        WHEN movement_type = 'ajuste_manual'
+          THEN quantity
+        ELSE 0
+      END
     ), 0) as balance
     FROM inventory_movements WHERE item_id = $1
   `, [itemId]);
