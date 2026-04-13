@@ -286,8 +286,7 @@ async function runSync(guild, opts = {}) {
           }
         }
 
-        // (C) Fallback por nome — canal `joao-silva` → procura member com
-        //     nickname ou display_name correspondente. Só aceita match único.
+        // (C) Fallback por nome — exact match contra DB
         if (!info) {
           const baseName = ch.name.toLowerCase();
           const r = await query(
@@ -300,6 +299,54 @@ async function runSync(guild, opts = {}) {
             [baseName]
           );
           if (r.rowCount === 1) { info = r.rows[0]; needsDbInsert = true; }
+        }
+
+        // (D) members.channel_id directo (canais migrados/manuais cuja
+        //     associação só ficou guardada no campo do membro).
+        if (!info) {
+          const r = await query(
+            `SELECT id AS member_id, discord_id, tier, nickname, display_name
+               FROM members WHERE channel_id = $1 LIMIT 1`,
+            [chId]
+          );
+          if (r.rowCount === 1) { info = r.rows[0]; needsDbInsert = true; }
+        }
+
+        // (E) Fuzzy match — descasca emojis/separadores/bold do nome,
+        //     reduz a [a-z0-9-], e tenta bater contra nickname/display.
+        //     Cobre canais já estilizados ou com prefixos/emojis arbitrários.
+        if (!info) {
+          // Strip combining marks + non-letter/digit/space/hyphen
+          const stripped = ch.name
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]+/g, ' ')
+            .trim()
+            .replace(/\s+/g, '-');
+          // Tira prefixos comuns (separators "・", "│", "┃", "-", "tier - ")
+          const candidates = new Set();
+          if (stripped) candidates.add(stripped);
+          // Se houver " - " no nome, tentamos a parte depois
+          const dashSplit = ch.name.split(/\s-\s|\s—\s/);
+          if (dashSplit.length > 1) {
+            const tail = dashSplit[dashSplit.length - 1]
+              .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase().replace(/[^a-z0-9\s-]+/g, ' ').trim().replace(/\s+/g, '-');
+            if (tail) candidates.add(tail);
+          }
+          for (const cand of candidates) {
+            const r = await query(
+              `SELECT id AS member_id, discord_id, tier, nickname, display_name
+                 FROM members
+                WHERE LOWER(nickname) = $1
+                   OR LOWER(REPLACE(display_name, ' ', '-')) = $1
+                   OR LOWER(REPLACE(full_name, ' ', '-')) = $1
+                LIMIT 2`,
+              [cand]
+            );
+            if (r.rowCount === 1) { info = r.rows[0]; needsDbInsert = true; break; }
+          }
         }
 
         if (!info) {
