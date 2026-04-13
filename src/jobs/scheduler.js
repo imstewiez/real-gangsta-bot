@@ -57,6 +57,12 @@ function startAll(client) {
     registerJob('sheets_sync', 30 * 60 * 1000, async () => { await syncAll(); });
   }
 
+  // Sticky messages — refresh time-based (modo repost com threshold_minutes)
+  registerJob('sticky_time_refresh', 60 * 1000, async (client) => {
+    const { runTimeBasedRefresh } = require('../sticky/stickyEngine');
+    return await runTimeBasedRefresh(client);
+  });
+
   // Auto-publish disponibilidade diária — corre de 5 em 5 min e age só na hora
   // configurada (idempotente por canal+data via índice único da DB).
   if (CONFIG.AVAILABILITY_AUTO_PUBLISH_ENABLED && CONFIG.AVAILABILITY_CHANNEL_ID) {

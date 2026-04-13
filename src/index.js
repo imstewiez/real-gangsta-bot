@@ -65,11 +65,17 @@ const {
   handleSummary: availHandleSummary,
   handleRefresh: availHandleRefresh,
 } = require('./availability/availabilityHandlers');
-const { availabilityRepo, radioRepo } = require('./repositories');
+const { availabilityRepo, radioRepo, stickyRepo } = require('./repositories');
+const {
+  setSticky, removeSticky, refresh: stickyRefresh,
+  onMessageCreate: stickyOnMessage, listRenderers: stickyListRenderers,
+} = require('./sticky/stickyEngine');
+const { registerBuiltinRenderers } = require('./sticky/stickyRenderers');
 const {
   setRadio: radioSet, setRandom: radioSetRandom,
   buildEmbed: radioEmbed, buildComponents: radioComponents,
   publishToChannel: radioPublish, historyText: radioHistoryText,
+  notifyStickyChange: radioNotify,
 } = require('./radio/radioEngine');
 const {
   handleRandom: radioHandleRandom,
@@ -151,6 +157,9 @@ client.once(Events.ClientReady, async () => {
     warn(`[READY] Falha ao registar slash commands: ${e.message}`);
   }
 
+  // Renderers de sticky têm de estar registados antes de qualquer refresh.
+  registerBuiltinRenderers();
+
   // Bootstrap panels
   if (CONFIG.PANEL_BOOTSTRAP_ON_READY) {
     await bootstrapAll(client);
@@ -172,6 +181,15 @@ client.once(Events.ClientReady, async () => {
   });
 
   log('[READY] Real Gangsta operacional.');
+});
+
+// ── Sticky messages — listener para modo `repost` ───────────────────────────
+client.on(Events.MessageCreate, async (message) => {
+  try {
+    await stickyOnMessage(client, message);
+  } catch (e) {
+    error(`[STICKY:listener] ${e.message}`);
+  }
 });
 
 // ── Role change detection (onboarding/promotion) ────────────────────────────
@@ -339,6 +357,69 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
       }
 
+      if (cmd === 'rg-sticky-set') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('gerir sticky'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const channel = interaction.options.getChannel('canal');
+        const source = interaction.options.getString('source');
+        const modo = interaction.options.getString('modo');
+        const tMsgs = interaction.options.getInteger('threshold_msgs') || 0;
+        const tMin = interaction.options.getInteger('threshold_minutes') || 0;
+        try {
+          // Source dinâmico (availability:daily) precisa de payload.channelId — guardamos sempre o canal alvo no payload.
+          const sticky = await setSticky({
+            channelId: channel.id, sourceKey: source, mode: modo,
+            payload: { channelId: channel.id }, thresholdMsgs: tMsgs, thresholdMinutes: tMin,
+            createdBy: interaction.user.id,
+          });
+          // Refresh imediato — torna a sticky visível já.
+          await stickyRefresh(client, sticky);
+          return safeReply(interaction, { content: `📌 Sticky \`${source}\` activa em <#${channel.id}> (modo ${modo}).` }, { dismissible: true });
+        } catch (e) {
+          return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
+        }
+      }
+
+      if (cmd === 'rg-sticky-remove') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('gerir sticky'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const channel = interaction.options.getChannel('canal');
+        const source = interaction.options.getString('source');
+        const removed = await removeSticky({ channelId: channel.id, sourceKey: source, actorId: interaction.user.id });
+        if (!removed) return safeReply(interaction, { content: 'Não encontrei essa sticky.' }, { dismissible: true });
+        return safeReply(interaction, { content: `🗑️ Sticky \`${source}\` removida de <#${channel.id}>.` }, { dismissible: true });
+      }
+
+      if (cmd === 'rg-sticky-refresh') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('refresh sticky'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const channel = interaction.options.getChannel('canal');
+        const source = interaction.options.getString('source');
+        const sticky = await stickyRepo.getByChannelSource(channel.id, source);
+        if (!sticky || !sticky.active) return safeReply(interaction, { content: 'Sticky não encontrada / inactiva.' }, { dismissible: true });
+        try {
+          await stickyRefresh(client, sticky);
+          return safeReply(interaction, { content: `🔄 Sticky \`${source}\` refrescada.` }, { dismissible: true });
+        } catch (e) {
+          return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
+        }
+      }
+
+      if (cmd === 'rg-sticky-list') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const all = await stickyRepo.listActive();
+        if (!all.length) return safeReply(interaction, { content: 'Sem stickys activas.' }, { dismissible: true });
+        const lines = all.map(s => {
+          const t = [];
+          if (s.threshold_msgs) t.push(`${s.threshold_msgs} msgs`);
+          if (s.threshold_minutes) t.push(`${s.threshold_minutes} min`);
+          return `• <#${s.channel_id}> — \`${s.source_key}\` (${s.mode}${t.length ? ', ' + t.join('+') : ''})`;
+        });
+        const renderers = stickyListRenderers();
+        const txt = lines.join('\n') + '\n\n_Renderers registados:_ ' + (renderers.map(r => `\`${r}\``).join(', ') || 'nenhum');
+        return safeReply(interaction, { content: txt.slice(0, 1900) }, { dismissible: true });
+      }
+
       if (cmd === 'rg-radio') {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const states = await radioRepo.getAllStates();
@@ -359,6 +440,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const nota = interaction.options.getString('nota') || '';
         try {
           const r = await radioSet({ type: tipo, value: valor, mode: 'manual', actorId: interaction.user.id, note: nota });
+          radioNotify(client).catch(() => {});
           return safeReply(interaction, { content: `📻 ${tipo}: \`${r.previous || '∅'}\` → \`${r.value}\`.` }, { dismissible: true });
         } catch (e) { return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true }); }
       }
@@ -370,6 +452,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const tipo = interaction.options.getString('tipo');
         try {
           const r = await radioSetRandom({ type: tipo, actorId: interaction.user.id });
+          radioNotify(client).catch(() => {});
           return safeReply(interaction, { content: `🎲 ${tipo}: \`${r.previous || '∅'}\` → \`${r.value}\`.` }, { dismissible: true });
         } catch (e) { return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true }); }
       }

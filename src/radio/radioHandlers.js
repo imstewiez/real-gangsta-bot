@@ -17,6 +17,7 @@ const {
 const { radioRepo } = require('../repositories');
 const {
   setRadio, setRandom, swapRadios, buildEmbed, buildComponents, historyText, TYPE_META,
+  notifyStickyChange,
 } = require('./radioEngine');
 const { safeReply } = require('../shared/interactionHelpers');
 const { warn } = require('../logger');
@@ -44,6 +45,7 @@ async function handleRandom(interaction) {
   try {
     const result = await setRandom({ type, actorId: interaction.user.id });
     await refreshMessage(interaction);
+    notifyStickyChange(interaction.client).catch(() => {});
     const meta = TYPE_META[type];
     return safeReply(interaction, {
       content: `${meta.emoji} ${meta.label} aleatória: \`${result.value}\` (era \`${result.previous || '∅'}\`).`,
@@ -90,9 +92,9 @@ async function handleSetModal(interaction) {
   const note = interaction.fields.getTextInputValue('note') || '';
   try {
     const result = await setRadio({ type, value, mode: 'manual', actorId: interaction.user.id, note });
-    // Actualiza a mensagem original do painel se vinher de lá. Aqui só temos
-    // a interaction do modal — o painel é refrescado quando alguém carregar
-    // em refresh (ou via sticky update na fase 5).
+    // Sticky radio:current refresca-se via notifyStickyChange — o painel-fonte
+    // é actualizado pelo refresh button.
+    notifyStickyChange(interaction.client).catch(() => {});
     const meta = TYPE_META[type];
     return safeReply(interaction, {
       content: `${meta.emoji} ${meta.label}: \`${result.previous || '∅'}\` → \`${result.value}\`.`,
@@ -107,6 +109,7 @@ async function handleSwap(interaction) {
   try {
     const swapped = await swapRadios({ actorId: interaction.user.id });
     await refreshMessage(interaction);
+    notifyStickyChange(interaction.client).catch(() => {});
     return safeReply(interaction, {
       content: `🔁 Trocadas: 📻 \`${swapped.principal}\` • 🤝 \`${swapped.parceria}\`.`,
     }, { dismissible: true });

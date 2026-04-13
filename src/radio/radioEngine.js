@@ -85,7 +85,25 @@ async function setRadio({ type, value, mode = 'manual', actorId, note }) {
     context: note || `${type}: ${result.previous || '∅'} → ${v} (${mode})`,
   });
   log(`[RADIO] ${type}: ${result.previous || '∅'} → ${v} (${mode}, by ${actorId}).`);
+
+  // Notifica stickys que escutam radio:current — sem client à mão aqui, o
+  // refresh é diferido para uma chamada explícita do caller (handler tem o
+  // client). Para evitar acoplamento, expomos uma função separada e
+  // confiamos que o handler chama notifyRadioChange(client) depois.
   return result;
+}
+
+/**
+ * Helper que dispara refresh em todas as stickys radio:current.
+ * Os handlers chamam isto depois de setRadio/setRandom/swapRadios.
+ */
+async function notifyStickyChange(client) {
+  try {
+    const { notifyChange } = require('../sticky/stickyEngine');
+    await notifyChange(client, 'radio:current');
+  } catch (e) {
+    warn(`[RADIO] sticky notify falhou: ${e.message}`);
+  }
 }
 
 async function setRandom({ type, actorId, note }) {
@@ -202,4 +220,5 @@ module.exports = {
   buildComponents,
   publishToChannel,
   historyText,
+  notifyStickyChange,
 };

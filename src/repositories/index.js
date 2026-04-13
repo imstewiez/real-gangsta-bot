@@ -9,4 +9,5 @@ module.exports = {
   jobRepo: require('./job'),
   availabilityRepo: require('./availability'),
   radioRepo: require('./radio'),
+  stickyRepo: require('./sticky'),
 };

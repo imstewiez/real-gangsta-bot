@@ -122,6 +122,33 @@ const commands = [
     .setDescription('Mostra o histórico de alterações de rádio')
     .addIntegerOption(opt => opt.setName('limite').setDescription('Número de registos (default 15)').setRequired(false)),
 
+  // ── Sticky messages ───────────────────────────────────────────────────────
+  new SlashCommandBuilder()
+    .setName('rg-sticky-set')
+    .setDescription('Configura uma sticky message num canal (modo update ou repost)')
+    .addChannelOption(opt => opt.setName('canal').setDescription('Canal alvo').setRequired(true))
+    .addStringOption(opt => opt.setName('source').setDescription('Source key (ex: availability:daily, radio:current)').setRequired(true))
+    .addStringOption(opt => opt.setName('modo').setDescription('update (edita) ou repost (republica)').setRequired(true)
+      .addChoices({ name: 'update (edita a mesma)', value: 'update' }, { name: 'repost (republica)', value: 'repost' }))
+    .addIntegerOption(opt => opt.setName('threshold_msgs').setDescription('Repost após N mensagens novas (modo repost)').setRequired(false))
+    .addIntegerOption(opt => opt.setName('threshold_minutes').setDescription('Repost após N minutos (modo repost)').setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('rg-sticky-remove')
+    .setDescription('Remove uma sticky message')
+    .addChannelOption(opt => opt.setName('canal').setDescription('Canal').setRequired(true))
+    .addStringOption(opt => opt.setName('source').setDescription('Source key').setRequired(true)),
+
+  new SlashCommandBuilder()
+    .setName('rg-sticky-refresh')
+    .setDescription('Força refresh de uma sticky')
+    .addChannelOption(opt => opt.setName('canal').setDescription('Canal').setRequired(true))
+    .addStringOption(opt => opt.setName('source').setDescription('Source key').setRequired(true)),
+
+  new SlashCommandBuilder()
+    .setName('rg-sticky-list')
+    .setDescription('Lista as sticky messages activas'),
+
   // ── Disponibilidade diária ────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName('rg-availability-create')

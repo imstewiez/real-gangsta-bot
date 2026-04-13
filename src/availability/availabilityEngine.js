@@ -160,19 +160,33 @@ async function createSession({ client, channelId, createdBy, headerText, mention
 
 async function updateSessionMessage(client, sessionId) {
   const session = await availabilityRepo.getSessionById(sessionId);
-  if (!session || !session.message_id) return;
-  const channel = await client.channels.fetch(session.channel_id).catch(() => null);
-  if (!channel) return;
-  const message = await channel.messages.fetch(session.message_id).catch(() => null);
-  if (!message) return;
+  if (!session) return;
 
-  const slots = await availabilityRepo.getSlots(sessionId);
-  const tallies = await availabilityRepo.getTallies(sessionId);
-  const total = await availabilityRepo.getDistinctVoterCount(sessionId);
-  await message.edit({
-    embeds: [buildEmbed(session, tallies, total)],
-    components: buildComponents(session, slots),
-  });
+  // 1. Edita a mensagem original (se existe)
+  if (session.message_id) {
+    const channel = await client.channels.fetch(session.channel_id).catch(() => null);
+    if (channel) {
+      const message = await channel.messages.fetch(session.message_id).catch(() => null);
+      if (message) {
+        const slots = await availabilityRepo.getSlots(sessionId);
+        const tallies = await availabilityRepo.getTallies(sessionId);
+        const total = await availabilityRepo.getDistinctVoterCount(sessionId);
+        await message.edit({
+          embeds: [buildEmbed(session, tallies, total)],
+          components: buildComponents(session, slots),
+        });
+      }
+    }
+  }
+
+  // 2. Notifica sticky `availability:daily` — refresca qualquer sticky desse
+  // source no canal da sessão. Não bloqueia em caso de falha.
+  try {
+    const { notifyChange } = require('../sticky/stickyEngine');
+    await notifyChange(client, 'availability:daily', { channelId: session.channel_id });
+  } catch (e) {
+    warn(`[AVAIL] sticky notify falhou: ${e.message}`);
+  }
 }
 
 async function closeSession({ client, sessionId, actorId }) {
