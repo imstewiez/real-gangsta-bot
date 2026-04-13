@@ -54,6 +54,37 @@ const commands = [
   new SlashCommandBuilder()
     .setName('rg-sync-sheets')
     .setDescription('Exporta dados para Google Sheets'),
+
+  new SlashCommandBuilder()
+    .setName('rg-sync-structure')
+    .setDescription('Sincroniza a estrutura do Discord com o template')
+    .addStringOption(opt => opt.setName('modo').setDescription('dry-run (default) ou apply').setRequired(false)
+      .addChoices({ name: 'Dry-run (mostrar)', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
+
+  new SlashCommandBuilder()
+    .setName('rg-sync-roles')
+    .setDescription('Reconcilia invariantes de roles em todos os membros')
+    .addStringOption(opt => opt.setName('modo').setDescription('dry-run (default) ou apply').setRequired(false)
+      .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
+
+  new SlashCommandBuilder()
+    .setName('rg-bootstrap-stock')
+    .setDescription('Importa stock inicial de full-inventory.json (auditável)')
+    .addStringOption(opt => opt.setName('modo').setDescription('dry-run (default) ou apply').setRequired(false)
+      .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' }))
+    .addBooleanOption(opt => opt.setName('force').setDescription('Reaplicar mesmo que já tenha corrido').setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('rg-kill')
+    .setDescription('Regista uma kill no cemitério'),
+
+  new SlashCommandBuilder()
+    .setName('rg-cemetery')
+    .setDescription('Leaderboard do cemitério'),
+
+  new SlashCommandBuilder()
+    .setName('rg-version')
+    .setDescription('Mostra versão/identidade desta instância do bot'),
 ];
 
 module.exports = { commands };

@@ -248,6 +248,49 @@ const MIGRATIONS = [
     `
   },
   {
+    id: 4,
+    name: 'inventory_saldo_inicial_and_cemetery',
+    up: `
+      -- ── Allow saldo_inicial movement type ──────────────────────────────────
+      ALTER TABLE inventory_movements DROP CONSTRAINT IF EXISTS inventory_movements_movement_type_check;
+      ALTER TABLE inventory_movements ADD CONSTRAINT inventory_movements_movement_type_check
+        CHECK (movement_type IN (
+          'saldo_inicial',
+          'entrega_morador', 'venda_morador', 'entrega_oficial',
+          'fornecimento_org', 'consumo_operacao', 'devolucao_operacao',
+          'ajuste_manual', 'perda_operacao', 'apreendido', 'craftado'
+        ));
+
+      -- ── Track bootstrap state (one-shot per seed source) ───────────────────
+      CREATE TABLE IF NOT EXISTS inventory_bootstrap (
+        id          SERIAL PRIMARY KEY,
+        source      TEXT NOT NULL,
+        applied_by  TEXT NOT NULL,
+        items_count INTEGER NOT NULL DEFAULT 0,
+        total_value NUMERIC(14,2) NOT NULL DEFAULT 0,
+        notes       TEXT DEFAULT '',
+        created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      -- ── Cemetery (kills registadas) ────────────────────────────────────────
+      CREATE TABLE IF NOT EXISTS cemetery_kills (
+        id              SERIAL PRIMARY KEY,
+        killer_id       INTEGER NOT NULL REFERENCES members(id),
+        victim_name     TEXT NOT NULL,
+        victim_discord_id TEXT,
+        context         TEXT DEFAULT '',
+        operation_id    INTEGER REFERENCES operations(id),
+        date            DATE NOT NULL DEFAULT CURRENT_DATE,
+        notes           TEXT DEFAULT '',
+        created_by      TEXT NOT NULL,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_kills_killer ON cemetery_kills(killer_id);
+      CREATE INDEX IF NOT EXISTS idx_kills_date ON cemetery_kills(date);
+      CREATE INDEX IF NOT EXISTS idx_kills_operation ON cemetery_kills(operation_id);
+    `
+  },
+  {
     id: 3,
     name: 'tag_requests_and_orders',
     up: `
@@ -294,6 +337,24 @@ const MIGRATIONS = [
       ALTER TABLE members ADD COLUMN IF NOT EXISTS nickname TEXT DEFAULT '';
       ALTER TABLE members ADD COLUMN IF NOT EXISTS full_name TEXT DEFAULT '';
     `
+  },
+  {
+    id: 5,
+    name: 'bot_instances',
+    up: `
+      CREATE TABLE IF NOT EXISTS bot_instances (
+        instance_id     UUID PRIMARY KEY,
+        version         TEXT NOT NULL DEFAULT '',
+        git_sha         TEXT NOT NULL DEFAULT '',
+        pid             INTEGER,
+        hostname        TEXT NOT NULL DEFAULT '',
+        started_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        last_heartbeat  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        shutdown_reason TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_bot_instances_started_at ON bot_instances(started_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_bot_instances_heartbeat ON bot_instances(last_heartbeat DESC);
+    `
   }
 ];
 
@@ -311,7 +372,9 @@ async function runMigrations() {
     const applied = await client.query('SELECT id FROM schema_migrations ORDER BY id');
     const appliedIds = new Set(applied.rows.map(r => r.id));
 
-    for (const migration of MIGRATIONS) {
+    // Apply migrations in ascending id order (tolerate out-of-order in array)
+    const ordered = [...MIGRATIONS].sort((a, b) => a.id - b.id);
+    for (const migration of ordered) {
       if (appliedIds.has(migration.id)) continue;
       console.log(`[DB:Migrate] Applying migration ${migration.id}: ${migration.name}...`);
       await client.query('BEGIN');

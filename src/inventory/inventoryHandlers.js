@@ -3,7 +3,10 @@ const {
   MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle,
   ActionRowBuilder, StringSelectMenuBuilder,
 } = require('discord.js');
-const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const {
+  safeReply, safeUpdate, safeShowModal,
+  getModalField, isDuplicate,
+} = require('../shared/interactionHelpers');
 const { successEmbed, stockEmbed, brandEmbed } = require('../shared/embedBuilders');
 const { recordDelivery, adjustStock, getCurrentStock } = require('./inventoryEngine');
 const { buildItemSelectMenu, buildStockAdjustmentModal } = require('./inventoryMenus');
@@ -28,6 +31,7 @@ async function handleRegistarMaterialButton(interaction) {
     new StringSelectMenuBuilder()
       .setCustomId('inv::select_tipo_registo')
       .setPlaceholder('Entrega ou Venda?')
+      .setMinValues(1).setMaxValues(1)
       .addOptions(options)
   );
 
@@ -38,7 +42,7 @@ async function handleRegistarMaterialButton(interaction) {
   });
 }
 
-// Step 2: Escolheu entrega ou venda → mostra dropdown de materiais
+// Step 2: Escolheu entrega ou venda → mostra dropdown de materiais (in-place)
 async function handleTipoRegistoSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const tipo = interaction.values[0]; // 'entrega' ou 'venda'
@@ -46,12 +50,11 @@ async function handleTipoRegistoSelect(interaction) {
 
   const prefix = tipo === 'venda' ? 'inv::select_item_venda' : 'inv::select_item_entrega';
   const menu = await buildItemSelectMenu(prefix, 'Seleciona o material');
-  await safeReply(interaction, {
+  await safeUpdate(interaction, {
     content: tipo === 'venda'
       ? 'Que material queres **vender**? O valor será calculado automaticamente.'
       : 'Que material queres **entregar**?',
     components: [menu],
-    flags: MessageFlags.Ephemeral,
   });
 }
 
@@ -61,12 +64,12 @@ async function handleItemSelect(interaction) {
 
   const itemId = interaction.values[0];
   if (itemId === 'none') {
-    return safeReply(interaction, { content: 'Sem itens disponíveis.', flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: 'Sem itens disponíveis.', flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const item = await inventoryRepo.getItemById(parseInt(itemId));
   if (!item) {
-    return safeReply(interaction, { content: MESSAGES.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: MESSAGES.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const customId = interaction.customId;
@@ -78,10 +81,6 @@ async function handleItemSelect(interaction) {
   pending.movementType = isVenda ? 'venda_morador' : 'entrega_morador';
   pendingItemSelections.set(interaction.user.id, pending);
 
-  const priceInfo = isVenda && pending.itemPrice > 0
-    ? `\nPreço unitário: ${pending.itemPrice}\u20AC`
-    : '';
-
   const modal = new ModalBuilder()
     .setCustomId(isVenda ? 'inv::modal_venda_morador' : 'inv::modal_entrega_morador')
     .setTitle(isVenda ? `Vender ${item.name}` : `Entregar ${item.name}`)
@@ -89,7 +88,7 @@ async function handleItemSelect(interaction) {
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
           .setCustomId('quantity')
-          .setLabel(`Quantidade de ${item.name}${isVenda && pending.itemPrice ? ` (${pending.itemPrice}\u20AC cada)` : ''}`)
+          .setLabel(`Quantidade${isVenda && pending.itemPrice ? ` (${pending.itemPrice}\u20AC cada)` : ''}`)
           .setStyle(TextInputStyle.Short)
           .setPlaceholder('Ex: 10')
           .setRequired(true)
@@ -116,7 +115,7 @@ async function handleQuantityModal(interaction) {
 
   const pending = pendingItemSelections.get(interaction.user.id);
   if (!pending) {
-    return interaction.editReply({ content: 'Sessão expirada. Tenta novamente.' });
+    return safeReply(interaction, { content: 'Sessão expirada. Tenta novamente.' }, { dismissible: true });
   }
 
   const quantityStr = getModalField(interaction, 'quantity');
@@ -124,7 +123,7 @@ async function handleQuantityModal(interaction) {
   const quantity = parseInt(quantityStr);
 
   if (isNaN(quantity) || quantity <= 0) {
-    return interaction.editReply({ content: MESSAGES.INVALID_QUANTITY() });
+    return safeReply(interaction, { content: MESSAGES.INVALID_QUANTITY() }, { dismissible: true });
   }
 
   try {
@@ -134,7 +133,7 @@ async function handleQuantityModal(interaction) {
       movementType = 'entrega_oficial';
     }
 
-    const result = await recordDelivery({
+    await recordDelivery({
       discordId: interaction.user.id,
       itemId: pending.itemId,
       quantity,
@@ -160,17 +159,15 @@ async function handleQuantityModal(interaction) {
     const embed = successEmbed(typeLabel, description);
 
     // ── Auto-promoção: verificar se atingiu meta ──────────────────────────
-    const { checkAndPromote, getPromotionProgress } = require('../members/autoPromotionEngine');
+    const { checkAndPromote, getPromotionProgress, formatTierName } = require('../members/autoPromotionEngine');
     const guild = interaction.guild;
     const client = interaction.client;
     const promoResult = await checkAndPromote(interaction.user.id, guild, client).catch(() => null);
 
     if (promoResult?.promoted) {
-      const { formatTierName } = require('../members/autoPromotionEngine');
       description += `\n\n\uD83C\uDF1F **PROMOÇÃO AUTOMÁTICA!**\nSubiste para **${formatTierName(promoResult.to)}**!`;
       embed.setDescription(description);
     } else {
-      // Mostrar progresso para próxima promoção
       const progress = await getPromotionProgress(interaction.user.id).catch(() => null);
       if (progress && !progress.maxedOut && progress.threshold) {
         const bar = buildProgressBar(parseFloat(progress.progress));
@@ -179,9 +176,9 @@ async function handleQuantityModal(interaction) {
       }
     }
 
-    return interaction.editReply({ embeds: [embed] });
+    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
-    return interaction.editReply({ content: `Erro: ${e.message}` });
+    return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
   }
 }
 
@@ -199,7 +196,7 @@ async function handleStockCommand(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const stock = await getCurrentStock();
   const embed = stockEmbed(stock);
-  return interaction.editReply({ embeds: [embed] });
+  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -208,7 +205,7 @@ async function handleStockCommand(interaction) {
 
 async function handleAdjustStockButton(interaction) {
   if (!isChefia(interaction.member)) {
-    return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ajustar stock'), flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ajustar stock'), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
   const menu = await buildItemSelectMenu('inv::select_ajuste', 'Seleciona o item para ajustar');
   await safeReply(interaction, { content: 'Que item queres ajustar?', components: [menu], flags: MessageFlags.Ephemeral });
@@ -227,20 +224,20 @@ async function handleAdjustModal(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const pending = pendingItemSelections.get(interaction.user.id);
-  if (!pending) return interaction.editReply({ content: 'Sessão expirada.' });
+  if (!pending) return safeReply(interaction, { content: 'Sessão expirada.' }, { dismissible: true });
 
   const quantityStr = getModalField(interaction, 'quantity');
   const notes = getModalField(interaction, 'notes');
   const quantity = parseInt(quantityStr);
-  if (isNaN(quantity)) return interaction.editReply({ content: 'Quantidade inválida.' });
+  if (isNaN(quantity)) return safeReply(interaction, { content: 'Quantidade inválida.' }, { dismissible: true });
 
   try {
     await adjustStock({ itemId: pending.itemId, quantity, notes, createdBy: interaction.user.id });
     pendingItemSelections.delete(interaction.user.id);
     const embed = successEmbed('Stock Ajustado', `Ajuste de **${quantity}** aplicado.\nRazão: ${notes}`);
-    return interaction.editReply({ embeds: [embed] });
+    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
-    return interaction.editReply({ content: `Erro: ${e.message}` });
+    return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
   }
 }
 
@@ -250,7 +247,7 @@ async function handleAdjustModal(interaction) {
 
 async function handleGerirMateriaisButton(interaction) {
   if (!isChefia(interaction.member)) {
-    return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('gerir materiais'), flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('gerir materiais'), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const options = [
@@ -265,6 +262,7 @@ async function handleGerirMateriaisButton(interaction) {
     new StringSelectMenuBuilder()
       .setCustomId('inv::select_gerir_action')
       .setPlaceholder('O que queres fazer?')
+      .setMinValues(1).setMaxValues(1)
       .addOptions(options)
   );
 
@@ -276,9 +274,11 @@ async function handleGerirActionSelect(interaction) {
   const action = interaction.values[0];
 
   if (action === 'list') {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await interaction.deferUpdate().catch(() => {});
     const items = await inventoryRepo.getItems(false); // include inactive
-    if (!items.length) return interaction.editReply({ content: 'Catálogo vazio.' });
+    if (!items.length) {
+      return safeReply(interaction, { content: 'Catálogo vazio.', flags: MessageFlags.Ephemeral }, { dismissible: true });
+    }
 
     const grouped = {};
     for (const item of items) {
@@ -297,7 +297,7 @@ async function handleGerirActionSelect(interaction) {
     }
 
     const embed = brandEmbed().setTitle('Catálogo de Materiais').setDescription(lines.join('\n'));
-    return interaction.editReply({ embeds: [embed] });
+    return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   if (action === 'add') {
@@ -310,8 +310,9 @@ async function handleGerirActionSelect(interaction) {
             .setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(50)
         ),
         new ActionRowBuilder().addComponents(
-          new TextInputBuilder().setCustomId('category').setLabel('Categoria (madeiras/metais/quimicos/reciclagem/texteis/componentes/outros)')
-            .setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(30).setPlaceholder('outros')
+          new TextInputBuilder().setCustomId('category').setLabel('Categoria')
+            .setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(30)
+            .setPlaceholder('madeiras / metais / quimicos / reciclagem / texteis / componentes / outros')
         ),
         new ActionRowBuilder().addComponents(
           new TextInputBuilder().setCustomId('price').setLabel('Preço de venda (em \u20AC)')
@@ -324,20 +325,21 @@ async function handleGerirActionSelect(interaction) {
   if (action === 'edit_price') {
     pendingItemSelections.set(interaction.user.id, { action: 'edit_price' });
     const menu = await buildItemSelectMenu('inv::select_edit_item', 'Seleciona o material');
-    return safeReply(interaction, { content: 'Que material queres editar?', components: [menu], flags: MessageFlags.Ephemeral });
+    return safeUpdate(interaction, { content: 'Que material queres editar?', components: [menu] });
   }
 
   if (action === 'deactivate') {
     pendingItemSelections.set(interaction.user.id, { action: 'deactivate' });
     const menu = await buildItemSelectMenu('inv::select_deactivate_item', 'Seleciona o material a desativar');
-    return safeReply(interaction, { content: 'Que material queres desativar?', components: [menu], flags: MessageFlags.Ephemeral });
+    return safeUpdate(interaction, { content: 'Que material queres desativar?', components: [menu] });
   }
 
   if (action === 'reactivate') {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const items = await inventoryRepo.getItems(false);
     const inactive = items.filter(i => !i.active);
-    if (!inactive.length) return interaction.editReply({ content: 'Sem materiais desativados.' });
+    if (!inactive.length) {
+      return safeUpdate(interaction, { content: 'Sem materiais desativados.', components: [] }, { dismissible: true });
+    }
 
     const options = inactive.slice(0, 25).map(i => ({
       label: i.name,
@@ -349,10 +351,11 @@ async function handleGerirActionSelect(interaction) {
       new StringSelectMenuBuilder()
         .setCustomId('inv::select_reactivate_item')
         .setPlaceholder('Seleciona o material a reativar')
+        .setMinValues(1).setMaxValues(1)
         .addOptions(options)
     );
 
-    return interaction.editReply({ content: 'Que material queres reativar?', components: [row] });
+    return safeUpdate(interaction, { content: 'Que material queres reativar?', components: [row] });
   }
 }
 
@@ -365,11 +368,11 @@ async function handleAddItemModal(interaction) {
   const priceStr = getModalField(interaction, 'price');
   const price = parseFloat(priceStr.replace(',', '.'));
 
-  if (!name) return interaction.editReply({ content: 'Nome obrigatório.' });
-  if (isNaN(price) || price < 0) return interaction.editReply({ content: 'Preço inválido.' });
+  if (!name) return safeReply(interaction, { content: 'Nome obrigatório.' }, { dismissible: true });
+  if (isNaN(price) || price < 0) return safeReply(interaction, { content: 'Preço inválido.' }, { dismissible: true });
 
   const existing = await inventoryRepo.getItemByName(name);
-  if (existing) return interaction.editReply({ content: `Material "${name}" já existe.` });
+  if (existing) return safeReply(interaction, { content: `Material "${name}" já existe.` }, { dismissible: true });
 
   await inventoryRepo.createItem({ name, category, unit: 'unidade', estimatedValue: price });
 
@@ -380,14 +383,14 @@ async function handleAddItemModal(interaction) {
   });
 
   const embed = successEmbed('Material Adicionado', `**${name}**\nCategoria: ${category}\nPreço: **${price}\u20AC**`);
-  return interaction.editReply({ embeds: [embed] });
+  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
 }
 
 async function handleEditItemSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const itemId = parseInt(interaction.values[0]);
   const item = await inventoryRepo.getItemById(itemId);
-  if (!item) return safeReply(interaction, { content: MESSAGES.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral });
+  if (!item) return safeReply(interaction, { content: MESSAGES.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
 
   pendingItemSelections.set(interaction.user.id, { action: 'edit_price', itemId, itemName: item.name });
 
@@ -410,11 +413,11 @@ async function handleEditPriceModal(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const pending = pendingItemSelections.get(interaction.user.id);
-  if (!pending || pending.action !== 'edit_price') return interaction.editReply({ content: 'Sessão expirada.' });
+  if (!pending || pending.action !== 'edit_price') return safeReply(interaction, { content: 'Sessão expirada.' }, { dismissible: true });
 
   const priceStr = getModalField(interaction, 'price');
   const price = parseFloat(priceStr.replace(',', '.'));
-  if (isNaN(price) || price < 0) return interaction.editReply({ content: 'Preço inválido.' });
+  if (isNaN(price) || price < 0) return safeReply(interaction, { content: 'Preço inválido.' }, { dismissible: true });
 
   const oldItem = await inventoryRepo.getItemById(pending.itemId);
   await inventoryRepo.updateItem(pending.itemId, { estimated_value: price });
@@ -429,16 +432,16 @@ async function handleEditPriceModal(interaction) {
   });
 
   const embed = successEmbed('Preço Atualizado', `**${pending.itemName}**\nPreço anterior: ${oldItem?.estimated_value || 0}\u20AC\nNovo preço: **${price}\u20AC**`);
-  return interaction.editReply({ embeds: [embed] });
+  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
 }
 
 async function handleDeactivateItemSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  await interaction.deferUpdate().catch(() => {});
 
   const itemId = parseInt(interaction.values[0]);
   const item = await inventoryRepo.getItemById(itemId);
-  if (!item) return interaction.editReply({ content: MESSAGES.ITEM_NOT_FOUND() });
+  if (!item) return safeReply(interaction, { content: MESSAGES.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
 
   await inventoryRepo.updateItem(itemId, { active: false });
 
@@ -449,21 +452,21 @@ async function handleDeactivateItemSelect(interaction) {
   });
 
   const embed = successEmbed('Material Desativado', `**${item.name}** foi removido do catálogo.\nPodes reativá-lo a qualquer momento.`);
-  return interaction.editReply({ embeds: [embed] });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
 }
 
 async function handleReactivateItemSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  await interaction.deferUpdate().catch(() => {});
 
   const itemId = parseInt(interaction.values[0]);
   const item = await inventoryRepo.getItemById(itemId);
-  if (!item) return interaction.editReply({ content: MESSAGES.ITEM_NOT_FOUND() });
+  if (!item) return safeReply(interaction, { content: MESSAGES.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
 
   await inventoryRepo.updateItem(itemId, { active: true });
 
   const embed = successEmbed('Material Reativado', `**${item.name}** está novamente disponível no catálogo.`);
-  return interaction.editReply({ embeds: [embed] });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -481,7 +484,7 @@ async function handleEncomendaSelect(interaction) {
   if (!itemId || itemId === 'none') return;
 
   const item = await inventoryRepo.getItemById(itemId);
-  if (!item) return safeReply(interaction, { content: MESSAGES.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral });
+  if (!item) return safeReply(interaction, { content: MESSAGES.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
 
   pendingItemSelections.set(interaction.user.id, { itemId, itemName: item.name, action: 'order' });
 
@@ -507,16 +510,16 @@ async function handleEncomendaModal(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const pending = pendingItemSelections.get(interaction.user.id);
-  if (!pending || pending.action !== 'order') return interaction.editReply({ content: 'Sessão expirada.' });
+  if (!pending || pending.action !== 'order') return safeReply(interaction, { content: 'Sessão expirada.' }, { dismissible: true });
 
   const quantityStr = getModalField(interaction, 'quantity');
   const notes = getModalField(interaction, 'notes');
   const quantity = parseInt(quantityStr);
 
-  if (isNaN(quantity) || quantity <= 0) return interaction.editReply({ content: MESSAGES.INVALID_QUANTITY() });
+  if (isNaN(quantity) || quantity <= 0) return safeReply(interaction, { content: MESSAGES.INVALID_QUANTITY() }, { dismissible: true });
 
   const member = await memberRepo.findByDiscordId(interaction.user.id);
-  if (!member) return interaction.editReply({ content: 'Não estás registado no sistema.' });
+  if (!member) return safeReply(interaction, { content: 'Não estás registado no sistema.' }, { dismissible: true });
 
   const { query } = require('../db');
   await query(
@@ -537,7 +540,7 @@ async function handleEncomendaModal(interaction) {
     `**${quantity}x** ${pending.itemName}\nEstado: Pendente\n${notes ? `Notas: ${notes}` : ''}\n\nA chefia será notificada.`
   );
 
-  return interaction.editReply({ embeds: [embed] });
+  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
 }
 
 module.exports = {

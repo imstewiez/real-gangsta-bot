@@ -3,6 +3,10 @@ const { Client, GatewayIntentBits, Events, REST, Routes, MessageFlags } = requir
 const CONFIG = require('./config');
 const { pool, acquireInstanceLockWithRetry, releaseInstanceLock } = require('./db');
 const { runMigrations } = require('./dbMigrate');
+const {
+  ensureInstanceTable, cleanupStaleInstances, registerInstance,
+  startHeartbeat, deregisterInstance, getCurrentInstance,
+} = require('./instanceCoordinator');
 const { log, warn, error } = require('./logger');
 const metrics = require('./lib/metrics');
 const { commands } = require('./slashCommands');
@@ -34,7 +38,7 @@ const {
   handleCreateOperationButton, handleCreateOperationModal,
   handleCloseOperationButton, handleCloseOperationSelect, handleCloseOperationModal,
   handleViewOperationsButton, handleAddParticipantButton,
-  handleAddParticipantSelect, handleAddParticipantModal,
+  handleAddParticipantSelect, handleParticipantUsersSelect,
   handleRegisterMaterialButton,
   handleMaterialOpSelect, handleMaterialDirectionSelect,
   handleMaterialItemSelect, handleMaterialQtyModal,
@@ -43,7 +47,16 @@ const { getCurrentWeekRanking, getPreviousWeekRanking } = require('./rankings/ra
 const { rankingEmbed, brandEmbed, stockEmbed } = require('./shared/embedBuilders');
 const { inventoryRepo } = require('./repositories');
 const { getRecentLogs, sendAuditToChannel } = require('./audit/auditEngine');
-const { isChefia, isChefeMoradores } = require('./permissions/permissionEngine');
+const {
+  isChefia, isChefeMoradores, isCommand,
+  canManageStructure, canBootstrapStock, canRegisterKill,
+} = require('./permissions/permissionEngine');
+const { runSync, summarize } = require('./discord/structureSync');
+const { reconcileAllMembers } = require('./members/roleInvariants');
+const { bootstrapStock } = require('./inventory/stockBootstrap');
+const {
+  handleRegisterKillButton, handleKillModal, handleLeaderboardButton,
+} = require('./cemetery/cemeteryHandlers');
 const { isDuplicate } = require('./shared/interactionHelpers');
 const { safeReply } = require('./shared/interactionHelpers');
 const MESSAGES = require('./shared/errorMessages');
@@ -64,9 +77,20 @@ const client = new Client({
 async function boot() {
   log(`[BOOT] Real Gangsta a iniciar...`);
 
-  const locked = await acquireInstanceLockWithRetry(30000);
+  // 1. Garantir tabela de instâncias (idempotente) e limpar linhas stale.
+  await ensureInstanceTable();
+  await cleanupStaleInstances();
+
+  // 2. Registar esta instância — o started_at serve de sinal de preempção para
+  //    qualquer instância mais antiga ainda a correr.
+  await registerInstance();
+
+  // 3. Adquirir o lock singleton (retry longo para dar tempo à instância
+  //    antiga detectar a preempção e fazer graceful shutdown).
+  const locked = await acquireInstanceLockWithRetry(90000);
   if (!locked) {
-    error('[BOOT] Não foi possível adquirir lock. Outra instância está a correr.');
+    error('[BOOT] Não foi possível adquirir lock após 90s. A abortar.');
+    await deregisterInstance('lock_timeout').catch(() => {});
     process.exit(1);
   }
 
@@ -104,6 +128,15 @@ client.once(Events.ClientReady, async () => {
   // Start web server
   setWebClient(client);
   createServer(Number(process.env.PORT) || 3000);
+
+  // Start instance heartbeat + preemption watcher
+  startHeartbeat((reason) => {
+    log(`[INSTANCE] Detectada instância mais recente — shutdown controlado (${reason}).`);
+    shutdown(reason).catch((e) => {
+      error('[SHUTDOWN] Erro no shutdown por preempção:', e);
+      process.exit(0);
+    });
+  });
 
   log('[READY] Real Gangsta operacional.');
 });
@@ -143,17 +176,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const cmd = interaction.commandName;
 
       if (cmd === 'rg-setup') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('setup'), flags: MessageFlags.Ephemeral });
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('setup'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         await bootstrapAll(client);
-        return interaction.editReply({ content: 'Painéis configurados com sucesso.' });
+        return safeReply(interaction, { content: 'Painéis configurados com sucesso.' }, { dismissible: true });
       }
 
       if (cmd === 'rg-sync-panels') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync panels'), flags: MessageFlags.Ephemeral });
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync panels'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         await bootstrapAll(client);
-        return interaction.editReply({ content: 'Painéis sincronizados.' });
+        return safeReply(interaction, { content: 'Painéis sincronizados.' }, { dismissible: true });
       }
 
       if (cmd === 'rg-stock') {
@@ -171,7 +204,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const { start, end } = weekBounds(semana === 'previous' ? new Date(Date.now() - 7 * 86400000) : new Date());
         const weekLabel = `${start.toISOString().split('T')[0]} a ${end.toISOString().split('T')[0]}`;
         const embed = rankingEmbed('Top Semanal', rankings, weekLabel);
-        return interaction.editReply({ embeds: [embed] });
+        return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
       }
 
       if (cmd === 'rg-create-operation') {
@@ -179,30 +212,30 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
       if (cmd === 'rg-close-operation') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('fechar operação'), flags: MessageFlags.Ephemeral });
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('fechar operação'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const opId = interaction.options.getInteger('id');
         const { closeOperation } = require('./operations/operationEngine');
         const op = await closeOperation(opId, {}, interaction.user.id);
-        if (!op) return interaction.editReply({ content: MESSAGES.OPERATION_NOT_FOUND() });
-        return interaction.editReply({ content: `Operação #${opId} concluída.` });
+        if (!op) return safeReply(interaction, { content: MESSAGES.OPERATION_NOT_FOUND() }, { dismissible: true });
+        return safeReply(interaction, { content: `Operação #${opId} concluída.` }, { dismissible: true });
       }
 
       if (cmd === 'rg-audit') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver logs'), flags: MessageFlags.Ephemeral });
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver logs'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const limit = interaction.options.getInteger('limite') || 20;
         const logs = await getRecentLogs(limit);
-        if (!logs.length) return interaction.editReply({ content: 'Sem logs recentes.' });
+        if (!logs.length) return safeReply(interaction, { content: 'Sem logs recentes.' }, { dismissible: true });
         const lines = logs.map(l => `\`${l.created_at?.toISOString?.()?.split('T')[0] || ''}\` **${l.action}** — ${l.entity_type} — por <@${l.actor_id}>`);
         const embed = brandEmbed().setTitle('Logs de Auditoria').setDescription(lines.slice(0, 20).join('\n'));
-        return interaction.editReply({ embeds: [embed] });
+        return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
       }
 
       if (cmd === 'rg-items') {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const items = await inventoryRepo.getItems(true);
-        if (!items.length) return interaction.editReply({ content: 'Catálogo vazio.' });
+        if (!items.length) return safeReply(interaction, { content: 'Catálogo vazio.' }, { dismissible: true });
         const grouped = {};
         for (const item of items) {
           if (!grouped[item.category]) grouped[item.category] = [];
@@ -216,28 +249,113 @@ client.on(Events.InteractionCreate, async (interaction) => {
           }
         }
         const embed = brandEmbed().setTitle('Catálogo de Materiais').setDescription(lines.join('\n'));
-        return interaction.editReply({ embeds: [embed] });
+        return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
       }
 
       if (cmd === 'rg-add-item') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('adicionar itens'), flags: MessageFlags.Ephemeral });
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('adicionar itens'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const nome = interaction.options.getString('nome');
         const categoria = interaction.options.getString('categoria');
         const unidade = interaction.options.getString('unidade') || 'unidade';
         const valor = interaction.options.getNumber('valor') || null;
         const existing = await inventoryRepo.getItemByName(nome);
-        if (existing) return interaction.editReply({ content: `Item "${nome}" já existe.` });
+        if (existing) return safeReply(interaction, { content: `Item "${nome}" já existe.` }, { dismissible: true });
         await inventoryRepo.createItem({ name: nome, category: categoria, unit: unidade, estimatedValue: valor });
-        return interaction.editReply({ content: `Item **${nome}** adicionado ao catálogo.` });
+        return safeReply(interaction, { content: `Item **${nome}** adicionado ao catálogo.` }, { dismissible: true });
       }
 
       if (cmd === 'rg-sync-sheets') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync sheets'), flags: MessageFlags.Ephemeral });
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync sheets'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const { syncAll } = require('./sheets/inventorySync');
         await syncAll();
-        return interaction.editReply({ content: 'Dados exportados para Google Sheets com sucesso.' });
+        return safeReply(interaction, { content: 'Dados exportados para Google Sheets com sucesso.' }, { dismissible: true });
+      }
+
+      if (cmd === 'rg-sync-structure') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync estrutura'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const modo = interaction.options.getString('modo') || 'dry-run';
+        const apply = modo === 'apply';
+        const guild = interaction.guild;
+        const report = await runSync(guild, { apply });
+        const text = summarize(report);
+        return safeReply(interaction, { content: text.slice(0, 1900) }, { dismissible: true });
+      }
+
+      if (cmd === 'rg-sync-roles') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync roles'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const modo = interaction.options.getString('modo') || 'dry-run';
+        const dryRun = modo !== 'apply';
+        const report = await reconcileAllMembers(interaction.guild, { dryRun, actor: interaction.user.id });
+        const lines = [
+          `**Modo:** \`${dryRun ? 'DRY-RUN' : 'APPLY'}\``,
+          `**Scan:** ${report.scanned} membros`,
+          `**Violações:** ${report.violations}`,
+          `**Corrigidas:** ${report.fixed}`,
+        ];
+        if (report.details.length) {
+          lines.push('');
+          lines.push('**Membros afectados (primeiros 10):**');
+          for (const d of report.details.slice(0, 10)) {
+            lines.push(`• <@${d.member}> — ${d.violations.join(', ')}`);
+          }
+        }
+        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
+      }
+
+      if (cmd === 'rg-bootstrap-stock') {
+        if (!canBootstrapStock(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('bootstrap stock'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const modo = interaction.options.getString('modo') || 'dry-run';
+        const force = interaction.options.getBoolean('force') || false;
+        try {
+          const report = await bootstrapStock({
+            dryRun: modo !== 'apply',
+            confirm: modo === 'apply',
+            force,
+            actor: interaction.user.id,
+          });
+          if (report.skipped) {
+            return safeReply(interaction, { content: `\u26A0\uFE0F ${report.reason}` }, { dismissible: true });
+          }
+          const text = [
+            `**Source:** \`${report.source}\``,
+            `**Modo:** \`${report.dryRun ? 'DRY-RUN' : 'APPLIED'}\``,
+            `**Items criados:** ${report.itemsCreated}`,
+            `**Items actualizados:** ${report.itemsUpdated}`,
+            `**Movimentos:** ${report.movements}`,
+            `**Valor total:** ${report.totalValue.toLocaleString('pt-PT')} €`,
+          ].join('\n');
+          return safeReply(interaction, { content: text }, { dismissible: true });
+        } catch (e) {
+          return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
+        }
+      }
+
+      if (cmd === 'rg-kill') {
+        return handleRegisterKillButton(interaction);
+      }
+
+      if (cmd === 'rg-cemetery') {
+        return handleLeaderboardButton(interaction);
+      }
+
+      if (cmd === 'rg-version') {
+        const inst = getCurrentInstance();
+        if (!inst) {
+          return safeReply(interaction, { content: 'Instância ainda não registada.', flags: MessageFlags.Ephemeral }, { dismissible: true });
+        }
+        const lines = [
+          `**Instance ID:** \`${inst.instanceId}\``,
+          `**Versão:** \`${inst.version || '?'}\``,
+          inst.gitSha ? `**Commit:** \`${inst.gitSha.slice(0, 12)}\`` : null,
+          `**Host:** \`${inst.hostname}\` (pid \`${inst.pid}\`)`,
+          `**Started:** <t:${Math.floor(new Date(inst.startedAt).getTime() / 1000)}:R>`,
+        ].filter(Boolean);
+        return safeReply(interaction, { content: lines.join('\n'), flags: MessageFlags.Ephemeral }, { dismissible: true });
       }
 
       return;
@@ -269,6 +387,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (id === 'chefia::fechar_operacao') return handleCloseOperationButton(interaction);
       if (id === 'chefia::ver_operacoes') return handleViewOperationsButton(interaction);
       if (id === 'chefia::registar_material_op') return handleRegisterMaterialButton(interaction);
+      if (id === 'chefia::adicionar_participante') return handleAddParticipantButton(interaction);
       if (id === 'chefia::ver_stock') return handleStockCommand(interaction);
       if (id === 'chefia::ajustar_stock') return handleAdjustStockButton(interaction);
       if (id === 'chefia::gerir_materiais') return handleGerirMateriaisButton(interaction);
@@ -279,32 +398,32 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const { start, end } = weekBounds();
         const weekLabel = `${start.toISOString().split('T')[0]} a ${end.toISOString().split('T')[0]}`;
         const embed = rankingEmbed('Top Semanal', rankings, weekLabel);
-        return interaction.editReply({ embeds: [embed] });
+        return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
       }
 
       if (id === 'chefia::ver_logs') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver logs'), flags: MessageFlags.Ephemeral });
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver logs'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const logs = await getRecentLogs(15);
-        if (!logs.length) return interaction.editReply({ content: 'Sem logs.' });
+        if (!logs.length) return safeReply(interaction, { content: 'Sem logs.' }, { dismissible: true });
         const lines = logs.map(l => `\`${l.created_at?.toISOString?.()?.split('T')[0] || ''}\` **${l.action}** — ${l.entity_type}`);
         const embed = brandEmbed().setTitle('Logs Recentes').setDescription(lines.join('\n'));
-        return interaction.editReply({ embeds: [embed] });
+        return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
       }
 
       // Chefe de Moradores buttons
       if (id === 'chefe_mor::listar_moradores') {
-        if (!isChefeMoradores(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('listar moradores'), flags: MessageFlags.Ephemeral });
+        if (!isChefeMoradores(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('listar moradores'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const moradores = await memberRepo.findByRole('morador');
-        if (!moradores.length) return interaction.editReply({ content: 'Sem moradores registados.' });
+        if (!moradores.length) return safeReply(interaction, { content: 'Sem moradores registados.' }, { dismissible: true });
         const lines = moradores.map(m => `<@${m.discord_id}> — ${m.display_name} (desde ${m.joined_at?.toISOString?.()?.split('T')[0] || '-'})`);
         const embed = brandEmbed().setTitle('Moradores').setDescription(lines.join('\n'));
-        return interaction.editReply({ embeds: [embed] });
+        return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
       }
 
       if (id === 'chefe_mor::ver_entregas' || id === 'chefe_mor::ver_vendas') {
-        if (!isChefeMoradores(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver dados'), flags: MessageFlags.Ephemeral });
+        if (!isChefeMoradores(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver dados'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const type = id.includes('entregas') ? 'entrega_morador' : 'venda_morador';
         const label = id.includes('entregas') ? 'Entregas' : 'Vendas';
@@ -317,14 +436,14 @@ client.on(Events.InteractionCreate, async (interaction) => {
           GROUP BY m.display_name, m.discord_id
           ORDER BY total DESC LIMIT 20
         `, [type]);
-        if (!res.rows.length) return interaction.editReply({ content: `Sem ${label.toLowerCase()} registadas.` });
+        if (!res.rows.length) return safeReply(interaction, { content: `Sem ${label.toLowerCase()} registadas.` }, { dismissible: true });
         const lines = res.rows.map((r, i) => `**${i + 1}.** <@${r.discord_id}> — ${r.total} unidades`);
         const embed = brandEmbed().setTitle(`${label} por Morador`).setDescription(lines.join('\n'));
-        return interaction.editReply({ embeds: [embed] });
+        return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
       }
 
       if (id === 'chefe_mor::ver_tops') {
-        if (!isChefeMoradores(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver tops'), flags: MessageFlags.Ephemeral });
+        if (!isChefeMoradores(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver tops'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const { rankingRepo } = require('./repositories');
         const { start, end } = weekBounds();
@@ -332,7 +451,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const rankings = await rankingRepo.getWeekRankingByRole(weekStart, 'morador', 10);
         const weekLabel = `${start.toISOString().split('T')[0]} a ${end.toISOString().split('T')[0]}`;
         const embed = rankingEmbed('Top Moradores', rankings, weekLabel);
-        return interaction.editReply({ embeds: [embed] });
+        return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
       }
 
       return;
@@ -364,6 +483,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       return;
     }
 
+    // ── User select menu interactions (member picker, multi-select) ─────────
+    if (interaction.isUserSelectMenu()) {
+      const id = interaction.customId;
+      if (id.startsWith('op::user_select_participants::')) return handleParticipantUsersSelect(interaction);
+      return;
+    }
+
     // ── Modal submissions ───────────────────────────────────────────────────
     if (interaction.isModalSubmit()) {
       const id = interaction.customId;
@@ -381,26 +507,30 @@ client.on(Events.InteractionCreate, async (interaction) => {
       // Operation modals
       if (id === 'op::modal_create') return handleCreateOperationModal(interaction);
       if (id === 'op::modal_close') return handleCloseOperationModal(interaction);
-      if (id === 'op::modal_add_participant') return handleAddParticipantModal(interaction);
       if (id === 'op::modal_material_qty') return handleMaterialQtyModal(interaction);
+
+      // Cemetery modal
+      if (id === 'cemetery::modal_kill') return handleKillModal(interaction);
 
       return;
     }
   } catch (e) {
     error(`[INTERACTION] Unhandled error: ${e.message}`, e);
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: 'Ocorreu um erro interno.', flags: MessageFlags.Ephemeral }).catch(() => {});
-    }
+    await safeReply(interaction, { content: 'Ocorreu um erro interno.', flags: MessageFlags.Ephemeral }, { dismissible: true }).catch(() => {});
   }
 });
 
 // ── Graceful shutdown ───────────────────────────────────────────────────────
+let _shuttingDown = false;
 async function shutdown(signal) {
+  if (_shuttingDown) return;
+  _shuttingDown = true;
   log(`[SHUTDOWN] ${signal} received. Shutting down...`);
-  stopScheduler();
-  client.destroy();
-  await releaseInstanceLock();
-  await pool.end();
+  try { stopScheduler(); } catch (_) {}
+  try { client.destroy(); } catch (_) {}
+  await deregisterInstance(signal).catch(() => {});
+  await releaseInstanceLock().catch(() => {});
+  await pool.end().catch(() => {});
   process.exit(0);
 }
 

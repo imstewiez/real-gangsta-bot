@@ -150,8 +150,139 @@ async function getOperationSummary(opId) {
   };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CADEIA DE CUSTÓDIA POR PARTICIPANTE
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Regista entrega de material da org a UM participante específico.
+ * Afecta stock (movimento `fornecimento_org`) e marca o participante como
+ * `received_org_material` + `material_source='org'`.
+ */
+async function issueMaterialToParticipant(opId, discordId, itemId, quantity, actorId, notes = '') {
+  if (!quantity || quantity <= 0) throw new Error('Quantidade inválida.');
+  const member = await memberRepo.findByDiscordId(discordId);
+  if (!member) throw new Error('Membro não encontrado.');
+
+  await operationRepo.addParticipant(opId, member.id, {
+    roleInOp: 'membro',
+    broughtOwn: false,
+    receivedOrg: true,
+    notes,
+  });
+  await operationRepo.updateParticipant(opId, member.id, { material_source: 'org' });
+
+  await operationRepo.addMaterial(opId, itemId, 'fornecido', quantity, member.id, `Fornecimento a <@${discordId}>`);
+
+  await inventoryRepo.recordMovement({
+    movementType: 'fornecimento_org',
+    itemId,
+    quantity,
+    memberId: member.id,
+    memberRole: member.role,
+    origin: 'org',
+    destination: `participante:${discordId}`,
+    context: `Operação #${opId}`,
+    notes,
+    operationId: opId,
+    createdBy: actorId,
+  });
+
+  await logAudit({
+    action: 'op_material_issued',
+    entityType: 'operation',
+    entityId: String(opId),
+    actorId,
+    afterState: { member: discordId, itemId, quantity },
+  });
+
+  return { opId, member: discordId, itemId, quantity };
+}
+
+/**
+ * Fecha a custódia de um participante após a operação.
+ * Regista separadamente devolvido / perdido / morto-com-material.
+ *
+ * @param opId
+ * @param discordId
+ * @param outcome {{ returnedItems?: [{itemId,qty}], lostItems?: [...], diedWithItems?: [...], died?: boolean, survived?: boolean, returned?: boolean }}
+ */
+async function settleParticipantCustody(opId, discordId, outcome, actorId) {
+  const member = await memberRepo.findByDiscordId(discordId);
+  if (!member) throw new Error('Membro não encontrado.');
+
+  const returned = outcome.returnedItems || [];
+  const lost = outcome.lostItems || [];
+  const diedWith = outcome.diedWithItems || [];
+
+  let totalReturnedQty = 0;
+  let totalLostQty = 0;
+
+  for (const r of returned) {
+    if (!r.itemId || !r.qty || r.qty <= 0) continue;
+    totalReturnedQty += r.qty;
+    await operationRepo.addMaterial(opId, r.itemId, 'devolvido', r.qty, member.id, `Devolvido por <@${discordId}>`);
+    await inventoryRepo.recordMovement({
+      movementType: 'devolucao_operacao',
+      itemId: r.itemId, quantity: r.qty,
+      memberId: member.id, memberRole: member.role,
+      origin: `participante:${discordId}`, destination: 'org',
+      context: `Operação #${opId} — devolução`,
+      operationId: opId, createdBy: actorId,
+    });
+  }
+
+  for (const r of lost) {
+    if (!r.itemId || !r.qty || r.qty <= 0) continue;
+    totalLostQty += r.qty;
+    await operationRepo.addMaterial(opId, r.itemId, 'perdido', r.qty, member.id, `Perdido por <@${discordId}>`);
+    await inventoryRepo.recordMovement({
+      movementType: 'perda_operacao',
+      itemId: r.itemId, quantity: r.qty,
+      memberId: member.id, memberRole: member.role,
+      origin: `participante:${discordId}`, destination: 'perdido',
+      context: `Operação #${opId} — perda`,
+      operationId: opId, createdBy: actorId,
+    });
+  }
+
+  for (const r of diedWith) {
+    if (!r.itemId || !r.qty || r.qty <= 0) continue;
+    totalLostQty += r.qty;
+    await operationRepo.addMaterial(opId, r.itemId, 'perdido', r.qty, member.id, `Morreu com material (<@${discordId}>)`);
+    await inventoryRepo.recordMovement({
+      movementType: 'perda_operacao',
+      itemId: r.itemId, quantity: r.qty,
+      memberId: member.id, memberRole: member.role,
+      origin: `participante:${discordId}`, destination: 'perdido_morte',
+      context: `Operação #${opId} — morto com material`,
+      operationId: opId, createdBy: actorId,
+    });
+  }
+
+  await operationRepo.updateParticipant(opId, member.id, {
+    died: outcome.died ?? false,
+    survived: outcome.survived ?? !outcome.died,
+    returned: outcome.returned ?? !outcome.died,
+    returned_material: totalReturnedQty > 0,
+    material_returned_qty: totalReturnedQty,
+    material_lost_qty: totalLostQty,
+  });
+
+  await logAudit({
+    action: 'op_custody_settled',
+    entityType: 'operation',
+    entityId: String(opId),
+    actorId,
+    afterState: { member: discordId, returned: totalReturnedQty, lost: totalLostQty, died: outcome.died },
+  });
+
+  return { member: discordId, returnedQty: totalReturnedQty, lostQty: totalLostQty };
+}
+
 module.exports = {
   createOperation, startOperation, closeOperation, cancelOperation,
   addParticipant, updateParticipantResult, registerOperationMaterial,
+  issueMaterialToParticipant, settleParticipantCustody,
   getOperationSummary,
 };

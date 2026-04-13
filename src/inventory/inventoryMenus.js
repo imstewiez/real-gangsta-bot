@@ -31,6 +31,7 @@ async function buildItemSelectMenu(customIdPrefix, placeholder = 'Seleciona o ma
     new StringSelectMenuBuilder()
       .setCustomId(customIdPrefix)
       .setPlaceholder(placeholder)
+      .setMinValues(1).setMaxValues(1)
       .addOptions(options.length ? options : [{ label: 'Sem itens', value: 'none' }])
   );
 }

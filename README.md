@@ -1,141 +1,148 @@
 # Real Gangsta
 
-Bot de gestao de bairro/grupo RP para Discord. Focado em gestao de moradores, inventario de material, operacoes noturnas e rankings semanais.
+Bot de gestão do bairro/grupo RP **Real Gangsta**. Gere onboarding, hierarquia, inventário (ledger), operações/saídas, tops semanais, cemitério e auditoria — tudo com o Discord como interface e PostgreSQL como fonte de verdade.
 
 ## Stack
 
-- **Runtime**: Node.js >= 18
-- **Framework**: discord.js v14
-- **Database**: PostgreSQL
-- **Deploy**: Railway
+- Node.js ≥ 18 · discord.js v14 · PostgreSQL
+- Deploy: Railway (`railway.toml`)
 
-## Configuracao
+## Arranque
 
-1. Copia `.env.example` para `.env` e preenche todas as variaveis
-2. `npm install`
-3. `npm run db:migrate`
-4. `npm start`
-
-### Variaveis de Ambiente Obrigatorias
-
-| Variavel | Descricao |
-|----------|-----------|
-| `DISCORD_BOT_TOKEN` | Token do bot Discord |
-| `DISCORD_GUILD_ID` | ID do servidor Discord |
-| `DATABASE_URL` | Connection string PostgreSQL |
-
-### Role IDs
-
-| Variavel | Descricao |
-|----------|-----------|
-| `CHEFIA_ROLE_ID` | Role de Chefia (acesso total) |
-| `CHEFE_MORADORES_ROLE_ID` | Role de Chefe de Moradores |
-| `OFICIAL_ROLE_ID` | Role de Oficial |
-| `MORADOR_ROLE_ID` | Role de Morador |
-
-### Channel/Category IDs
-
-| Variavel | Descricao |
-|----------|-----------|
-| `MORADOR_TOPICOS_CATEGORY_ID` | Categoria para canais individuais de moradores |
-| `MORADOR_ARQUIVO_CATEGORY_ID` | Categoria para canais arquivados |
-| `AUDIT_LOG_CHANNEL_ID` | Canal de logs de auditoria |
-| `WEEKLY_TOP_CHANNEL_ID` | Canal para tops semanais |
-| `PANEL_MORADORES_CHANNEL_ID` | Canal do painel de moradores |
-| `PANEL_OFICIAIS_CHANNEL_ID` | Canal do painel de oficiais |
-| `PANEL_CHEFIA_CHANNEL_ID` | Canal do painel de chefia |
-| `PANEL_CHEFE_MORADORES_CHANNEL_ID` | Canal do painel do chefe de moradores |
-
-## Arquitetura
-
-```
-src/
-  index.js              # Entry point, routing, boot
-  config.js             # Configuracao centralizada
-  db.js                 # Pool PostgreSQL
-  dbMigrate.js          # Migracoes
-  slashCommands.js      # Definicao de slash commands
-  panelBootstrap.js     # Sistema de paineis
-  onboarding/           # Onboarding de moradores + canais
-  members/              # Gestao de membros + promocoes
-  inventory/            # Inventario, catalogo, movimentos
-  operations/           # Saidas/operacoes noturnas
-  rankings/             # Tops semanais
-  panels/               # Definicao dos 4 paineis Discord
-  permissions/          # Sistema de permissoes por role
-  audit/                # Auditoria
-  jobs/                 # Background jobs (scheduler)
-  repositories/         # Camada de acesso a dados
-  shared/               # Helpers partilhados
-  lib/                  # Idempotencia, metricas
-  web/                  # Health endpoints
+```bash
+cp .env.example .env          # preenche secrets
+npm install
+npm run db:migrate            # aplica migrations em ordem por id
+npm start
 ```
 
-## Modulos Principais
-
-### Onboarding
-Quando um utilizador recebe a role de **Morador**, o bot:
-- Cria um canal individual em "Moradia - Topicos"
-- Envia mensagem de boas-vindas com botoes
-- Regista o membro na base de dados
-
-Quando um morador e promovido a **Oficial**:
-- O canal e arquivado (configuravel: `ARCHIVE_ON_PROMOTION`)
-- O acesso do membro e removido
-- O historico e preservado
-
-### Inventario
-Sistema de movimentos auditavel:
-- `entrega_morador` / `venda_morador` / `entrega_oficial`
-- `fornecimento_org` / `consumo_operacao` / `devolucao_operacao`
-- `ajuste_manual` / `perda_operacao` / `apreendido` / `craftado`
-
-Stock calculado automaticamente a partir dos movimentos.
-
-### Operacoes
-Gestao completa de saidas noturnas:
-- Criar / iniciar / fechar / cancelar
-- Participantes com estado (morreu, sobreviveu, devolveu material)
-- Material fornecido vs devolvido vs perdido
-- Resultado operacional (fight, inimigos, etc.)
-
-### Rankings
-Tops semanais automaticos baseados em:
-- Entregas de material
-- Vendas ao grupo
-- Participacao em operacoes
-- Valor ponderado por item
-
-## Slash Commands
-
-| Comando | Descricao |
-|---------|-----------|
-| `/rg-setup` | Configura paineis |
-| `/rg-sync-panels` | Republica paineis |
-| `/rg-stock` | Ver stock atual |
-| `/rg-member` | Ficha de membro |
-| `/rg-top-week` | Top semanal |
-| `/rg-create-operation` | Criar operacao |
-| `/rg-close-operation` | Fechar operacao |
-| `/rg-audit` | Ver logs de auditoria |
-| `/rg-items` | Catalogo de itens |
-| `/rg-add-item` | Adicionar item ao catalogo |
-
-## Paineis Discord
-
-| Painel | Destinatarios | Funcionalidades |
-|--------|---------------|-----------------|
-| Morador | Moradores | Registar entregas/vendas, ver historico/totais |
-| Oficial | Oficiais | Registar entregas, ver operacoes, historico |
-| Chefia | Chefia | Criar/fechar operacoes, stock, tops, logs |
-| Chefe de Moradores | Chefe Moradores | Listar moradores, ver entregas/vendas/tops |
-
-## Testes
+Testes:
 
 ```bash
 npm test
 ```
 
-## Deploy (Railway)
+## Hierarquia
 
-O ficheiro `railway.toml` esta configurado. Basta conectar o repositorio ao Railway e definir as variaveis de ambiente.
+```
+ 1. Manda-Chuva      │ Comando Total       (isCommand, isChefia)
+ 2. Kingpin          │
+ 3. OG               │ Supervisão          (isSupervisor, isOficial)
+ 4. Real Gangster    │
+ 5. Patrão di Zona   │ Chefe do Guetto     (isChefeMoradores)
+ 6. Gangster Fodido  │ tier 3 (topo)       ┐
+ 7. O Gunão          │ tier 2              ├─ Moradores
+ 8. Young Blood      │ tier 1 (entrada)    ┘
+```
+
+**Invariante core**: qualquer tier (YB/OG/GF) ⇒ role base **Moradores**. Aplicada em onboarding, promoções e via job diário.
+
+## Fluxos
+
+### Onboarding
+1. Pessoa clica "Pedir Tag" no painel de entrada → modal (nome + alcunha).
+2. Pedido fica pendente em `tag_requests`. Chefia aprova no canal `🏷️│tags`.
+3. Aprovação:
+   - adiciona `Moradores` (base) + `Young Blood` (tier 1)
+   - cria registo em `members` (tier=young_blood)
+   - cria canal individual no GUETTO com overwrites para o próprio + Comando + Supervisão + Patrão di Zona
+   - envia embed de boas-vindas com painel pessoal
+   - reforça invariantes
+
+### Promoção automática
+- `25.000€` de material acumulado (entregas + vendas) → promove YB → O Gunão
+- `50.000€` → O Gunão → Gangster Fodido
+- Acima disso é manual.
+
+### Promoção a Oficial
+- Detectada via `GuildMemberUpdate` (adição de role OG / Real Gangster).
+- Canal individual é arquivado (`ARCHIVE_ON_PROMOTION=true`) — não apagado.
+
+### Inventário (ledger)
+Tipos de movimento: `saldo_inicial`, `entrega_morador`, `venda_morador`, `entrega_oficial`, `fornecimento_org`, `consumo_operacao`, `devolucao_operacao`, `ajuste_manual`, `perda_operacao`, `apreendido`, `craftado`.
+
+Stock é sempre calculado a partir do ledger — nunca sobreposto.
+
+### Operações
+- Cria, adiciona participantes (via `UserSelectMenu` multi-select com pesquisa), regista material fornecido/devolvido/perdido/consumido, fecha com resultado (fight, mortes, sobreviventes).
+- **Cadeia de custódia por participante** via `operationEngine.issueMaterialToParticipant` / `settleParticipantCustody`.
+
+### Cemitério
+- `/rg-kill` → modal de kill.
+- `/rg-cemetery` → leaderboard.
+- Auto-publica no canal `☠️│cemitério` (se `CEMETERY_CHANNEL_ID` configurado).
+
+### Tops semanais
+- Publicação automática domingo 23h no `WEEKLY_TOP_CHANNEL_ID` (controlada por `AUTO_PUBLISH_WEEKLY_TOP`).
+
+## Slash commands
+
+| Comando | Destinatário | Descrição |
+|---|---|---|
+| `/rg-setup` | Comando | Configura painéis iniciais |
+| `/rg-sync-panels` | Comando | Republica painéis |
+| `/rg-sync-structure modo:[dry-run|apply]` | Comando | Sincroniza estrutura do Discord |
+| `/rg-sync-roles modo:[dry-run|apply]` | Comando | Reconcilia invariantes de roles |
+| `/rg-bootstrap-stock modo:[dry-run|apply] force:[bool]` | Comando | Importa stock inicial |
+| `/rg-stock` | Todos | Ver stock |
+| `/rg-member` | Todos | Ficha de membro |
+| `/rg-top-week` | Todos | Top semanal |
+| `/rg-create-operation` | Comando | Criar saída |
+| `/rg-close-operation` | Comando | Fechar saída |
+| `/rg-audit` | Comando | Logs de auditoria |
+| `/rg-items` | Todos | Catálogo |
+| `/rg-add-item` | Comando | Adicionar item |
+| `/rg-sync-sheets` | Comando | Export para Sheets (opcional) |
+| `/rg-kill` | Todos | Registar kill |
+| `/rg-cemetery` | Todos | Leaderboard cemitério |
+
+## CLI scripts
+
+```bash
+# Bootstrap de stock inicial (ledger saldo_inicial)
+npm run stock:bootstrap              # dry-run (default)
+npm run stock:bootstrap:apply        # aplica (inclui --confirm)
+
+# Sync de estrutura Discord
+npm run structure:sync               # dry-run
+npm run structure:sync:apply         # aplica
+```
+
+## Painéis
+
+| Painel | Canal | Funcionalidades |
+|---|---|---|
+| Entrada | ENTRADA | Pedir Tag |
+| Morador | GUETTO | Registar material, histórico, totais, progresso, top semanal |
+| Oficial | OFICIAIS | Registar material, operações, histórico |
+| Chefia | COMANDO | Criar/fechar operações, adicionar participantes, material, stock, gerir materiais, tops, logs |
+| Chefe de Moradores | GUETTO | Listar moradores, entregas/vendas, tops moradores |
+
+## Estrutura do Discord (template)
+
+11 categorias bem identificadas, geridas declarativamente em `src/discord/structureTemplate.js`:
+
+```
+╭・𝗘𝗡𝗧𝗥𝗔𝗗𝗔          divulgação · entradas · tags · regras · info
+╭・𝗖𝗢𝗠𝗔𝗡𝗗𝗢          comunicados · chefia · preços · logs · logs-bot
+╭・𝗢𝗙𝗜𝗖𝗜𝗔𝗜𝗦          chat · disponibilidade · ausências · rádio · baú
+╭・𝗚𝗨𝗘𝗧𝗧𝗢            chefia-moradores · baú-casa · encomendas · material · canais individuais
+╭・𝗜𝗡𝗩𝗘𝗡𝗧Á𝗥𝗜𝗢       resumo-stock · entradas/saídas/ajustes
+╭・𝗔𝗥𝗦𝗘𝗡𝗔𝗟          armas · munições · carregadores · droga
+╭・𝗢𝗣𝗘𝗥𝗔𝗖̧𝗢̃𝗘𝗦         mapas · spots · planeamento · resultados
+╭・𝗘𝗖𝗢𝗡𝗢𝗠𝗜𝗔 & 𝗧𝗢𝗣𝗦  meta · ofertas · prémios · tops-semanais
+╭・𝗥𝗘𝗣𝗨𝗧𝗔𝗖̧𝗔̃𝗢        cemitério · clips
+╭・𝗖𝗔𝗟𝗟𝗦             voice channels
+╭・𝗚𝗘𝗥𝗔𝗟             chat · convívio · cor-org
+```
+
+Sync idempotente: nunca apaga, apenas renomeia/move/cria. Canais fora do template são listados no dry-run e ignorados.
+
+## Documentação adicional
+
+- [`docs/AUDIT.md`](docs/AUDIT.md) — auditoria do projecto pré-refactor
+- [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — lista completa de mudanças e rationale
+
+## Secrets
+
+`.env`, `juri-490201-54e5053bd43a.json` (service account Google) e `logs/` estão em `.gitignore`. Nunca commitar secrets.

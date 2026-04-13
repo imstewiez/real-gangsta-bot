@@ -34,8 +34,22 @@ function startAll(client) {
     return;
   }
 
-  registerJob('weekly_rankings', 60 * 60 * 1000, publishWeeklyTop);
+  if (CONFIG.AUTO_PUBLISH_WEEKLY_TOP) {
+    registerJob('weekly_rankings', 60 * 60 * 1000, publishWeeklyTop);
+  }
   registerJob('daily_summary', 60 * 60 * 1000, publishDailySummary);
+
+  // Reconciliação de invariantes de roles (diário, 4h da manhã aprox)
+  registerJob('role_invariants', 24 * 60 * 60 * 1000, async (client) => {
+    try {
+      const guild = client.guilds.cache.get(CONFIG.DISCORD_GUILD_ID);
+      if (!guild) return;
+      const { reconcileAllMembers } = require('../members/roleInvariants');
+      return await reconcileAllMembers(guild, { actor: 'system:daily-job' });
+    } catch (e) {
+      warn(`[SCHEDULER] role_invariants failed: ${e.message}`);
+    }
+  });
 
   // Sync para Google Sheets a cada 30 minutos
   if (CONFIG.SPREADSHEET_ID) {

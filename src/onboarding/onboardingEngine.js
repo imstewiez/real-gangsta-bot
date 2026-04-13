@@ -12,11 +12,12 @@ const { buildMoradorChannelPanel } = require('./onboardingHandlers');
 
 /**
  * Process an approved tag request:
- * 1. Add Young Blood + Moradores roles
+ * 1. Add Moradores (base) + Young Blood roles
  * 2. Try to set nickname to "FullName (Nickname)"
- * 3. Create member in DB
+ * 3. Create/update member in DB (tier=young_blood)
  * 4. Create individual channel in GUETTO
  * 5. Send welcome panel in channel
+ * 6. Enforce role invariants
  */
 async function processApproval(tagRequest, approverMember, client) {
   const guild = approverMember.guild;
@@ -27,45 +28,32 @@ async function processApproval(tagRequest, approverMember, client) {
 
   const result = { rolesAdded: false, nicknameSet: false, channelCreated: false, channelId: null };
 
-  // ── 1. Fetch guild member ──────────────────────────────────────────────
   const guildMember = await guild.members.fetch(discordId).catch(() => null);
   if (!guildMember) {
     warn(`[ONBOARDING] Membro ${discordId} não encontrado no servidor.`);
     return result;
   }
 
-  // ── 2. Add roles (Young Blood + Moradores) ─────────────────────────────
+  // ── 2. Add roles (Moradores base + Young Blood) ────────────────────────
   try {
+    if (CONFIG.MORADORES_BASE_ROLE_ID) {
+      await queueMemberOp(() => guildMember.roles.add(CONFIG.MORADORES_BASE_ROLE_ID, 'Onboarding: role base Moradores'));
+    }
     if (CONFIG.YOUNG_BLOOD_ROLE_ID) {
-      await queueMemberOp(() => guildMember.roles.add(CONFIG.YOUNG_BLOOD_ROLE_ID, 'Onboarding aprovado'));
+      await queueMemberOp(() => guildMember.roles.add(CONFIG.YOUNG_BLOOD_ROLE_ID, 'Onboarding: tier Young Blood'));
     }
-    const moradoresRoleId = CONFIG.MORADOR_ROLE_IDS.find(id =>
-      id === CONFIG.YOUNG_BLOOD_ROLE_ID || id === CONFIG.O_GUNAO_ROLE_ID || id === CONFIG.GANGSTER_FODIDO_ROLE_ID
-    ) ? null : CONFIG.MORADOR_ROLE_IDS[0];
-
-    // Always ensure Moradores base role
-    // Find the "Moradores" role ID — it's the one NOT in the tier list
-    const baseMoradoresId = [CONFIG.YOUNG_BLOOD_ROLE_ID, CONFIG.O_GUNAO_ROLE_ID, CONFIG.GANGSTER_FODIDO_ROLE_ID]
-      .includes(CONFIG.MORADOR_ROLE_IDS[0]) ? null : CONFIG.MORADOR_ROLE_IDS[0];
-
-    // Actually, Moradores role is separate. Let's look for it in the env.
-    // The MORADOR_ROLE_IDS getter includes all 4: Moradores + 3 tiers
-    // We need the base "Moradores" role specifically
-    // From config: MORADOR_ROLE_IDS = [GANGSTER_FODIDO, O_GUNAO, YOUNG_BLOOD]
-    // The actual "Moradores" base role isn't in that array... let me check
-
-    // Looking at the role list from the server:
-    // 👽・Moradores (ID: 1490397684597653634) — this is separate from the tiers
-    // We need to hardcode or add to config. For now use env:
-    const moradorBaseRoleId = process.env.MORADORES_BASE_ROLE_ID || '1490397684597653634';
-    if (moradorBaseRoleId) {
-      await queueMemberOp(() => guildMember.roles.add(moradorBaseRoleId, 'Moradores base role'));
-    }
-
     result.rolesAdded = true;
     log(`[ONBOARDING] Roles adicionadas a ${fullName} (${discordId}).`);
   } catch (e) {
     warn(`[ONBOARDING] Falha ao adicionar roles: ${e.message}`);
+  }
+
+  // ── 2b. Enforce invariantes (uma vez aplicadas as roles) ───────────────
+  try {
+    const { ensureInvariants } = require('../members/roleInvariants');
+    await ensureInvariants(guildMember, { actor: approverMember.id, reason: 'Post-onboarding invariant check' });
+  } catch (e) {
+    warn(`[ONBOARDING] Invariant check falhou para ${discordId}: ${e.message}`);
   }
 
   // ── 3. Set nickname ────────────────────────────────────────────────────
@@ -105,21 +93,21 @@ async function processApproval(tagRequest, approverMember, client) {
         { id: botMember.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageMessages] },
       ];
 
-      // Chefia roles
-      for (const roleId of CONFIG.CHEFIA_ROLE_IDS) {
+      // Comando total (Manda-Chuva, Kingpin) — full control
+      for (const roleId of CONFIG.COMMAND_ROLE_IDS) {
         permissionOverwrites.push({
           id: roleId,
           allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageMessages, PermissionFlagsBits.ManageChannels],
         });
       }
-      // Oficial roles (OG, Real Gangster)
-      for (const roleId of CONFIG.OFICIAL_ROLE_IDS) {
+      // Supervisão (OG, Real Gangster) — read/write
+      for (const roleId of CONFIG.SUPERVISOR_ROLE_IDS) {
         permissionOverwrites.push({
           id: roleId,
           allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
         });
       }
-      // Chefe de Moradores
+      // Patrão di Zona — gestão do GUETTO
       for (const roleId of CONFIG.CHEFE_MORADORES_ROLE_IDS) {
         permissionOverwrites.push({
           id: roleId,
@@ -176,7 +164,7 @@ async function processApproval(tagRequest, approverMember, client) {
 
   await sendAuditToChannel(client, {
     title: '\uD83C\uDFF7\uFE0F Novo Morador — Tag Aprovada',
-    description: `<@${discordId}> entrou como **Young Blood**\nNome: **${fullName} (${nickname})**${result.channelCreated ? `\nCanal: <#${result.channelId}>` : ''}`,
+    description: `<@${discordId}> entrou como **Young Blood** (tier 1)\nNome: **${fullName} (${nickname})**${result.channelCreated ? `\nCanal: <#${result.channelId}>` : ''}`,
     color: 0x2ECC71,
   });
 

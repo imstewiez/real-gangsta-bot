@@ -1,13 +1,32 @@
 'use strict';
-const { MessageFlags } = require('discord.js');
+const { MessageFlags, ActionRowBuilder, ButtonBuilder, StringSelectMenuBuilder,
+  UserSelectMenuBuilder, RoleSelectMenuBuilder, ChannelSelectMenuBuilder } = require('discord.js');
 const { warn } = require('../logger');
 const { processedInteractionIds } = require('./sharedState');
 
-const EPHEMERAL_AUTO_DELETE_MS = 20000;
+const EPHEMERAL_AUTO_DELETE_MS = 10000;
+
+function isEphemeralPayload(interaction, payload) {
+  if (payload?.flags === 64 || payload?.flags === MessageFlags.Ephemeral) return true;
+  if (payload?.ephemeral === true) return true;
+  if (interaction?.ephemeral === true) return true;
+  return false;
+}
+
+function hasInteractiveComponents(payload) {
+  return Array.isArray(payload?.components) && payload.components.length > 0;
+}
 
 function scheduleDeleteInteractionReply(interaction, ms = EPHEMERAL_AUTO_DELETE_MS) {
   setTimeout(() => {
     interaction.deleteReply().catch(() => {});
+  }, ms);
+}
+
+function scheduleDeleteEphemeralMessage(interaction, messageId, ms = EPHEMERAL_AUTO_DELETE_MS) {
+  if (!messageId) return;
+  setTimeout(() => {
+    interaction.webhook?.deleteMessage(messageId).catch(() => {});
   }, ms);
 }
 
@@ -18,10 +37,22 @@ function scheduleDeleteMessage(message, ms = EPHEMERAL_AUTO_DELETE_MS) {
   }, ms);
 }
 
-async function safeReply(interaction, payload) {
-  const isEphemeral = payload?.flags === 64
-    || payload?.flags === MessageFlags.Ephemeral
-    || payload?.ephemeral === true;
+/**
+ * safeReply — a única forma de responder a interactions.
+ *
+ * opts:
+ *   dismissible (default: auto)
+ *     true  → auto-delete ao fim de 10s
+ *     false → mensagem persiste (necessária para próximo passo)
+ *     undefined (default) → auto se ephemeral E sem componentes interactivos
+ */
+async function safeReply(interaction, payload, opts = {}) {
+  const ephemeral = isEphemeralPayload(interaction, payload);
+  const interactive = hasInteractiveComponents(payload);
+  const dismissible = opts.dismissible === undefined
+    ? ephemeral && !interactive
+    : Boolean(opts.dismissible);
+  const ttl = opts.ttlMs || EPHEMERAL_AUTO_DELETE_MS;
 
   const result = interaction.replied
     ? await interaction.followUp(payload).catch(() => null)
@@ -29,13 +60,91 @@ async function safeReply(interaction, payload) {
       ? await interaction.editReply(payload).catch(() => null)
       : await interaction.reply(payload).catch(() => null);
 
-  if (isEphemeral && result) scheduleDeleteInteractionReply(interaction, EPHEMERAL_AUTO_DELETE_MS);
+  if (dismissible && result) scheduleDeleteInteractionReply(interaction, ttl);
   return result;
 }
 
+/**
+ * safeUpdate — para interactions de componente (button/select).
+ * Substitui a mensagem original (mesmo ephemeral) em vez de criar uma nova.
+ * Útil em cadeias de dropdowns: o velho desaparece, o próximo aparece no mesmo sítio.
+ */
+async function safeUpdate(interaction, payload, opts = {}) {
+  if (typeof interaction.update !== 'function') return safeReply(interaction, payload, opts);
+  try {
+    await interaction.update(payload);
+  } catch (e) {
+    if (String(e?.code || '') === '40060') {
+      // already acknowledged — fall back to followUp
+      return safeReply(interaction, payload, opts);
+    }
+    if (String(e?.code || '') === '10062') {
+      warn('[UPDATE] Interação expirada.');
+      return null;
+    }
+    throw e;
+  }
+  // safeUpdate replaces the message; auto-delete only if explicitly dismissible
+  // (intermediate-flow updates need to persist for next user action)
+  const ephemeral = isEphemeralPayload(interaction, payload);
+  const interactive = hasInteractiveComponents(payload);
+  const dismissible = opts.dismissible === undefined
+    ? ephemeral && !interactive
+    : Boolean(opts.dismissible);
+  const ttl = opts.ttlMs || EPHEMERAL_AUTO_DELETE_MS;
+  if (dismissible) scheduleDeleteInteractionReply(interaction, ttl);
+  return interaction;
+}
+
+function disableComponentRows(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.map(row => {
+    const newRow = new ActionRowBuilder();
+    const components = row.components || [];
+    for (const comp of components) {
+      const data = comp.data || comp;
+      const type = data.type;
+      try {
+        if (type === 2) newRow.addComponents(ButtonBuilder.from(comp).setDisabled(true));
+        else if (type === 3) newRow.addComponents(StringSelectMenuBuilder.from(comp).setDisabled(true));
+        else if (type === 5) newRow.addComponents(UserSelectMenuBuilder.from(comp).setDisabled(true));
+        else if (type === 6) newRow.addComponents(RoleSelectMenuBuilder.from(comp).setDisabled(true));
+        else if (type === 8) newRow.addComponents(ChannelSelectMenuBuilder.from(comp).setDisabled(true));
+      } catch {
+        // unknown component type — skip
+      }
+    }
+    return newRow;
+  });
+}
+
+/**
+ * lockMessageComponents — desactiva todos os componentes da mensagem original
+ * de uma interaction de componente. Funciona para ephemerals via webhook.
+ */
+async function lockMessageComponents(interaction) {
+  if (!interaction?.message) return;
+  try {
+    const disabled = disableComponentRows(interaction.message.components);
+    if (interaction.webhook && interaction.message.id) {
+      await interaction.webhook.editMessage(interaction.message.id, { components: disabled }).catch(() => {});
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * safeShowModal — mostra modal e tranca o dropdown da mensagem original logo a seguir.
+ * Para fluxos "select → modal".
+ */
 async function safeShowModal(interaction, modal) {
   try {
     await interaction.showModal(modal);
+    // Lock the originating select menu / button after modal opens.
+    if (interaction.message) {
+      setImmediate(() => { lockMessageComponents(interaction); });
+    }
     return true;
   } catch (e) {
     const msg = String(e?.message || e || '');
@@ -103,10 +212,15 @@ async function safePanelRefresh(message, payload, label = 'PANEL') {
 }
 
 module.exports = {
+  EPHEMERAL_AUTO_DELETE_MS,
   scheduleDeleteInteractionReply,
+  scheduleDeleteEphemeralMessage,
   scheduleDeleteMessage,
   safeReply,
+  safeUpdate,
   safeShowModal,
+  lockMessageComponents,
+  disableComponentRows,
   isDuplicate,
   getModalField,
   safeCustomId,

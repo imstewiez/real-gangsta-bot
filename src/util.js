@@ -57,7 +57,7 @@ function nowPT() {
 
 function truncate(str, max = 100) {
   if (!str || str.length <= max) return str || '';
-  return str.slice(0, max - 3) + '...';
+  return str.slice(0, max - 3).trimEnd() + '...';
 }
 
 function weekBounds(date = new Date()) {

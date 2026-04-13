@@ -11,7 +11,7 @@ async function handleMemberCommand(interaction) {
   const member = await memberRepo.findByDiscordId(targetUser.id);
 
   if (!member) {
-    return safeReply(interaction, { content: 'Membro não encontrado.', flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: 'Membro não encontrado.', flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const embed = memberProfileEmbed(member);
@@ -25,18 +25,18 @@ async function handleMemberCommand(interaction) {
     embed.addFields({ name: 'Totais de Material', value: lines.join('\n') || '\u2014' });
   }
 
-  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
 }
 
 async function handleMemberHistoryButton(interaction) {
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {
-    return safeReply(interaction, { content: 'Não estás registado no sistema.', flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: 'Não estás registado no sistema.', flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const movements = await inventoryRepo.getMemberMovements(member.id, 20);
   if (!movements.length) {
-    return safeReply(interaction, { content: 'Sem registos no teu histórico.', flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: 'Sem registos no teu histórico.', flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const typeLabels = {
@@ -54,13 +54,13 @@ async function handleMemberHistoryButton(interaction) {
     .setTitle('Teu Histórico')
     .setDescription(lines.join('\n'));
 
-  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
 }
 
 async function handleMemberTotalsButton(interaction) {
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {
-    return safeReply(interaction, { content: 'Não estás registado no sistema.', flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: 'Não estás registado no sistema.', flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const totals = await inventoryRepo.getMemberTotals(member.id);
@@ -98,18 +98,18 @@ async function handleMemberTotalsButton(interaction) {
     .setTitle('Teus Totais')
     .setDescription(lines.join('\n'));
 
-  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
 }
 
 async function handleProgressButton(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const member = await memberRepo.findByDiscordId(interaction.user.id);
-  if (!member) return interaction.editReply({ content: 'Não estás registado no sistema.' });
+  if (!member) return safeReply(interaction, { content: 'Não estás registado no sistema.' }, { dismissible: true });
 
   const { getPromotionProgress, formatTierName } = require('./autoPromotionEngine');
   const progress = await getPromotionProgress(interaction.user.id);
-  if (!progress) return interaction.editReply({ content: 'Sem dados de progresso.' });
+  if (!progress) return safeReply(interaction, { content: 'Sem dados de progresso.' }, { dismissible: true });
 
   const lines = [];
   lines.push(`\uD83C\uDFAD **Rank:** ${progress.currentTierName}`);
@@ -144,7 +144,7 @@ async function handleProgressButton(interaction) {
     .setTitle(`\uD83D\uDCCA Progresso \u2014 ${member.display_name || member.full_name}`)
     .setDescription(lines.join('\n'));
 
-  return interaction.editReply({ embeds: [embed] });
+  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
 }
 
 async function handleTopSemanalButton(interaction) {
@@ -156,7 +156,7 @@ async function handleTopSemanalButton(interaction) {
   const { rankingRepo } = require('../repositories');
   const rankings = await rankingRepo.getWeekRanking(weekStart, 10);
 
-  if (!rankings.length) return interaction.editReply({ content: 'Sem dados de ranking esta semana.' });
+  if (!rankings.length) return safeReply(interaction, { content: 'Sem dados de ranking esta semana.' }, { dismissible: true });
 
   const medals = ['\uD83E\uDD47', '\uD83E\uDD48', '\uD83E\uDD49'];
   const lines = rankings.map((r, i) => {
@@ -182,7 +182,7 @@ async function handleTopSemanalButton(interaction) {
     .setTitle(`\uD83C\uDFC6 Top Semanal \u2014 ${weekLabel}`)
     .setDescription(lines.join('\n'));
 
-  return interaction.editReply({ embeds: [embed] });
+  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
 }
 
 module.exports = {

@@ -4,7 +4,7 @@ const {
   TextInputBuilder, TextInputStyle, MessageFlags, EmbedBuilder,
 } = require('discord.js');
 const CONFIG = require('../config');
-const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply, safeShowModal, getModalField, isDuplicate, lockMessageComponents } = require('../shared/interactionHelpers');
 const { brandEmbed, successEmbed } = require('../shared/embedBuilders');
 const { isChefeMoradores } = require('../permissions/permissionEngine');
 const { query } = require('../db');
@@ -52,7 +52,7 @@ async function handlePedirTagButton(interaction) {
     return safeReply(interaction, {
       content: 'Já tens um pedido de tag pendente. Aguarda pela aprovação.',
       flags: MessageFlags.Ephemeral,
-    });
+    }, { dismissible: true });
   }
 
   // Check if already a morador
@@ -62,7 +62,7 @@ async function handlePedirTagButton(interaction) {
     return safeReply(interaction, {
       content: 'Já tens uma tag de morador. Não precisas de pedir novamente.',
       flags: MessageFlags.Ephemeral,
-    });
+    }, { dismissible: true });
   }
 
   const modal = new ModalBuilder()
@@ -106,7 +106,7 @@ async function handleTagModal(interaction) {
   const nickname = getModalField(interaction, 'nickname').trim();
 
   if (!fullName || !nickname) {
-    return interaction.editReply({ content: 'Nome e alcunha são obrigatórios.' });
+    return safeReply(interaction, { content: 'Nome e alcunha são obrigatórios.' }, { dismissible: true });
   }
 
   // Save to DB
@@ -120,7 +120,7 @@ async function handleTagModal(interaction) {
   // Send approval embed to tag request channel
   const tagChannel = await interaction.client.channels.fetch(CONFIG.TAG_REQUEST_CHANNEL_ID).catch(() => null);
   if (!tagChannel) {
-    return interaction.editReply({ content: 'Erro interno — canal de aprovação não encontrado.' });
+    return safeReply(interaction, { content: 'Erro interno — canal de aprovação não encontrado.' }, { dismissible: true });
   }
 
   const approvalEmbed = new EmbedBuilder()
@@ -154,9 +154,9 @@ async function handleTagModal(interaction) {
   // Save message ID for future reference
   await query('UPDATE tag_requests SET message_id = $1 WHERE id = $2', [msg.id, requestId]);
 
-  return interaction.editReply({
+  return safeReply(interaction, {
     content: `O teu pedido foi enviado! Aguarda pela aprovação.\n**Nome:** ${fullName} **(${nickname})**`,
-  });
+  }, { dismissible: true });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -167,20 +167,20 @@ async function handleApproveButton(interaction, requestId) {
   if (isDuplicate(interaction.id)) return;
 
   if (!isChefeMoradores(interaction.member)) {
-    return safeReply(interaction, { content: 'Não tens permissão para aprovar pedidos de tag.', flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: 'Não tens permissão para aprovar pedidos de tag.', flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const reqRes = await query('SELECT * FROM tag_requests WHERE id = $1', [requestId]);
   const tagReq = reqRes.rows[0];
-  if (!tagReq) return interaction.editReply({ content: 'Pedido não encontrado.' });
-  if (tagReq.status !== 'pending') return interaction.editReply({ content: 'Este pedido já foi processado.' });
+  if (!tagReq) return safeReply(interaction, { content: 'Pedido não encontrado.' }, { dismissible: true });
+  if (tagReq.status !== 'pending') return safeReply(interaction, { content: 'Este pedido já foi processado.' }, { dismissible: true });
 
   const { processApproval } = require('./onboardingEngine');
   const result = await processApproval(tagReq, interaction.member, interaction.client);
 
-  // Update the original message to show approved
+  // Update the original message to show approved + lock buttons
   if (tagReq.message_id) {
     const approvedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
       .setColor(0x2ECC71)
@@ -190,24 +190,24 @@ async function handleApproveButton(interaction, requestId) {
     await interaction.message.edit({ embeds: [approvedEmbed], components: [] }).catch(() => {});
   }
 
-  return interaction.editReply({
+  return safeReply(interaction, {
     content: `Tag aprovada para **${tagReq.full_name} (${tagReq.nickname})**\n${result.channelCreated ? `Canal criado: <#${result.channelId}>` : 'Canal não criado (erro)'}${result.nicknameSet ? '' : '\n\u26A0\uFE0F Nickname não foi alterado (sem permissão)'}`,
-  });
+  }, { dismissible: true });
 }
 
 async function handleDenyButton(interaction, requestId) {
   if (isDuplicate(interaction.id)) return;
 
   if (!isChefeMoradores(interaction.member)) {
-    return safeReply(interaction, { content: 'Não tens permissão para negar pedidos de tag.', flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: 'Não tens permissão para negar pedidos de tag.', flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const reqRes = await query('SELECT * FROM tag_requests WHERE id = $1', [requestId]);
   const tagReq = reqRes.rows[0];
-  if (!tagReq) return interaction.editReply({ content: 'Pedido não encontrado.' });
-  if (tagReq.status !== 'pending') return interaction.editReply({ content: 'Este pedido já foi processado.' });
+  if (!tagReq) return safeReply(interaction, { content: 'Pedido não encontrado.' }, { dismissible: true });
+  if (tagReq.status !== 'pending') return safeReply(interaction, { content: 'Este pedido já foi processado.' }, { dismissible: true });
 
   await query(
     `UPDATE tag_requests SET status = 'denied', denied_by = $1, resolved_at = NOW() WHERE id = $2`,
@@ -230,7 +230,7 @@ async function handleDenyButton(interaction, requestId) {
     await interaction.message.edit({ embeds: [deniedEmbed], components: [] }).catch(() => {});
   }
 
-  return interaction.editReply({ content: `Tag negada para **${tagReq.full_name} (${tagReq.nickname})**.` });
+  return safeReply(interaction, { content: `Tag negada para **${tagReq.full_name} (${tagReq.nickname})**.` }, { dismissible: true });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

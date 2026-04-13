@@ -1,9 +1,12 @@
 'use strict';
 const {
   MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle,
-  ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle,
+  ActionRowBuilder, StringSelectMenuBuilder, UserSelectMenuBuilder,
 } = require('discord.js');
-const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const {
+  safeReply, safeUpdate, safeShowModal,
+  getModalField, isDuplicate,
+} = require('../shared/interactionHelpers');
 const { successEmbed, brandEmbed } = require('../shared/embedBuilders');
 const { buildItemSelectMenu } = require('../inventory/inventoryMenus');
 const { isChefia, isOficial } = require('../permissions/permissionEngine');
@@ -13,9 +16,13 @@ const MESSAGES = require('../shared/errorMessages');
 
 const pendingOpContext = new Map();
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CRIAR OPERAÇÃO
+// ═══════════════════════════════════════════════════════════════════════════
+
 async function handleCreateOperationButton(interaction) {
   if (!isChefia(interaction.member)) {
-    return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('criar operações'), flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('criar operações'), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const modal = new ModalBuilder()
@@ -35,8 +42,9 @@ async function handleCreateOperationButton(interaction) {
           .setRequired(false).setMaxLength(100)
       ),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('type').setLabel('Tipo (craft/dominio/ataque/defesa/recolha/outra)')
-          .setStyle(TextInputStyle.Short).setPlaceholder('craft').setRequired(true).setMaxLength(20)
+        new TextInputBuilder().setCustomId('type').setLabel('Tipo')
+          .setStyle(TextInputStyle.Short).setPlaceholder('craft / dominio / ataque / defesa / recolha / outra')
+          .setRequired(true).setMaxLength(20)
       ),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('notes').setLabel('Notas (opcional)').setStyle(TextInputStyle.Paragraph)
@@ -59,7 +67,7 @@ async function handleCreateOperationModal(interaction) {
 
   const validTypes = ['craft', 'dominio', 'ataque', 'defesa', 'recolha', 'outra'];
   if (!validTypes.includes(type)) {
-    return interaction.editReply({ content: `Tipo inválido. Usa: ${validTypes.join(', ')}` });
+    return safeReply(interaction, { content: `Tipo inválido. Usa: ${validTypes.join(', ')}` }, { dismissible: true });
   }
 
   try {
@@ -70,20 +78,24 @@ async function handleCreateOperationModal(interaction) {
     });
 
     const embed = successEmbed('Operação Criada', `Operação **#${op.id}** — ${type}\nData: ${date}${spot ? `\nSpot: ${spot}` : ''}`);
-    return interaction.editReply({ embeds: [embed] });
+    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
-    return interaction.editReply({ content: `Erro: ${e.message}` });
+    return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// FECHAR OPERAÇÃO
+// ═══════════════════════════════════════════════════════════════════════════
+
 async function handleCloseOperationButton(interaction) {
   if (!isChefia(interaction.member)) {
-    return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('fechar operações'), flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('fechar operações'), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const openOps = await operationRepo.findOpen();
   if (!openOps.length) {
-    return safeReply(interaction, { content: 'Sem operações abertas.', flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: 'Sem operações abertas.', flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const options = openOps.map(op => ({
@@ -96,6 +108,7 @@ async function handleCloseOperationButton(interaction) {
     new StringSelectMenuBuilder()
       .setCustomId('op::select_close')
       .setPlaceholder('Seleciona a operação a fechar')
+      .setMinValues(1).setMaxValues(1)
       .addOptions(options.slice(0, 25))
   );
 
@@ -141,7 +154,7 @@ async function handleCloseOperationModal(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const ctx = pendingOpContext.get(interaction.user.id);
-  if (!ctx) return interaction.editReply({ content: 'Sessão expirada.' });
+  if (!ctx) return safeReply(interaction, { content: 'Sessão expirada.' }, { dismissible: true });
 
   const hadFight = getModalField(interaction, 'had_fight').toLowerCase().startsWith('s');
   const enemy = getModalField(interaction, 'enemy');
@@ -150,7 +163,7 @@ async function handleCloseOperationModal(interaction) {
   const resultNotes = getModalField(interaction, 'result_notes');
 
   try {
-    const op = await opEngine.closeOperation(ctx.opId, {
+    await opEngine.closeOperation(ctx.opId, {
       had_fight: hadFight,
       enemy_name: enemy,
       deaths,
@@ -161,18 +174,22 @@ async function handleCloseOperationModal(interaction) {
     pendingOpContext.delete(interaction.user.id);
 
     const embed = successEmbed('Operação Concluída', `Operação **#${ctx.opId}** fechada.\n${hadFight ? `Fight contra ${enemy || 'desconhecido'}` : 'Sem fight'}\nMortes: ${deaths} | Sobreviventes: ${survivors}`);
-    return interaction.editReply({ embeds: [embed] });
+    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
-    return interaction.editReply({ content: `Erro: ${e.message}` });
+    return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VER OPERAÇÕES
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function handleViewOperationsButton(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const ops = await operationRepo.findRecent(10);
   if (!ops.length) {
-    return interaction.editReply({ content: 'Sem operações registadas.' });
+    return safeReply(interaction, { content: 'Sem operações registadas.' }, { dismissible: true });
   }
 
   const statusEmoji = { aberta: '\uD83D\uDFE2', em_preparacao: '\uD83D\uDFE1', em_curso: '\uD83D\uDFE0', concluida: '\u2705', cancelada: '\u274C' };
@@ -185,21 +202,26 @@ async function handleViewOperationsButton(interaction) {
     .setTitle('Operações Recentes')
     .setDescription(lines.join('\n'));
 
-  return interaction.editReply({ embeds: [embed] });
+  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ADICIONAR PARTICIPANTES — UserSelectMenu (multi-select com pesquisa)
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function handleAddParticipantButton(interaction) {
   if (!isChefia(interaction.member) && !isOficial(interaction.member)) {
-    return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('adicionar participantes'), flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('adicionar participantes'), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const openOps = await operationRepo.findOpen();
   if (!openOps.length) {
-    return safeReply(interaction, { content: 'Sem operações abertas.', flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: 'Sem operações abertas.', flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const options = openOps.map(op => ({
     label: `#${op.id} — ${op.operation_type} (${op.date})`,
+    description: op.spot || 'Sem spot',
     value: String(op.id),
   }));
 
@@ -207,24 +229,95 @@ async function handleAddParticipantButton(interaction) {
     new StringSelectMenuBuilder()
       .setCustomId('op::select_add_participant')
       .setPlaceholder('Seleciona a operação')
+      .setMinValues(1).setMaxValues(1)
       .addOptions(options.slice(0, 25))
   );
 
   await safeReply(interaction, { content: 'Em que operação queres adicionar participantes?', components: [row], flags: MessageFlags.Ephemeral });
 }
 
+// Step: escolheu operação → mostra UserSelectMenu (multi-select, pesquisa por nome)
+async function handleAddParticipantSelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const opId = parseInt(interaction.values[0]);
+  pendingOpContext.set(interaction.user.id, { opId, action: 'add_participant' });
+
+  const userMenu = new ActionRowBuilder().addComponents(
+    new UserSelectMenuBuilder()
+      .setCustomId(`op::user_select_participants::${opId}`)
+      .setPlaceholder('Procura e selecciona membros (até 25)')
+      .setMinValues(1)
+      .setMaxValues(25)
+  );
+
+  await safeUpdate(interaction, {
+    content: `Operação **#${opId}** — selecciona os participantes (podes pesquisar por nome).`,
+    components: [userMenu],
+  });
+}
+
+// Step: utilizadores escolhidos → adiciona todos com defaults
+async function handleParticipantUsersSelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  await interaction.deferUpdate().catch(() => {});
+
+  const parts = interaction.customId.split('::');
+  const opId = parseInt(parts[2]);
+  if (!opId) return safeReply(interaction, { content: 'Operação inválida.', flags: MessageFlags.Ephemeral }, { dismissible: true });
+
+  const userIds = interaction.values || [];
+  if (!userIds.length) return safeReply(interaction, { content: 'Nenhum membro seleccionado.', flags: MessageFlags.Ephemeral }, { dismissible: true });
+
+  const added = [];
+  const errors = [];
+  for (const uid of userIds) {
+    try {
+      await opEngine.addParticipant(opId, uid, {
+        roleInOp: 'membro',
+        broughtOwn: false,
+        receivedOrg: false,
+        notes: '',
+      }, interaction.user.id);
+      added.push(uid);
+    } catch (e) {
+      errors.push(`<@${uid}> — ${e.message}`);
+    }
+  }
+
+  pendingOpContext.delete(interaction.user.id);
+
+  const lines = [];
+  if (added.length) {
+    lines.push(`**${added.length}** participante(s) adicionado(s) à Operação **#${opId}**:`);
+    lines.push(added.map(u => `<@${u}>`).join(', '));
+  }
+  if (errors.length) {
+    lines.push('');
+    lines.push('**Falhas:**');
+    lines.push(...errors);
+  }
+
+  const embed = successEmbed('Participantes Adicionados', lines.join('\n'));
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// REGISTAR MATERIAL EM OPERAÇÃO
+// ═══════════════════════════════════════════════════════════════════════════
+
 async function handleRegisterMaterialButton(interaction) {
   if (!isChefia(interaction.member)) {
-    return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('registar material em operações'), flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('registar material em operações'), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const openOps = await operationRepo.findOpen();
   if (!openOps.length) {
-    return safeReply(interaction, { content: 'Sem operações abertas.', flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: 'Sem operações abertas.', flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const options = openOps.map(op => ({
     label: `#${op.id} — ${op.operation_type}`,
+    description: op.spot || 'Sem spot',
     value: String(op.id),
   }));
 
@@ -232,79 +325,13 @@ async function handleRegisterMaterialButton(interaction) {
     new StringSelectMenuBuilder()
       .setCustomId('op::select_material_op')
       .setPlaceholder('Seleciona a operação')
+      .setMinValues(1).setMaxValues(1)
       .addOptions(options.slice(0, 25))
   );
 
   await safeReply(interaction, { content: 'Material para que operação?', components: [row], flags: MessageFlags.Ephemeral });
 }
 
-// ── Adicionar participante: seleciona operação → modal com user ID ──────────
-async function handleAddParticipantSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
-  const opId = parseInt(interaction.values[0]);
-  pendingOpContext.set(interaction.user.id, { opId, action: 'add_participant' });
-
-  const modal = new ModalBuilder()
-    .setCustomId('op::modal_add_participant')
-    .setTitle(`Adicionar Participante — Op #${opId}`)
-    .addComponents(
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('user_id').setLabel('ID Discord do participante')
-          .setStyle(TextInputStyle.Short).setPlaceholder('Ex: 123456789012345678').setRequired(true).setMaxLength(20)
-      ),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('role_in_op').setLabel('Papel na saída (membro/líder/suporte)')
-          .setStyle(TextInputStyle.Short).setPlaceholder('membro').setRequired(false).setMaxLength(30)
-      ),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('received_org').setLabel('Recebeu material da org? (sim/não)')
-          .setStyle(TextInputStyle.Short).setPlaceholder('não').setRequired(false).setMaxLength(5)
-      ),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('notes').setLabel('Observações (opcional)')
-          .setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(300)
-      ),
-    );
-
-  await safeShowModal(interaction, modal);
-}
-
-async function handleAddParticipantModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-  const ctx = pendingOpContext.get(interaction.user.id);
-  if (!ctx || ctx.action !== 'add_participant') {
-    return interaction.editReply({ content: 'Sessão expirada. Tenta novamente.' });
-  }
-
-  const userId = getModalField(interaction, 'user_id').trim();
-  const roleInOp = getModalField(interaction, 'role_in_op') || 'membro';
-  const receivedOrg = getModalField(interaction, 'received_org').toLowerCase().startsWith('s');
-  const notes = getModalField(interaction, 'notes');
-
-  if (!userId || !/^\d{15,20}$/.test(userId)) {
-    return interaction.editReply({ content: 'ID Discord inválido. Deve ser um número de 15-20 dígitos.' });
-  }
-
-  try {
-    await opEngine.addParticipant(ctx.opId, userId, {
-      roleInOp,
-      broughtOwn: false,
-      receivedOrg,
-      notes,
-    }, interaction.user.id);
-
-    pendingOpContext.delete(interaction.user.id);
-
-    const embed = successEmbed('Participante Adicionado', `<@${userId}> adicionado à Operação **#${ctx.opId}**\nPapel: ${roleInOp}`);
-    return interaction.editReply({ embeds: [embed] });
-  } catch (e) {
-    return interaction.editReply({ content: `Erro: ${e.message}` });
-  }
-}
-
-// ── Registar material em operação: seleciona op → seleciona direção → seleciona item → modal quantidade ──
 async function handleMaterialOpSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const opId = parseInt(interaction.values[0]);
@@ -321,10 +348,14 @@ async function handleMaterialOpSelect(interaction) {
     new StringSelectMenuBuilder()
       .setCustomId('op::select_material_direction')
       .setPlaceholder('Tipo de movimento')
+      .setMinValues(1).setMaxValues(1)
       .addOptions(directionOptions)
   );
 
-  await safeReply(interaction, { content: `Operação **#${opId}** — que tipo de registo de material?`, components: [row], flags: MessageFlags.Ephemeral });
+  await safeUpdate(interaction, {
+    content: `Operação **#${opId}** — que tipo de registo de material?`,
+    components: [row],
+  });
 }
 
 async function handleMaterialDirectionSelect(interaction) {
@@ -332,14 +363,17 @@ async function handleMaterialDirectionSelect(interaction) {
   const direction = interaction.values[0];
   const ctx = pendingOpContext.get(interaction.user.id);
   if (!ctx || ctx.action !== 'material_op') {
-    return safeReply(interaction, { content: 'Sessão expirada.', flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: 'Sessão expirada.', flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   ctx.direction = direction;
   pendingOpContext.set(interaction.user.id, ctx);
 
   const menu = await buildItemSelectMenu('op::select_material_item', 'Seleciona o material');
-  await safeReply(interaction, { content: `Que material foi **${direction}**?`, components: [menu], flags: MessageFlags.Ephemeral });
+  await safeUpdate(interaction, {
+    content: `Que material foi **${direction}**?`,
+    components: [menu],
+  });
 }
 
 async function handleMaterialItemSelect(interaction) {
@@ -347,7 +381,7 @@ async function handleMaterialItemSelect(interaction) {
   const itemId = parseInt(interaction.values[0]);
   const ctx = pendingOpContext.get(interaction.user.id);
   if (!ctx || ctx.action !== 'material_op') {
-    return safeReply(interaction, { content: 'Sessão expirada.', flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, { content: 'Sessão expirada.', flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   ctx.itemId = itemId;
@@ -362,7 +396,7 @@ async function handleMaterialItemSelect(interaction) {
     .addComponents(
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('quantity').setLabel('Quantidade')
-          .setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(10)
+          .setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(10).setPlaceholder('Ex: 10')
       ),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('notes').setLabel('Observações (opcional)')
@@ -379,7 +413,7 @@ async function handleMaterialQtyModal(interaction) {
 
   const ctx = pendingOpContext.get(interaction.user.id);
   if (!ctx || ctx.action !== 'material_op') {
-    return interaction.editReply({ content: 'Sessão expirada.' });
+    return safeReply(interaction, { content: 'Sessão expirada.' }, { dismissible: true });
   }
 
   const quantityStr = getModalField(interaction, 'quantity');
@@ -387,7 +421,7 @@ async function handleMaterialQtyModal(interaction) {
   const quantity = parseInt(quantityStr);
 
   if (isNaN(quantity) || quantity <= 0) {
-    return interaction.editReply({ content: MESSAGES.INVALID_QUANTITY() });
+    return safeReply(interaction, { content: MESSAGES.INVALID_QUANTITY() }, { dismissible: true });
   }
 
   try {
@@ -404,9 +438,9 @@ async function handleMaterialQtyModal(interaction) {
     const embed = successEmbed('Material Registado',
       `**${quantity}x** ${item?.name || 'Item'} — ${dirLabels[ctx.direction] || ctx.direction}\nOperação **#${ctx.opId}**${notes ? `\nNotas: ${notes}` : ''}`
     );
-    return interaction.editReply({ embeds: [embed] });
+    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
-    return interaction.editReply({ content: `Erro: ${e.message}` });
+    return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
   }
 }
 
@@ -419,7 +453,7 @@ module.exports = {
   handleViewOperationsButton,
   handleAddParticipantButton,
   handleAddParticipantSelect,
-  handleAddParticipantModal,
+  handleParticipantUsersSelect,
   handleRegisterMaterialButton,
   handleMaterialOpSelect,
   handleMaterialDirectionSelect,

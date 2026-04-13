@@ -1,59 +1,95 @@
 'use strict';
-const { describe, it, mock } = require('node:test');
+/**
+ * Testes de permissões — não tocam em DB nem Discord.
+ * Sobrepõe valores no CONFIG em memória antes de chamar o engine.
+ */
+
+const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-// We need to mock config before requiring the permission engine
-mock.module('../src/config', {
-  namedExports: {},
-  defaultExport: {
-    CHEFIA_ROLE_ID: 'role_chefia',
-    CHEFE_MORADORES_ROLE_ID: 'role_chefe_mor',
-    OFICIAL_ROLE_ID: 'role_oficial',
-    MORADOR_ROLE_ID: 'role_morador',
-    BOT_COLOR: 0xE74C3C,
-    BOT_DISPLAY_NAME: 'Real Gangsta',
-  }
+// Env mínimo para CONFIG carregar sem throw
+process.env.DISCORD_BOT_TOKEN ||= 'test-token';
+process.env.DISCORD_GUILD_ID ||= 'test-guild';
+
+const CONFIG = require('../src/config');
+const {
+  getMemberRoles, getExactRole, getMoradorTier,
+  isCommand, isSupervisor, isChefeMoradores, isMorador, isOficial,
+  canManageStructure, canManageGuetto, canRegisterMaterial,
+} = require('../src/permissions/permissionEngine');
+
+// Override role IDs com valores de teste
+CONFIG.MANDA_CHUVA_ROLE_ID = 'R_MC';
+CONFIG.KINGPIN_ROLE_ID = 'R_KP';
+CONFIG.OG_ROLE_ID = 'R_OG';
+CONFIG.REAL_GANGSTER_ROLE_ID = 'R_RG';
+CONFIG.PATRAO_DI_ZONA_ROLE_ID = 'R_PZ';
+CONFIG.YOUNG_BLOOD_ROLE_ID = 'R_YB';
+CONFIG.O_GUNAO_ROLE_ID = 'R_GUN';
+CONFIG.GANGSTER_FODIDO_ROLE_ID = 'R_GF';
+CONFIG.MORADORES_BASE_ROLE_ID = 'R_MOR_BASE';
+
+function fakeMember(...roleIds) {
+  return { roles: { cache: new Map(roleIds.map(id => [id, { id }])) } };
+}
+
+describe('permissionEngine — predicados', () => {
+  it('Manda-Chuva é command + oficial + chefe_moradores', () => {
+    const m = fakeMember('R_MC');
+    assert.equal(isCommand(m), true);
+    assert.equal(isOficial(m), true);
+    assert.equal(isChefeMoradores(m), true);
+    assert.equal(isMorador(m), false);
+  });
+  it('OG é supervisor + oficial mas não command', () => {
+    const m = fakeMember('R_OG');
+    assert.equal(isCommand(m), false);
+    assert.equal(isSupervisor(m), true);
+    assert.equal(isOficial(m), true);
+  });
+  it('Patrão di Zona é chefe_moradores', () => {
+    const m = fakeMember('R_PZ');
+    assert.equal(isChefeMoradores(m), true);
+    assert.equal(isCommand(m), false);
+    assert.equal(isSupervisor(m), false);
+  });
+  it('Young Blood é morador tier 1', () => {
+    const m = fakeMember('R_YB', 'R_MOR_BASE');
+    assert.equal(isMorador(m), true);
+    assert.equal(getMoradorTier(m), 'young_blood');
+    assert.equal(getExactRole(m), 'young_blood');
+  });
+  it('Gangster Fodido retorna tier correcto', () => {
+    const m = fakeMember('R_GF', 'R_MOR_BASE');
+    assert.equal(getMoradorTier(m), 'gangster_fodido');
+    assert.equal(getExactRole(m), 'gangster_fodido');
+  });
 });
 
-describe('Permissions', () => {
-  function mockMember(roleIds) {
-    return {
-      roles: {
-        cache: {
-          map: (fn) => roleIds.map((id, i) => fn({ id }, i)),
-          has: (id) => roleIds.includes(id),
-        }
-      }
-    };
-  }
-
-  it('should identify chefia role', () => {
-    const { isChefia } = require('../src/permissions/permissionEngine');
-
-    const member = mockMember(['role_chefia']);
-    assert.ok(isChefia(member));
+describe('permissionEngine — capabilities', () => {
+  it('canManageStructure apenas para Command', () => {
+    assert.equal(canManageStructure(fakeMember('R_MC')), true);
+    assert.equal(canManageStructure(fakeMember('R_OG')), false);
+    assert.equal(canManageStructure(fakeMember('R_PZ')), false);
   });
-
-  it('should not identify morador as chefia', () => {
-    const { isChefia } = require('../src/permissions/permissionEngine');
-
-    const member = mockMember(['role_morador']);
-    assert.ok(!isChefia(member));
+  it('canManageGuetto inclui Patrão di Zona, supervisores e comando', () => {
+    assert.equal(canManageGuetto(fakeMember('R_PZ')), true);
+    assert.equal(canManageGuetto(fakeMember('R_OG')), true);
+    assert.equal(canManageGuetto(fakeMember('R_MC')), true);
+    assert.equal(canManageGuetto(fakeMember('R_YB', 'R_MOR_BASE')), false);
   });
-
-  it('should allow chefe moradores to view all members', () => {
-    const { canViewAllMembers } = require('../src/permissions/permissionEngine');
-
-    const member = mockMember(['role_chefe_mor']);
-    assert.ok(canViewAllMembers(member));
+  it('canRegisterMaterial é true para qualquer membro com role core', () => {
+    assert.equal(canRegisterMaterial(fakeMember('R_YB')), true);
+    assert.equal(canRegisterMaterial(fakeMember('R_MC')), true);
+    assert.equal(canRegisterMaterial(fakeMember()), false);
   });
+});
 
-  it('should get highest role correctly', () => {
-    const { getHighestRole } = require('../src/permissions/permissionEngine');
-
-    assert.equal(getHighestRole(mockMember(['role_chefia', 'role_oficial'])), 'chefia');
-    assert.equal(getHighestRole(mockMember(['role_oficial', 'role_morador'])), 'oficial');
-    assert.equal(getHighestRole(mockMember(['role_morador'])), 'morador');
-    assert.equal(getHighestRole(mockMember([])), null);
+describe('permissionEngine — getMemberRoles', () => {
+  it('resolve múltiplos grupos em simultâneo', () => {
+    const m = fakeMember('R_OG', 'R_GF', 'R_MOR_BASE');
+    const roles = getMemberRoles(m);
+    assert.equal(roles.has('supervisor'), true);
+    assert.equal(roles.has('morador'), true);
   });
 });
