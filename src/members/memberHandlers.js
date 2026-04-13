@@ -74,6 +74,26 @@ async function handleMemberTotalsButton(interaction) {
     lines.push(`${label}: **${totals[type] || 0}**`);
   }
 
+  // Progresso de promoção
+  const { getPromotionProgress, formatTierName } = require('./autoPromotionEngine');
+  const progress = await getPromotionProgress(interaction.user.id).catch(() => null);
+  if (progress) {
+    lines.push('');
+    lines.push(`\u2500\u2500 **Progresso** \u2500\u2500`);
+    lines.push(`Rank atual: **${progress.currentTierName}**`);
+    lines.push(`Material total: **${progress.totalValue.toLocaleString('pt-PT')}\u20AC**`);
+    if (!progress.maxedOut) {
+      const filled = Math.round(parseFloat(progress.progress) / 10);
+      const empty = 10 - filled;
+      const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(empty);
+      lines.push(`Próximo: **${progress.nextTierName}** (${progress.threshold.toLocaleString('pt-PT')}\u20AC)`);
+      lines.push(`${bar} **${progress.progress}%**`);
+      lines.push(`Falta: **${progress.remaining.toLocaleString('pt-PT')}\u20AC**`);
+    } else {
+      lines.push('Nível máximo automático atingido!');
+    }
+  }
+
   const embed = brandEmbed()
     .setTitle('Teus Totais')
     .setDescription(lines.join('\n'));

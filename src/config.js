@@ -31,11 +31,40 @@ const CONFIG = {
   // ── Database ──────────────────────────────────────────────────────────────
   DATABASE_URL: req('DATABASE_URL'),
 
-  // ── Role IDs ──────────────────────────────────────────────────────────────
-  CHEFIA_ROLE_ID: optId('CHEFIA_ROLE_ID'),
-  CHEFE_MORADORES_ROLE_ID: optId('CHEFE_MORADORES_ROLE_ID'),
-  OFICIAL_ROLE_ID: optId('OFICIAL_ROLE_ID'),
-  MORADOR_ROLE_ID: optId('MORADOR_ROLE_ID'),
+  // ── Role IDs — Hierarquia completa ────────────────────────────────────────
+  // Chefia
+  MANDA_CHUVA_ROLE_ID: optId('MANDA_CHUVA_ROLE_ID'),
+  KINGPIN_ROLE_ID: optId('KINGPIN_ROLE_ID'),
+  // Oficiais
+  OG_ROLE_ID: optId('OG_ROLE_ID'),
+  REAL_GANGSTER_ROLE_ID: optId('REAL_GANGSTER_ROLE_ID'),
+  // Chefe de Moradores
+  PATRAO_DI_ZONA_ROLE_ID: optId('PATRAO_DI_ZONA_ROLE_ID'),
+  // Moradores (3 níveis)
+  GANGSTER_FODIDO_ROLE_ID: optId('GANGSTER_FODIDO_ROLE_ID'),
+  O_GUNAO_ROLE_ID: optId('O_GUNAO_ROLE_ID'),
+  YOUNG_BLOOD_ROLE_ID: optId('YOUNG_BLOOD_ROLE_ID'),
+
+  // ── Aliases para o permission engine (agrupados) ──────────────────────────
+  get CHEFIA_ROLE_IDS() {
+    return [this.MANDA_CHUVA_ROLE_ID, this.KINGPIN_ROLE_ID].filter(Boolean);
+  },
+  get OFICIAL_ROLE_IDS() {
+    return [this.OG_ROLE_ID, this.REAL_GANGSTER_ROLE_ID].filter(Boolean);
+  },
+  get CHEFE_MORADORES_ROLE_IDS() {
+    return [this.PATRAO_DI_ZONA_ROLE_ID].filter(Boolean);
+  },
+  get MORADOR_ROLE_IDS() {
+    return [this.GANGSTER_FODIDO_ROLE_ID, this.O_GUNAO_ROLE_ID, this.YOUNG_BLOOD_ROLE_ID].filter(Boolean);
+  },
+  get ALL_MORADOR_TIER_IDS() {
+    return [this.YOUNG_BLOOD_ROLE_ID, this.O_GUNAO_ROLE_ID, this.GANGSTER_FODIDO_ROLE_ID].filter(Boolean);
+  },
+
+  // ── Promoção automática por material (valor em €) ─────────────────────────
+  PROMO_YOUNG_BLOOD_TO_GUNAO: Number(process.env.PROMO_YOUNG_BLOOD_TO_GUNAO || 25000),
+  PROMO_GUNAO_TO_GANGSTER_FODIDO: Number(process.env.PROMO_GUNAO_TO_GANGSTER_FODIDO || 50000),
 
   // ── Category IDs ──────────────────────────────────────────────────────────
   MORADOR_TOPICOS_CATEGORY_ID: optId('MORADOR_TOPICOS_CATEGORY_ID'),

@@ -1,25 +1,39 @@
 'use strict';
 const CONFIG = require('../config');
 
-const ROLE_HIERARCHY = ['chefia', 'chefe_moradores', 'oficial', 'morador'];
+// ── Hierarquia ──────────────────────────────────────────────────────────────
+// Manda-Chuva > Kingpin > OG > Real Gangster > Patrão di Zona > Gangster Fodido > O Gunão > Young Blood
 
 function getMemberRoles(member) {
+  const roleIds = new Set(member.roles?.cache?.map(r => r.id) || []);
   const roles = new Set();
-  const roleIds = member.roles?.cache?.map(r => r.id) || [];
 
-  if (roleIds.includes(CONFIG.CHEFIA_ROLE_ID)) roles.add('chefia');
-  if (roleIds.includes(CONFIG.CHEFE_MORADORES_ROLE_ID)) roles.add('chefe_moradores');
-  if (roleIds.includes(CONFIG.OFICIAL_ROLE_ID)) roles.add('oficial');
-  if (roleIds.includes(CONFIG.MORADOR_ROLE_ID)) roles.add('morador');
+  if (CONFIG.CHEFIA_ROLE_IDS.some(id => roleIds.has(id))) roles.add('chefia');
+  if (CONFIG.OFICIAL_ROLE_IDS.some(id => roleIds.has(id))) roles.add('oficial');
+  if (CONFIG.CHEFE_MORADORES_ROLE_IDS.some(id => roleIds.has(id))) roles.add('chefe_moradores');
+  if (CONFIG.MORADOR_ROLE_IDS.some(id => roleIds.has(id))) roles.add('morador');
 
   return roles;
 }
 
-function getHighestRole(member) {
-  const roles = getMemberRoles(member);
-  for (const role of ROLE_HIERARCHY) {
-    if (roles.has(role)) return role;
-  }
+function getMoradorTier(member) {
+  const roleIds = new Set(member.roles?.cache?.map(r => r.id) || []);
+  if (roleIds.has(CONFIG.GANGSTER_FODIDO_ROLE_ID)) return 'gangster_fodido';
+  if (roleIds.has(CONFIG.O_GUNAO_ROLE_ID)) return 'o_gunao';
+  if (roleIds.has(CONFIG.YOUNG_BLOOD_ROLE_ID)) return 'young_blood';
+  return null;
+}
+
+function getExactRole(member) {
+  const roleIds = new Set(member.roles?.cache?.map(r => r.id) || []);
+  if (roleIds.has(CONFIG.MANDA_CHUVA_ROLE_ID)) return 'manda_chuva';
+  if (roleIds.has(CONFIG.KINGPIN_ROLE_ID)) return 'kingpin';
+  if (roleIds.has(CONFIG.OG_ROLE_ID)) return 'og';
+  if (roleIds.has(CONFIG.REAL_GANGSTER_ROLE_ID)) return 'real_gangster';
+  if (roleIds.has(CONFIG.PATRAO_DI_ZONA_ROLE_ID)) return 'patrao_di_zona';
+  if (roleIds.has(CONFIG.GANGSTER_FODIDO_ROLE_ID)) return 'gangster_fodido';
+  if (roleIds.has(CONFIG.O_GUNAO_ROLE_ID)) return 'o_gunao';
+  if (roleIds.has(CONFIG.YOUNG_BLOOD_ROLE_ID)) return 'young_blood';
   return null;
 }
 
@@ -58,14 +72,10 @@ function canRegisterMaterial(member) {
   return roles.size > 0;
 }
 
-function requireRole(member, ...allowedRoles) {
-  const roles = getMemberRoles(member);
-  return allowedRoles.some(r => roles.has(r));
-}
-
 module.exports = {
   getMemberRoles,
-  getHighestRole,
+  getMoradorTier,
+  getExactRole,
   isChefia,
   isChefeMoradores,
   isOficial,
@@ -74,6 +84,4 @@ module.exports = {
   canManageOperations,
   canViewAllMembers,
   canRegisterMaterial,
-  requireRole,
-  ROLE_HIERARCHY,
 };

@@ -238,6 +238,14 @@ const MIGRATIONS = [
       );
       CREATE UNIQUE INDEX IF NOT EXISTS idx_idemp_dedupe ON idempotency_ops(dedupe_key) WHERE status IN ('running', 'completed');
     `
+  },
+  {
+    id: 2,
+    name: 'add_member_tier',
+    up: `
+      ALTER TABLE members ADD COLUMN IF NOT EXISTS tier TEXT DEFAULT 'young_blood';
+      CREATE INDEX IF NOT EXISTS idx_members_tier ON members(tier);
+    `
   }
 ];
 

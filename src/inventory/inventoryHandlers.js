@@ -146,12 +146,12 @@ async function handleQuantityModal(interaction) {
     pendingItemSelections.delete(interaction.user.id);
 
     const isVenda = movementType === 'venda_morador';
-    const totalValue = isVenda ? quantity * (pending.itemPrice || 0) : 0;
+    const movValue = quantity * (pending.itemPrice || 0);
 
     let description = `**${quantity}x** ${pending.itemName}`;
-    if (isVenda && totalValue > 0) {
+    if (movValue > 0) {
       description += `\nPreço unitário: **${pending.itemPrice}\u20AC**`;
-      description += `\nTotal: **${totalValue.toLocaleString('pt-PT')}\u20AC**`;
+      description += `\nValor: **${movValue.toLocaleString('pt-PT')}\u20AC**`;
     }
     description += `\nRegistado por <@${interaction.user.id}>`;
     if (notes) description += `\nNotas: ${notes}`;
@@ -159,10 +159,36 @@ async function handleQuantityModal(interaction) {
     const typeLabel = isVenda ? 'Venda Registada' : 'Entrega Registada';
     const embed = successEmbed(typeLabel, description);
 
+    // ── Auto-promoção: verificar se atingiu meta ──────────────────────────
+    const { checkAndPromote, getPromotionProgress } = require('../members/autoPromotionEngine');
+    const guild = interaction.guild;
+    const client = interaction.client;
+    const promoResult = await checkAndPromote(interaction.user.id, guild, client).catch(() => null);
+
+    if (promoResult?.promoted) {
+      const { formatTierName } = require('../members/autoPromotionEngine');
+      description += `\n\n\uD83C\uDF1F **PROMOÇÃO AUTOMÁTICA!**\nSubiste para **${formatTierName(promoResult.to)}**!`;
+      embed.setDescription(description);
+    } else {
+      // Mostrar progresso para próxima promoção
+      const progress = await getPromotionProgress(interaction.user.id).catch(() => null);
+      if (progress && !progress.maxedOut && progress.threshold) {
+        const bar = buildProgressBar(parseFloat(progress.progress));
+        description += `\n\n${bar} **${progress.progress}%** para ${progress.nextTierName}\n(${progress.totalValue.toLocaleString('pt-PT')}\u20AC / ${progress.threshold.toLocaleString('pt-PT')}\u20AC)`;
+        embed.setDescription(description);
+      }
+    }
+
     return interaction.editReply({ embeds: [embed] });
   } catch (e) {
     return interaction.editReply({ content: `Erro: ${e.message}` });
   }
+}
+
+function buildProgressBar(percent) {
+  const filled = Math.round(percent / 10);
+  const empty = 10 - filled;
+  return '\u2588'.repeat(filled) + '\u2591'.repeat(empty);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
