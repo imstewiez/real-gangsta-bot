@@ -85,6 +85,12 @@ const commands = [
   new SlashCommandBuilder()
     .setName('rg-version')
     .setDescription('Mostra versão/identidade desta instância do bot'),
+
+  new SlashCommandBuilder()
+    .setName('rg-revert-residents')
+    .setDescription('Reverte canais de moradores ao nome anterior aos renames do bot (via audit log)')
+    .addStringOption(opt => opt.setName('modo').setDescription('dry-run (default) ou apply').setRequired(false)
+      .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
 ];
 
 module.exports = { commands };

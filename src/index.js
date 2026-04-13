@@ -350,6 +350,72 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return handleLeaderboardButton(interaction);
       }
 
+      if (cmd === 'rg-revert-residents') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('reverter canais'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const modo = interaction.options.getString('modo') || 'dry-run';
+        const apply = modo === 'apply';
+        const guild = interaction.guild;
+        const guettoId = CONFIG.MORADOR_TOPICOS_CATEGORY_ID;
+        const { AuditLogEvent } = require('discord.js');
+
+        // Pagina audit log até encontrar todos os ChannelUpdate feitos por nós
+        const ourBotId = client.user.id;
+        const earliest = new Map(); // channelId → { oldName, ts }
+        let before;
+        for (let page = 0; page < 25; page++) {
+          const result = await guild.fetchAuditLogs({ type: AuditLogEvent.ChannelUpdate, limit: 100, before }).catch(() => null);
+          if (!result || result.entries.size === 0) break;
+          for (const entry of result.entries.values()) {
+            if (entry.executor?.id !== ourBotId) continue;
+            const nameChange = entry.changes?.find(c => c.key === 'name');
+            if (!nameChange) continue;
+            const ts = entry.createdTimestamp;
+            const existing = earliest.get(entry.targetId);
+            if (!existing || ts < existing.ts) {
+              earliest.set(entry.targetId, { oldName: nameChange.old, ts });
+            }
+          }
+          const lastEntry = [...result.entries.values()].pop();
+          before = lastEntry?.id;
+          if (result.entries.size < 100) break;
+        }
+
+        const reverts = [];
+        for (const [chId, { oldName }] of earliest) {
+          const ch = guild.channels.cache.get(chId);
+          if (!ch) continue;
+          if (ch.parentId !== guettoId) continue;
+          if (ch.name === oldName) continue;
+          reverts.push({ chId, current: ch.name, original: oldName });
+        }
+
+        const lines = [`**Modo:** \`${apply ? 'APPLY' : 'DRY-RUN'}\``, `**Audit log entries por nós:** ${earliest.size}`, `**Canais a reverter:** ${reverts.length}`, ''];
+        for (const r of reverts.slice(0, 25)) {
+          lines.push(`• \`${r.current.slice(0, 35)}…\` → \`${r.original}\``);
+        }
+        if (reverts.length > 25) lines.push(`_… e mais ${reverts.length - 25}._`);
+
+        if (apply && reverts.length > 0) {
+          let done = 0; let failed = 0;
+          for (const r of reverts) {
+            try {
+              const ch = guild.channels.cache.get(r.chId);
+              await ch.setName(r.original);
+              done++;
+              await new Promise(rr => setTimeout(rr, 400));
+            } catch (e) {
+              failed++;
+              warn(`[REVERT] ${r.chId}: ${e.message}`);
+            }
+          }
+          lines.push('', `**Revertidos:** ${done}  •  **Falhas:** ${failed}`);
+        }
+
+        if (!apply) lines.push('', '> _Dry-run — usa `modo:apply` para reverter._');
+        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
+      }
+
       if (cmd === 'rg-version') {
         const inst = getCurrentInstance();
         if (!inst) {
