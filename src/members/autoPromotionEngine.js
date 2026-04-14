@@ -128,7 +128,7 @@ async function checkAndPromote(discordId, guild, client) {
       entityType: 'member',
       entityId: discordId,
       actorId: 'system',
-      actorName: 'Real Gangsta Bot',
+      actorName: CONFIG.BOT_DISPLAY_NAME,
       beforeState: { tier: promotion.from, totalValue },
       afterState: { tier: promotion.to, threshold },
       context: `Material acumulado: ${totalValue.toLocaleString('pt-PT')}€ (meta: ${threshold.toLocaleString('pt-PT')}€)`,

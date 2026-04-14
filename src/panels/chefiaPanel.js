@@ -5,7 +5,7 @@ const CONFIG = require('../config');
 function buildChefiaPanel() {
   const embed = new EmbedBuilder()
     .setColor(CONFIG.BOT_COLOR)
-    .setTitle('👑 Comando — Real Gangsta')
+    .setTitle('👑 Centro de Comando')
     .setDescription(
       'Centro do movimento. Aqui manda-se a rua.\n' +
       '⚔️ Operações · 📦 Inventário · 📻 Rádio · 📍 Disponibilidade · 📌 Stickys\n\n' +

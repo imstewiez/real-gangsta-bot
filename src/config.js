@@ -178,9 +178,13 @@ const CONFIG = {
   AVAILABILITY_AUTO_PUBLISH_HOUR: Number(process.env.AVAILABILITY_AUTO_PUBLISH_HOUR || 0),
 
   // ── Branding ──────────────────────────────────────────────────────────────
-  // BOT_DISPLAY_NAME é o nome que assina todos os embeds e mensagens do bot.
-  // Default: "redwood" (in-game persona). Podes override via Railway.
-  BOT_DISPLAY_NAME: process.env.BOT_DISPLAY_NAME || 'redwood',
+  // BOT_INTERNAL_NAME  — nome técnico, aparece em logs/metrics/health/version.
+  //                      Default: "Bot di Zona".
+  // BOT_DISPLAY_NAME   — assinatura in-character que aparece em embeds e
+  //                      mensagens ao user. Default: "Firma RedWood".
+  // Podes override qualquer um via Railway.
+  BOT_INTERNAL_NAME: process.env.BOT_INTERNAL_NAME || 'Bot di Zona',
+  BOT_DISPLAY_NAME: process.env.BOT_DISPLAY_NAME || 'Firma RedWood',
   BOT_LOGO_URL: process.env.BOT_LOGO_URL || '',
   BOT_COLOR: parseInt(process.env.BOT_COLOR || 'E74C3C', 16),
 

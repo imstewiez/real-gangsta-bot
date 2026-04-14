@@ -44,7 +44,8 @@ function _snapshotPoolStats() {
 function toPrometheusText() {
   _snapshotPoolStats();
   const lines = [];
-  lines.push(`# Real Gangsta \u2014 metrics snapshot ${new Date().toISOString()}\n`);
+  const CONFIG = require('../config');
+  lines.push(`# ${CONFIG.BOT_INTERNAL_NAME} \u2014 metrics snapshot ${new Date().toISOString()}\n`);
 
   const mem = process.memoryUsage();
   lines.push('# TYPE process_uptime_seconds gauge');

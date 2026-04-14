@@ -116,7 +116,7 @@ const client = new Client({
 
 // ── Boot ────────────────────────────────────────────────────────────────────
 async function boot() {
-  log(`[BOOT] Real Gangsta a iniciar...`);
+  log(`[BOOT] ${CONFIG.BOT_INTERNAL_NAME} a iniciar...`);
 
   // Limpa sessões velhas e inicia rotação periódica do log principal.
   startLogMaintenance();
@@ -192,7 +192,7 @@ client.once(Events.ClientReady, async () => {
     });
   });
 
-  log('[READY] Real Gangsta operacional.');
+  log(`[READY] ${CONFIG.BOT_INTERNAL_NAME} operacional.`);
 });
 
 // ── Sticky messages — listener para modo `repost` ───────────────────────────

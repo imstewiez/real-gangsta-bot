@@ -17,7 +17,7 @@ const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
 function buildEntradaPanel() {
   const embed = new EmbedBuilder()
     .setColor(CONFIG.BOT_COLOR)
-    .setTitle('🔥 Bem-vindo ao bairro — Real Gangsta')
+    .setTitle('🔥 Bem-vindo ao bairro')
     .setDescription(
       'Queres entrar para o GUETTO? Faz o pedido aqui.\n\n' +
       'Clica no botão, mete o **nome in-game** e a **alcunha**.\n' +

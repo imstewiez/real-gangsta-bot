@@ -157,7 +157,7 @@ function buildEmbed(states) {
   };
 
   return brandEmbed()
-    .setTitle('📻 Rádios — Real Gangsta')
+    .setTitle('📻 Frequências')
     .setDescription([
       fmt(principal, TYPE_META.principal),
       '',
