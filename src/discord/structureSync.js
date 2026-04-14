@@ -44,12 +44,37 @@ function permBits(names = []) {
 
 function buildOverwrites(guild, permConfig) {
   const overwrites = [];
-  if (permConfig.denyEveryone) {
+  const everyoneId = guild.roles.everyone.id;
+
+  // @everyone: deny E allow podem coexistir (ex.: boas-vindas permite View mas
+  // nega SendMessages).
+  if (permConfig.denyEveryone || permConfig.allowEveryone) {
     overwrites.push({
-      id: guild.roles.everyone.id,
-      deny: permBits(permConfig.denyEveryone),
+      id: everyoneId,
+      deny: permBits(permConfig.denyEveryone || []),
+      allow: permBits(permConfig.allowEveryone || []),
     });
   }
+
+  // Denies específicos por role (útil para tirar ViewChannel a moradores em
+  // canais que a categoria partilha com eles — ex.: painel-chefe-moradores
+  // em GUETTO).
+  for (const rule of permConfig.deny || []) {
+    const roleIds = new Set();
+    for (const src of rule.roleSources) {
+      for (const id of rolesFor(src)) roleIds.add(id);
+    }
+    for (const roleId of roleIds) {
+      const existing = overwrites.find(o => o.id === roleId);
+      if (existing) {
+        existing.deny = [...(existing.deny || []), ...permBits(rule.perms)];
+      } else {
+        overwrites.push({ id: roleId, deny: permBits(rule.perms) });
+      }
+    }
+  }
+
+  // Allows por role.
   for (const rule of permConfig.allow || []) {
     const roleIds = new Set();
     for (const src of rule.roleSources) {
@@ -73,6 +98,87 @@ function buildOverwrites(guild, permConfig) {
  * @param opts {{ apply?: boolean }}
  * @returns {Promise<SyncReport>}
  */
+/**
+ * Corre APENAS perms + renames seguros dos painéis (não toca em categorias,
+ * moves, ou canais fora da lista conhecida de painéis). Para uso com
+ * STRUCTURE_SYNC_LOCKED=true ou quando o utilizador não quer correr o sync
+ * completo e quer apenas apertar permissões.
+ */
+async function runPermsOnly(guild, opts = {}) {
+  const apply = Boolean(opts.apply);
+  const report = { mode: apply ? 'apply' : 'dry-run', actions: [], errors: [], counts: {} };
+  function act(type, detail) { report.actions.push({ type, detail }); report.counts[type] = (report.counts[type] || 0) + 1; }
+  function errored(stage, e) { report.errors.push({ stage, message: e?.message || String(e) }); warn(`[PERMS-SYNC] ${stage}: ${e?.message || e}`); }
+
+  await guild.channels.fetch().catch(() => null);
+  await guild.roles.fetch().catch(() => null);
+
+  // A. Renomes seguros dos painéis (apenas canais em CHANNELS_TO_CREATE com
+  //    reason incluindo "Painel" ou "Boas-vindas" + renameFrom definido).
+  //    Só renomeamos se o canal antigo existir NA CATEGORIA certa.
+  const panelChannelDefs = CHANNELS_TO_CREATE.filter(d =>
+    d.reason && (d.reason.toLowerCase().includes('painel') || d.reason.toLowerCase().includes('boas-vindas'))
+  );
+  for (const def of panelChannelDefs) {
+    const target = CATEGORY_BY_KEY[def.categoryKey];
+    if (!target) continue;
+    // Já existe com nome novo?
+    const alreadyCorrect = guild.channels.cache.find(c => c.parentId === target.id && c.name === def.name);
+    if (alreadyCorrect) continue;
+    // Procura pelos renameFrom
+    for (const oldName of def.renameFrom || []) {
+      const found = guild.channels.cache.find(c => c.parentId === target.id && c.name === oldName);
+      if (found) {
+        act('RENAME_PANEL_CHANNEL', { from: oldName, to: def.name });
+        if (apply) {
+          try { await found.setName(def.name); await new Promise(r => setTimeout(r, 350)); }
+          catch (e) { errored(`RENAME_PANEL:${def.name}`, e); }
+        }
+        break;
+      }
+    }
+  }
+
+  // B. Category permissions (Phase 5)
+  for (const [key, permCfg] of Object.entries(CATEGORY_PERMS)) {
+    const tpl = CATEGORY_BY_KEY[key];
+    const cat = tpl && guild.channels.cache.get(tpl.id);
+    if (!cat) continue;
+    const overwrites = buildOverwrites(guild, permCfg);
+    act('PERM_CATEGORY', { category: tpl.name, overwrites: overwrites.length });
+    if (apply) {
+      try { await cat.permissionOverwrites.set(overwrites); await new Promise(r => setTimeout(r, 400)); }
+      catch (e) { errored(`PERM_CATEGORY:${tpl.name}`, e); }
+    }
+  }
+
+  // C. Channel-specific overrides (by ID) — Phase 6
+  for (const [chId, permCfg] of Object.entries(CHANNEL_PERM_OVERRIDES)) {
+    const ch = guild.channels.cache.get(chId);
+    if (!ch) continue;
+    const overwrites = buildOverwrites(guild, permCfg);
+    act('PERM_CHANNEL', { channel: ch.name, reason: permCfg.reason });
+    if (apply) {
+      try { await ch.permissionOverwrites.set(overwrites); }
+      catch (e) { errored(`PERM_CHANNEL:${ch.name}`, e); }
+    }
+  }
+
+  // D. Channel-specific overrides (by name) — Phase 6b
+  for (const [chName, permCfg] of Object.entries(CHANNEL_PERM_OVERRIDES_BY_NAME || {})) {
+    const ch = guild.channels.cache.find(c => c.name === chName);
+    if (!ch) { act('SKIP_PERM_BY_NAME_MISSING', { name: chName }); continue; }
+    const overwrites = buildOverwrites(guild, permCfg);
+    act('PERM_CHANNEL', { channel: ch.name, reason: permCfg.reason });
+    if (apply) {
+      try { await ch.permissionOverwrites.set(overwrites); }
+      catch (e) { errored(`PERM_CHANNEL_BY_NAME:${ch.name}`, e); }
+    }
+  }
+
+  return report;
+}
+
 async function runSync(guild, opts = {}) {
   const apply = Boolean(opts.apply);
   const report = {
@@ -621,4 +727,4 @@ function summarize(report) {
   return lines.join('\n');
 }
 
-module.exports = { runSync, summarize };
+module.exports = { runSync, runPermsOnly, summarize };

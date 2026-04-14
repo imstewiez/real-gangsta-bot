@@ -54,7 +54,7 @@ const {
   isChefia, isChefeMoradores, isCommand,
   canManageStructure, canBootstrapStock, canRegisterKill,
 } = require('./permissions/permissionEngine');
-const { runSync, summarize } = require('./discord/structureSync');
+const { runSync, runPermsOnly, summarize } = require('./discord/structureSync');
 const { reconcileAllMembers } = require('./members/roleInvariants');
 const { fixTiers } = require('./members/tierFixCommand');
 const {
@@ -399,6 +399,33 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const report = await runSync(guild, { apply });
         const text = summarize(report);
         return safeReply(interaction, { content: text.slice(0, 1900) }, { dismissible: true });
+      }
+
+      if (cmd === 'rg-sync-perms') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync perms'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const modo = interaction.options.getString('modo') || 'dry-run';
+        const apply = modo === 'apply';
+        const report = await runPermsOnly(interaction.guild, { apply });
+        const lines = [
+          `**Modo:** \`${report.mode.toUpperCase()}\``,
+          `**Acções:** ${JSON.stringify(report.counts)}`,
+        ];
+        const samples = report.actions.slice(0, 25);
+        if (samples.length) {
+          lines.push('');
+          for (const a of samples) {
+            const detail = a.detail.channel || a.detail.category || a.detail.from || a.detail.name || '';
+            lines.push(`• \`${a.type}\` — ${detail}`);
+          }
+          if (report.actions.length > 25) lines.push(`_… e mais ${report.actions.length - 25} acções._`);
+        }
+        if (report.errors.length) {
+          lines.push('', `**Erros (${report.errors.length}):**`);
+          for (const e of report.errors.slice(0, 5)) lines.push(`❌ ${e.stage}: ${e.message}`);
+        }
+        if (!apply) lines.push('', '> _Dry-run — usa `modo:apply` para aplicar._');
+        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
       }
 
       if (cmd === 'rg-sync-roles') {

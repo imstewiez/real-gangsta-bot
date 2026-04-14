@@ -70,6 +70,12 @@ const commands = [
       .addChoices({ name: 'Dry-run (mostrar)', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
 
   new SlashCommandBuilder()
+    .setName('rg-sync-perms')
+    .setDescription('Só permissões — aperta perms + renomeia painéis (não mexe em categorias)')
+    .addStringOption(opt => opt.setName('modo').setDescription('dry-run (default) ou apply').setRequired(false)
+      .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
+
+  new SlashCommandBuilder()
     .setName('rg-sync-roles')
     .setDescription('Reconcilia invariantes de roles em todos os membros')
     .addStringOption(opt => opt.setName('modo').setDescription('dry-run (default) ou apply').setRequired(false)

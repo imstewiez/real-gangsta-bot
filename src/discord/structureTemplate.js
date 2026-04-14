@@ -225,7 +225,7 @@ const CHANNEL_RENAMES = [
   // ENTRADA
   { id: DISCOVERED.CH_DIVULGACAO,       to: ch('📢', 'divulgação') },
   { id: DISCOVERED.CH_ENTRADAS,         to: ch('📥', 'entradas') },
-  { id: DISCOVERED.CH_TAGS,             to: ch('🏷️', 'tags') },
+  { id: DISCOVERED.CH_TAGS,             to: ch('🏷️', 'tags-pendentes') },
   { id: DISCOVERED.CH_REGRAS,           to: ch('📜', 'regras') },
   { id: DISCOVERED.CH_INFO_GERAL,       to: ch('ℹ️', 'informação-geral') },
   { id: DISCOVERED.CH_SUGESTOES,        to: ch('💡', 'sugestões') },
@@ -333,12 +333,12 @@ const CHANNELS_TO_CREATE = [
   // GUETTO — separador visual antes dos canais individuais dos moradores
   { name: SEPARATOR_NAME, categoryKey: 'GUETTO', position: 7, renameFrom: SEPARATOR_LEGACY_NAMES, reason: 'Separador visual — Tópicos Moradores' },
   // Painéis dedicados — 1 canal por painel, read-only (só bot posta).
-  // Perm override aplicado em CHANNEL_PERM_OVERRIDES_BY_NAME abaixo.
-  { name: ch('📋', 'painel-entrada'),          categoryKey: 'ENTRADA',  reason: 'Painel Entrada (botão Pedir Tag) — só bot posta' },
-  { name: ch('📋', 'painel-moradores'),        categoryKey: 'GUETTO',   reason: 'Painel Morador (registar material/histórico/totais) — só bot posta' },
-  { name: ch('📋', 'painel-oficiais'),         categoryKey: 'OFICIAIS', reason: 'Painel Oficial — só bot posta' },
-  { name: ch('📋', 'painel-chefia'),           categoryKey: 'COMANDO',  reason: 'Painel Chefia (centro de comando) — só bot posta' },
-  { name: ch('📋', 'painel-chefe-moradores'),  categoryKey: 'GUETTO',   reason: 'Painel Patrão di Zona — só bot posta' },
+  // Perm override específico por canal aplicado em CHANNEL_PERM_OVERRIDES_BY_NAME.
+  { name: ch('👋', 'boas-vindas'),             categoryKey: 'ENTRADA',  renameFrom: [ch('📋', 'painel-entrada'), '👋│boas-vindas', '📋│painel-entrada'], reason: 'Boas-vindas (Pedir Tag) — visível a toda a gente' },
+  { name: ch('📋', 'painel-moradores'),        categoryKey: 'GUETTO',   renameFrom: ['📋│painel-moradores'], reason: 'Painel Morador (registar material/histórico/totais) — só bot posta' },
+  { name: ch('📋', 'painel-oficiais'),         categoryKey: 'OFICIAIS', renameFrom: ['📋│painel-oficiais'], reason: 'Painel Oficial — só bot posta' },
+  { name: ch('📋', 'painel-chefia'),           categoryKey: 'COMANDO',  renameFrom: ['📋│painel-chefia'], reason: 'Painel Chefia (centro de comando) — só bot posta' },
+  { name: ch('📋', 'painel-chefe-moradores'),  categoryKey: 'GUETTO',   renameFrom: ['📋│painel-chefe-moradores'], reason: 'Painel Patrão di Zona — só bot posta, moradores NÃO vêem' },
 ];
 
 // ── Role groups ───────────────────────────────────────────────────────────────
@@ -487,30 +487,80 @@ const CHANNEL_PERM_OVERRIDES = {
 // ── Channel-specific overrides (por nome) ────────────────────────────────────
 // Usado para canais criados dinamicamente (ex.: o separador do GUETTO) cujo
 // ID só é conhecido após o primeiro sync. Sync resolve por nome.
-// Template para canais de painel: ninguém escreve, só o bot posta o painel
-// (os botões dos painéis não precisam de SendMessages — são components).
-const PANEL_READONLY_PERMS = {
-  denyEveryone: ['SendMessages', 'AddReactions', 'CreatePublicThreads', 'CreatePrivateThreads', 'SendMessagesInThreads'],
+// Denies base aplicados em todos os painéis (ninguém, excepto bot, escreve).
+const _PANEL_WRITE_DENIES = ['SendMessages', 'AddReactions', 'CreatePublicThreads', 'CreatePrivateThreads', 'SendMessagesInThreads'];
+const _BOT_PANEL_PERMS = ['ViewChannel', 'SendMessages', 'ManageMessages', 'ManageChannels', 'ReadMessageHistory', 'EmbedLinks', 'AddReactions'];
+
+// boas-vindas: visível a TODA a gente (incluindo newcomers sem role).
+// Só bot posta. Moradores e acima herdam ViewChannel via @everyone allow.
+const PERMS_BOAS_VINDAS = {
+  denyEveryone: _PANEL_WRITE_DENIES,
+  allowEveryone: ['ViewChannel'], // override o deny da categoria ENTRADA
   allow: [
-    { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages', 'ManageMessages', 'ManageChannels', 'ReadMessageHistory', 'EmbedLinks', 'AddReactions'] },
+    { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
   ],
-  reason: 'Painel — read-only (só bot publica)',
+  reason: 'boas-vindas — visível a @everyone (newcomers), só bot publica',
+};
+
+// painel-moradores: herda ViewChannel da categoria GUETTO (mor+base+staff vêem).
+// Ninguém escreve excepto bot.
+const PERMS_PAINEL_MORADORES = {
+  denyEveryone: _PANEL_WRITE_DENIES,
+  allow: [
+    { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
+  ],
+  reason: 'painel-moradores — moradores+staff vêem (via categoria), só bot publica',
+};
+
+// painel-oficiais: herda da categoria OFICIAIS (command+supervisor). Bot posta.
+const PERMS_PAINEL_OFICIAIS = {
+  denyEveryone: _PANEL_WRITE_DENIES,
+  allow: [
+    { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
+  ],
+  reason: 'painel-oficiais — herda OFICIAIS (supervisor+command), só bot publica',
+};
+
+// painel-chefia: herda da categoria COMANDO (command apenas). Bot posta.
+const PERMS_PAINEL_CHEFIA = {
+  denyEveryone: _PANEL_WRITE_DENIES,
+  allow: [
+    { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
+  ],
+  reason: 'painel-chefia — herda COMANDO (command apenas), só bot publica',
+};
+
+// painel-chefe-moradores: em GUETTO, mas NÃO queremos que moradores vejam.
+// → deny explícito de ViewChannel para morador_tiers + moradores_base.
+// Staff (chefe_mor + supervisor + command) mantém view via category.
+const PERMS_PAINEL_CHEFE_MORADORES = {
+  denyEveryone: _PANEL_WRITE_DENIES,
+  deny: [
+    { roleSources: ['morador_tiers', 'moradores_base'], perms: ['ViewChannel'] },
+  ],
+  allow: [
+    { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
+  ],
+  reason: 'painel-chefe-moradores — staff only (moradores bloqueados)',
 };
 
 const CHANNEL_PERM_OVERRIDES_BY_NAME = {
   [SEPARATOR_NAME]: {
-    denyEveryone: ['SendMessages', 'AddReactions', 'CreatePublicThreads', 'CreatePrivateThreads', 'SendMessagesInThreads'],
+    denyEveryone: _PANEL_WRITE_DENIES,
     allow: [
       { roleSources: ['command'], perms: ['SendMessages'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
     reason: 'Separador visual — read-only (só staff top pode postar)',
   },
-  [ch('📋', 'painel-entrada')]:         PANEL_READONLY_PERMS,
-  [ch('📋', 'painel-moradores')]:       PANEL_READONLY_PERMS,
-  [ch('📋', 'painel-oficiais')]:        PANEL_READONLY_PERMS,
-  [ch('📋', 'painel-chefia')]:          PANEL_READONLY_PERMS,
-  [ch('📋', 'painel-chefe-moradores')]: PANEL_READONLY_PERMS,
+  // Nome novo dos painéis
+  [ch('👋', 'boas-vindas')]:            PERMS_BOAS_VINDAS,
+  [ch('📋', 'painel-moradores')]:       PERMS_PAINEL_MORADORES,
+  [ch('📋', 'painel-oficiais')]:        PERMS_PAINEL_OFICIAIS,
+  [ch('📋', 'painel-chefia')]:          PERMS_PAINEL_CHEFIA,
+  [ch('📋', 'painel-chefe-moradores')]: PERMS_PAINEL_CHEFE_MORADORES,
+  // Nome antigo — aplica os mesmos perms até o canal ser renomeado
+  [ch('📋', 'painel-entrada')]:         PERMS_BOAS_VINDAS,
 };
 
 module.exports = {

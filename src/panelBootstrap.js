@@ -11,16 +11,17 @@ const { buildEntradaPanel } = require('./panels/entradaPanel');
 const { CATEGORY_BY_KEY, bold } = require('./discord/structureTemplate');
 
 // Auto-discover: se PANEL_*_CHANNEL_ID não estiver definido, procura o canal
-// dedicado pelo nome canónico (`📋・painel-xxx`) na categoria esperada.
-// Os nomes aqui têm de coincidir com os adicionados em CHANNELS_TO_CREATE.
-function autoName(slug) { return `📋・${bold(slug)}`; }
+// dedicado pelo nome canónico na categoria esperada. A função acepta uma lista
+// de nomes (para incluir o antigo `painel-entrada` enquanto não é renomeado
+// para `boas-vindas`).
+function autoName(slug, emoji = '📋') { return `${emoji}・${bold(slug)}`; }
 
 const PANELS = [
-  { key: 'panel_entrada',         channelKey: 'PANEL_ENTRADA_CHANNEL_ID',         autoName: autoName('painel-entrada'),          autoCategoryKey: 'ENTRADA',  build: buildEntradaPanel,         stickySource: 'panel:entrada' },
-  { key: 'panel_moradores',       channelKey: 'PANEL_MORADORES_CHANNEL_ID',       autoName: autoName('painel-moradores'),        autoCategoryKey: 'GUETTO',   build: buildMoradorPanel,         stickySource: 'panel:moradores' },
-  { key: 'panel_oficiais',        channelKey: 'PANEL_OFICIAIS_CHANNEL_ID',        autoName: autoName('painel-oficiais'),         autoCategoryKey: 'OFICIAIS', build: buildOficialPanel,         stickySource: 'panel:oficiais' },
-  { key: 'panel_chefia',          channelKey: 'PANEL_CHEFIA_CHANNEL_ID',          autoName: autoName('painel-chefia'),           autoCategoryKey: 'COMANDO',  build: buildChefiaPanel,          stickySource: 'panel:chefia' },
-  { key: 'panel_chefe_moradores', channelKey: 'PANEL_CHEFE_MORADORES_CHANNEL_ID', autoName: autoName('painel-chefe-moradores'),  autoCategoryKey: 'GUETTO',   build: buildChefeMoradoresPanel,  stickySource: 'panel:chefe_moradores' },
+  { key: 'panel_entrada',         channelKey: 'PANEL_ENTRADA_CHANNEL_ID',         autoName: autoName('boas-vindas', '👋'),         autoAltNames: [autoName('painel-entrada')], autoCategoryKey: 'ENTRADA',  build: buildEntradaPanel,         stickySource: 'panel:entrada' },
+  { key: 'panel_moradores',       channelKey: 'PANEL_MORADORES_CHANNEL_ID',       autoName: autoName('painel-moradores'),          autoCategoryKey: 'GUETTO',   build: buildMoradorPanel,         stickySource: 'panel:moradores' },
+  { key: 'panel_oficiais',        channelKey: 'PANEL_OFICIAIS_CHANNEL_ID',        autoName: autoName('painel-oficiais'),           autoCategoryKey: 'OFICIAIS', build: buildOficialPanel,         stickySource: 'panel:oficiais' },
+  { key: 'panel_chefia',          channelKey: 'PANEL_CHEFIA_CHANNEL_ID',          autoName: autoName('painel-chefia'),             autoCategoryKey: 'COMANDO',  build: buildChefiaPanel,          stickySource: 'panel:chefia' },
+  { key: 'panel_chefe_moradores', channelKey: 'PANEL_CHEFE_MORADORES_CHANNEL_ID', autoName: autoName('painel-chefe-moradores'),    autoCategoryKey: 'GUETTO',   build: buildChefeMoradoresPanel,  stickySource: 'panel:chefe_moradores' },
 ];
 
 /**
@@ -41,11 +42,14 @@ async function resolveChannelId(client, panelDef) {
   const guild = client.guilds.cache.get(CONFIG.DISCORD_GUILD_ID);
   if (!guild) return { channelId: null, source: null };
 
-  const slug = panelDef.autoName.split('・')[1]; // "𝗽𝗮𝗶𝗻𝗲𝗹-..."
+  // Lista de nomes aceitáveis: canónico + alternativos (para acomodar nomes
+  // antigos antes do rename, e.g. painel-entrada → boas-vindas).
+  const acceptedNames = [panelDef.autoName, ...(panelDef.autoAltNames || [])];
+  const slugs = acceptedNames.map(n => n.split('・')[1]).filter(Boolean);
   const found = guild.channels.cache.find(c =>
     c.type === ChannelType.GuildText &&
     c.parentId === cat.id &&
-    (c.name === panelDef.autoName || c.name.includes(slug))
+    (acceptedNames.includes(c.name) || slugs.some(s => c.name.includes(s)))
   );
   if (found) return { channelId: found.id, source: 'auto-discover' };
 
