@@ -50,14 +50,52 @@ function unbold(s) {
  *
  * Garante idempotência do sync: se um canal já foi formatado anteriormente
  * (mesmo com emoji errado / tier errado), recuperamos sempre o nick base
- * em vez de re-aninhar `🍼・YB - 🐺・YB - simão`.
+ * em vez de re-aninhar `🍼・Young-Blood-🍼・Young-Blood-simão`.
+ *
+ * Cobre duas variantes:
+ *   1. pré-sanitização: `emoji・𝗧𝗶𝗲𝗿 - 𝗡𝗶𝗰𝗸` (com espaços)
+ *   2. pós-sanitização Discord: `emoji・𝗧𝗶𝗲𝗿-𝗡𝗶𝗰𝗸` (Discord converte espaços
+ *      em hífens em text channels; a função strip'a prefixos de tier labels
+ *      conhecidos).
  */
 function extractNicknameFromFormatted(channelName) {
-  const lastDash = channelName.lastIndexOf(' - ');
-  if (lastDash === -1) return null;
-  const tail = channelName.slice(lastDash + 3).trim();
-  if (!tail) return null;
-  return unbold(tail);
+  if (!channelName) return null;
+
+  let s = channelName;
+  let changed = true;
+  let iterations = 0;
+
+  // Iterativo — strip repetido para lidar com nomes aninhados:
+  //   `🍼・𝗬𝗼𝘂𝗻𝗴-𝗕𝗹𝗼𝗼𝗱-🍼・𝗬𝗼𝘂𝗻𝗴-𝗕𝗹𝗼𝗼𝗱-𝗲𝘅` → "ex"
+  while (changed && iterations < 10) {
+    changed = false;
+    iterations++;
+
+    // Variante 1 — separador " - " (nome não sanitizado).
+    const lastDash = s.lastIndexOf(' - ');
+    if (lastDash !== -1) {
+      s = s.slice(lastDash + 3).trim();
+      changed = true;
+      continue;
+    }
+
+    // Variante 2 — `emoji・𝗧𝗶𝗲𝗿-...` (Discord sanitizou espaços para hífens).
+    const dotIdx = s.indexOf('・');
+    if (dotIdx !== -1 && dotIdx < 6) { // emoji ocupa 1-2 code units; 6 é folga
+      const rest = s.slice(dotIdx + 1);
+      for (const tierPrefix of _TIER_LABELS_FOR_EXTRACT) {
+        if (rest.startsWith(tierPrefix)) {
+          s = rest.slice(tierPrefix.length);
+          changed = true;
+          break;
+        }
+      }
+    }
+  }
+
+  if (s === channelName) return null; // nada a extrair
+  const result = unbold(s).trim();
+  return result || null;
 }
 
 // ── Tier emoji + resident channel naming ─────────────────────────────────────
@@ -83,6 +121,13 @@ const TIER_LABEL = {
   kingpin:         'Kingpin',
   manda_chuva:     'Manda-Chuva',
 };
+
+// Pré-calcula prefixos sanitizados (espaços→hífens) dos tier labels bolded,
+// ordenados do mais longo ao mais curto para o startsWith casar o correcto.
+// Usado por extractNicknameFromFormatted para nomes já sanitizados pelo Discord.
+const _TIER_LABELS_FOR_EXTRACT = Object.values(TIER_LABEL)
+  .map(l => bold(l).replace(/ /g, '-') + '-') // 𝗬𝗼𝘂𝗻𝗴-𝗕𝗹𝗼𝗼𝗱-
+  .sort((a, b) => b.length - a.length);
 
 function formatResidentChannelName(tier, nickname) {
   const emoji = TIER_EMOJI[tier] || TIER_EMOJI.young_blood;

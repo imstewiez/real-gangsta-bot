@@ -388,6 +388,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const modo = interaction.options.getString('modo') || 'dry-run';
         const apply = modo === 'apply';
+        // Guard-rail: STRUCTURE_SYNC_LOCKED bloqueia apply (dry-run fica livre).
+        if (apply && CONFIG.STRUCTURE_SYNC_LOCKED) {
+          return safeReply(interaction, {
+            content: '🔒 `STRUCTURE_SYNC_LOCKED=true` no Railway — apply bloqueado para proteger personalizações.\n'
+              + 'Muda a env var para `false` se tiveres a certeza que queres o sync a alterar a estrutura, ou usa `modo:dry-run` para só inspeccionar.',
+          }, { dismissible: true });
+        }
         const guild = interaction.guild;
         const report = await runSync(guild, { apply });
         const text = summarize(report);
@@ -709,6 +716,113 @@ client.on(Events.InteractionCreate, async (interaction) => {
         }
 
         if (!apply) lines.push('', '> _Dry-run — usa `modo:apply` para reverter._');
+        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
+      }
+
+      if (cmd === 'rg-revert-sync') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('reverter sync'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const modo = interaction.options.getString('modo') || 'dry-run';
+        const apply = modo === 'apply';
+        const minutes = interaction.options.getInteger('minutos') || 60;
+        const cutoff = Date.now() - minutes * 60 * 1000;
+        const guild = interaction.guild;
+        const { AuditLogEvent, ChannelType } = require('discord.js');
+        const ourBotId = client.user.id;
+
+        // 1) Canais criados por nós na janela — para NÃO reverter
+        const createdIds = new Set();
+        let before;
+        for (let page = 0; page < 10; page++) {
+          const r = await guild.fetchAuditLogs({ type: AuditLogEvent.ChannelCreate, limit: 100, before }).catch(() => null);
+          if (!r || !r.entries.size) break;
+          let stop = false;
+          for (const e of r.entries.values()) {
+            if (e.createdTimestamp < cutoff) { stop = true; continue; }
+            if (e.executor?.id === ourBotId) createdIds.add(e.targetId);
+          }
+          if (stop) break;
+          before = [...r.entries.values()].pop()?.id;
+          if (r.entries.size < 100) break;
+        }
+
+        // 2) ChannelUpdate por nós na janela — regista EARLIEST old value por (channelId, key)
+        //    Keys interessantes: name, parent_id. Position não revertemos (trivial).
+        const earliest = new Map(); // channelId → { name?: {old,ts}, parent_id?: {old,ts} }
+        before = undefined;
+        for (let page = 0; page < 25; page++) {
+          const r = await guild.fetchAuditLogs({ type: AuditLogEvent.ChannelUpdate, limit: 100, before }).catch(() => null);
+          if (!r || !r.entries.size) break;
+          let stop = false;
+          for (const e of r.entries.values()) {
+            if (e.createdTimestamp < cutoff) { stop = true; continue; }
+            if (e.executor?.id !== ourBotId) continue;
+            if (createdIds.has(e.targetId)) continue; // não mexer em canais criados por nós
+            if (!earliest.has(e.targetId)) earliest.set(e.targetId, {});
+            const rec = earliest.get(e.targetId);
+            for (const ch of e.changes || []) {
+              if (ch.key !== 'name' && ch.key !== 'parent_id') continue;
+              if (ch.old === undefined || ch.old === null) continue;
+              if (!rec[ch.key] || e.createdTimestamp < rec[ch.key].ts) {
+                rec[ch.key] = { old: ch.old, ts: e.createdTimestamp };
+              }
+            }
+          }
+          if (stop) break;
+          before = [...r.entries.values()].pop()?.id;
+          if (r.entries.size < 100) break;
+        }
+
+        // 3) Construir plano de revert
+        const plan = [];
+        for (const [chId, rec] of earliest) {
+          const ch = guild.channels.cache.get(chId);
+          if (!ch) continue;
+          const item = { chId, current: { name: ch.name, parentId: ch.parentId }, revert: {} };
+          if (rec.name && rec.name.old !== ch.name) item.revert.name = rec.name.old;
+          if (rec.parent_id && rec.parent_id.old !== ch.parentId) item.revert.parentId = rec.parent_id.old;
+          if (Object.keys(item.revert).length) plan.push(item);
+        }
+
+        const lines = [
+          `**Modo:** \`${apply ? 'APPLY' : 'DRY-RUN'}\`  **Janela:** ${minutes} min`,
+          `**Canais criados (skip):** ${createdIds.size}`,
+          `**Canais a reverter:** ${plan.length}`,
+          '',
+        ];
+        for (const p of plan.slice(0, 25)) {
+          const parts = [];
+          if (p.revert.name !== undefined) parts.push(`nome: \`${p.current.name}\` → \`${p.revert.name}\``);
+          if (p.revert.parentId !== undefined) parts.push(`categoria: <#${p.current.parentId || 'null'}> → <#${p.revert.parentId || 'null'}>`);
+          lines.push(`• <#${p.chId}> — ${parts.join(' · ')}`);
+        }
+        if (plan.length > 25) lines.push(`_… e mais ${plan.length - 25}._`);
+
+        if (apply && plan.length > 0) {
+          let nameDone = 0, parentDone = 0, failed = 0;
+          for (const p of plan) {
+            const ch = guild.channels.cache.get(p.chId);
+            if (!ch) { failed++; continue; }
+            try {
+              if (p.revert.parentId !== undefined) {
+                await ch.setParent(p.revert.parentId || null, { lockPermissions: false });
+                parentDone++;
+                await new Promise(rr => setTimeout(rr, 300));
+              }
+              if (p.revert.name !== undefined) {
+                await ch.setName(p.revert.name);
+                nameDone++;
+                await new Promise(rr => setTimeout(rr, 350));
+              }
+            } catch (e) {
+              failed++;
+              warn(`[REVERT-SYNC] ${p.chId}: ${e.message}`);
+            }
+          }
+          lines.push('', `**Nomes revertidos:** ${nameDone}  **Categorias revertidas:** ${parentDone}  **Falhas:** ${failed}`);
+        }
+        if (!apply) lines.push('', '> _Dry-run — usa `modo:apply` para aplicar._');
+
         return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
       }
 

@@ -124,6 +124,11 @@ const CONFIG = {
   PANEL_BOOTSTRAP_ON_READY: optBool('PANEL_BOOTSTRAP_ON_READY', true),
   AUTO_PUBLISH_WEEKLY_TOP: optBool('AUTO_PUBLISH_WEEKLY_TOP', true),
 
+  // Guard-rail: quando true, /rg-sync-structure fica travado em apply.
+  // Use true em servidores onde a estrutura está personalizada manualmente
+  // e não queres que o bot mexa. Ainda permite dry-run para inspeccionar.
+  STRUCTURE_SYNC_LOCKED: optBool('STRUCTURE_SYNC_LOCKED', false),
+
   // ── Painéis sticky ────────────────────────────────────────────────────────
   // Mantém os painéis sempre visíveis no fundo do canal — o bot republica-os
   // após N mensagens novas. Valores: 'repost' (default), 'update' (edita sempre

@@ -106,6 +106,13 @@ const commands = [
     .addStringOption(opt => opt.setName('modo').setDescription('dry-run (default) ou apply').setRequired(false)
       .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
 
+  new SlashCommandBuilder()
+    .setName('rg-revert-sync')
+    .setDescription('Reverte TODOS os renames/moves feitos pelo bot nos últimos N min (mantém canais criados)')
+    .addStringOption(opt => opt.setName('modo').setDescription('dry-run (default) ou apply').setRequired(false)
+      .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' }))
+    .addIntegerOption(opt => opt.setName('minutos').setDescription('Janela de tempo em minutos (default 60)').setRequired(false)),
+
   // ── Rádio ─────────────────────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName('rg-radio')
