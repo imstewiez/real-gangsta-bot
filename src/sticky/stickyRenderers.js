@@ -41,6 +41,31 @@ function registerBuiltinRenderers() {
     const states = await radioRepo.getAllStates();
     return { embeds: [buildEmbed(states)], components: buildComponents() };
   });
+
+  // ── Painéis (5 renderers) ─────────────────────────────────────────────────
+  // Registados aqui para permitir que fiquem sticky (modo repost = sempre
+  // visíveis no fundo do canal). panelBootstrap upserta sticky por painel
+  // automaticamente se PANELS_STICKY_MODE != 'none'.
+  registerRenderer('panel:entrada', async () => {
+    const { buildEntradaPanel } = require('../panels/entradaPanel');
+    return buildEntradaPanel();
+  });
+  registerRenderer('panel:moradores', async () => {
+    const { buildMoradorPanel } = require('../panels/moradorPanel');
+    return buildMoradorPanel();
+  });
+  registerRenderer('panel:oficiais', async () => {
+    const { buildOficialPanel } = require('../panels/oficialPanel');
+    return buildOficialPanel();
+  });
+  registerRenderer('panel:chefia', async () => {
+    const { buildChefiaPanel } = require('../panels/chefiaPanel');
+    return buildChefiaPanel();
+  });
+  registerRenderer('panel:chefe_moradores', async () => {
+    const { buildChefeMoradoresPanel } = require('../panels/chefeMoradoresPanel');
+    return buildChefeMoradoresPanel();
+  });
 }
 
 module.exports = { registerBuiltinRenderers };

@@ -117,6 +117,13 @@ const CONFIG = {
   PANEL_BOOTSTRAP_ON_READY: optBool('PANEL_BOOTSTRAP_ON_READY', true),
   AUTO_PUBLISH_WEEKLY_TOP: optBool('AUTO_PUBLISH_WEEKLY_TOP', true),
 
+  // ── Painéis sticky ────────────────────────────────────────────────────────
+  // Mantém os painéis sempre visíveis no fundo do canal — o bot republica-os
+  // após N mensagens novas. Valores: 'repost' (default), 'update' (edita sempre
+  // a mesma mensagem, sem follow-the-scroll), 'none' (desligado).
+  PANELS_STICKY_MODE: (process.env.PANELS_STICKY_MODE || 'repost').toLowerCase(),
+  PANELS_STICKY_THRESHOLD_MSGS: Number(process.env.PANELS_STICKY_THRESHOLD_MSGS || 5),
+
   // ── Stock notifier ────────────────────────────────────────────────────────
   // Publica embeds dos movimentos de inventário em canais dedicados da
   // categoria indicada por STOCK_CHANNELS_CATEGORY_KEY (default: COMANDO —
