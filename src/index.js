@@ -71,7 +71,12 @@ const {
   onMessageCreate: stickyOnMessage, listRenderers: stickyListRenderers,
 } = require('./sticky/stickyEngine');
 const { registerBuiltinRenderers } = require('./sticky/stickyRenderers');
-const { setClient: setStockClient } = require('./inventory/stockNotifier');
+const {
+  setClient: setStockClient,
+  publishStockSummary: stockPublishSummary,
+  findOrCreateChannel: stockFindOrCreate,
+  STOCK_CHANNELS: STOCK_CHANNELS_MAP,
+} = require('./inventory/stockNotifier');
 const {
   setRadio: radioSet, setRandom: radioSetRandom,
   buildEmbed: radioEmbed, buildComponents: radioComponents,
@@ -253,6 +258,39 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
       if (cmd === 'rg-stock') {
         return handleStockCommand(interaction);
+      }
+
+      if (cmd === 'rg-stock-summary') {
+        if (!isChefia(interaction.member) && !isChefeMoradores(interaction.member))
+          return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('forçar resumo de stock'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const result = await stockPublishSummary();
+        if (result?.posted) {
+          return safeReply(interaction, {
+            content: `📊 Resumo publicado em \`resumo-stock\` — ${result.items} items, total **${result.totalValue.toLocaleString('pt-PT')} €**.`,
+          }, { dismissible: true });
+        }
+        return safeReply(interaction, {
+          content: `⚠️ Não foi publicado. Razão: \`${result?.reason || 'desconhecida'}\`.\n`
+            + `Possíveis causas: \`STOCK_NOTIFY_ENABLED=false\`, categoria INVENTÁRIO em falta, ou bot sem permissões no canal.`,
+        }, { dismissible: true });
+      }
+
+      if (cmd === 'rg-stock-channels') {
+        if (!canManageStructure(interaction.member))
+          return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('gerir canais de stock'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const lines = ['**Canais de stock em INVENTÁRIO:**'];
+        for (const key of Object.keys(STOCK_CHANNELS_MAP)) {
+          try {
+            const ch = await stockFindOrCreate(key);
+            if (ch) lines.push(`✅ \`${key}\` → <#${ch.id}>`);
+            else lines.push(`❌ \`${key}\` — não encontrado nem criado (STOCK_AUTOCREATE=false? categoria em falta?)`);
+          } catch (e) {
+            lines.push(`❌ \`${key}\` — erro: ${e.message}`);
+          }
+        }
+        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
       }
 
       if (cmd === 'rg-member') {

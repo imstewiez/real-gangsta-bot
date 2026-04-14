@@ -15,6 +15,14 @@ const commands = [
     .setDescription('Consulta o stock atual de materiais'),
 
   new SlashCommandBuilder()
+    .setName('rg-stock-summary')
+    .setDescription('Força publicação do resumo de stock agora (no canal resumo-stock)'),
+
+  new SlashCommandBuilder()
+    .setName('rg-stock-channels')
+    .setDescription('Verifica/cria os 4 canais da categoria INVENTÁRIO (entradas/saídas/ajustes/resumo)'),
+
+  new SlashCommandBuilder()
     .setName('rg-member')
     .setDescription('Consulta ficha de um membro')
     .addUserOption(opt => opt.setName('membro').setDescription('Membro a consultar').setRequired(false)),
