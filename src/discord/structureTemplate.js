@@ -287,6 +287,13 @@ const CHANNELS_TO_CREATE = [
   { name: ch('🏆', 'tops-semanais'),        categoryKey: 'ECONOMIA',   renameFrom: ['🏆│tops-semanais'],        reason: 'Tops semanais auto-publicados' },
   // GUETTO — separador visual antes dos canais individuais dos moradores
   { name: SEPARATOR_NAME, categoryKey: 'GUETTO', position: 7, renameFrom: SEPARATOR_LEGACY_NAMES, reason: 'Separador visual — Tópicos Moradores' },
+  // Painéis dedicados — 1 canal por painel, read-only (só bot posta).
+  // Perm override aplicado em CHANNEL_PERM_OVERRIDES_BY_NAME abaixo.
+  { name: ch('📋', 'painel-entrada'),          categoryKey: 'ENTRADA',  reason: 'Painel Entrada (botão Pedir Tag) — só bot posta' },
+  { name: ch('📋', 'painel-moradores'),        categoryKey: 'GUETTO',   reason: 'Painel Morador (registar material/histórico/totais) — só bot posta' },
+  { name: ch('📋', 'painel-oficiais'),         categoryKey: 'OFICIAIS', reason: 'Painel Oficial — só bot posta' },
+  { name: ch('📋', 'painel-chefia'),           categoryKey: 'COMANDO',  reason: 'Painel Chefia (centro de comando) — só bot posta' },
+  { name: ch('📋', 'painel-chefe-moradores'),  categoryKey: 'GUETTO',   reason: 'Painel Patrão di Zona — só bot posta' },
 ];
 
 // ── Role groups ───────────────────────────────────────────────────────────────
@@ -435,6 +442,16 @@ const CHANNEL_PERM_OVERRIDES = {
 // ── Channel-specific overrides (por nome) ────────────────────────────────────
 // Usado para canais criados dinamicamente (ex.: o separador do GUETTO) cujo
 // ID só é conhecido após o primeiro sync. Sync resolve por nome.
+// Template para canais de painel: ninguém escreve, só o bot posta o painel
+// (os botões dos painéis não precisam de SendMessages — são components).
+const PANEL_READONLY_PERMS = {
+  denyEveryone: ['SendMessages', 'AddReactions', 'CreatePublicThreads', 'CreatePrivateThreads', 'SendMessagesInThreads'],
+  allow: [
+    { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages', 'ManageMessages', 'ManageChannels', 'ReadMessageHistory', 'EmbedLinks', 'AddReactions'] },
+  ],
+  reason: 'Painel — read-only (só bot publica)',
+};
+
 const CHANNEL_PERM_OVERRIDES_BY_NAME = {
   [SEPARATOR_NAME]: {
     denyEveryone: ['SendMessages', 'AddReactions', 'CreatePublicThreads', 'CreatePrivateThreads', 'SendMessagesInThreads'],
@@ -444,6 +461,11 @@ const CHANNEL_PERM_OVERRIDES_BY_NAME = {
     ],
     reason: 'Separador visual — read-only (só staff top pode postar)',
   },
+  [ch('📋', 'painel-entrada')]:         PANEL_READONLY_PERMS,
+  [ch('📋', 'painel-moradores')]:       PANEL_READONLY_PERMS,
+  [ch('📋', 'painel-oficiais')]:        PANEL_READONLY_PERMS,
+  [ch('📋', 'painel-chefia')]:          PANEL_READONLY_PERMS,
+  [ch('📋', 'painel-chefe-moradores')]: PANEL_READONLY_PERMS,
 };
 
 module.exports = {
