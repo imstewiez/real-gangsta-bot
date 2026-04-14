@@ -272,10 +272,12 @@ const SEPARATOR_LEGACY_NAMES = [
 
 const CHANNELS_TO_CREATE = [
   // Inventário — canais novos para publicação automática
-  { name: ch('📊', 'resumo-stock'),         categoryKey: 'INVENTARIO', renameFrom: ['📊│resumo-stock'],         reason: 'Canal para resumos automáticos de stock' },
-  { name: ch('📥', 'entradas-stock'),       categoryKey: 'INVENTARIO', renameFrom: ['📥│entradas-stock'],       reason: 'Movimentos de entrada de stock (auditoria)' },
-  { name: ch('📤', 'saídas-stock'),         categoryKey: 'INVENTARIO', renameFrom: ['📤│saídas-stock'],         reason: 'Movimentos de saída de stock (auditoria)' },
-  { name: ch('🧾', 'ajustes-stock'),        categoryKey: 'INVENTARIO', renameFrom: ['🧾│ajustes-stock'],        reason: 'Ajustes manuais de stock' },
+  // Canais de stock — vivem em COMANDO (só staff vê). O stockNotifier também
+  // move canais com este nome de outras categorias para cá automaticamente.
+  { name: ch('📊', 'resumo-stock'),         categoryKey: 'COMANDO', renameFrom: ['📊│resumo-stock'],         reason: 'Canal para resumos automáticos de stock (staff-only)' },
+  { name: ch('📥', 'entradas-stock'),       categoryKey: 'COMANDO', renameFrom: ['📥│entradas-stock'],       reason: 'Movimentos de entrada de stock (staff-only)' },
+  { name: ch('📤', 'saídas-stock'),         categoryKey: 'COMANDO', renameFrom: ['📤│saídas-stock'],         reason: 'Movimentos de saída de stock (staff-only)' },
+  { name: ch('🧾', 'ajustes-stock'),        categoryKey: 'COMANDO', renameFrom: ['🧾│ajustes-stock'],        reason: 'Ajustes manuais de stock (staff-only)' },
   // Operações — canais
   { name: ch('🗺️', 'mapas-spots'),         categoryKey: 'OPERACOES',  renameFrom: ['🗺️│mapas-spots'],         reason: 'Mapas e spots de saídas' },
   { name: ch('🎯', 'spots'),                categoryKey: 'OPERACOES',  renameFrom: ['🎯│spots'],                reason: 'Lista de spots disponíveis' },

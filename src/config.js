@@ -118,11 +118,16 @@ const CONFIG = {
   AUTO_PUBLISH_WEEKLY_TOP: optBool('AUTO_PUBLISH_WEEKLY_TOP', true),
 
   // ── Stock notifier ────────────────────────────────────────────────────────
-  // Publica embeds dos movimentos de inventário nos canais entradas-stock,
-  // saídas-stock e ajustes-stock da categoria INVENTÁRIO. Auto-cria canais
-  // em falta. Resumo periódico no resumo-stock via job stock_summary.
+  // Publica embeds dos movimentos de inventário em canais dedicados da
+  // categoria indicada por STOCK_CHANNELS_CATEGORY_KEY (default: COMANDO —
+  // só staff vê, mantém o canal OPERAÇÕES limpo para chefia).
+  // Chaves válidas: qualquer key de structureTemplate.CATEGORIES (ex.:
+  // COMANDO, INVENTARIO, OFICIAIS).
+  // Auto-cria canais em falta e move canais existentes para a categoria
+  // certa se os encontrar noutro sítio com o mesmo nome.
   STOCK_NOTIFY_ENABLED: optBool('STOCK_NOTIFY_ENABLED', true),
   STOCK_AUTOCREATE: optBool('STOCK_AUTOCREATE', true),
+  STOCK_CHANNELS_CATEGORY_KEY: process.env.STOCK_CHANNELS_CATEGORY_KEY || 'COMANDO',
   STOCK_SUMMARY_INTERVAL_HOURS: Number(process.env.STOCK_SUMMARY_INTERVAL_HOURS || 4),
 
   // ── Rádio ─────────────────────────────────────────────────────────────────

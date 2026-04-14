@@ -81,15 +81,16 @@ function expectedChannelName(key) {
 async function findOrCreateChannel(channelKey) {
   if (_channelCache.has(channelKey)) {
     const cached = _channelCache.get(channelKey);
-    // Validar que o canal ainda existe
     const ch = await _client.channels.fetch(cached).catch(() => null);
+    // Se moveu de categoria fora do nosso controlo, não revalida — aceita cache.
     if (ch) return ch;
     _channelCache.delete(channelKey);
   }
 
-  const inventarioCat = CATEGORY_BY_KEY.INVENTARIO;
-  if (!inventarioCat || !inventarioCat.id) {
-    warn('[STOCK-NOTIFY] CATEGORY_BY_KEY.INVENTARIO em falta — abortar.');
+  const catKey = CONFIG.STOCK_CHANNELS_CATEGORY_KEY || 'COMANDO';
+  const targetCat = CATEGORY_BY_KEY[catKey];
+  if (!targetCat || !targetCat.id) {
+    warn(`[STOCK-NOTIFY] CATEGORY_BY_KEY.${catKey} em falta — abortar.`);
     return null;
   }
 
@@ -99,21 +100,37 @@ async function findOrCreateChannel(channelKey) {
   const expectedName = expectedChannelName(channelKey);
   const slug = STOCK_CHANNELS[channelKey].slug;
 
-  // Procura por nome exacto OU pelo slug (Discord pode ter sanitizado).
-  let channel = guild.channels.cache.find(c =>
-    c.parentId === inventarioCat.id &&
-    (c.name === expectedName || c.name.toLowerCase().includes(slug.toLowerCase()))
-  );
+  const matchesName = (c) =>
+    c.type === ChannelType.GuildText &&
+    (c.name === expectedName || c.name.toLowerCase().includes(slug.toLowerCase()));
 
+  // 1) Já está na categoria correcta?
+  let channel = guild.channels.cache.find(c => c.parentId === targetCat.id && matchesName(c));
+
+  // 2) Existe noutra categoria? Move em vez de duplicar.
+  if (!channel) {
+    const misplaced = guild.channels.cache.find(c => matchesName(c));
+    if (misplaced) {
+      try {
+        await misplaced.setParent(targetCat.id, { lockPermissions: false });
+        log(`[STOCK-NOTIFY] Canal '${misplaced.name}' movido de <${misplaced.parentId}> para ${catKey} (${targetCat.id}).`);
+        channel = misplaced;
+      } catch (e) {
+        warn(`[STOCK-NOTIFY] Falha a mover '${misplaced.name}' para ${catKey}: ${e.message}`);
+      }
+    }
+  }
+
+  // 3) Não existe em lado nenhum — cria novo (se permitido).
   if (!channel && CONFIG.STOCK_AUTOCREATE) {
     try {
       channel = await guild.channels.create({
         name: expectedName,
         type: ChannelType.GuildText,
-        parent: inventarioCat.id,
-        reason: `Auto-criado pelo stockNotifier (${channelKey})`,
+        parent: targetCat.id,
+        reason: `Auto-criado pelo stockNotifier (${channelKey}) em ${catKey}`,
       });
-      log(`[STOCK-NOTIFY] Canal '${expectedName}' criado em INVENTÁRIO.`);
+      log(`[STOCK-NOTIFY] Canal '${expectedName}' criado em ${catKey}.`);
     } catch (e) {
       warn(`[STOCK-NOTIFY] Falha a criar '${expectedName}': ${e.message}`);
       return null;
