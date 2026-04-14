@@ -88,7 +88,7 @@ describe('radioEngine — UI', () => {
   it('buildEmbed mostra dash quando não há valor', () => {
     const embed = buildEmbed([]);
     const json = embed.toJSON();
-    assert.ok(json.title.includes('Rádios'));
+    assert.ok(json.title.includes('Frequências'));
     assert.ok(json.description.includes('—'));
   });
 
