@@ -163,7 +163,7 @@ async function handleCloseOperationModal(interaction) {
   const resultNotes = getModalField(interaction, 'result_notes');
 
   try {
-    await opEngine.closeOperation(ctx.opId, {
+    const closed = await opEngine.closeOperation(ctx.opId, {
       had_fight: hadFight,
       enemy_name: enemy,
       deaths,
@@ -171,13 +171,104 @@ async function handleCloseOperationModal(interaction) {
       result_notes: resultNotes,
     }, interaction.user.id);
 
-    pendingOpContext.delete(interaction.user.id);
+    // Reconciliação já foi calculada dentro de closeOperation
+    const r = closed?.reconciliation || {};
 
-    const embed = successEmbed('Operação Concluída', `Operação **#${ctx.opId}** fechada.\n${hadFight ? `Fight contra ${enemy || 'desconhecido'}` : 'Sem fight'}\nMortes: ${deaths} | Sobreviventes: ${survivors}`);
+    // Próximo passo: marcar mortos nominais (quem morreu + auto-registar material
+    // fornecido como perdido). Se não houve fight/mortes, pulamos.
+    if (hadFight && deaths > 0) {
+      const participants = await operationRepo.getParticipants(ctx.opId);
+      if (participants.length) {
+        ctx.closed = true;
+        pendingOpContext.set(interaction.user.id, ctx);
+
+        const options = participants.slice(0, 25).map(p => ({
+          label: `${p.display_name || p.discord_id}`.slice(0, 100),
+          description: p.role_in_op || 'membro',
+          value: p.discord_id,
+        }));
+        const row = new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId(`op::mark_dead::${ctx.opId}`)
+            .setPlaceholder('Marca quem morreu (multi-select)')
+            .setMinValues(0).setMaxValues(Math.min(options.length, 25))
+            .addOptions(options)
+        );
+
+        const summary = [
+          `Operação **#${ctx.opId}** fechada.`,
+          `Fight contra **${enemy || 'desconhecido'}** — ${deaths} mortes, ${survivors} sobreviventes.`,
+          r.unaccounted > 0 ? `\n⚠️ **${r.unaccounted}** unidades de material por contabilizar.` : '',
+          '\n**Marca quem dos participantes morreu** (o material fornecido a essas pessoas é auto-registado como perda):',
+        ].filter(Boolean).join('\n');
+
+        return safeReply(interaction, { content: summary, components: [row] }, { dismissible: true });
+      }
+    }
+
+    pendingOpContext.delete(interaction.user.id);
+    const lines = [`✅ Operação **#${ctx.opId}** fechada.`];
+    lines.push(`📦 Material — fornecido: ${r.fornecido || 0}, devolvido: ${r.devolvido || 0}, perdido: ${r.perdido || 0}, consumido: ${r.consumido || 0}.`);
+    if (r.unaccounted > 0) {
+      lines.push(`⚠️ **${r.unaccounted}** unidades por contabilizar.`);
+    }
+    const embed = successEmbed('Operação Concluída', lines.join('\n'));
     return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
     return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MARCAR MORTOS (após modal de fecho)
+// Para cada participante seleccionado:
+//   - marca participant.died=true, survived=false, returned=false
+//   - se recebeu material da org (fornecido), regista esse material como
+//     perda_operacao via settleParticipantCustody(... diedWithItems=[...])
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function handleMarkDeadSelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  await interaction.deferUpdate().catch(() => {});
+
+  const parts = interaction.customId.split('::');
+  const opId = parseInt(parts[2]);
+  const deadIds = interaction.values || [];
+
+  if (!deadIds.length) {
+    // Ninguém morreu — apenas fecha a UI
+    pendingOpContext.delete(interaction.user.id);
+    return safeReply(interaction, { content: `Operação #${opId} — nenhum morto marcado.`, flags: MessageFlags.Ephemeral }, { dismissible: true });
+  }
+
+  const report = [];
+  for (const discordId of deadIds) {
+    try {
+      // Material fornecido nominal a este participante (direction=fornecido, memberId=X)
+      const { query } = require('../db');
+      const res = await query(
+        `SELECT om.item_id, om.quantity
+           FROM operation_materials om
+           JOIN members m ON m.id = om.member_id
+          WHERE om.operation_id = $1 AND om.direction = 'fornecido' AND m.discord_id = $2`,
+        [opId, discordId]
+      );
+      const diedWithItems = res.rows.map(r => ({ itemId: r.item_id, qty: r.quantity }));
+
+      // settleParticipantCustody regista tudo como perdido + marca died=true
+      await opEngine.settleParticipantCustody(opId, discordId, {
+        diedWithItems, died: true, survived: false, returned: false,
+      }, interaction.user.id);
+
+      report.push(`☠️ <@${discordId}> — ${diedWithItems.length ? `${diedWithItems.length} item(s) registado(s) como perda` : 'sem material fornecido'}`);
+    } catch (e) {
+      report.push(`❌ <@${discordId}> — erro: ${e.message}`);
+    }
+  }
+
+  pendingOpContext.delete(interaction.user.id);
+  const lines = [`Operação **#${opId}** — custódia liquidada:`, ...report];
+  return safeReply(interaction, { content: lines.join('\n').slice(0, 1900), flags: MessageFlags.Ephemeral }, { dismissible: true });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -444,6 +535,129 @@ async function handleMaterialQtyModal(interaction) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// FORNECER MATERIAL A PARTICIPANTE (custódia nominal)
+// Flow: op → participante (UserSelect das pessoas da op) → item → qty modal
+// Chama opEngine.issueMaterialToParticipant — cria movimento fornecimento_org
+// nominal e marca participant.received_org_material=true + material_source='org'.
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function handleIssueToParticipantButton(interaction) {
+  if (!isChefia(interaction.member) && !isOficial(interaction.member)) {
+    return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('fornecer material'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+  }
+  const openOps = await operationRepo.findOpen();
+  if (!openOps.length) {
+    return safeReply(interaction, { content: 'Sem operações abertas.', flags: MessageFlags.Ephemeral }, { dismissible: true });
+  }
+  const options = openOps.map(op => ({
+    label: `#${op.id} — ${op.operation_type} (${op.date})`,
+    description: op.spot || 'Sem spot',
+    value: String(op.id),
+  }));
+  const row = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('op::issue_select_op')
+      .setPlaceholder('Seleciona a operação')
+      .setMinValues(1).setMaxValues(1)
+      .addOptions(options.slice(0, 25))
+  );
+  await safeReply(interaction, { content: '🎯 Fornecer material nominal — em que operação?', components: [row], flags: MessageFlags.Ephemeral });
+}
+
+async function handleIssueOpSelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const opId = parseInt(interaction.values[0]);
+  pendingOpContext.set(interaction.user.id, { opId, action: 'issue_to_participant' });
+
+  // Lista participantes já adicionados à op para escolher um
+  const participants = await operationRepo.getParticipants(opId);
+  if (!participants.length) {
+    pendingOpContext.delete(interaction.user.id);
+    return safeUpdate(interaction, { content: `Operação **#${opId}** não tem participantes ainda. Adiciona-os primeiro no botão "Participantes".`, components: [] });
+  }
+
+  const options = participants.slice(0, 25).map(p => ({
+    label: `${p.display_name || p.discord_id}`.slice(0, 100),
+    description: p.role_in_op || 'membro',
+    value: p.discord_id,
+  }));
+  const row = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('op::issue_select_participant')
+      .setPlaceholder('A quem vai o material?')
+      .setMinValues(1).setMaxValues(1)
+      .addOptions(options)
+  );
+  await safeUpdate(interaction, { content: `Operação **#${opId}** — escolhe o participante:`, components: [row] });
+}
+
+async function handleIssueParticipantSelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const discordId = interaction.values[0];
+  const ctx = pendingOpContext.get(interaction.user.id);
+  if (!ctx || ctx.action !== 'issue_to_participant') {
+    return safeReply(interaction, { content: 'Sessão expirada.', flags: MessageFlags.Ephemeral }, { dismissible: true });
+  }
+  ctx.participantDiscordId = discordId;
+  pendingOpContext.set(interaction.user.id, ctx);
+
+  const menu = await buildItemSelectMenu('op::issue_select_item', 'Que material vai a este participante?');
+  await safeUpdate(interaction, { content: `Operação **#${ctx.opId}** → <@${discordId}> — escolhe o item:`, components: [menu] });
+}
+
+async function handleIssueItemSelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const itemId = parseInt(interaction.values[0]);
+  const ctx = pendingOpContext.get(interaction.user.id);
+  if (!ctx || ctx.action !== 'issue_to_participant') {
+    return safeReply(interaction, { content: 'Sessão expirada.', flags: MessageFlags.Ephemeral }, { dismissible: true });
+  }
+  ctx.itemId = itemId;
+  pendingOpContext.set(interaction.user.id, ctx);
+
+  const { inventoryRepo } = require('../repositories');
+  const item = await inventoryRepo.getItemById(itemId);
+
+  const modal = new ModalBuilder()
+    .setCustomId('op::issue_modal_qty')
+    .setTitle(`Fornecer — ${item?.name || 'Item'}`)
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder().setCustomId('quantity').setLabel('Quantidade').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(10).setPlaceholder('Ex: 1')
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder().setCustomId('notes').setLabel('Observações (opcional)').setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(200)
+      ),
+    );
+  await safeShowModal(interaction, modal);
+}
+
+async function handleIssueQtyModal(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const ctx = pendingOpContext.get(interaction.user.id);
+  if (!ctx || ctx.action !== 'issue_to_participant') {
+    return safeReply(interaction, { content: 'Sessão expirada.' }, { dismissible: true });
+  }
+  const qty = parseInt(getModalField(interaction, 'quantity'));
+  const notes = getModalField(interaction, 'notes');
+  if (isNaN(qty) || qty <= 0) return safeReply(interaction, { content: MESSAGES.INVALID_QUANTITY() }, { dismissible: true });
+
+  try {
+    await opEngine.issueMaterialToParticipant(ctx.opId, ctx.participantDiscordId, ctx.itemId, qty, interaction.user.id, notes);
+    pendingOpContext.delete(interaction.user.id);
+    const { inventoryRepo } = require('../repositories');
+    const item = await inventoryRepo.getItemById(ctx.itemId);
+    const embed = successEmbed('Material Fornecido',
+      `🎯 **${qty}x** ${item?.name || 'Item'} → <@${ctx.participantDiscordId}>\nOperação **#${ctx.opId}**${notes ? `\nNotas: ${notes}` : ''}`
+    );
+    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  } catch (e) {
+    return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
+  }
+}
+
 module.exports = {
   handleCreateOperationButton,
   handleCreateOperationModal,
@@ -459,5 +673,12 @@ module.exports = {
   handleMaterialDirectionSelect,
   handleMaterialItemSelect,
   handleMaterialQtyModal,
+  // Fase 10 — custódia nominal
+  handleIssueToParticipantButton,
+  handleIssueOpSelect,
+  handleIssueParticipantSelect,
+  handleIssueItemSelect,
+  handleIssueQtyModal,
+  handleMarkDeadSelect,
   pendingOpContext,
 };

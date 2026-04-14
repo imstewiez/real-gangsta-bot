@@ -42,6 +42,9 @@ const {
   handleRegisterMaterialButton,
   handleMaterialOpSelect, handleMaterialDirectionSelect,
   handleMaterialItemSelect, handleMaterialQtyModal,
+  handleIssueToParticipantButton, handleIssueOpSelect,
+  handleIssueParticipantSelect, handleIssueItemSelect, handleIssueQtyModal,
+  handleMarkDeadSelect,
 } = require('./operations/operationHandlers');
 const { getCurrentWeekRanking, getPreviousWeekRanking } = require('./rankings/rankingEngine');
 const { rankingEmbed, brandEmbed, stockEmbed } = require('./shared/embedBuilders');
@@ -765,6 +768,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (id === 'chefia::ver_operacoes') return handleViewOperationsButton(interaction);
       if (id === 'chefia::registar_material_op') return handleRegisterMaterialButton(interaction);
       if (id === 'chefia::adicionar_participante') return handleAddParticipantButton(interaction);
+      if (id === 'chefia::fornecer_participante') return handleIssueToParticipantButton(interaction);
       if (id === 'chefia::ver_stock') return handleStockCommand(interaction);
       if (id === 'chefia::ajustar_stock') return handleAdjustStockButton(interaction);
       if (id === 'chefia::gerir_materiais') return handleGerirMateriaisButton(interaction);
@@ -894,6 +898,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (id === 'op::select_material_op') return handleMaterialOpSelect(interaction);
       if (id === 'op::select_material_direction') return handleMaterialDirectionSelect(interaction);
       if (id === 'op::select_material_item') return handleMaterialItemSelect(interaction);
+      // Fase 10 — custódia nominal
+      if (id === 'op::issue_select_op') return handleIssueOpSelect(interaction);
+      if (id === 'op::issue_select_participant') return handleIssueParticipantSelect(interaction);
+      if (id === 'op::issue_select_item') return handleIssueItemSelect(interaction);
+      if (id.startsWith('op::mark_dead::')) return handleMarkDeadSelect(interaction);
 
       return;
     }
@@ -923,6 +932,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (id === 'op::modal_create') return handleCreateOperationModal(interaction);
       if (id === 'op::modal_close') return handleCloseOperationModal(interaction);
       if (id === 'op::modal_material_qty') return handleMaterialQtyModal(interaction);
+      if (id === 'op::issue_modal_qty') return handleIssueQtyModal(interaction);
 
       // Cemetery modal
       if (id === 'cemetery::modal_kill') return handleKillModal(interaction);

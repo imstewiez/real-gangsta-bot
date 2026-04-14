@@ -22,6 +22,7 @@ function buildChefiaPanel() {
 
   const row2 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('chefia::registar_material_op').setLabel('Material Op').setStyle(ButtonStyle.Secondary).setEmoji('\uD83D\uDCE6'),
+    new ButtonBuilder().setCustomId('chefia::fornecer_participante').setLabel('Fornecer a Membro').setStyle(ButtonStyle.Success).setEmoji('\uD83C\uDFAF'),
     new ButtonBuilder().setCustomId('chefia::ver_stock').setLabel('Ver Stock').setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDCCA'),
     new ButtonBuilder().setCustomId('chefia::ajustar_stock').setLabel('Ajustar Stock').setStyle(ButtonStyle.Danger).setEmoji('\uD83D\uDD27'),
     new ButtonBuilder().setCustomId('chefia::gerir_materiais').setLabel('Gerir Materiais').setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDEE0\uFE0F'),
