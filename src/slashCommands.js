@@ -77,7 +77,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('rg-fix-tiers')
-    .setDescription('Migra moradores para a nova ordem de tiers (O Gunão = entry, Young Blood = mid)')
+    .setDescription('Sincroniza DB.tier com os roles actuais do Discord (promoções manuais incluídas)')
     .addStringOption(opt => opt.setName('modo').setDescription('dry-run (default) ou apply').setRequired(false)
       .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
 

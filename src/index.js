@@ -578,19 +578,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
       if (cmd === 'rg-fix-tiers') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('migrar tiers'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync tiers'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const modo = interaction.options.getString('modo') || 'dry-run';
         const dryRun = modo !== 'apply';
         const report = await fixTiers(interaction.guild, { dryRun, actor: interaction.user.id });
         const lines = [
           `**Modo:** \`${report.mode.toUpperCase()}\``,
-          `**Scan:** ${report.scanned} membros`,
-          `**Afectados (YB ou O Gunão):** ${report.affected}`,
+          `**Scan:** ${report.scanned} membros (${report.morador} moradores)`,
+          `**Já alinhados:** ${report.aligned}`,
+          `**A corrigir:** ${report.details.length}`,
         ];
         if (!dryRun) {
           lines.push(
-            `**Roles trocadas:** ${report.swapped}`,
             `**DB actualizada:** ${report.dbUpdated}`,
             `**Canais renomeados:** ${report.channelRenamed}`,
             `**Falhas:** ${report.failed}`,
@@ -600,7 +600,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         if (sample.length) {
           lines.push('', '**Primeiros 10:**');
           for (const d of sample) {
-            const arrow = `${d.from} → ${d.to}`;
+            const arrow = `${d.fromTier || '∅'} → ${d.toTier}`;
             const tag = d.error ? ` ❌ ${d.error}` : (dryRun ? ' (dry)' : '');
             lines.push(`• <@${d.member}> — ${arrow}${tag}`);
           }

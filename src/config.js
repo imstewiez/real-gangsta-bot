@@ -39,9 +39,11 @@ const CONFIG = {
   REAL_GANGSTER_ROLE_ID: optId('REAL_GANGSTER_ROLE_ID', '1491223266487173311'),
   // Chefe do Guetto
   PATRAO_DI_ZONA_ROLE_ID: optId('PATRAO_DI_ZONA_ROLE_ID', '1490397679753101312'),
-  // Moradores — tier ordering (entry → topo): o_gunao=1 → young_blood=2 → gangster_fodido=3
-  O_GUNAO_ROLE_ID: optId('O_GUNAO_ROLE_ID', '1491213423613317220'),
+  // Moradores — tier ordering (entry → topo):
+  //   young_blood (tier 1, entrada) → o_gunao (tier 2, após 25k€) → gangster_fodido (tier 3, após 50k€).
+  //   Promoções excepcionais acima de Gangster Fodido são manuais.
   YOUNG_BLOOD_ROLE_ID: optId('YOUNG_BLOOD_ROLE_ID', '1491213753235275806'),
+  O_GUNAO_ROLE_ID: optId('O_GUNAO_ROLE_ID', '1491213423613317220'),
   GANGSTER_FODIDO_ROLE_ID: optId('GANGSTER_FODIDO_ROLE_ID', '1491213170961022997'),
   // Role base obrigatória para qualquer morador (invariante)
   MORADORES_BASE_ROLE_ID: optId('MORADORES_BASE_ROLE_ID', '1490397684597653634'),
@@ -72,24 +74,29 @@ const CONFIG = {
   },
   /** Tiers de morador (ordem: entry → topo) */
   get MORADOR_TIER_ROLE_IDS() {
-    return [this.O_GUNAO_ROLE_ID, this.YOUNG_BLOOD_ROLE_ID, this.GANGSTER_FODIDO_ROLE_ID].filter(Boolean);
+    return [this.YOUNG_BLOOD_ROLE_ID, this.O_GUNAO_ROLE_ID, this.GANGSTER_FODIDO_ROLE_ID].filter(Boolean);
   },
   /** Legado — alguns módulos ainda usam este nome */
   get MORADOR_ROLE_IDS() { return this.MORADOR_TIER_ROLE_IDS; },
   get ALL_MORADOR_TIER_IDS() { return this.MORADOR_TIER_ROLE_IDS; },
 
   /** Tier por defeito para entrada no GUETTO (set pela onboardingEngine). */
-  MORADOR_DEFAULT_TIER: 'o_gunao',
+  MORADOR_DEFAULT_TIER: 'young_blood',
 
   // ── Promoção automática por material (valor em €) ─────────────────────────
-  // Nomes novos refletem a ordem correcta. Os antigos (PROMO_YOUNG_BLOOD_TO_GUNAO,
-  // PROMO_GUNAO_TO_GANGSTER_FODIDO) ainda são lidos como fallback para não
-  // partir Railway/produção sem editar o .env primeiro.
-  PROMO_GUNAO_TO_YOUNG_BLOOD: Number(
-    process.env.PROMO_GUNAO_TO_YOUNG_BLOOD || process.env.PROMO_YOUNG_BLOOD_TO_GUNAO || 25000
+  // Ordem natural: YB (entry) → 25k€ → O Gunão → 50k€ → Gangster Fodido.
+  // Aceitamos também os nomes da Fase 2 como fallback: a lógica do env
+  // descrevia a mesma "primeira promoção" e "segunda promoção", só a ordem
+  // semântica mudou.
+  PROMO_YOUNG_BLOOD_TO_GUNAO: Number(
+    process.env.PROMO_YOUNG_BLOOD_TO_GUNAO ||
+    process.env.PROMO_GUNAO_TO_YOUNG_BLOOD ||  // Phase 2 fallback (primeiro threshold)
+    25000
   ),
-  PROMO_YOUNG_BLOOD_TO_GANGSTER_FODIDO: Number(
-    process.env.PROMO_YOUNG_BLOOD_TO_GANGSTER_FODIDO || process.env.PROMO_GUNAO_TO_GANGSTER_FODIDO || 50000
+  PROMO_GUNAO_TO_GANGSTER_FODIDO: Number(
+    process.env.PROMO_GUNAO_TO_GANGSTER_FODIDO ||
+    process.env.PROMO_YOUNG_BLOOD_TO_GANGSTER_FODIDO ||  // Phase 2 fallback (segundo threshold)
+    50000
   ),
 
   // ── Category IDs ──────────────────────────────────────────────────────────

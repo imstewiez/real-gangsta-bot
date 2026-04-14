@@ -448,6 +448,17 @@ const MIGRATIONS = [
     `
   },
   {
+    id: 10,
+    name: 'tier_default_young_blood_restore',
+    // Restaurar ordem natural após feedback do utilizador na Fase 13:
+    // YB=entry (tier 1) → O Gunão (tier 2, 25k€) → Gangster Fodido (tier 3, 50k€).
+    // A migração #6 tinha mudado o default para 'o_gunao'; reverte-se aqui.
+    // Dados existentes não são tocados (/rg-fix-tiers sync existe para alinhar).
+    up: `
+      ALTER TABLE members ALTER COLUMN tier SET DEFAULT 'young_blood';
+    `
+  },
+  {
     id: 9,
     name: 'sticky_messages',
     up: `

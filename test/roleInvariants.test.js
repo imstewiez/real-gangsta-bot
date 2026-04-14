@@ -91,13 +91,13 @@ describe('roleInvariants', () => {
     assert.deepEqual(removed, ['R_GUN', 'R_YB']);
   });
 
-  it('com YB+Gun (sem GF) mantém YB (mid > entry)', async () => {
+  it('com YB+Gun (sem GF) mantém O Gunão (mid > entry YB)', async () => {
     const gm = fakeGuildMember({ roleIds: ['R_YB', 'R_GUN', 'R_MOR_BASE'] });
     const result = await ensureInvariants(gm);
     assert.equal(result.violations.includes('multiple_tiers'), true);
     const removed = gm._calls.remove.map(r => r.roleId);
-    assert.deepEqual(removed, ['R_GUN']);
-    assert.equal(gm.roles.cache.has('R_YB'), true);
+    assert.deepEqual(removed, ['R_YB']);
+    assert.equal(gm.roles.cache.has('R_GUN'), true);
   });
 
   it('dry-run não aplica mudanças', async () => {

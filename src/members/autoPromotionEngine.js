@@ -6,29 +6,32 @@ const { queueMemberOp, queueChannelOp } = require('../discordQueue');
 const { log, warn } = require('../logger');
 
 // ── Thresholds (entrega/venda acumulada em material) ────────────────────────
-// O Gunão (entry) → Young Blood:        25.000€
-// Young Blood → Gangster Fodido:        50.000€
+// Young Blood (entry) → O Gunão:        25.000€
+// O Gunão → Gangster Fodido:            50.000€
 // Gangster Fodido → cima:               manual (Patrão di Zona, Real Gangster, OG, etc.)
+// Promoções excepcionais (fora do threshold) continuam a ser feitas por
+// atribuição manual de role via Discord — o GuildMemberUpdate listener detecta
+// adições de roles oficiais e arquiva canal individual quando aplicável.
 
 const TIERS = [
-  { tier: 'o_gunao', roleIdKey: 'O_GUNAO_ROLE_ID', dbRole: 'morador', level: 1 },
-  { tier: 'young_blood', roleIdKey: 'YOUNG_BLOOD_ROLE_ID', dbRole: 'morador', level: 2 },
+  { tier: 'young_blood', roleIdKey: 'YOUNG_BLOOD_ROLE_ID', dbRole: 'morador', level: 1 },
+  { tier: 'o_gunao', roleIdKey: 'O_GUNAO_ROLE_ID', dbRole: 'morador', level: 2 },
   { tier: 'gangster_fodido', roleIdKey: 'GANGSTER_FODIDO_ROLE_ID', dbRole: 'morador', level: 3 },
 ];
 
 const PROMOTIONS = [
   {
-    from: 'o_gunao',
-    to: 'young_blood',
-    thresholdKey: 'PROMO_GUNAO_TO_YOUNG_BLOOD',
-    fromRoleKey: 'O_GUNAO_ROLE_ID',
-    toRoleKey: 'YOUNG_BLOOD_ROLE_ID',
+    from: 'young_blood',
+    to: 'o_gunao',
+    thresholdKey: 'PROMO_YOUNG_BLOOD_TO_GUNAO',
+    fromRoleKey: 'YOUNG_BLOOD_ROLE_ID',
+    toRoleKey: 'O_GUNAO_ROLE_ID',
   },
   {
-    from: 'young_blood',
+    from: 'o_gunao',
     to: 'gangster_fodido',
-    thresholdKey: 'PROMO_YOUNG_BLOOD_TO_GANGSTER_FODIDO',
-    fromRoleKey: 'YOUNG_BLOOD_ROLE_ID',
+    thresholdKey: 'PROMO_GUNAO_TO_GANGSTER_FODIDO',
+    fromRoleKey: 'O_GUNAO_ROLE_ID',
     toRoleKey: 'GANGSTER_FODIDO_ROLE_ID',
   },
 ];
