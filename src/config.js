@@ -178,7 +178,9 @@ const CONFIG = {
   AVAILABILITY_AUTO_PUBLISH_HOUR: Number(process.env.AVAILABILITY_AUTO_PUBLISH_HOUR || 0),
 
   // ── Branding ──────────────────────────────────────────────────────────────
-  BOT_DISPLAY_NAME: process.env.BOT_DISPLAY_NAME || 'Real Gangsta',
+  // BOT_DISPLAY_NAME é o nome que assina todos os embeds e mensagens do bot.
+  // Default: "redwood" (in-game persona). Podes override via Railway.
+  BOT_DISPLAY_NAME: process.env.BOT_DISPLAY_NAME || 'redwood',
   BOT_LOGO_URL: process.env.BOT_LOGO_URL || '',
   BOT_COLOR: parseInt(process.env.BOT_COLOR || 'E74C3C', 16),
 

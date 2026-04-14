@@ -258,7 +258,7 @@ async function handleMarkDeadSelect(interaction) {
       // settleParticipantCustody regista tudo como perdido + marca died=true
       await opEngine.settleParticipantCustody(opId, discordId, {
         diedWithItems, died: true, survived: false, returned: false,
-      }, interaction.user.id);
+      }, interaction.user.id, interaction.guild);
 
       report.push(`☠️ <@${discordId}> — ${diedWithItems.length ? `${diedWithItems.length} item(s) registado(s) como perda` : 'sem material fornecido'}`);
     } catch (e) {
@@ -368,7 +368,7 @@ async function handleParticipantUsersSelect(interaction) {
         broughtOwn: false,
         receivedOrg: false,
         notes: '',
-      }, interaction.user.id);
+      }, interaction.user.id, interaction.guild);
       added.push(uid);
     } catch (e) {
       errors.push(`<@${uid}> — ${e.message}`);
@@ -645,7 +645,7 @@ async function handleIssueQtyModal(interaction) {
   if (isNaN(qty) || qty <= 0) return safeReply(interaction, { content: MESSAGES.INVALID_QUANTITY() }, { dismissible: true });
 
   try {
-    await opEngine.issueMaterialToParticipant(ctx.opId, ctx.participantDiscordId, ctx.itemId, qty, interaction.user.id, notes);
+    await opEngine.issueMaterialToParticipant(ctx.opId, ctx.participantDiscordId, ctx.itemId, qty, interaction.user.id, notes, interaction.guild);
     pendingOpContext.delete(interaction.user.id);
     const { inventoryRepo } = require('../repositories');
     const item = await inventoryRepo.getItemById(ctx.itemId);

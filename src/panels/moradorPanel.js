@@ -5,12 +5,15 @@ const CONFIG = require('../config');
 function buildMoradorPanel() {
   const embed = new EmbedBuilder()
     .setColor(CONFIG.BOT_COLOR)
-    .setTitle('Painel de Morador')
+    .setTitle('🏚️ Painel do Morador')
     .setDescription(
-      'Usa os botões abaixo para registar material, consultar o teu histórico e os teus totais.\n\n' +
-      'Todas as tuas contribuições são registadas e contam para os tops semanais.'
+      'O que fazes aqui fica registado — material entregue, vendas, progresso.\n' +
+      'Cada movimento conta pros tops da semana e pra próxima subida de tier.\n\n' +
+      '📦 **Registar Material** · entrega ou venda\n' +
+      '📋 **Meu Histórico** · tudo o que passaste\n' +
+      '📊 **Meus Totais** · quanto já cresceste'
     )
-    .setFooter({ text: CONFIG.BOT_DISPLAY_NAME })
+    .setFooter({ text: `— ${CONFIG.BOT_DISPLAY_NAME} ·` })
     .setTimestamp();
 
   const row = new ActionRowBuilder().addComponents(

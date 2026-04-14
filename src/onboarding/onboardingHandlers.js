@@ -17,22 +17,23 @@ const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
 function buildEntradaPanel() {
   const embed = new EmbedBuilder()
     .setColor(CONFIG.BOT_COLOR)
-    .setTitle('\uD83E\uDE78 Real Gangsta — Bem-vindo ao Bairro')
+    .setTitle('🔥 Bem-vindo ao bairro — Real Gangsta')
     .setDescription(
-      'Queres fazer parte do grupo?\n\n' +
-      'Clica no botão abaixo para pedir a tua tag de **Morador**.\n' +
-      'Vais precisar de indicar o teu **nome in-game** e a tua **alcunha**.\n\n' +
-      'Depois de aprovado pela chefia, recebes acesso ao bairro e ao teu canal individual.'
+      'Queres entrar para o GUETTO? Faz o pedido aqui.\n\n' +
+      'Clica no botão, mete o **nome in-game** e a **alcunha**.\n' +
+      'Um oficial analisa o teu pedido — se tudo bater certo recebes tag, ' +
+      'acesso ao bairro e um canal só teu.\n\n' +
+      '_A rua é para quem aparece._'
     )
-    .setFooter({ text: CONFIG.BOT_DISPLAY_NAME })
+    .setFooter({ text: `— ${CONFIG.BOT_DISPLAY_NAME} ·` })
     .setTimestamp();
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('onboard::pedir_tag')
-      .setLabel('Pedir Tag de Morador')
+      .setLabel('Pedir tag')
       .setStyle(ButtonStyle.Success)
-      .setEmoji('\uD83C\uDFF7\uFE0F'),
+      .setEmoji('🏷️'),
   );
 
   return { embeds: [embed], components: [row] };

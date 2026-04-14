@@ -5,12 +5,13 @@ const CONFIG = require('../config');
 function buildChefiaPanel() {
   const embed = new EmbedBuilder()
     .setColor(CONFIG.BOT_COLOR)
-    .setTitle('Painel de Chefia')
+    .setTitle('👑 Comando — Real Gangsta')
     .setDescription(
-      'Centro de comando — operações, inventário, rádio, disponibilidade e stickys.\n' +
-      'Todas as acções ficam registadas no audit log.'
+      'Centro do movimento. Aqui manda-se a rua.\n' +
+      '⚔️ Operações · 📦 Inventário · 📻 Rádio · 📍 Disponibilidade · 📌 Stickys\n\n' +
+      '_Todas as acções ficam no audit log. Sem surpresas._'
     )
-    .setFooter({ text: CONFIG.BOT_DISPLAY_NAME })
+    .setFooter({ text: `— ${CONFIG.BOT_DISPLAY_NAME} ·` })
     .setTimestamp();
 
   const row1 = new ActionRowBuilder().addComponents(

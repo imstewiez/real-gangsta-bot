@@ -225,7 +225,7 @@ const CHANNEL_RENAMES = [
   // ENTRADA
   { id: DISCOVERED.CH_DIVULGACAO,       to: ch('📢', 'divulgação') },
   { id: DISCOVERED.CH_ENTRADAS,         to: ch('📥', 'entradas') },
-  { id: DISCOVERED.CH_TAGS,             to: ch('🏷️', 'tags-pendentes') },
+  { id: DISCOVERED.CH_TAGS,             to: ch('🏷️', 'pedido-de-tags') },
   { id: DISCOVERED.CH_REGRAS,           to: ch('📜', 'regras') },
   { id: DISCOVERED.CH_INFO_GERAL,       to: ch('ℹ️', 'informação-geral') },
   { id: DISCOVERED.CH_SUGESTOES,        to: ch('💡', 'sugestões') },
@@ -362,10 +362,15 @@ function rolesFor(key) {
 // OFICIAIS, COMANDO) é staff-only.
 const CATEGORY_PERMS = {
   ENTRADA: {
-    denyEveryone: ['ViewChannel'],
+    // @everyone vê (newcomers chegam aqui). Moradores — assim que aprovados —
+    // perdem acesso (deny explícito). Staff mantém acesso para aprovar pedidos.
+    allowEveryone: ['ViewChannel'],
+    deny: [
+      { roleSources: ['morador_tiers', 'moradores_base'], perms: ['ViewChannel'] },
+    ],
     allow: [
-      { roleSources: ['command', 'supervisor', 'chefe_moradores', 'morador_tiers', 'moradores_base'], perms: ['ViewChannel'] },
-      { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
+      { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'ReadMessageHistory'] },
+      { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages', 'ManageMessages'] },
     ],
   },
   COMANDO: {
@@ -491,15 +496,20 @@ const CHANNEL_PERM_OVERRIDES = {
 const _PANEL_WRITE_DENIES = ['SendMessages', 'AddReactions', 'CreatePublicThreads', 'CreatePrivateThreads', 'SendMessagesInThreads'];
 const _BOT_PANEL_PERMS = ['ViewChannel', 'SendMessages', 'ManageMessages', 'ManageChannels', 'ReadMessageHistory', 'EmbedLinks', 'AddReactions'];
 
-// boas-vindas: visível a TODA a gente (incluindo newcomers sem role).
-// Só bot posta. Moradores e acima herdam ViewChannel via @everyone allow.
+// boas-vindas: visível só a newcomers (sem role) e staff (aprovadores).
+// Moradores NÃO vêem — assim que são aprovados e recebem role, o canal
+// desaparece da sidebar deles.
 const PERMS_BOAS_VINDAS = {
   denyEveryone: _PANEL_WRITE_DENIES,
-  allowEveryone: ['ViewChannel'], // override o deny da categoria ENTRADA
+  allowEveryone: ['ViewChannel'],
+  deny: [
+    { roleSources: ['morador_tiers', 'moradores_base'], perms: ['ViewChannel'] },
+  ],
   allow: [
+    { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'ReadMessageHistory'] },
     { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
   ],
-  reason: 'boas-vindas — visível a @everyone (newcomers), só bot publica',
+  reason: 'boas-vindas — só newcomers (@everyone) + staff. Moradores bloqueados.',
 };
 
 // painel-moradores: herda ViewChannel da categoria GUETTO (mor+base+staff vêem).

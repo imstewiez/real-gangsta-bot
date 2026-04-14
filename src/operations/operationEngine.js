@@ -99,9 +99,37 @@ async function cancelOperation(opId, actorId) {
   return op;
 }
 
-async function addParticipant(opId, discordId, data, actorId) {
-  const member = await memberRepo.findByDiscordId(discordId);
-  if (!member) throw new Error('Membro não encontrado.');
+/**
+ * Resolve membro por discord_id; se não existir na DB, cria entry mínima.
+ * Isto desbloqueia staff a adicionar participantes que ainda não passaram
+ * por onboarding via bot (ex.: oficiais ou membros antigos).
+ */
+async function _resolveOrCreateMember(discordId, guild = null) {
+  let member = await memberRepo.findByDiscordId(discordId);
+  if (member) return member;
+  let display = '';
+  let username = '';
+  if (guild) {
+    try {
+      const gm = await guild.members.fetch(discordId).catch(() => null);
+      if (gm) {
+        display = gm.displayName || gm.user?.username || '';
+        username = gm.user?.username || '';
+      }
+    } catch (_) {}
+  }
+  member = await memberRepo.create({
+    discordId,
+    username: username || discordId,
+    displayName: display || username || `member-${discordId}`,
+    role: 'morador',
+  });
+  warn(`[OPS] Membro ${discordId} não estava na DB — criado automaticamente (${display || username || 'sem nome'}).`);
+  return member;
+}
+
+async function addParticipant(opId, discordId, data, actorId, guild = null) {
+  const member = await _resolveOrCreateMember(discordId, guild);
 
   const participant = await operationRepo.addParticipant(opId, member.id, data);
 
@@ -200,10 +228,9 @@ async function getOperationSummary(opId) {
  * Afecta stock (movimento `fornecimento_org`) e marca o participante como
  * `received_org_material` + `material_source='org'`.
  */
-async function issueMaterialToParticipant(opId, discordId, itemId, quantity, actorId, notes = '') {
+async function issueMaterialToParticipant(opId, discordId, itemId, quantity, actorId, notes = '', guild = null) {
   if (!quantity || quantity <= 0) throw new Error('Quantidade inválida.');
-  const member = await memberRepo.findByDiscordId(discordId);
-  if (!member) throw new Error('Membro não encontrado.');
+  const member = await _resolveOrCreateMember(discordId, guild);
 
   await operationRepo.addParticipant(opId, member.id, {
     roleInOp: 'membro',
@@ -253,9 +280,8 @@ async function issueMaterialToParticipant(opId, discordId, itemId, quantity, act
  * @param discordId
  * @param outcome {{ returnedItems?: [{itemId,qty}], lostItems?: [...], diedWithItems?: [...], died?: boolean, survived?: boolean, returned?: boolean }}
  */
-async function settleParticipantCustody(opId, discordId, outcome, actorId) {
-  const member = await memberRepo.findByDiscordId(discordId);
-  if (!member) throw new Error('Membro não encontrado.');
+async function settleParticipantCustody(opId, discordId, outcome, actorId, guild = null) {
+  const member = await _resolveOrCreateMember(discordId, guild);
 
   const returned = outcome.returnedItems || [];
   const lost = outcome.lostItems || [];

@@ -5,12 +5,15 @@ const CONFIG = require('../config');
 function buildChefeMoradoresPanel() {
   const embed = new EmbedBuilder()
     .setColor(CONFIG.BOT_COLOR)
-    .setTitle('Painel — Chefe de Moradores')
+    .setTitle('🔱 Patrão di Zona')
     .setDescription(
-      'Gestão de moradores: consultar fichas, entregas, vendas e atividade.\n' +
-      'Podes acompanhar o progresso de cada morador individualmente.'
+      'Olho na malta. Acompanha quem está a produzir, quem está a dormir.\n\n' +
+      '👥 **Listar** · quem está no GUETTO\n' +
+      '📦 **Entregas** · ranking por material entregue\n' +
+      '💰 **Vendas** · ranking por material vendido\n' +
+      '🏆 **Tops** · ranking semanal dos moradores'
     )
-    .setFooter({ text: CONFIG.BOT_DISPLAY_NAME })
+    .setFooter({ text: `— ${CONFIG.BOT_DISPLAY_NAME} ·` })
     .setTimestamp();
 
   const row = new ActionRowBuilder().addComponents(

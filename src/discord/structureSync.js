@@ -33,6 +33,7 @@ const {
   extractNicknameFromFormatted,
   bold,
   rolesFor,
+  DISCOVERED,
 } = require('./structureTemplate');
 const { query } = require('../db');
 
@@ -113,19 +114,21 @@ async function runPermsOnly(guild, opts = {}) {
   await guild.channels.fetch().catch(() => null);
   await guild.roles.fetch().catch(() => null);
 
-  // A. Renomes seguros dos painéis (apenas canais em CHANNELS_TO_CREATE com
-  //    reason incluindo "Painel" ou "Boas-vindas" + renameFrom definido).
-  //    Só renomeamos se o canal antigo existir NA CATEGORIA certa.
+  // A. Renomes seguros:
+  //    A1) Painéis (CHANNELS_TO_CREATE com reason que inclui "painel" ou
+  //        "boas-vindas"): procura pelo renameFrom e renomeia se encontrar.
+  //    A2) CHANNEL_RENAMES cujo canal está explicitamente listado como "safe"
+  //        (só canais onde temos certeza — ex.: pedido-de-tags). NÃO aplicamos
+  //        todo o array CHANNEL_RENAMES para evitar mexer em canais que o
+  //        utilizador customizou.
   const panelChannelDefs = CHANNELS_TO_CREATE.filter(d =>
     d.reason && (d.reason.toLowerCase().includes('painel') || d.reason.toLowerCase().includes('boas-vindas'))
   );
   for (const def of panelChannelDefs) {
     const target = CATEGORY_BY_KEY[def.categoryKey];
     if (!target) continue;
-    // Já existe com nome novo?
     const alreadyCorrect = guild.channels.cache.find(c => c.parentId === target.id && c.name === def.name);
     if (alreadyCorrect) continue;
-    // Procura pelos renameFrom
     for (const oldName of def.renameFrom || []) {
       const found = guild.channels.cache.find(c => c.parentId === target.id && c.name === oldName);
       if (found) {
@@ -136,6 +139,22 @@ async function runPermsOnly(guild, opts = {}) {
         }
         break;
       }
+    }
+  }
+
+  // A2 — Safe renames explícitos por ID (apenas canais conhecidos do bot).
+  const SAFE_RENAME_IDS = new Set([
+    DISCOVERED.CH_TAGS, // tags → pedido-de-tags (Fase 16)
+  ]);
+  for (const ren of CHANNEL_RENAMES) {
+    if (!SAFE_RENAME_IDS.has(ren.id)) continue;
+    const ch = guild.channels.cache.get(ren.id);
+    if (!ch) { act('SKIP_SAFE_RENAME_MISSING', { id: ren.id }); continue; }
+    if (ch.name === ren.to) continue;
+    act('RENAME_SAFE_CHANNEL', { id: ren.id, from: ch.name, to: ren.to });
+    if (apply) {
+      try { await ch.setName(ren.to); await new Promise(r => setTimeout(r, 350)); }
+      catch (e) { errored(`RENAME_SAFE:${ren.id}`, e); }
     }
   }
 

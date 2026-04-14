@@ -5,12 +5,16 @@ const CONFIG = require('../config');
 function buildOficialPanel() {
   const embed = new EmbedBuilder()
     .setColor(CONFIG.BOT_COLOR)
-    .setTitle('Painel de Oficial')
+    .setTitle('🎖️ Painel de Oficial')
     .setDescription(
-      'Aqui podes registar material, consultar operações e ver o teu resumo.\n\n' +
-      'As tuas contribuições são registadas e visíveis pela chefia.'
+      'Controlo operacional — materiais, saídas, acompanhamento.\n' +
+      'Tudo o que registas fica no radar da chefia.\n\n' +
+      '📦 **Registar Material** · entrega/venda\n' +
+      '📅 **Ver Operações** · saídas abertas e recentes\n' +
+      '📋 **Histórico** · o teu movimento\n' +
+      '📊 **Resumo** · totais acumulados'
     )
-    .setFooter({ text: CONFIG.BOT_DISPLAY_NAME })
+    .setFooter({ text: `— ${CONFIG.BOT_DISPLAY_NAME} ·` })
     .setTimestamp();
 
   const row = new ActionRowBuilder().addComponents(

@@ -2,23 +2,27 @@
 const { EmbedBuilder } = require('discord.js');
 const CONFIG = require('../config');
 
+// Footer assinado por redwood (ou override via BOT_DISPLAY_NAME). Icone opcional
+// se BOT_LOGO_URL estiver definido.
 function brandEmbed() {
+  const footer = { text: `— ${CONFIG.BOT_DISPLAY_NAME} ·` };
+  if (CONFIG.BOT_LOGO_URL) footer.iconURL = CONFIG.BOT_LOGO_URL;
   return new EmbedBuilder()
     .setColor(CONFIG.BOT_COLOR)
-    .setFooter({ text: CONFIG.BOT_DISPLAY_NAME })
+    .setFooter(footer)
     .setTimestamp();
 }
 
 function successEmbed(title, description) {
   return brandEmbed()
-    .setTitle(`\u2705 ${title}`)
+    .setTitle(`✅ ${title}`)
     .setDescription(description || null);
 }
 
 function errorEmbed(title, description) {
   return brandEmbed()
-    .setColor(0xFF0000)
-    .setTitle(`\u274C ${title}`)
+    .setColor(0xC0392B)
+    .setTitle(`⚠️ ${title}`)
     .setDescription(description || null);
 }
 
@@ -97,14 +101,14 @@ function memberProfileEmbed(member) {
 
 function welcomeChannelEmbed(memberName) {
   return brandEmbed()
-    .setTitle(`Bem-vindo, ${memberName}!`)
+    .setTitle(`🔥 Bem-vindo ao bairro, ${memberName}`)
     .setDescription(
-      'Este é o teu canal individual. Aqui podes:\n\n' +
-      '\u2022 **Registar entregas** de material\n' +
-      '\u2022 **Registar vendas** ao grupo\n' +
-      '\u2022 **Consultar o teu histórico**\n' +
-      '\u2022 **Ver os teus totais**\n\n' +
-      'Usa os botões abaixo para interagir.'
+      'Este canal é só teu. A partir daqui manda-se o movimento:\n\n' +
+      '📦 **Registar entregas** — material que trazes pra casa\n' +
+      '💰 **Registar vendas** — o que é despachado na rua\n' +
+      '📋 **Consultar histórico** — o teu rasto no GUETTO\n' +
+      '📊 **Ver totais** — quanto já cresceste\n\n' +
+      '_Faz por merecer. Cada entrega conta pro próximo tier._'
     );
 }
 
