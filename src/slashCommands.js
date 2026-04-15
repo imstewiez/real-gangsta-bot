@@ -76,6 +76,26 @@ const commands = [
       .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
 
   new SlashCommandBuilder()
+    .setName('rg-lock-category')
+    .setDescription('Força canais de uma categoria a sincronizar perms com a categoria (fix de canais escondidos)')
+    .addStringOption(opt => opt.setName('categoria').setDescription('Key da categoria a trancar').setRequired(true)
+      .addChoices(
+        { name: 'ENTRADA',   value: 'ENTRADA' },
+        { name: 'COMANDO',   value: 'COMANDO' },
+        { name: 'OFICIAIS',  value: 'OFICIAIS' },
+        { name: 'GUETTO',    value: 'GUETTO' },
+        { name: 'INVENTARIO', value: 'INVENTARIO' },
+        { name: 'ARSENAL',   value: 'ARSENAL' },
+        { name: 'OPERACOES (spots)', value: 'OPERACOES' },
+        { name: 'ECONOMIA',  value: 'ECONOMIA' },
+        { name: 'REPUTACAO', value: 'REPUTACAO' },
+        { name: 'CALLS',     value: 'CALLS' },
+        { name: 'GERAL',     value: 'GERAL' },
+      ))
+    .addStringOption(opt => opt.setName('modo').setDescription('dry-run (default) ou apply').setRequired(false)
+      .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
+
+  new SlashCommandBuilder()
     .setName('rg-sync-roles')
     .setDescription('Reconcilia invariantes de roles em todos os membros')
     .addStringOption(opt => opt.setName('modo').setDescription('dry-run (default) ou apply').setRequired(false)

@@ -54,7 +54,7 @@ const {
   isChefia, isChefeMoradores, isCommand,
   canManageStructure, canBootstrapStock, canRegisterKill,
 } = require('./permissions/permissionEngine');
-const { runSync, runPermsOnly, summarize } = require('./discord/structureSync');
+const { runSync, runPermsOnly, runLockCategory, summarize } = require('./discord/structureSync');
 const { reconcileAllMembers } = require('./members/roleInvariants');
 const { fixTiers } = require('./members/tierFixCommand');
 const {
@@ -425,6 +425,37 @@ client.on(Events.InteractionCreate, async (interaction) => {
           for (const e of report.errors.slice(0, 5)) lines.push(`❌ ${e.stage}: ${e.message}`);
         }
         if (!apply) lines.push('', '> _Dry-run — usa `modo:apply` para aplicar._');
+        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
+      }
+
+      if (cmd === 'rg-lock-category') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('lock category'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const categoria = interaction.options.getString('categoria');
+        const modo = interaction.options.getString('modo') || 'dry-run';
+        const apply = modo === 'apply';
+        const report = await runLockCategory(interaction.guild, categoria, { apply });
+        const lines = [
+          `**Categoria:** \`${report.category}\` — **Modo:** \`${report.mode.toUpperCase()}\``,
+          `**Lock:** ${report.locked.length}  **Skip:** ${report.skipped.length}  **Erros:** ${report.errors.length}`,
+        ];
+        if (report.locked.length) {
+          lines.push('', '**Canais trancados à categoria:**');
+          for (const l of report.locked.slice(0, 25)) {
+            lines.push(`• \`${l.channel}\`${l.dry ? ' _(dry)_' : ''}`);
+          }
+        }
+        if (report.skipped.length) {
+          lines.push('', '**Skipped:**');
+          for (const s of report.skipped.slice(0, 10)) {
+            lines.push(`⚪ \`${s.channel}\` — \`${s.reason}\``);
+          }
+        }
+        if (report.errors.length) {
+          lines.push('', '**Erros:**');
+          for (const e of report.errors.slice(0, 5)) lines.push(`❌ ${e}`);
+        }
+        if (!apply) lines.push('', '> _Dry-run — usa `modo:apply` para sincronizar._');
         return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
       }
 
