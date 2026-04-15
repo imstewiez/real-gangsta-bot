@@ -313,6 +313,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 async function _dispatchInteraction(interaction) {
   try {
+    // ── Autocomplete handler (sem rate limit, sem deferReply) ────────────────
+    if (interaction.isAutocomplete?.()) {
+      const focused = interaction.options.getFocused(true);
+      const cmd = interaction.commandName;
+      if (focused.name === 'item' && cmd?.startsWith('rg-stock-')) {
+        const { getActiveItemsList } = require('./sheets/queries');
+        const all = await getActiveItemsList().catch(() => []);
+        const q = String(focused.value || '').toLowerCase();
+        const filtered = (q ? all.filter(i => i.name.toLowerCase().includes(q)) : all).slice(0, 25);
+        return interaction.respond(filtered.map(i => ({ name: i.name, value: i.name }))).catch(() => {});
+      }
+      return interaction.respond([]).catch(() => {});
+    }
+
     // ── Rate limiting global por user (janela deslizante) ────────────────────
     // Admin commands têm limite mais folgado; consultas básicas são mais restritas.
     const rl = require('./shared/rateLimiter');
@@ -581,6 +595,84 @@ async function _dispatchInteraction(interaction) {
           r.errors.length ? `⚠️ Erros: ${r.errors.length} (ver logs)` : '',
         ].filter(Boolean);
         return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
+      }
+
+      // ── Stock manual ──────────────────────────────────────────────────────
+      if (cmd === 'rg-stock-add' || cmd === 'rg-stock-remove' || cmd === 'rg-stock-transfer' || cmd === 'rg-stock-adjust' || cmd === 'rg-stock-check') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const sm = require('./inventory/stockManager');
+        const itemName = interaction.options.getString('item');
+        const item = await sm.findItemByName(itemName);
+        if (!item) return safeReply(interaction, { content: `❌ Item não encontrado: \`${itemName}\``}, { dismissible: true });
+
+        const actor = `discord:${interaction.user.id}`;
+        const memberDiscordId = interaction.options.getUser?.('membro')?.id;
+        let memberDbId = null;
+        if (memberDiscordId) {
+          const { memberRepo } = require('./repositories');
+          const m = await memberRepo.findByDiscordId(memberDiscordId);
+          memberDbId = m?.id || null;
+        }
+
+        try {
+          if (cmd === 'rg-stock-check') {
+            const ar = await sm.getCurrentStock(item.id, 'armazem');
+            const gr = await sm.getCurrentStock(item.id, 'grupo');
+            const total = ar + gr;
+            const value = (Number(item.estimated_value) || 0) * total;
+            return safeReply(interaction, { content:
+              `📦 **${item.name}**  _${item.category}_\n` +
+              `🏠 Armazém: \`${ar}\` un.\n` +
+              `🏠 Grupo: \`${gr}\` un.\n` +
+              `▸ Total: **${total}** un.  (≈ ${value.toLocaleString('pt-PT')} €)`
+            }, { dismissible: true });
+          }
+
+          if (cmd === 'rg-stock-add') {
+            const qty = interaction.options.getInteger('quantidade');
+            const casa = interaction.options.getString('casa');
+            const tipo = interaction.options.getString('tipo') || 'apreendido';
+            const nota = interaction.options.getString('nota') || '';
+            await sm.addStock({ itemId: item.id, quantity: qty, location: casa, type: tipo, actor, memberId: memberDbId, notes: nota });
+            const newBalance = await sm.getCurrentStock(item.id, casa);
+            return safeReply(interaction, { content: `✅ +${qty} **${item.name}** em **${casa}** (${tipo}). Novo total: \`${newBalance}\`` }, { dismissible: true });
+          }
+
+          if (cmd === 'rg-stock-remove') {
+            const qty = interaction.options.getInteger('quantidade');
+            const casa = interaction.options.getString('casa');
+            const tipo = interaction.options.getString('tipo');
+            const nota = interaction.options.getString('nota') || '';
+            await sm.removeStock({ itemId: item.id, quantity: qty, location: casa, type: tipo, actor, memberId: memberDbId, notes: nota });
+            const newBalance = await sm.getCurrentStock(item.id, casa);
+            return safeReply(interaction, { content: `✅ −${qty} **${item.name}** em **${casa}** (${tipo}). Novo total: \`${newBalance}\`` }, { dismissible: true });
+          }
+
+          if (cmd === 'rg-stock-transfer') {
+            const qty = interaction.options.getInteger('quantidade');
+            const de   = interaction.options.getString('de');
+            const para = interaction.options.getString('para');
+            const nota = interaction.options.getString('nota') || '';
+            await sm.transferStock({ itemId: item.id, quantity: qty, fromLocation: de, toLocation: para, actor, notes: nota });
+            const ar = await sm.getCurrentStock(item.id, 'armazem');
+            const gr = await sm.getCurrentStock(item.id, 'grupo');
+            return safeReply(interaction, { content: `🔄 Transferido **${qty}× ${item.name}**: ${de} → ${para}\nArmazém: \`${ar}\` · Grupo: \`${gr}\`` }, { dismissible: true });
+          }
+
+          if (cmd === 'rg-stock-adjust') {
+            const novo = interaction.options.getInteger('novo_total');
+            const casa = interaction.options.getString('casa');
+            const razao = interaction.options.getString('razao') || 'contagem manual';
+            const r = await sm.adjustStock({ itemId: item.id, newTotal: novo, location: casa, actor, reason: razao });
+            const sign = r.delta > 0 ? '+' : '';
+            return safeReply(interaction, { content: r.delta === 0
+              ? `ℹ️ **${item.name}** em ${casa} já estava em ${novo}, nenhum movimento criado.`
+              : `✅ Ajustado **${item.name}** em **${casa}**: ${sign}${r.delta} → \`${novo}\` (${razao})`
+            }, { dismissible: true });
+          }
+        } catch (e) {
+          return safeReply(interaction, { content: `❌ ${e.message}` }, { dismissible: true });
+        }
       }
 
       if (cmd === 'rg-sync-sheets') {

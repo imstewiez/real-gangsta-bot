@@ -40,6 +40,11 @@ function daysAgoISO(n) {
 
 // Sinal de cada movement_type para cálculo de saldo de stock.
 // Mantém-se em sync com src/repositories/inventory.js::getStock.
+//
+// Importante sobre 2 casas:
+//   - Movimentos têm coluna `location` ('armazem' | 'grupo' | NULL).
+//   - 'transferencia' aparece como par de movimentos: ajuste_manual -X numa casa
+//     + ajuste_manual +X na outra casa, mantendo total global inalterado.
 const STOCK_BALANCE_CASE = `
   CASE
     WHEN im.movement_type IN (
@@ -52,6 +57,10 @@ const STOCK_BALANCE_CASE = `
       THEN im.quantity
     ELSE 0
   END`;
+
+// Variantes filtradas por casa — usar em queries que querem balance por casa.
+const STOCK_BALANCE_ARMAZEM = `(CASE WHEN im.location = 'armazem' THEN ${STOCK_BALANCE_CASE} ELSE 0 END)`;
+const STOCK_BALANCE_GRUPO   = `(CASE WHEN im.location = 'grupo'   THEN ${STOCK_BALANCE_CASE} ELSE 0 END)`;
 
 // ─── KPIs do Dashboard ───────────────────────────────────────────────────────
 async function getDashboardKPIs() {
@@ -517,15 +526,22 @@ async function getRankings() {
 async function getInventoryFull() {
   const r = await query(`
     WITH stock_balances AS (
-      SELECT i.id, COALESCE(SUM(${STOCK_BALANCE_CASE}), 0) AS balance
+      SELECT i.id,
+        COALESCE(SUM(${STOCK_BALANCE_CASE}),     0)::int AS balance,
+        COALESCE(SUM(${STOCK_BALANCE_ARMAZEM}),  0)::int AS balance_armazem,
+        COALESCE(SUM(${STOCK_BALANCE_GRUPO}),    0)::int AS balance_grupo
       FROM items i
       LEFT JOIN inventory_movements im ON im.item_id = i.id
       WHERE i.active = true
       GROUP BY i.id
     )
     SELECT
-      i.id, i.name, i.category, i.unit, sb.balance, i.estimated_value,
+      i.id, i.name, i.category, i.unit,
+      sb.balance, sb.balance_armazem, sb.balance_grupo,
+      i.estimated_value,
       (COALESCE(sb.balance,0) * COALESCE(i.estimated_value,0))::numeric AS value_total,
+      (COALESCE(sb.balance_armazem,0) * COALESCE(i.estimated_value,0))::numeric AS value_armazem,
+      (COALESCE(sb.balance_grupo,0)   * COALESCE(i.estimated_value,0))::numeric AS value_grupo,
       (SELECT MAX(created_at) FROM inventory_movements WHERE item_id = i.id) AS last_movement,
       (SELECT SUM(quantity)::int FROM inventory_movements WHERE item_id = i.id AND movement_type IN ('entrega_morador','entrega_oficial')) AS total_in,
       (SELECT SUM(quantity)::int FROM inventory_movements WHERE item_id = i.id AND movement_type NOT IN ('entrega_morador','entrega_oficial')) AS total_out
@@ -539,7 +555,7 @@ async function getInventoryFull() {
 async function getMovementsFull(limit = 2000) {
   const r = await query(`
     SELECT
-      sm.created_at, sm.movement_type,
+      sm.created_at, sm.movement_type, sm.location,
       i.name AS item, i.category AS categoria,
       sm.quantity,
       COALESCE(i.estimated_value, 0)::numeric AS unit_value,
@@ -557,6 +573,12 @@ async function getMovementsFull(limit = 2000) {
     ORDER BY sm.created_at DESC
     LIMIT $1`,
     [limit]);
+  return r.rows;
+}
+
+// Lista compacta de items para autocomplete dos slash commands.
+async function getActiveItemsList() {
+  const r = await query('SELECT id, name FROM items WHERE active = true ORDER BY name');
   return r.rows;
 }
 
@@ -728,7 +750,9 @@ async function getStockByCategory() {
   const r = await query(`
     WITH stock_balances AS (
       SELECT i.id, i.category, i.estimated_value,
-        COALESCE(SUM(${STOCK_BALANCE_CASE}), 0) AS balance
+        COALESCE(SUM(${STOCK_BALANCE_CASE}),    0) AS balance,
+        COALESCE(SUM(${STOCK_BALANCE_ARMAZEM}), 0) AS balance_armazem,
+        COALESCE(SUM(${STOCK_BALANCE_GRUPO}),   0) AS balance_grupo
       FROM items i
       LEFT JOIN inventory_movements im ON im.item_id = i.id
       WHERE i.active = true
@@ -736,8 +760,12 @@ async function getStockByCategory() {
     )
     SELECT category,
       COUNT(*)::int AS items_count,
-      SUM(balance)::int AS total_qty,
-      SUM(balance * COALESCE(estimated_value, 0))::numeric AS total_value
+      SUM(balance)::int          AS total_qty,
+      SUM(balance_armazem)::int  AS qty_armazem,
+      SUM(balance_grupo)::int    AS qty_grupo,
+      SUM(balance         * COALESCE(estimated_value, 0))::numeric AS total_value,
+      SUM(balance_armazem * COALESCE(estimated_value, 0))::numeric AS value_armazem,
+      SUM(balance_grupo   * COALESCE(estimated_value, 0))::numeric AS value_grupo
     FROM stock_balances
     GROUP BY category
     ORDER BY total_value DESC NULLS LAST`);
@@ -789,4 +817,6 @@ module.exports = {
   getAlerts,
   getStockByCategory,
   getMemberStreaks,
+  // Stock per-casa
+  getActiveItemsList,
 };

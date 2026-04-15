@@ -124,6 +124,67 @@ const commands = [
     .addStringOption(opt => opt.setName('modo').setDescription('dry-run ou aplicar')
       .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
 
+  // ── Stock manual ─────────────────────────────────────────────────────────
+  new SlashCommandBuilder()
+    .setName('rg-stock-add')
+    .setDescription('Regista entrada de material no stock (armazém ou grupo)')
+    .addStringOption(opt => opt.setName('item').setDescription('Nome do item (autocomplete)').setRequired(true).setAutocomplete(true))
+    .addIntegerOption(opt => opt.setName('quantidade').setDescription('Unidades').setRequired(true).setMinValue(1))
+    .addStringOption(opt => opt.setName('casa').setDescription('Onde guardar').setRequired(true)
+      .addChoices({ name: 'Armazém (chefes)', value: 'armazem' }, { name: 'Grupo (oficiais)', value: 'grupo' }))
+    .addStringOption(opt => opt.setName('tipo').setDescription('Origem da entrada').setRequired(false)
+      .addChoices(
+        { name: 'Apreendido', value: 'apreendido' },
+        { name: 'Craftado', value: 'craftado' },
+        { name: 'Entrega Morador', value: 'entrega_morador' },
+        { name: 'Entrega Oficial', value: 'entrega_oficial' },
+        { name: 'Devolução de Saída', value: 'devolucao_operacao' },
+      ))
+    .addUserOption(opt => opt.setName('membro').setDescription('Membro associado (entregas)').setRequired(false))
+    .addStringOption(opt => opt.setName('nota').setDescription('Nota livre').setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('rg-stock-remove')
+    .setDescription('Regista saída de material do stock')
+    .addStringOption(opt => opt.setName('item').setDescription('Nome do item').setRequired(true).setAutocomplete(true))
+    .addIntegerOption(opt => opt.setName('quantidade').setDescription('Unidades').setRequired(true).setMinValue(1))
+    .addStringOption(opt => opt.setName('casa').setDescription('De que casa').setRequired(true)
+      .addChoices({ name: 'Armazém (chefes)', value: 'armazem' }, { name: 'Grupo (oficiais)', value: 'grupo' }))
+    .addStringOption(opt => opt.setName('tipo').setDescription('Razão da saída').setRequired(true)
+      .addChoices(
+        { name: 'Venda Morador', value: 'venda_morador' },
+        { name: 'Fornecimento Org (saída)', value: 'fornecimento_org' },
+        { name: 'Consumo em Operação', value: 'consumo_operacao' },
+        { name: 'Perda em Operação', value: 'perda_operacao' },
+      ))
+    .addUserOption(opt => opt.setName('membro').setDescription('Membro associado').setRequired(false))
+    .addStringOption(opt => opt.setName('nota').setDescription('Nota livre').setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('rg-stock-transfer')
+    .setDescription('Move material entre casas (par de movimentos automático)')
+    .addStringOption(opt => opt.setName('item').setDescription('Nome do item').setRequired(true).setAutocomplete(true))
+    .addIntegerOption(opt => opt.setName('quantidade').setDescription('Unidades a mover').setRequired(true).setMinValue(1))
+    .addStringOption(opt => opt.setName('de').setDescription('Casa origem').setRequired(true)
+      .addChoices({ name: 'Armazém', value: 'armazem' }, { name: 'Grupo', value: 'grupo' }))
+    .addStringOption(opt => opt.setName('para').setDescription('Casa destino').setRequired(true)
+      .addChoices({ name: 'Armazém', value: 'armazem' }, { name: 'Grupo', value: 'grupo' }))
+    .addStringOption(opt => opt.setName('nota').setDescription('Nota livre').setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('rg-stock-adjust')
+    .setDescription('Ajuste manual — define o stock total de uma casa para o valor exacto')
+    .addStringOption(opt => opt.setName('item').setDescription('Nome do item').setRequired(true).setAutocomplete(true))
+    .addIntegerOption(opt => opt.setName('novo_total').setDescription('Novo total absoluto').setRequired(true).setMinValue(0))
+    .addStringOption(opt => opt.setName('casa').setDescription('Em que casa').setRequired(true)
+      .addChoices({ name: 'Armazém', value: 'armazem' }, { name: 'Grupo', value: 'grupo' }))
+    .addStringOption(opt => opt.setName('razao').setDescription('Razão do ajuste').setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('rg-stock-check')
+    .setDescription('Mostra o stock actual de um item (por casa)')
+    .addStringOption(opt => opt.setName('item').setDescription('Nome do item').setRequired(true).setAutocomplete(true)),
+
   // ── Google Sheets sync ──────────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName('rg-sync-sheets')
