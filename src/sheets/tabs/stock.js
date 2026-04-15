@@ -36,6 +36,25 @@ function casaBadge(loc) {
   return mutedCell('—', { align: 'CENTER' });
 }
 
+// Display names por categoria (chave DB → rótulo humano premium)
+const CAT_DISPLAY = {
+  armas:       'Armas',
+  acessorios:  'Munição & Acessórios',
+  metais:      'Metais',
+  reciclagem:  'Reciclagem',
+  componentes: 'Componentes',
+  madeiras:    'Madeiras',
+  quimicos:    'Químicos',
+  electronica: 'Electrónica',
+  droga:       'Droga',
+  comida:      'Comida',
+  pesca:       'Pesca',
+  texteis:     'Têxteis',
+  utilidade:   'Utilidade',
+  outros:      'Outros',
+};
+function catLabel(cat) { return (CAT_DISPLAY[cat] || cat || '—').toUpperCase(); }
+
 const MOV_PILL = {
   entrega_morador:    { label: 'ENTREGA',   bg: COLOR.GREEN_DEEP },
   entrega_oficial:    { label: 'ENTR.OFIC', bg: COLOR.GREEN_DEEP },
@@ -138,7 +157,7 @@ async function syncStock(batch, sheetId) {
   const catRows = byCat.map(c => {
     const pct = totalValue > 0 ? Number(c.total_value) / totalValue : 0;
     const cells = [
-      bodyBoldCell(c.category || '—'),
+      bodyBoldCell(CAT_DISPLAY[c.category] || c.category || '—'),
       numCell(c.items_count, NUM_FMT.INT),
       numCell(c.qty_armazem || 0, NUM_FMT.INT),
       numCell(c.qty_grupo || 0, NUM_FMT.INT),
@@ -178,7 +197,7 @@ async function syncStock(batch, sheetId) {
     const items = groups.get(cat);
     // Cabeçalho de categoria
     const catCells = [
-      bodyBoldCell(cat.toUpperCase(), { bg: COLOR.BG_BLOCK, align: 'LEFT' }),
+      bodyBoldCell(catLabel(cat), { bg: COLOR.BG_BLOCK, align: 'LEFT' }),
       ...Array(COL_COUNT - 1).fill(cell('', { bg: COLOR.BG_BLOCK })),
     ];
     batch.updateCells(sheetId, row, 0, [catCells]);
@@ -225,7 +244,7 @@ async function syncStock(batch, sheetId) {
     const subVal   = items.reduce((a, i) => a + Number(i.value_total || 0), 0);
     const boldFont = { fontFamily: 'Inter', fontSize: 10, bold: true, foregroundColor: COLOR.WHITE };
     const subCells = [
-      bodyBoldCell(`⎯ subtotal ${cat}`, { bg: COLOR.BG_BLOCK_ALT, align: 'RIGHT' }),
+      bodyBoldCell(`⎯ subtotal ${CAT_DISPLAY[cat] || cat}`, { bg: COLOR.BG_BLOCK_ALT, align: 'RIGHT' }),
       cell('', { bg: COLOR.BG_BLOCK_ALT }),
       cell('', { bg: COLOR.BG_BLOCK_ALT }),
       numCell(subQtyAr, NUM_FMT.INT, { bg: COLOR.BG_BLOCK_ALT, font: boldFont }),
