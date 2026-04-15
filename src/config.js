@@ -47,6 +47,9 @@ const CONFIG = {
   GANGSTER_FODIDO_ROLE_ID: optId('GANGSTER_FODIDO_ROLE_ID', '1491213170961022997'),
   // Role base obrigatória para qualquer morador (invariante)
   MORADORES_BASE_ROLE_ID: optId('MORADORES_BASE_ROLE_ID', '1490397684597653634'),
+  // Pendente — atribuído automaticamente a quem acaba de chegar ao servidor.
+  // Único role que vê boas-vindas. Removido quando o pedido de tag é aprovado.
+  PENDENTE_ROLE_ID: optId('PENDENTE_ROLE_ID'),
   // Roles flavor (não-core)
   TROPINHAS_DO_GUETTO_ROLE_ID: optId('TROPINHAS_DO_GUETTO_ROLE_ID', '1490397688800477215'),
   PATRULHA_PATA_ROLE_ID: optId('PATRULHA_PATA_ROLE_ID', '1490795383448928276'),
@@ -119,6 +122,12 @@ const CONFIG = {
   // ── Comportamento ─────────────────────────────────────────────────────────
   ARCHIVE_ON_PROMOTION: optBool('ARCHIVE_ON_PROMOTION', true),
   DELETE_ON_PROMOTION: optBool('DELETE_ON_PROMOTION', false),
+  // Quando morador sai do servidor: arquivar ou apagar canal individual.
+  // Default: apagar (DELETE_ON_LEAVE=true) — servidor fica limpo.
+  DELETE_ON_LEAVE: optBool('DELETE_ON_LEAVE', true),
+  ARCHIVE_ON_LEAVE: optBool('ARCHIVE_ON_LEAVE', false),
+  // Auto-atribuir Pendente a newcomers (requer PENDENTE_ROLE_ID configurado).
+  AUTO_ASSIGN_PENDENTE: optBool('AUTO_ASSIGN_PENDENTE', true),
   ENABLE_BACKGROUND_JOBS: optBool('ENABLE_BACKGROUND_JOBS', false),
   ENFORCE_ROLE_INVARIANTS: optBool('ENFORCE_ROLE_INVARIANTS', true),
   PANEL_BOOTSTRAP_ON_READY: optBool('PANEL_BOOTSTRAP_ON_READY', true),

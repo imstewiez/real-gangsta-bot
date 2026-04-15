@@ -34,10 +34,10 @@ async function processApproval(tagRequest, approverMember, client) {
     return result;
   }
 
-  // ── 2. Add roles (Moradores base + tier de entrada) ────────────────────
+  // ── 2. Add roles (Moradores base + tier de entrada) + remove Pendente ──
   // O tier de entrada é resolvido por nome a partir de MORADOR_DEFAULT_TIER
   // para acompanhar mudanças de hierarquia sem editar o engine.
-  const entryTier = CONFIG.MORADOR_DEFAULT_TIER || 'o_gunao';
+  const entryTier = CONFIG.MORADOR_DEFAULT_TIER || 'young_blood';
   const entryRoleKey = `${entryTier.toUpperCase()}_ROLE_ID`;
   const entryRoleId = CONFIG[entryRoleKey];
   try {
@@ -48,6 +48,11 @@ async function processApproval(tagRequest, approverMember, client) {
       await queueMemberOp(() => guildMember.roles.add(entryRoleId, `Onboarding: tier ${entryTier}`));
     } else {
       warn(`[ONBOARDING] ${entryRoleKey} não configurado — tier de entrada não foi atribuído.`);
+    }
+    // Remove Pendente se existir — newcomer deixa de ser "pending" depois
+    // de aprovado. Silencioso se o membro nunca teve o role.
+    if (CONFIG.PENDENTE_ROLE_ID && guildMember.roles.cache.has(CONFIG.PENDENTE_ROLE_ID)) {
+      await queueMemberOp(() => guildMember.roles.remove(CONFIG.PENDENTE_ROLE_ID, 'Onboarding: tag aprovada, remove Pendente'));
     }
     result.rolesAdded = true;
     log(`[ONBOARDING] Roles adicionadas a ${fullName} (${discordId}).`);

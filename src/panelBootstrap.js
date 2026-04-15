@@ -144,14 +144,73 @@ async function bootstrapAll(client) {
   for (const panel of PANELS) {
     const r = await bootstrapPanel(client, panel);
     results.push(r);
-    // Se painel foi publicado/editado com sucesso, regista sticky automática.
     if (r.status === 'created' || r.status === 'edited') {
       await upsertPanelSticky(panel, r.channelId);
     }
   }
   const counts = results.reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
   log(`[PANELS] Painéis inicializados — ${JSON.stringify(counts)}.`);
+
+  // Backfill — garante que todos os canais individuais de morador têm o
+  // painel morador (welcome + botões). Necessário para canais criados antes
+  // de o painel existir, ou para canais onde a mensagem foi apagada.
+  const backfill = await backfillResidentPanels(client);
+  results.push({ key: 'backfill_resident_panels', status: 'info',
+    channelId: null, reason: `${backfill.posted} posted, ${backfill.skipped} já OK, ${backfill.failed} falhas (total ${backfill.total})`,
+  });
+  log(`[PANELS] Backfill residentes — ${JSON.stringify(backfill)}.`);
+
   return results;
+}
+
+/**
+ * Itera todos os canais de morador activos e posta o painel morador se
+ * ainda não existir uma mensagem do bot com esse painel lá.
+ *
+ * Idempotente: não duplica se o painel já estiver no canal (detectado por
+ * título do embed "Painel do Morador" ou "Bem-vindo ao bairro").
+ */
+async function backfillResidentPanels(client) {
+  const { query } = require('./db');
+  const { buildMoradorChannelPanel } = require('./onboarding/onboardingHandlers');
+  const { welcomeChannelEmbed } = require('./shared/embedBuilders');
+
+  const res = await query(
+    `SELECT rc.channel_id, m.full_name, m.display_name, m.nickname
+       FROM resident_channels rc
+       JOIN members m ON m.id = rc.member_id
+      WHERE rc.status = 'active'`
+  );
+
+  let posted = 0, skipped = 0, failed = 0;
+  for (const row of res.rows) {
+    try {
+      const ch = await client.channels.fetch(row.channel_id).catch(() => null);
+      if (!ch || !ch.isTextBased?.()) { failed++; continue; }
+
+      // Procura mensagem existente do bot que seja o painel
+      const messages = await ch.messages.fetch({ limit: 30 }).catch(() => null);
+      const existing = messages?.find(m =>
+        m.author?.id === client.user.id &&
+        m.components?.length &&
+        m.components.some(row => row.components?.some(c => c.customId?.startsWith('morador::')))
+      );
+      if (existing) { skipped++; continue; }
+
+      const name = row.full_name || row.display_name || row.nickname || 'morador';
+      await ch.send({
+        embeds: [welcomeChannelEmbed(name)],
+        components: buildMoradorChannelPanel(),
+      });
+      posted++;
+      await new Promise(r => setTimeout(r, 300));
+    } catch (e) {
+      failed++;
+      warn(`[BACKFILL] ${row.channel_id}: ${e.message}`);
+    }
+  }
+
+  return { total: res.rows.length, posted, skipped, failed };
 }
 
 module.exports = { bootstrapAll, bootstrapPanel, PANELS };

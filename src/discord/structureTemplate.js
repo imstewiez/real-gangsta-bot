@@ -349,6 +349,7 @@ function rolesFor(key) {
     case 'chefe_moradores': return CONFIG.CHEFE_MORADORES_ROLE_IDS;
     case 'morador_tiers':   return CONFIG.MORADOR_TIER_ROLE_IDS;
     case 'moradores_base':  return [CONFIG.MORADORES_BASE_ROLE_ID].filter(Boolean);
+    case 'pendente':        return [CONFIG.PENDENTE_ROLE_ID].filter(Boolean);
     case 'tropinhas':       return [CONFIG.TROPINHAS_DO_GUETTO_ROLE_ID].filter(Boolean);
     case 'patrulha_pata':   return [CONFIG.PATRULHA_PATA_ROLE_ID].filter(Boolean);
     case 'bot':             return [CONFIG.BOT_ROLE_ID].filter(Boolean);
@@ -362,13 +363,12 @@ function rolesFor(key) {
 // OFICIAIS, COMANDO) é staff-only.
 const CATEGORY_PERMS = {
   ENTRADA: {
-    // @everyone vê (newcomers chegam aqui). Moradores — assim que aprovados —
-    // perdem acesso (deny explícito). Staff mantém acesso para aprovar pedidos.
-    allowEveryone: ['ViewChannel'],
-    deny: [
-      { roleSources: ['morador_tiers', 'moradores_base'], perms: ['ViewChannel'] },
-    ],
+    // Só quem tem role Pendente (newcomers) + staff (para aprovar) vê ENTRADA.
+    // @everyone bloqueado — newcomers são automaticamente pendentes via
+    // guildMemberAdd listener em index.js.
+    denyEveryone: ['ViewChannel'],
     allow: [
+      { roleSources: ['pendente'], perms: ['ViewChannel', 'ReadMessageHistory'] },
       { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'ReadMessageHistory'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages', 'ManageMessages'] },
     ],
@@ -496,20 +496,17 @@ const CHANNEL_PERM_OVERRIDES = {
 const _PANEL_WRITE_DENIES = ['SendMessages', 'AddReactions', 'CreatePublicThreads', 'CreatePrivateThreads', 'SendMessagesInThreads'];
 const _BOT_PANEL_PERMS = ['ViewChannel', 'SendMessages', 'ManageMessages', 'ManageChannels', 'ReadMessageHistory', 'EmbedLinks', 'AddReactions'];
 
-// boas-vindas: visível só a newcomers (sem role) e staff (aprovadores).
-// Moradores NÃO vêem — assim que são aprovados e recebem role, o canal
-// desaparece da sidebar deles.
+// boas-vindas: só pendentes (newcomers com role Pendente) e staff vêem.
+// @everyone totalmente bloqueado. Quando o pedido de tag é aprovado,
+// o role Pendente é removido → canal desaparece da sidebar do morador.
 const PERMS_BOAS_VINDAS = {
-  denyEveryone: _PANEL_WRITE_DENIES,
-  allowEveryone: ['ViewChannel'],
-  deny: [
-    { roleSources: ['morador_tiers', 'moradores_base'], perms: ['ViewChannel'] },
-  ],
+  denyEveryone: ['ViewChannel', ..._PANEL_WRITE_DENIES],
   allow: [
+    { roleSources: ['pendente'], perms: ['ViewChannel', 'ReadMessageHistory'] },
     { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'ReadMessageHistory'] },
     { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
   ],
-  reason: 'boas-vindas — só newcomers (@everyone) + staff. Moradores bloqueados.',
+  reason: 'boas-vindas — só Pendentes + staff. @everyone bloqueado.',
 };
 
 // painel-moradores: herda ViewChannel da categoria GUETTO (mor+base+staff vêem).
