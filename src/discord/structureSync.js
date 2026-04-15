@@ -195,74 +195,34 @@ async function runPermsOnly(guild, opts = {}) {
     }
   }
 
-  return report;
-}
-
-/**
- * Força todos os canais de uma categoria a sincronizar as suas permissões
- * com a categoria (equivalente ao "Sync with Category" do Discord UI).
- *
- * Uso típico: canais dentro de OPERACOES (spots) que ficaram com overrides
- * próprios que negam ViewChannel a quem a categoria permitiria ver.
- *
- * Skips:
- *   - Canais com overrides de user (type=1) → preserva canais individuais
- *     de moradores e permissões user-específicas
- *   - Canais listados em CHANNEL_PERM_OVERRIDES (por ID) → têm override
- *     explícito do bot, respeitamos
- *   - Canais cujo nome está em CHANNEL_PERM_OVERRIDES_BY_NAME → idem
- */
-async function runLockCategory(guild, categoryKey, opts = {}) {
-  const apply = Boolean(opts.apply);
-  const report = { mode: apply ? 'apply' : 'dry-run', category: categoryKey, locked: [], skipped: [], errors: [] };
-
-  const tpl = CATEGORY_BY_KEY[categoryKey];
-  if (!tpl || !tpl.id) {
-    report.errors.push(`Categoria '${categoryKey}' não encontrada no template.`);
-    return report;
-  }
-
-  const cat = guild.channels.cache.get(tpl.id);
-  if (!cat) {
-    report.errors.push(`Categoria '${tpl.name}' (${tpl.id}) não existe no servidor.`);
-    return report;
-  }
-
-  const overrideIdsSkip = new Set(Object.keys(CHANNEL_PERM_OVERRIDES || {}));
-  const overrideNamesSkip = new Set(Object.keys(CHANNEL_PERM_OVERRIDES_BY_NAME || {}));
-
-  for (const [chId, ch] of guild.channels.cache) {
-    if (ch.parentId !== tpl.id) continue;
-
-    // Skip canal tem override user-specific (resident channels etc)
-    if (ch.permissionOverwrites.cache.some(o => o.type === 1)) {
-      report.skipped.push({ channel: ch.name, reason: 'user_overrides' });
-      continue;
-    }
-    if (overrideIdsSkip.has(chId)) {
-      report.skipped.push({ channel: ch.name, reason: 'explicit_override_by_id' });
-      continue;
-    }
-    if (overrideNamesSkip.has(ch.name)) {
-      report.skipped.push({ channel: ch.name, reason: 'explicit_override_by_name' });
-      continue;
-    }
-
-    if (apply) {
-      try {
-        await ch.lockPermissions();
-        report.locked.push({ channel: ch.name });
-        await new Promise(r => setTimeout(r, 250));
-      } catch (e) {
-        report.errors.push(`${ch.name}: ${e.message}`);
-        warn(`[LOCK-CAT] ${ch.name}: ${e.message}`);
+  // E. Sync child channels com a categoria (fix OPERACOES/spots).
+  //    lockPermissions() é idempotente — só escreve se já não estiver igual.
+  //    Skips:
+  //      - canais com overrides user-specific (canais individuais de morador)
+  //      - canais em CHANNEL_PERM_OVERRIDES (por ID) — configuração explícita
+  //      - canais em CHANNEL_PERM_OVERRIDES_BY_NAME — configuração explícita
+  const explicitIds = new Set(Object.keys(CHANNEL_PERM_OVERRIDES || {}));
+  const explicitNames = new Set(Object.keys(CHANNEL_PERM_OVERRIDES_BY_NAME || {}));
+  for (const [key] of Object.entries(CATEGORY_PERMS)) {
+    const tpl = CATEGORY_BY_KEY[key];
+    if (!tpl || !tpl.id) continue;
+    for (const [chId, ch] of guild.channels.cache) {
+      if (ch.parentId !== tpl.id) continue;
+      if (explicitIds.has(chId)) continue;
+      if (explicitNames.has(ch.name)) continue;
+      if (ch.permissionOverwrites.cache.some(o => o.type === 1)) continue;
+      if (apply) {
+        try {
+          await ch.lockPermissions();
+          act('LOCK_TO_CATEGORY', { channel: ch.name, category: tpl.name });
+          await new Promise(r => setTimeout(r, 200));
+        } catch (e) { errored(`LOCK_TO_CATEGORY:${ch.name}`, e); }
+      } else {
+        act('LOCK_TO_CATEGORY', { channel: ch.name, category: tpl.name });
       }
-    } else {
-      report.locked.push({ channel: ch.name, dry: true });
     }
   }
 
-  log(`[LOCK-CAT] ${report.mode} ${categoryKey}: ${report.locked.length} lock, ${report.skipped.length} skip, ${report.errors.length} erros.`);
   return report;
 }
 
@@ -814,4 +774,4 @@ function summarize(report) {
   return lines.join('\n');
 }
 
-module.exports = { runSync, runPermsOnly, runLockCategory, summarize };
+module.exports = { runSync, runPermsOnly, summarize };

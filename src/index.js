@@ -51,41 +51,23 @@ const { rankingEmbed, brandEmbed, stockEmbed } = require('./shared/embedBuilders
 const { inventoryRepo } = require('./repositories');
 const { getRecentLogs, sendAuditToChannel } = require('./audit/auditEngine');
 const {
-  isChefia, isChefeMoradores, isCommand,
-  canManageStructure, canBootstrapStock, canRegisterKill,
+  isChefia, isChefeMoradores,
+  canManageStructure, canRegisterKill,
 } = require('./permissions/permissionEngine');
-const { runSync, runPermsOnly, runLockCategory, summarize } = require('./discord/structureSync');
-const { reconcileAllMembers } = require('./members/roleInvariants');
-const { fixTiers } = require('./members/tierFixCommand');
-const {
-  createSession: availCreateSession,
-  closeSession: availCloseSession,
-  getSummaryText: availSummary,
-} = require('./availability/availabilityEngine');
+const { runPermsOnly } = require('./discord/structureSync');
+const { availabilityRepo, radioRepo, stickyRepo } = require('./repositories');
 const {
   handleVoteSelect: availHandleVoteSelect,
   handleVoteAll: availHandleVoteAll,
   handleSummary: availHandleSummary,
   handleRefresh: availHandleRefresh,
 } = require('./availability/availabilityHandlers');
-const { availabilityRepo, radioRepo, stickyRepo } = require('./repositories');
 const {
   setSticky, removeSticky, refresh: stickyRefresh,
   onMessageCreate: stickyOnMessage, listRenderers: stickyListRenderers,
 } = require('./sticky/stickyEngine');
 const { registerBuiltinRenderers } = require('./sticky/stickyRenderers');
-const {
-  setClient: setStockClient,
-  publishStockSummary: stockPublishSummary,
-  findOrCreateChannel: stockFindOrCreate,
-  STOCK_CHANNELS: STOCK_CHANNELS_MAP,
-} = require('./inventory/stockNotifier');
-const {
-  setRadio: radioSet, setRandom: radioSetRandom,
-  buildEmbed: radioEmbed, buildComponents: radioComponents,
-  publishToChannel: radioPublish, historyText: radioHistoryText,
-  notifyStickyChange: radioNotify,
-} = require('./radio/radioEngine');
+const { setClient: setStockClient } = require('./inventory/stockNotifier');
 const {
   handleRandom: radioHandleRandom,
   handleSet: radioHandleSet,
@@ -94,7 +76,6 @@ const {
   handleHistory: radioHandleHistory,
   handleRefresh: radioHandleRefresh,
 } = require('./radio/radioHandlers');
-const { bootstrapStock } = require('./inventory/stockBootstrap');
 const {
   handleRegisterKillButton, handleKillModal, handleLeaderboardButton,
 } = require('./cemetery/cemeteryHandlers');
@@ -238,8 +219,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       metrics.commandInvocationsTotal.inc();
       const cmd = interaction.commandName;
 
-      if (cmd === 'rg-setup' || cmd === 'rg-sync-panels') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION(cmd === 'rg-setup' ? 'setup' : 'sync panels'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+      if (cmd === 'rg-sync-panels') {
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync panels'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const results = await bootstrapAll(client);
         const icon = { created: '✅', edited: '✏️', skipped: '⚪', failed: '❌' };
@@ -264,39 +245,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return handleStockCommand(interaction);
       }
 
-      if (cmd === 'rg-stock-summary') {
-        if (!isChefia(interaction.member) && !isChefeMoradores(interaction.member))
-          return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('forçar resumo de stock'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const result = await stockPublishSummary();
-        if (result?.posted) {
-          return safeReply(interaction, {
-            content: `📊 Resumo publicado em \`resumo-stock\` — ${result.items} items, total **${result.totalValue.toLocaleString('pt-PT')} €**.`,
-          }, { dismissible: true });
-        }
-        return safeReply(interaction, {
-          content: `⚠️ Não foi publicado. Razão: \`${result?.reason || 'desconhecida'}\`.\n`
-            + `Possíveis causas: \`STOCK_NOTIFY_ENABLED=false\`, categoria INVENTÁRIO em falta, ou bot sem permissões no canal.`,
-        }, { dismissible: true });
-      }
-
-      if (cmd === 'rg-stock-channels') {
-        if (!canManageStructure(interaction.member))
-          return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('gerir canais de stock'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const lines = ['**Canais de stock em INVENTÁRIO:**'];
-        for (const key of Object.keys(STOCK_CHANNELS_MAP)) {
-          try {
-            const ch = await stockFindOrCreate(key);
-            if (ch) lines.push(`✅ \`${key}\` → <#${ch.id}>`);
-            else lines.push(`❌ \`${key}\` — não encontrado nem criado (STOCK_AUTOCREATE=false? categoria em falta?)`);
-          } catch (e) {
-            lines.push(`❌ \`${key}\` — erro: ${e.message}`);
-          }
-        }
-        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
-      }
-
       if (cmd === 'rg-member') {
         return handleMemberCommand(interaction);
       }
@@ -309,10 +257,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const weekLabel = `${start.toISOString().split('T')[0]} a ${end.toISOString().split('T')[0]}`;
         const embed = rankingEmbed('Top Semanal', rankings, weekLabel);
         return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
-      }
-
-      if (cmd === 'rg-create-operation') {
-        return handleCreateOperationButton(interaction);
       }
 
       if (cmd === 'rg-close-operation') {
@@ -375,32 +319,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return safeReply(interaction, { content: `Item **${nome}** adicionado ao catálogo.` }, { dismissible: true });
       }
 
-      if (cmd === 'rg-sync-sheets') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync sheets'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const { syncAll } = require('./sheets/inventorySync');
-        await syncAll();
-        return safeReply(interaction, { content: 'Dados exportados para Google Sheets com sucesso.' }, { dismissible: true });
-      }
-
-      if (cmd === 'rg-sync-structure') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync estrutura'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const modo = interaction.options.getString('modo') || 'dry-run';
-        const apply = modo === 'apply';
-        // Guard-rail: STRUCTURE_SYNC_LOCKED bloqueia apply (dry-run fica livre).
-        if (apply && CONFIG.STRUCTURE_SYNC_LOCKED) {
-          return safeReply(interaction, {
-            content: '🔒 `STRUCTURE_SYNC_LOCKED=true` no Railway — apply bloqueado para proteger personalizações.\n'
-              + 'Muda a env var para `false` se tiveres a certeza que queres o sync a alterar a estrutura, ou usa `modo:dry-run` para só inspeccionar.',
-          }, { dismissible: true });
-        }
-        const guild = interaction.guild;
-        const report = await runSync(guild, { apply });
-        const text = summarize(report);
-        return safeReply(interaction, { content: text.slice(0, 1900) }, { dismissible: true });
-      }
-
       if (cmd === 'rg-sync-perms') {
         if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync perms'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -425,59 +343,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
           for (const e of report.errors.slice(0, 5)) lines.push(`❌ ${e.stage}: ${e.message}`);
         }
         if (!apply) lines.push('', '> _Dry-run — usa `modo:apply` para aplicar._');
-        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
-      }
-
-      if (cmd === 'rg-lock-category') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('lock category'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const categoria = interaction.options.getString('categoria');
-        const modo = interaction.options.getString('modo') || 'dry-run';
-        const apply = modo === 'apply';
-        const report = await runLockCategory(interaction.guild, categoria, { apply });
-        const lines = [
-          `**Categoria:** \`${report.category}\` — **Modo:** \`${report.mode.toUpperCase()}\``,
-          `**Lock:** ${report.locked.length}  **Skip:** ${report.skipped.length}  **Erros:** ${report.errors.length}`,
-        ];
-        if (report.locked.length) {
-          lines.push('', '**Canais trancados à categoria:**');
-          for (const l of report.locked.slice(0, 25)) {
-            lines.push(`• \`${l.channel}\`${l.dry ? ' _(dry)_' : ''}`);
-          }
-        }
-        if (report.skipped.length) {
-          lines.push('', '**Skipped:**');
-          for (const s of report.skipped.slice(0, 10)) {
-            lines.push(`⚪ \`${s.channel}\` — \`${s.reason}\``);
-          }
-        }
-        if (report.errors.length) {
-          lines.push('', '**Erros:**');
-          for (const e of report.errors.slice(0, 5)) lines.push(`❌ ${e}`);
-        }
-        if (!apply) lines.push('', '> _Dry-run — usa `modo:apply` para sincronizar._');
-        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
-      }
-
-      if (cmd === 'rg-sync-roles') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync roles'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const modo = interaction.options.getString('modo') || 'dry-run';
-        const dryRun = modo !== 'apply';
-        const report = await reconcileAllMembers(interaction.guild, { dryRun, actor: interaction.user.id });
-        const lines = [
-          `**Modo:** \`${dryRun ? 'DRY-RUN' : 'APPLY'}\``,
-          `**Scan:** ${report.scanned} membros`,
-          `**Violações:** ${report.violations}`,
-          `**Corrigidas:** ${report.fixed}`,
-        ];
-        if (report.details.length) {
-          lines.push('');
-          lines.push('**Membros afectados (primeiros 10):**');
-          for (const d of report.details.slice(0, 10)) {
-            lines.push(`• <@${d.member}> — ${d.violations.join(', ')}`);
-          }
-        }
         return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
       }
 
@@ -514,21 +379,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return safeReply(interaction, { content: `🗑️ Sticky \`${source}\` removida de <#${channel.id}>.` }, { dismissible: true });
       }
 
-      if (cmd === 'rg-sticky-refresh') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('refresh sticky'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const channel = interaction.options.getChannel('canal');
-        const source = interaction.options.getString('source');
-        const sticky = await stickyRepo.getByChannelSource(channel.id, source);
-        if (!sticky || !sticky.active) return safeReply(interaction, { content: 'Sticky não encontrada / inactiva.' }, { dismissible: true });
-        try {
-          await stickyRefresh(client, sticky);
-          return safeReply(interaction, { content: `🔄 Sticky \`${source}\` refrescada.` }, { dismissible: true });
-        } catch (e) {
-          return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
-        }
-      }
-
       if (cmd === 'rg-sticky-list') {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const all = await stickyRepo.listActive();
@@ -544,344 +394,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return safeReply(interaction, { content: txt.slice(0, 1900) }, { dismissible: true });
       }
 
-      if (cmd === 'rg-radio') {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const states = await radioRepo.getAllStates();
-        // Tenta publicar no RADIO_PUBLISH_CHANNEL_ID se existir, senão no canal actual
-        const targetCh = CONFIG.RADIO_PUBLISH_CHANNEL_ID
-          ? await client.channels.fetch(CONFIG.RADIO_PUBLISH_CHANNEL_ID).catch(() => null)
-          : interaction.channel;
-        if (!targetCh?.isTextBased?.()) return safeReply(interaction, { content: 'Canal de publicação não disponível.' }, { dismissible: true });
-        await targetCh.send({ embeds: [radioEmbed(states)], components: radioComponents() });
-        return safeReply(interaction, { content: `📻 Painel publicado em <#${targetCh.id}>.` }, { dismissible: true });
-      }
-
-      if (cmd === 'rg-radio-set') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('definir rádio'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const tipo = interaction.options.getString('tipo');
-        const valor = interaction.options.getString('valor');
-        const nota = interaction.options.getString('nota') || '';
-        try {
-          const r = await radioSet({ type: tipo, value: valor, mode: 'manual', actorId: interaction.user.id, note: nota });
-          radioNotify(client).catch(() => {});
-          return safeReply(interaction, { content: `📻 ${tipo}: \`${r.previous || '∅'}\` → \`${r.value}\`.` }, { dismissible: true });
-        } catch (e) { return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true }); }
-      }
-
-      if (cmd === 'rg-radio-random') {
-        if (!isChefia(interaction.member) && !isChefeMoradores(interaction.member))
-          return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('rádio aleatória'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const tipo = interaction.options.getString('tipo');
-        try {
-          const r = await radioSetRandom({ type: tipo, actorId: interaction.user.id });
-          radioNotify(client).catch(() => {});
-          return safeReply(interaction, { content: `🎲 ${tipo}: \`${r.previous || '∅'}\` → \`${r.value}\`.` }, { dismissible: true });
-        } catch (e) { return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true }); }
-      }
-
-      if (cmd === 'rg-radio-history') {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const limit = interaction.options.getInteger('limite') || 15;
-        const text = await radioHistoryText(limit);
-        return safeReply(interaction, { content: text.slice(0, 1900) }, { dismissible: true });
-      }
-
-      if (cmd === 'rg-availability-create') {
-        if (!isChefia(interaction.member) && !isChefeMoradores(interaction.member))
-          return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('criar disponibilidade'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const channel = interaction.options.getChannel('canal');
-        const horariosRaw = interaction.options.getString('horarios');
-        const cabecalho = interaction.options.getString('cabecalho');
-        const channelId = channel?.id || CONFIG.AVAILABILITY_CHANNEL_ID;
-        if (!channelId) return safeReply(interaction, { content: 'Sem canal — passa `canal:` ou define `AVAILABILITY_CHANNEL_ID` no .env.' }, { dismissible: true });
-        const slots = horariosRaw
-          ? horariosRaw.split(',').map(s => s.trim()).filter(Boolean).slice(0, 8)
-          : null;
-        try {
-          const { session, alreadyOpen } = await availCreateSession({
-            client, channelId, createdBy: interaction.user.id,
-            headerText: cabecalho || undefined, slots,
-          });
-          if (alreadyOpen) {
-            return safeReply(interaction, { content: `⚠️ Já existe uma sessão aberta neste canal hoje (#${session.id}). Fecha-a primeiro com \`/rg-availability-close\`.` }, { dismissible: true });
-          }
-          return safeReply(interaction, { content: `✅ Sessão #${session.id} publicada em <#${channelId}>.` }, { dismissible: true });
-        } catch (e) {
-          return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
-        }
-      }
-
-      if (cmd === 'rg-availability-close') {
-        if (!isChefia(interaction.member) && !isChefeMoradores(interaction.member))
-          return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('fechar disponibilidade'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        let id = interaction.options.getInteger('id');
-        if (!id) {
-          const last = await availabilityRepo.getLatestSession(CONFIG.AVAILABILITY_CHANNEL_ID || interaction.channelId);
-          id = last?.id;
-        }
-        if (!id) return safeReply(interaction, { content: 'Não encontrei sessão para fechar.' }, { dismissible: true });
-        const closed = await availCloseSession({ client, sessionId: id, actorId: interaction.user.id });
-        if (!closed) return safeReply(interaction, { content: `Sessão #${id} já estava fechada (ou não existe).` }, { dismissible: true });
-        return safeReply(interaction, { content: `🔒 Sessão #${id} fechada.` }, { dismissible: true });
-      }
-
-      if (cmd === 'rg-availability-summary') {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        let id = interaction.options.getInteger('id');
-        if (!id) {
-          const last = await availabilityRepo.getLatestSession(CONFIG.AVAILABILITY_CHANNEL_ID || interaction.channelId);
-          id = last?.id;
-        }
-        if (!id) return safeReply(interaction, { content: 'Sem sessão recente neste canal.' }, { dismissible: true });
-        const text = await availSummary(id);
-        if (!text) return safeReply(interaction, { content: `Sessão #${id} não encontrada.` }, { dismissible: true });
-        return safeReply(interaction, { content: text.slice(0, 1900) }, { dismissible: true });
-      }
-
-      if (cmd === 'rg-fix-tiers') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync tiers'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const modo = interaction.options.getString('modo') || 'dry-run';
-        const dryRun = modo !== 'apply';
-        const report = await fixTiers(interaction.guild, { dryRun, actor: interaction.user.id });
-        const lines = [
-          `**Modo:** \`${report.mode.toUpperCase()}\``,
-          `**Scan:** ${report.scanned} membros (${report.morador} moradores)`,
-          `**Já alinhados:** ${report.aligned}`,
-          `**A corrigir:** ${report.details.length}`,
-        ];
-        if (!dryRun) {
-          lines.push(
-            `**DB actualizada:** ${report.dbUpdated}`,
-            `**Canais renomeados:** ${report.channelRenamed}`,
-            `**Falhas:** ${report.failed}`,
-          );
-        }
-        const sample = report.details.slice(0, 10);
-        if (sample.length) {
-          lines.push('', '**Primeiros 10:**');
-          for (const d of sample) {
-            const arrow = `${d.fromTier || '∅'} → ${d.toTier}`;
-            const tag = d.error ? ` ❌ ${d.error}` : (dryRun ? ' (dry)' : '');
-            lines.push(`• <@${d.member}> — ${arrow}${tag}`);
-          }
-        }
-        if (dryRun) lines.push('', '> _Dry-run — usa `modo:apply` para aplicar._');
-        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
-      }
-
-      if (cmd === 'rg-bootstrap-stock') {
-        if (!canBootstrapStock(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('bootstrap stock'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const modo = interaction.options.getString('modo') || 'dry-run';
-        const force = interaction.options.getBoolean('force') || false;
-        try {
-          const report = await bootstrapStock({
-            dryRun: modo !== 'apply',
-            confirm: modo === 'apply',
-            force,
-            actor: interaction.user.id,
-          });
-          if (report.skipped) {
-            return safeReply(interaction, { content: `\u26A0\uFE0F ${report.reason}` }, { dismissible: true });
-          }
-          const text = [
-            `**Source:** \`${report.source}\``,
-            `**Modo:** \`${report.dryRun ? 'DRY-RUN' : 'APPLIED'}\``,
-            `**Items criados:** ${report.itemsCreated}`,
-            `**Items actualizados:** ${report.itemsUpdated}`,
-            `**Movimentos:** ${report.movements}`,
-            `**Valor total:** ${report.totalValue.toLocaleString('pt-PT')} €`,
-          ].join('\n');
-          return safeReply(interaction, { content: text }, { dismissible: true });
-        } catch (e) {
-          return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
-        }
-      }
-
       if (cmd === 'rg-kill') {
         return handleRegisterKillButton(interaction);
       }
 
       if (cmd === 'rg-cemetery') {
         return handleLeaderboardButton(interaction);
-      }
-
-      if (cmd === 'rg-revert-residents') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('reverter canais'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const modo = interaction.options.getString('modo') || 'dry-run';
-        const apply = modo === 'apply';
-        const guild = interaction.guild;
-        const guettoId = CONFIG.MORADOR_TOPICOS_CATEGORY_ID;
-        const { AuditLogEvent } = require('discord.js');
-
-        // Pagina audit log até encontrar todos os ChannelUpdate feitos por nós
-        const ourBotId = client.user.id;
-        const earliest = new Map(); // channelId → { oldName, ts }
-        let before;
-        for (let page = 0; page < 25; page++) {
-          const result = await guild.fetchAuditLogs({ type: AuditLogEvent.ChannelUpdate, limit: 100, before }).catch(() => null);
-          if (!result || result.entries.size === 0) break;
-          for (const entry of result.entries.values()) {
-            if (entry.executor?.id !== ourBotId) continue;
-            const nameChange = entry.changes?.find(c => c.key === 'name');
-            if (!nameChange) continue;
-            const ts = entry.createdTimestamp;
-            const existing = earliest.get(entry.targetId);
-            if (!existing || ts < existing.ts) {
-              earliest.set(entry.targetId, { oldName: nameChange.old, ts });
-            }
-          }
-          const lastEntry = [...result.entries.values()].pop();
-          before = lastEntry?.id;
-          if (result.entries.size < 100) break;
-        }
-
-        const reverts = [];
-        for (const [chId, { oldName }] of earliest) {
-          const ch = guild.channels.cache.get(chId);
-          if (!ch) continue;
-          if (ch.parentId !== guettoId) continue;
-          if (ch.name === oldName) continue;
-          reverts.push({ chId, current: ch.name, original: oldName });
-        }
-
-        const lines = [`**Modo:** \`${apply ? 'APPLY' : 'DRY-RUN'}\``, `**Audit log entries por nós:** ${earliest.size}`, `**Canais a reverter:** ${reverts.length}`, ''];
-        for (const r of reverts.slice(0, 25)) {
-          lines.push(`• \`${r.current.slice(0, 35)}…\` → \`${r.original}\``);
-        }
-        if (reverts.length > 25) lines.push(`_… e mais ${reverts.length - 25}._`);
-
-        if (apply && reverts.length > 0) {
-          let done = 0; let failed = 0;
-          for (const r of reverts) {
-            try {
-              const ch = guild.channels.cache.get(r.chId);
-              await ch.setName(r.original);
-              done++;
-              await new Promise(rr => setTimeout(rr, 400));
-            } catch (e) {
-              failed++;
-              warn(`[REVERT] ${r.chId}: ${e.message}`);
-            }
-          }
-          lines.push('', `**Revertidos:** ${done}  •  **Falhas:** ${failed}`);
-        }
-
-        if (!apply) lines.push('', '> _Dry-run — usa `modo:apply` para reverter._');
-        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
-      }
-
-      if (cmd === 'rg-revert-sync') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('reverter sync'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const modo = interaction.options.getString('modo') || 'dry-run';
-        const apply = modo === 'apply';
-        const minutes = interaction.options.getInteger('minutos') || 60;
-        const cutoff = Date.now() - minutes * 60 * 1000;
-        const guild = interaction.guild;
-        const { AuditLogEvent, ChannelType } = require('discord.js');
-        const ourBotId = client.user.id;
-
-        // 1) Canais criados por nós na janela — para NÃO reverter
-        const createdIds = new Set();
-        let before;
-        for (let page = 0; page < 10; page++) {
-          const r = await guild.fetchAuditLogs({ type: AuditLogEvent.ChannelCreate, limit: 100, before }).catch(() => null);
-          if (!r || !r.entries.size) break;
-          let stop = false;
-          for (const e of r.entries.values()) {
-            if (e.createdTimestamp < cutoff) { stop = true; continue; }
-            if (e.executor?.id === ourBotId) createdIds.add(e.targetId);
-          }
-          if (stop) break;
-          before = [...r.entries.values()].pop()?.id;
-          if (r.entries.size < 100) break;
-        }
-
-        // 2) ChannelUpdate por nós na janela — regista EARLIEST old value por (channelId, key)
-        //    Keys interessantes: name, parent_id. Position não revertemos (trivial).
-        const earliest = new Map(); // channelId → { name?: {old,ts}, parent_id?: {old,ts} }
-        before = undefined;
-        for (let page = 0; page < 25; page++) {
-          const r = await guild.fetchAuditLogs({ type: AuditLogEvent.ChannelUpdate, limit: 100, before }).catch(() => null);
-          if (!r || !r.entries.size) break;
-          let stop = false;
-          for (const e of r.entries.values()) {
-            if (e.createdTimestamp < cutoff) { stop = true; continue; }
-            if (e.executor?.id !== ourBotId) continue;
-            if (createdIds.has(e.targetId)) continue; // não mexer em canais criados por nós
-            if (!earliest.has(e.targetId)) earliest.set(e.targetId, {});
-            const rec = earliest.get(e.targetId);
-            for (const ch of e.changes || []) {
-              if (ch.key !== 'name' && ch.key !== 'parent_id') continue;
-              if (ch.old === undefined || ch.old === null) continue;
-              if (!rec[ch.key] || e.createdTimestamp < rec[ch.key].ts) {
-                rec[ch.key] = { old: ch.old, ts: e.createdTimestamp };
-              }
-            }
-          }
-          if (stop) break;
-          before = [...r.entries.values()].pop()?.id;
-          if (r.entries.size < 100) break;
-        }
-
-        // 3) Construir plano de revert
-        const plan = [];
-        for (const [chId, rec] of earliest) {
-          const ch = guild.channels.cache.get(chId);
-          if (!ch) continue;
-          const item = { chId, current: { name: ch.name, parentId: ch.parentId }, revert: {} };
-          if (rec.name && rec.name.old !== ch.name) item.revert.name = rec.name.old;
-          if (rec.parent_id && rec.parent_id.old !== ch.parentId) item.revert.parentId = rec.parent_id.old;
-          if (Object.keys(item.revert).length) plan.push(item);
-        }
-
-        const lines = [
-          `**Modo:** \`${apply ? 'APPLY' : 'DRY-RUN'}\`  **Janela:** ${minutes} min`,
-          `**Canais criados (skip):** ${createdIds.size}`,
-          `**Canais a reverter:** ${plan.length}`,
-          '',
-        ];
-        for (const p of plan.slice(0, 25)) {
-          const parts = [];
-          if (p.revert.name !== undefined) parts.push(`nome: \`${p.current.name}\` → \`${p.revert.name}\``);
-          if (p.revert.parentId !== undefined) parts.push(`categoria: <#${p.current.parentId || 'null'}> → <#${p.revert.parentId || 'null'}>`);
-          lines.push(`• <#${p.chId}> — ${parts.join(' · ')}`);
-        }
-        if (plan.length > 25) lines.push(`_… e mais ${plan.length - 25}._`);
-
-        if (apply && plan.length > 0) {
-          let nameDone = 0, parentDone = 0, failed = 0;
-          for (const p of plan) {
-            const ch = guild.channels.cache.get(p.chId);
-            if (!ch) { failed++; continue; }
-            try {
-              if (p.revert.parentId !== undefined) {
-                await ch.setParent(p.revert.parentId || null, { lockPermissions: false });
-                parentDone++;
-                await new Promise(rr => setTimeout(rr, 300));
-              }
-              if (p.revert.name !== undefined) {
-                await ch.setName(p.revert.name);
-                nameDone++;
-                await new Promise(rr => setTimeout(rr, 350));
-              }
-            } catch (e) {
-              failed++;
-              warn(`[REVERT-SYNC] ${p.chId}: ${e.message}`);
-            }
-          }
-          lines.push('', `**Nomes revertidos:** ${nameDone}  **Categorias revertidas:** ${parentDone}  **Falhas:** ${failed}`);
-        }
-        if (!apply) lines.push('', '> _Dry-run — usa `modo:apply` para aplicar._');
-
-        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
       }
 
       if (cmd === 'rg-version') {
