@@ -1,11 +1,15 @@
 'use strict';
+/**
+ * Repositório de saídas — acesso à tabela `operations` (nome interno DB
+ * preservado para minimizar risco de migrations). Semanticamente saídas.
+ */
 const { query, queryWithTransaction } = require('../db');
 
-async function create({ date, scheduledTime, spot, operationType, leaderId, groupNumber = 1, maxParticipants = 12, notes = '', createdBy }) {
+async function create({ date, scheduledTime, spot, spotType, saidaType, leaderId, groupNumber = 1, maxParticipants = 12, notes = '', createdBy }) {
   const res = await query(
-    `INSERT INTO operations (date, scheduled_time, spot, operation_type, leader_id, group_number, max_participants, notes, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-    [date, scheduledTime, spot, operationType, leaderId, groupNumber, maxParticipants, notes, createdBy]
+    `INSERT INTO operations (date, scheduled_time, spot, spot_type, operation_type, leader_id, group_number, max_participants, notes, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+    [date, scheduledTime, spot, spotType || '', saidaType, leaderId, groupNumber, maxParticipants, notes, createdBy]
   );
   return res.rows[0];
 }
@@ -69,12 +73,20 @@ async function updateStatus(id, status, extras = {}) {
   return res.rows[0] || null;
 }
 
-async function closeOperation(id, resultData) {
+/** Fecha saída. resultData pode conter campos enriquecidos (result, had_craft, etc.). */
+async function closeSaida(id, resultData) {
   return queryWithTransaction(async (client) => {
     const sets = ['status = $1', 'end_time = NOW()', 'updated_at = NOW()'];
     const values = ['concluida'];
     let i = 2;
-    const fields = ['had_fight', 'enemy_name', 'enemy_count', 'survivors', 'deaths', 'returned_count', 'result_notes'];
+    const fields = [
+      'had_fight', 'had_craft', 'had_domination',
+      'result', 'enemy_name', 'enemy_faction', 'enemy_count',
+      'our_kills', 'survivors', 'deaths', 'returned_count', 'returned_to_bairro_count',
+      'supplied_value', 'returned_value', 'lost_value', 'consumed_value',
+      'gross_value', 'net_value', 'was_profitable',
+      'spot_type', 'result_notes',
+    ];
     for (const field of fields) {
       if (resultData[field] !== undefined) {
         sets.push(`${field} = $${i}`);
@@ -91,7 +103,7 @@ async function closeOperation(id, resultData) {
   });
 }
 
-async function addParticipant(operationId, memberId, data = {}) {
+async function addParticipant(saidaId, memberId, data = {}) {
   const res = await query(
     `INSERT INTO operation_participants (operation_id, member_id, role_in_op, brought_own_material, received_org_material, notes)
      VALUES ($1, $2, $3, $4, $5, $6)
@@ -101,12 +113,13 @@ async function addParticipant(operationId, memberId, data = {}) {
        received_org_material = EXCLUDED.received_org_material,
        notes = EXCLUDED.notes
      RETURNING *`,
-    [operationId, memberId, data.roleInOp || 'membro', data.broughtOwn || false, data.receivedOrg || false, data.notes || '']
+    [saidaId, memberId, data.roleInSaida || data.roleInOp || 'membro', data.broughtOwn || false, data.receivedOrg || false, data.notes || '']
   );
   return res.rows[0];
 }
 
-async function updateParticipant(operationId, memberId, fields) {
+async function updateParticipant(saidaId, memberId, fields) {
+  if (!Object.keys(fields).length) return null;
   const sets = [];
   const values = [];
   let i = 1;
@@ -115,7 +128,7 @@ async function updateParticipant(operationId, memberId, fields) {
     values.push(value);
     i++;
   }
-  values.push(operationId, memberId);
+  values.push(saidaId, memberId);
   const res = await query(
     `UPDATE operation_participants SET ${sets.join(', ')} WHERE operation_id = $${i} AND member_id = $${i + 1} RETURNING *`,
     values
@@ -123,48 +136,63 @@ async function updateParticipant(operationId, memberId, fields) {
   return res.rows[0] || null;
 }
 
-async function getParticipants(operationId) {
+async function getParticipants(saidaId) {
   const res = await query(`
     SELECT op.*, m.display_name, m.discord_id, m.role as member_role
     FROM operation_participants op
     JOIN members m ON m.id = op.member_id
     WHERE op.operation_id = $1
     ORDER BY op.role_in_op, m.display_name
-  `, [operationId]);
+  `, [saidaId]);
   return res.rows;
 }
 
-async function addMaterial(operationId, itemId, direction, quantity, memberId = null, notes = '') {
+async function addMaterial(saidaId, itemId, direction, quantity, memberId = null, notes = '') {
   const res = await query(
     `INSERT INTO operation_materials (operation_id, item_id, direction, quantity, member_id, notes)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [operationId, itemId, direction, quantity, memberId, notes]
+    [saidaId, itemId, direction, quantity, memberId, notes]
   );
   return res.rows[0];
 }
 
-async function getMaterials(operationId) {
+async function getMaterials(saidaId) {
   const res = await query(`
-    SELECT om.*, i.name as item_name, i.category as item_category
+    SELECT om.*, i.name as item_name, i.category as item_category, i.estimated_value
     FROM operation_materials om
     JOIN items i ON i.id = om.item_id
     WHERE om.operation_id = $1
     ORDER BY om.direction, i.name
-  `, [operationId]);
+  `, [saidaId]);
   return res.rows;
 }
 
-async function getMaterialSummary(operationId) {
+async function getMaterialSummary(saidaId) {
   const res = await query(`
     SELECT direction, SUM(quantity) as total,
-      SUM(quantity * COALESCE(i.estimated_value, 1)) as weighted_total
+      SUM(quantity * COALESCE(i.estimated_value, 0)) as weighted_total
     FROM operation_materials om
     JOIN items i ON i.id = om.item_id
     WHERE om.operation_id = $1
     GROUP BY direction
-  `, [operationId]);
+  `, [saidaId]);
   return res.rows.reduce((acc, r) => {
-    acc[r.direction] = { total: parseInt(r.total), weightedTotal: parseFloat(r.weighted_total) };
+    acc[r.direction] = { total: parseInt(r.total), weightedTotal: parseFloat(r.weighted_total) || 0 };
+    return acc;
+  }, {});
+}
+
+/** Agregado de material por participante (used in settle flow). */
+async function getParticipantMaterialTotals(saidaId, memberId) {
+  const res = await query(`
+    SELECT direction, SUM(quantity) as qty, SUM(quantity * COALESCE(i.estimated_value, 0)) as value
+    FROM operation_materials om
+    JOIN items i ON i.id = om.item_id
+    WHERE om.operation_id = $1 AND om.member_id = $2
+    GROUP BY direction
+  `, [saidaId, memberId]);
+  return res.rows.reduce((acc, r) => {
+    acc[r.direction] = { qty: parseInt(r.qty), value: parseFloat(r.value) || 0 };
     return acc;
   }, {});
 }
@@ -182,8 +210,8 @@ async function countParticipationsByMember(memberId, weekStart = null, weekEnd =
 
 module.exports = {
   create, findById, findByDate, findRecent, findOpen,
-  updateStatus, closeOperation,
+  updateStatus, closeSaida,
   addParticipant, updateParticipant, getParticipants,
-  addMaterial, getMaterials, getMaterialSummary,
+  addMaterial, getMaterials, getMaterialSummary, getParticipantMaterialTotals,
   countParticipationsByMember,
 };

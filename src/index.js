@@ -35,17 +35,17 @@ const {
   handleEncomendasButton, handleEncomendaSelect, handleEncomendaModal,
 } = require('./inventory/inventoryHandlers');
 const {
-  handleCreateOperationButton, handleCreateOperationModal,
-  handleCloseOperationButton, handleCloseOperationSelect, handleCloseOperationModal,
-  handleViewOperationsButton, handleAddParticipantButton,
+  handleCreateSaidaButton, handleCreateSaidaModal,
+  handleCloseSaidaButton, handleCloseSaidaSelect, handleCloseSaidaModal,
+  handleViewSaidasButton, handleAddParticipantButton,
   handleAddParticipantSelect, handleParticipantUsersSelect,
   handleRegisterMaterialButton,
   handleMaterialOpSelect, handleMaterialDirectionSelect,
   handleMaterialItemSelect, handleMaterialQtyModal,
-  handleIssueToParticipantButton, handleIssueOpSelect,
+  handleIssueToParticipantButton, handleIssueSaidaSelect,
   handleIssueParticipantSelect, handleIssueItemSelect, handleIssueQtyModal,
   handleMarkDeadSelect,
-} = require('./operations/operationHandlers');
+} = require('./saidas/saidaHandlers');
 const { getCurrentWeekRanking, getPreviousWeekRanking } = require('./rankings/rankingEngine');
 const { rankingEmbed, brandEmbed, stockEmbed } = require('./shared/embedBuilders');
 const { inventoryRepo } = require('./repositories');
@@ -78,7 +78,7 @@ const {
 } = require('./radio/radioHandlers');
 const {
   handleRegisterKillButton, handleKillModal, handleLeaderboardButton,
-} = require('./cemetery/cemeteryHandlers');
+} = require('./kills/killHandlers');
 const { isDuplicate } = require('./shared/interactionHelpers');
 const { safeReply } = require('./shared/interactionHelpers');
 const MESSAGES = require('./shared/errorMessages');
@@ -288,12 +288,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
       }
 
-      if (cmd === 'rg-close-operation') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('fechar operação'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+      if (cmd === 'rg-close-saida' || cmd === 'rg-close-operation') {
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('fechar saída'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const opId = interaction.options.getInteger('id');
-        const { closeOperation } = require('./operations/operationEngine');
-        const op = await closeOperation(opId, {}, interaction.user.id);
+        const { closeSaida } = require('./saidas/saidaEngine');
+        const op = await closeSaida(opId, {}, interaction.user.id);
         if (!op) return safeReply(interaction, { content: MESSAGES.OPERATION_NOT_FOUND() }, { dismissible: true });
         const r = op.reconciliation || {};
         const lines = [`✅ Operação #${opId} concluída.`];
@@ -508,13 +508,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (id === 'morador::top_semanal') return handleTopSemanalButton(interaction);
 
       // Oficial buttons
-      if (id === 'oficial::ver_operacoes') return handleViewOperationsButton(interaction);
+      if (id === 'oficial::ver_saidas' || id === 'oficial::ver_operacoes') return handleViewSaidasButton(interaction);
 
       // Chefia buttons
-      if (id === 'chefia::criar_operacao') return handleCreateOperationButton(interaction);
-      if (id === 'chefia::fechar_operacao') return handleCloseOperationButton(interaction);
-      if (id === 'chefia::ver_operacoes') return handleViewOperationsButton(interaction);
-      if (id === 'chefia::registar_material_op') return handleRegisterMaterialButton(interaction);
+      if (id === 'chefia::criar_saida' || id === 'chefia::criar_operacao') return handleCreateSaidaButton(interaction);
+      if (id === 'chefia::fechar_saida' || id === 'chefia::fechar_operacao') return handleCloseSaidaButton(interaction);
+      if (id === 'chefia::ver_saidas' || id === 'chefia::ver_operacoes') return handleViewSaidasButton(interaction);
+      if (id === 'chefia::registar_material_saida' || id === 'chefia::registar_material_op') return handleRegisterMaterialButton(interaction);
       if (id === 'chefia::adicionar_participante') return handleAddParticipantButton(interaction);
       if (id === 'chefia::fornecer_participante') return handleIssueToParticipantButton(interaction);
       if (id === 'chefia::ver_stock') return handleStockCommand(interaction);
@@ -641,16 +641,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (id === 'inv::select_reactivate_item') return handleReactivateItemSelect(interaction);
 
       // Operations
-      if (id === 'op::select_close') return handleCloseOperationSelect(interaction);
-      if (id === 'op::select_add_participant') return handleAddParticipantSelect(interaction);
-      if (id === 'op::select_material_op') return handleMaterialOpSelect(interaction);
-      if (id === 'op::select_material_direction') return handleMaterialDirectionSelect(interaction);
-      if (id === 'op::select_material_item') return handleMaterialItemSelect(interaction);
-      // Fase 10 — custódia nominal
-      if (id === 'op::issue_select_op') return handleIssueOpSelect(interaction);
-      if (id === 'op::issue_select_participant') return handleIssueParticipantSelect(interaction);
-      if (id === 'op::issue_select_item') return handleIssueItemSelect(interaction);
-      if (id.startsWith('op::mark_dead::')) return handleMarkDeadSelect(interaction);
+      if (id === 'saida::select_close' || id === 'op::select_close') return handleCloseSaidaSelect(interaction);
+      if (id === 'saida::select_add_participant' || id === 'op::select_add_participant') return handleAddParticipantSelect(interaction);
+      if (id === 'saida::select_material_op' || id === 'op::select_material_op') return handleMaterialOpSelect(interaction);
+      if (id === 'saida::select_material_direction' || id === 'op::select_material_direction') return handleMaterialDirectionSelect(interaction);
+      if (id === 'saida::select_material_item' || id === 'op::select_material_item') return handleMaterialItemSelect(interaction);
+      // Custódia nominal
+      if (id === 'saida::issue_select_saida' || id === 'op::issue_select_op') return handleIssueSaidaSelect(interaction);
+      if (id === 'saida::issue_select_participant' || id === 'op::issue_select_participant') return handleIssueParticipantSelect(interaction);
+      if (id === 'saida::issue_select_item' || id === 'op::issue_select_item') return handleIssueItemSelect(interaction);
+      if (id.startsWith('saida::mark_dead::') || id.startsWith('op::mark_dead::')) return handleMarkDeadSelect(interaction);
 
       return;
     }
@@ -658,7 +658,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     // ── User select menu interactions (member picker, multi-select) ─────────
     if (interaction.isUserSelectMenu()) {
       const id = interaction.customId;
-      if (id.startsWith('op::user_select_participants::')) return handleParticipantUsersSelect(interaction);
+      if (id.startsWith('saida::user_select_participants::') || id.startsWith('op::user_select_participants::')) return handleParticipantUsersSelect(interaction);
       return;
     }
 
@@ -677,13 +677,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (id === 'inv::modal_encomenda') return handleEncomendaModal(interaction);
 
       // Operation modals
-      if (id === 'op::modal_create') return handleCreateOperationModal(interaction);
-      if (id === 'op::modal_close') return handleCloseOperationModal(interaction);
-      if (id === 'op::modal_material_qty') return handleMaterialQtyModal(interaction);
-      if (id === 'op::issue_modal_qty') return handleIssueQtyModal(interaction);
+      if (id === 'saida::modal_create' || id === 'op::modal_create') return handleCreateSaidaModal(interaction);
+      if (id === 'saida::modal_close' || id === 'op::modal_close') return handleCloseSaidaModal(interaction);
+      if (id === 'saida::modal_material_qty' || id === 'op::modal_material_qty') return handleMaterialQtyModal(interaction);
+      if (id === 'saida::issue_modal_qty' || id === 'op::issue_modal_qty') return handleIssueQtyModal(interaction);
 
       // Cemetery modal
-      if (id === 'cemetery::modal_kill') return handleKillModal(interaction);
+      if (id === 'kill::modal' || id === 'cemetery::modal_kill') return handleKillModal(interaction);
 
       // Radio modal
       if (id.startsWith('radio::modal_set::')) return radioHandleSetModal(interaction);

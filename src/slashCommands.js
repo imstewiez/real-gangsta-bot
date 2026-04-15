@@ -56,9 +56,9 @@ const commands = [
     .addNumberOption(opt => opt.setName('valor').setDescription('Valor estimado').setRequired(false)),
 
   new SlashCommandBuilder()
-    .setName('rg-close-operation')
-    .setDescription('Fecha uma operação pelo ID (fallback ao painel)')
-    .addIntegerOption(opt => opt.setName('id').setDescription('ID da operação').setRequired(true)),
+    .setName('rg-close-saida')
+    .setDescription('Fecha uma saída pelo ID (fallback ao painel)')
+    .addIntegerOption(opt => opt.setName('id').setDescription('ID da saída').setRequired(true)),
 
   new SlashCommandBuilder()
     .setName('rg-kill')
