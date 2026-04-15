@@ -44,6 +44,18 @@ function _resolveTier(roles, tierList) {
   return null;
 }
 
+// Fallback para display_names Discord com < 2 caracteres alfanuméricos reais
+// (ex: ".", "᲼᲼᲼", espaços invisíveis). Evita que apareçam sem nome no Sheet.
+function _pickDisplayName(gm) {
+  const candidates = [gm.displayName, gm.nickname, gm.user?.globalName, gm.user?.username];
+  for (const c of candidates) {
+    if (!c) continue;
+    const clean = String(c).replace(/[^\p{L}\p{N}]+/gu, '');
+    if (clean.length >= 2) return c;
+  }
+  return gm.user?.username || gm.id;
+}
+
 function detectRoleFromGuildMember(gm) {
   const roles = gm.roles.cache;
   // Chefia — topo da hierarquia
@@ -92,7 +104,7 @@ async function backfillMembers(guild, opts = {}) {
 
     try {
       const existing = await memberRepo.findByDiscordId(gm.id);
-      const displayName = gm.displayName || gm.user.username;
+      const displayName = _pickDisplayName(gm);
       const username    = gm.user.username;
 
       if (!existing) {

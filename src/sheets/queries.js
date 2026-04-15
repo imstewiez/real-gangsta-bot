@@ -62,6 +62,15 @@ const STOCK_BALANCE_CASE = `
 const STOCK_BALANCE_ARMAZEM = `(CASE WHEN im.location = 'armazem' THEN ${STOCK_BALANCE_CASE} ELSE 0 END)`;
 const STOCK_BALANCE_GRUPO   = `(CASE WHEN im.location = 'grupo'   THEN ${STOCK_BALANCE_CASE} ELSE 0 END)`;
 
+// Display name com fallback — se display_name tiver menos de 2 caracteres
+// alfanuméricos (ex: ".", "᲼᲼᲼", " ", ""), usa username. Aplicável a qualquer
+// query que seleccione display_name de `members` (com alias m).
+const DISPLAY_NAME_EXPR = (alias = 'm') => `CASE
+  WHEN LENGTH(REGEXP_REPLACE(COALESCE(${alias}.display_name, ''), '[^[:alnum:]À-ÿ]+', '', 'g')) < 2
+    THEN COALESCE(${alias}.username, ${alias}.discord_id, '—')
+  ELSE ${alias}.display_name
+END`;
+
 // ─── KPIs do Dashboard ───────────────────────────────────────────────────────
 async function getDashboardKPIs() {
   const w = weekBounds();
