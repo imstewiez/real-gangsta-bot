@@ -29,6 +29,9 @@ const {
   CATEGORY_PERMS,
   CHANNEL_PERM_OVERRIDES,
   CHANNEL_PERM_OVERRIDES_BY_NAME,
+  ROLE_DISPLAY_NAMES,
+  ROLE_GUILD_PERMS,
+  ROLE_KEY_TO_ID_KEYS,
   formatResidentChannelName,
   extractNicknameFromFormatted,
   bold,
@@ -113,6 +116,70 @@ async function runPermsOnly(guild, opts = {}) {
 
   await guild.channels.fetch().catch(() => null);
   await guild.roles.fetch().catch(() => null);
+
+  // ── ROLE 1: Ensure Pendente exists (cria se faltar) ────────────────────
+  if (!CONFIG.PENDENTE_ROLE_ID) {
+    // Tenta encontrar role existente por nome (cria se não existir)
+    const expectedName = ROLE_DISPLAY_NAMES.PENDENTE_ROLE_ID;
+    let pendente = guild.roles.cache.find(r => r.name === expectedName || r.name.toLowerCase().includes('pendente'));
+    if (!pendente) {
+      if (apply) {
+        try {
+          pendente = await guild.roles.create({
+            name: expectedName,
+            color: 0x95A5A6,
+            hoist: true,
+            mentionable: false,
+            permissions: [],
+            reason: 'Bot di Zona — criação automática do role Pendente',
+          });
+          act('CREATE_ROLE', { name: expectedName, id: pendente.id });
+        } catch (e) { errored('CREATE_ROLE:Pendente', e); }
+      } else {
+        act('CREATE_ROLE', { name: expectedName, dry: true });
+      }
+    } else {
+      act('FOUND_EXISTING_ROLE', { name: pendente.name, id: pendente.id });
+    }
+    // Mutação runtime — as fases seguintes passam a resolver Pendente.
+    if (pendente) CONFIG.PENDENTE_ROLE_ID = pendente.id;
+  }
+
+  // ── ROLE 2: Apply guild-level permissions a cada role do template ──────
+  for (const [roleKey, idKeys] of Object.entries(ROLE_KEY_TO_ID_KEYS)) {
+    const permsList = ROLE_GUILD_PERMS[roleKey];
+    if (!permsList) continue;
+    const bits = permBits(permsList);
+    for (const idKey of idKeys) {
+      const roleId = CONFIG[idKey];
+      if (!roleId) continue;
+      const role = guild.roles.cache.get(roleId);
+      if (!role) { act('SKIP_ROLE_PERMS_MISSING', { idKey, roleId }); continue; }
+      // Usa bitfield para comparar — evita setPermissions redundante.
+      const currentBits = role.permissions.bitfield;
+      const expectedBits = bits.reduce((acc, b) => acc | BigInt(b), 0n);
+      if (currentBits === expectedBits) { act('SKIP_ROLE_PERMS_ALREADY_OK', { role: role.name }); continue; }
+      act('ROLE_PERMS', { role: role.name, idKey });
+      if (apply) {
+        try { await role.setPermissions(bits, 'Bot di Zona — sync perms'); await new Promise(r => setTimeout(r, 200)); }
+        catch (e) { errored(`ROLE_PERMS:${role.name}`, e); }
+      }
+    }
+  }
+
+  // ── ROLE 3: Rename roles com bold unicode ──────────────────────────────
+  for (const [idKey, expectedName] of Object.entries(ROLE_DISPLAY_NAMES)) {
+    const roleId = CONFIG[idKey];
+    if (!roleId) continue;
+    const role = guild.roles.cache.get(roleId);
+    if (!role) continue;
+    if (role.name === expectedName) continue;
+    act('ROLE_RENAME', { from: role.name, to: expectedName, idKey });
+    if (apply) {
+      try { await role.setName(expectedName, 'Bot di Zona — rename unicode'); await new Promise(r => setTimeout(r, 250)); }
+      catch (e) { errored(`ROLE_RENAME:${role.name}`, e); }
+    }
+  }
 
   // A. Renomes seguros:
   //    A1) Painéis (CHANNELS_TO_CREATE com reason que inclui "painel" ou

@@ -341,6 +341,85 @@ const CHANNELS_TO_CREATE = [
   { name: ch('📋', 'painel-chefe-moradores'),  categoryKey: 'GUETTO',   renameFrom: ['📋│painel-chefe-moradores'], reason: 'Painel Patrão di Zona — só bot posta, moradores NÃO vêem' },
 ];
 
+// ── Role display names (bold unicode, consistente com os canais) ─────────────
+// Mapa de ROLE_ID_KEY → display name. Usado pelo sync-perms para renomear.
+const ROLE_DISPLAY_NAMES = {
+  MANDA_CHUVA_ROLE_ID:         bold('Manda-Chuva'),
+  KINGPIN_ROLE_ID:             bold('Kingpin'),
+  OG_ROLE_ID:                  bold('OG'),
+  REAL_GANGSTER_ROLE_ID:       bold('Real Gangster'),
+  PATRAO_DI_ZONA_ROLE_ID:      bold('Patrão di Zona'),
+  GANGSTER_FODIDO_ROLE_ID:     bold('Gangster Fodido'),
+  O_GUNAO_ROLE_ID:             bold('O Gunão'),
+  YOUNG_BLOOD_ROLE_ID:         bold('Young Blood'),
+  MORADORES_BASE_ROLE_ID:      bold('Moradores'),
+  TROPINHAS_DO_GUETTO_ROLE_ID: bold('Tropinhas do Guetto'),
+  PATRULHA_PATA_ROLE_ID:       bold('Patrulha Pata'),
+  PENDENTE_ROLE_ID:            bold('Pendente'),
+};
+
+// ── Role guild-level permissions (bitfield em nomes discord.js) ──────────────
+// Aplicadas ao role (setPermissions). NÃO são channel overrides — são a "base"
+// de cada membro com esse role. Channel overrides continuam em CATEGORY_PERMS.
+const ROLE_GUILD_PERMS = {
+  // Comando — Administrator bypassa overrides (vê e manda em tudo).
+  command: ['Administrator'],
+
+  // Supervisor (OG/Real Gangster) — moderação completa sem admin.
+  supervisor: [
+    'ViewChannel', 'SendMessages', 'EmbedLinks', 'AttachFiles',
+    'ReadMessageHistory', 'AddReactions', 'UseExternalEmojis', 'UseExternalStickers',
+    'Connect', 'Speak', 'UseVAD', 'Stream',
+    'ChangeNickname', 'ManageMessages', 'ManageThreads',
+    'CreatePublicThreads', 'SendMessagesInThreads',
+    'MuteMembers', 'DeafenMembers', 'MoveMembers',
+    'KickMembers', 'ViewAuditLog',
+  ],
+
+  // Chefe de Moradores (Patrão di Zona) — moderação limitada a GUETTO.
+  chefe_moradores: [
+    'ViewChannel', 'SendMessages', 'EmbedLinks', 'AttachFiles',
+    'ReadMessageHistory', 'AddReactions', 'UseExternalEmojis', 'UseExternalStickers',
+    'Connect', 'Speak', 'UseVAD', 'Stream',
+    'ChangeNickname', 'ManageMessages',
+    'MuteMembers', 'DeafenMembers', 'MoveMembers',
+  ],
+
+  // Moradores (base + tiers) — interacção normal.
+  moradores_base: [
+    'ViewChannel', 'SendMessages', 'EmbedLinks', 'AttachFiles',
+    'ReadMessageHistory', 'AddReactions', 'UseExternalEmojis', 'UseExternalStickers',
+    'Connect', 'Speak', 'UseVAD', 'Stream',
+    'ChangeNickname', 'SendMessagesInThreads',
+  ],
+  morador_tiers: [
+    'ViewChannel', 'SendMessages', 'EmbedLinks', 'AttachFiles',
+    'ReadMessageHistory', 'AddReactions', 'UseExternalEmojis', 'UseExternalStickers',
+    'Connect', 'Speak', 'UseVAD', 'Stream',
+    'ChangeNickname', 'SendMessagesInThreads',
+  ],
+
+  // Pendente — só vê boas-vindas e pode clicar no botão (nada mais).
+  pendente: ['ViewChannel', 'ReadMessageHistory'],
+
+  // Flavor roles — sem perms extra, herdam de @everyone.
+  tropinhas: [],
+  patrulha_pata: [],
+};
+
+// Mapeamento roleKey → conjunto de role-id-keys a que aplicar os perms.
+// Permite iterar roles do mesmo "tier" com a mesma configuração de perms.
+const ROLE_KEY_TO_ID_KEYS = {
+  command:        ['MANDA_CHUVA_ROLE_ID', 'KINGPIN_ROLE_ID'],
+  supervisor:     ['OG_ROLE_ID', 'REAL_GANGSTER_ROLE_ID'],
+  chefe_moradores:['PATRAO_DI_ZONA_ROLE_ID'],
+  morador_tiers:  ['YOUNG_BLOOD_ROLE_ID', 'O_GUNAO_ROLE_ID', 'GANGSTER_FODIDO_ROLE_ID'],
+  moradores_base: ['MORADORES_BASE_ROLE_ID'],
+  pendente:       ['PENDENTE_ROLE_ID'],
+  tropinhas:      ['TROPINHAS_DO_GUETTO_ROLE_ID'],
+  patrulha_pata:  ['PATRULHA_PATA_ROLE_ID'],
+};
+
 // ── Role groups ───────────────────────────────────────────────────────────────
 function rolesFor(key) {
   switch (key) {
@@ -587,5 +666,8 @@ module.exports = {
   CATEGORY_PERMS,
   CHANNEL_PERM_OVERRIDES,
   CHANNEL_PERM_OVERRIDES_BY_NAME,
+  ROLE_DISPLAY_NAMES,
+  ROLE_GUILD_PERMS,
+  ROLE_KEY_TO_ID_KEYS,
   rolesFor,
 };
