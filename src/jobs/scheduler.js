@@ -75,6 +75,19 @@ function startAll(client) {
     return await runReconcile({ domain: 'all', guild, dryRun: true, actor: 'system:scheduler' });
   });
 
+  // Data health — actualiza gauges Prometheus (stale tabs, drift, retention
+  // pending, stuck jobs). Corre a cada 5 min, barato.
+  registerJob('data_health_collect', 5 * 60 * 1000, async (client) => {
+    const guild = client?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
+    const { collect } = require('../lib/dataHealth');
+    const r = await collect({ guild });
+    return {
+      stale: r.sheet?.stale, errors: r.sheet?.errors,
+      members_drift: (r.members?.role_mismatch || 0) + (r.members?.tier_mismatch || 0),
+      stuck_jobs: r.stuck_jobs?.length || 0,
+    };
+  });
+
   // Rankings mensais + all-time snapshot — corre a cada 6h (idempotente).
   // No primeiro dia do mês apanha o mês anterior; resto dos dias actualiza
   // o mês corrente e mantém all_time_stats frescas.

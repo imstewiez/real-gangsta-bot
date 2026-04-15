@@ -597,6 +597,14 @@ async function _dispatchInteraction(interaction) {
         return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
       }
 
+      if (cmd === 'rg-data-health') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('data health'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const { collect, formatDiscord } = require('./lib/dataHealth');
+        const report = await collect({ guild: interaction.guild });
+        return safeReply(interaction, { content: formatDiscord(report) }, { dismissible: true });
+      }
+
       if (cmd === 'rg-reconcile') {
         if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('reconcile'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });

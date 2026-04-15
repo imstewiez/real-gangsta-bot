@@ -205,6 +205,10 @@ const commands = [
     .addStringOption(opt => opt.setName('modo').setDescription('dry-run ou apply').setRequired(true)
       .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
 
+  new SlashCommandBuilder()
+    .setName('rg-data-health')
+    .setDescription('Snapshot da saúde dos dados (sheet sync, drift, retention, stuck jobs)'),
+
   // ── Google Sheets sync ──────────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName('rg-sync-sheets')

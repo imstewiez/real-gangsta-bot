@@ -100,6 +100,14 @@ const dbPoolTotal = gauge('rg_db_pool_total', 'DB connections currently in pool 
 const dbPoolIdle = gauge('rg_db_pool_idle', 'DB connections currently idle');
 const dbPoolWaiting = gauge('rg_db_pool_waiting', 'Queries waiting for DB connection');
 
+// ── Data lifecycle / health gauges ────────────────────────────────────────────
+const sheetStaleTabs        = gauge('rg_sheet_stale_tabs', 'Sheet tabs com last_synced_at > 2× interval');
+const sheetErrorTabs        = gauge('rg_sheet_error_tabs', 'Sheet tabs com last_result=error');
+const driftedMembers        = gauge('rg_drifted_members', 'Members com role/tier divergente do Discord');
+const orphanChannels        = gauge('rg_orphan_channels', 'Resident channels em DB mas apagados em Discord');
+const staleJobRuns          = gauge('rg_stale_job_runs', 'Jobs em running > 2h (suspeita de stuck)');
+const pendingRetentionRows  = gauge('rg_pending_retention_rows', 'Rows elegíveis para retention');
+
 module.exports = {
   counter, gauge, toPrometheusText, toJson,
   commandInvocationsTotal, discordEventsTotal,
@@ -112,4 +120,7 @@ module.exports = {
   sheetsSyncTotal, sheetsSyncErrorsTotal,
   membersActive, discordPingMs,
   dbPoolTotal, dbPoolIdle, dbPoolWaiting,
+  // Data lifecycle
+  sheetStaleTabs, sheetErrorTabs, driftedMembers, orphanChannels,
+  staleJobRuns, pendingRetentionRows,
 };
