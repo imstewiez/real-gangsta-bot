@@ -18,16 +18,15 @@ const { log, warn } = require('../logger');
 // Nome canónico + ordem canónica das tabs. Render em ordem no workbook.
 // Consolidação: 15 → 9 tabs. Weekly+Daily→Resumo, Members+Moradores+Oficiais→
 // Membros, Kills+Spots→Combate, Inventory+Movements→Stock, Audit removido.
+// 6 tabs canónicas — compactação máxima. Secções internas bem organizadas
+// substituem tabs separadas para reduzir ruído de navegação.
 const TABS = [
-  { key: 'dashboard',     title: '📊 Dashboard',     color: COLOR.RED_DEEP,  order: 0 },
-  { key: 'resumo',        title: '📈 Resumo',        color: COLOR.RED_DEEP,  order: 1 },
-  { key: 'membros',       title: '👥 Membros',       color: COLOR.CHARCOAL,  order: 2 },
-  { key: 'saidas',        title: '🎯 Saídas',        color: COLOR.RED_BLOOD, order: 3 },
-  { key: 'participantes', title: '🎖️ Participantes', color: COLOR.RED_BLOOD, order: 4 },
-  { key: 'combate',       title: '⚔️ Combate',       color: COLOR.RED_BLOOD, order: 5 },
-  { key: 'stock',         title: '📦 Stock',         color: COLOR.GRAPHITE,  order: 6 },
-  { key: 'rankings',      title: '🏆 Rankings',      color: COLOR.GOLD,      order: 7 },
-  { key: 'config',        title: '⚙️ Config',        color: COLOR.GRAY_DARK, order: 8 },
+  { key: 'dashboard',     title: '📊 Dashboard',          color: COLOR.RED_DEEP,  order: 0 },
+  { key: 'resumo',        title: '📈 Resumo & Rankings',  color: COLOR.RED_DEEP,  order: 1 },
+  { key: 'membros',       title: '👥 Membros',            color: COLOR.CHARCOAL,  order: 2 },
+  { key: 'saidas',        title: '🎯 Saídas & Combate',   color: COLOR.RED_BLOOD, order: 3 },
+  { key: 'stock',         title: '📦 Stock',              color: COLOR.GRAPHITE,  order: 4 },
+  { key: 'config',        title: '⚙️ Config',             color: COLOR.GRAY_DARK, order: 5 },
 ];
 
 const TABS_BY_KEY = Object.fromEntries(TABS.map(t => [t.key, t]));

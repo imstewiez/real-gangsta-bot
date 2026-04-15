@@ -1,19 +1,23 @@
 'use strict';
 /**
- * Tab Resumo — consolida visão temporal semanal + diária numa única folha.
- *   Secção 1: Pilares da semana (KPI strip)
- *   Secção 2: Comparativo detalhado vs semana anterior
- *   Secção 3: Janela de 14 dias (KPI strip agregado)
- *   Secção 4: Breakdown diário com badges contextuais
+ * Tab Resumo & Rankings — fusão de resumo temporal + rankings + destaques.
+ *   1. Pilares da semana (KPI strip)
+ *   2. Comparativo semana actual vs anterior (tabela detalhada)
+ *   3. Janela de 14 dias + breakdown diário
+ *   4. Top spots (rentáveis + flop)
+ *   5. Rankings competitivos em blocos compactos (entregas, kills, lucro,
+ *      MVP, survival, disciplina, K/D)
  */
 
-const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, mutedCell, numCell, badgeCell, formatDelta,
-  conditionalGreaterThan, conditionalLessThan } = require('../theme');
+const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, numCell, badgeCell,
+  formatDelta, rankCell, conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  footerBlock, autoResizeColumns, autoResizeAll,
+  rankingBlock, footerBlock, autoResizeAll,
 } = require('./_common');
-const { getWeeklySummary, getDailyBreakdown, getTrending } = require('../queries');
+const {
+  getWeeklySummary, getDailyBreakdown, getTrending, getRankings, getSpotsFull,
+} = require('../queries');
 
 const COL_COUNT = 9;
 
@@ -27,34 +31,46 @@ function destaqueBadge(d) {
   if (net > 0)    return badgeCell('POSITIVO', COLOR.GREEN_DEEP);
   return mutedCell('—', { align: 'CENTER' });
 }
+function fmtDate(d) { try { return d ? new Date(d).toISOString().split('T')[0] : '—'; } catch { return '—'; } }
 
-function fmtDate(d) {
-  if (!d) return '—';
-  try { return new Date(d).toISOString().split('T')[0]; } catch { return String(d); }
+function rankingBlockTop(batch, sheetId, row, { title, hint, items, columns }) {
+  row = sectionHeader(batch, sheetId, row, { title, hint, columnCount: COL_COUNT });
+  row = tableHeader(batch, sheetId, row, columns.concat(Array(COL_COUNT - columns.length).fill('')));
+  const sliced = items.slice(0, 10);
+  const rows = sliced.map((item, i) => {
+    const cells = [rankCell(i + 1), ...item.render];
+    while (cells.length < COL_COUNT) cells.push(cell('', { bg: COLOR.BG_APP }));
+    return cells;
+  });
+  if (rows.length) row = tableBody(batch, sheetId, row, rows);
+  else {
+    const empty = [mutedCell('—', { align: 'CENTER' }), mutedCell('sem dados', { align: 'LEFT' }),
+      ...Array(COL_COUNT - 2).fill(cell('', { bg: COLOR.BG_APP }))];
+    batch.updateCells(sheetId, row, 0, [empty]); row += 1;
+  }
+  return spacer(batch, sheetId, row, COL_COUNT, 'SM');
 }
 
 async function syncResumo(batch, sheetId) {
-  const [{ current, previous, bounds }, daily14, trend] = await Promise.all([
-    getWeeklySummary(), getDailyBreakdown(14), getTrending(),
+  const [{ current, previous, bounds }, daily14, trend, rk, spots] = await Promise.all([
+    getWeeklySummary(), getDailyBreakdown(14), getTrending(), getRankings(), getSpotsFull(),
   ]);
 
   let row = headerBlock(batch, sheetId, {
-    title: 'Resumo · Peso da Semana & Balanço da Rua',
+    title: 'Resumo & Rankings · Firma RedWood',
     subtitle: `semana ${bounds.current.start} → ${bounds.current.end}  ·  anterior ${bounds.previous.start} → ${bounds.previous.end}  ·  14 dias`,
     columnCount: COL_COUNT,
   });
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
-  // ── Secção 1: Pilares da semana ──────────────────────────────────────────
+  // ── A. Pilares da semana ─────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
     title: '🎯 PILARES DA SEMANA', hint: `${current.ops || 0} saídas concluídas`, columnCount: COL_COUNT,
   });
-
   const winRate = (current.ops || 0) > 0 ? (current.wins || 0) / current.ops : 0;
   const kd = (current.deaths || 0) > 0 ? (current.kills || 0) / current.deaths : (current.kills || 0);
   const dNet = formatDelta(Number(previous.net) || 0, Number(current.net) || 0, 'pct');
   const dKills = formatDelta(previous.kills || 0, current.kills || 0, 'pct');
-
   row = kpiStrip(batch, sheetId, row, [
     { label: 'Win Rate',   value: winRate, numberFormat: NUM_FMT.PCT,
       delta: `${current.wins || 0}V · ${current.losses || 0}D · ${current.draws || 0}E`, deltaDirection: 'flat' },
@@ -65,29 +81,24 @@ async function syncResumo(batch, sheetId) {
     { label: 'Entregas',   value: current.entregas || 0, numberFormat: NUM_FMT.INT,
       delta: `vendas: ${current.vendas || 0}`, deltaDirection: 'flat' },
   ], COL_COUNT);
-
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
 
-  // ── Secção 2: Comparativo detalhado ──────────────────────────────────────
+  // ── B. Comparativo detalhado ─────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '📊 COMPARATIVO · ESTA vs ANTERIOR', hint: 'deltas a verde/vermelho', columnCount: COL_COUNT,
+    title: '📊 COMPARATIVO · ESTA vs ANTERIOR', hint: 'deltas coloridos', columnCount: COL_COUNT,
   });
-
-  const cmpHeaders = ['Métrica', 'Esta Semana', 'Semana Anterior', 'Δ Absoluto', 'Δ %', ''];
-  row = tableHeader(batch, sheetId, row, cmpHeaders.concat(Array(COL_COUNT - cmpHeaders.length).fill('')));
-
+  row = tableHeader(batch, sheetId, row,
+    ['Métrica', 'Esta Semana', 'Semana Anterior', 'Δ Absoluto', 'Δ %', '', '', '', '']);
   const cmpData = [
     { label: 'Saídas',                  cur: current.ops       || 0, prev: previous.ops       || 0, fmt: NUM_FMT.INT },
     { label: 'Vitórias',                cur: current.wins      || 0, prev: previous.wins      || 0, fmt: NUM_FMT.INT },
     { label: 'Derrotas',                cur: current.losses    || 0, prev: previous.losses    || 0, fmt: NUM_FMT.INT },
-    { label: 'Empates',                 cur: current.draws     || 0, prev: previous.draws     || 0, fmt: NUM_FMT.INT },
     { label: 'Kills',                   cur: current.kills     || 0, prev: previous.kills     || 0, fmt: NUM_FMT.INT },
     { label: 'Mortes',                  cur: current.deaths    || 0, prev: previous.deaths    || 0, fmt: NUM_FMT.INT },
     { label: 'Material Fornecido (un)', cur: trend.supplied_units.current, prev: trend.supplied_units.previous, fmt: NUM_FMT.INT },
     { label: 'Material Devolvido (un)', cur: trend.returned_units.current, prev: trend.returned_units.previous, fmt: NUM_FMT.INT },
     { label: 'Material Perdido (un)',   cur: trend.lost_units.current,     prev: trend.lost_units.previous,     fmt: NUM_FMT.INT },
-    { label: 'Material Consumido (un)', cur: trend.consumed_units.current, prev: trend.consumed_units.previous, fmt: NUM_FMT.INT },
     { label: 'Lucro Bruto (€)',         cur: Number(current.gross) || 0, prev: Number(previous.gross) || 0, fmt: NUM_FMT.EURO },
     { label: 'Lucro Líquido (€)',       cur: Number(current.net)   || 0, prev: Number(previous.net)   || 0, fmt: NUM_FMT.EURO },
     { label: 'Entregas (itens)',        cur: current.entregas  || 0, prev: null, fmt: NUM_FMT.INT },
@@ -109,17 +120,15 @@ async function syncResumo(batch, sheetId) {
               : mutedCell('—', { align: 'RIGHT' }),
       hasPrev ? numCell(pctVal, NUM_FMT.PCT_DELTA, { font: deltaFont })
               : mutedCell('—', { align: 'RIGHT' }),
-      cell(hasPrev ? arrow : '—', { bg: COLOR.BG_APP, font: deltaFont, align: 'CENTER', vAlign: 'MIDDLE' }),
     ];
     while (cells.length < COL_COUNT) cells.push(cell('', { bg: COLOR.BG_APP }));
     return cells;
   });
   row = tableBody(batch, sheetId, row, cmpData);
-
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
 
-  // ── Secção 3: Janela 14 dias (KPI strip) ─────────────────────────────────
+  // ── C. Janela 14 dias + breakdown ────────────────────────────────────────
   const totalNet   = daily14.reduce((a, r) => a + Number(r.net || 0), 0);
   const totalOps   = daily14.reduce((a, r) => a + (r.ops || 0), 0);
   const totalKills = daily14.reduce((a, r) => a + (r.kills || 0), 0);
@@ -135,18 +144,11 @@ async function syncResumo(batch, sheetId) {
     { label: 'Kills',            value: totalKills, numberFormat: NUM_FMT.INT,  delta: `média ${(totalKills / Math.max(diasOps, 1)).toFixed(1)}/dia útil`, deltaDirection: 'flat' },
     { label: 'Lucro Total',      value: totalNet,   numberFormat: NUM_FMT.EURO, delta: `entradas: ${totalEntr} un.`, deltaDirection: totalNet > 0 ? 'up' : totalNet < 0 ? 'down' : 'flat' },
   ], COL_COUNT);
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
-  row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
-  row = divider(batch, sheetId, row, COL_COUNT, 'accent');
-
-  // ── Secção 4: Breakdown diário ───────────────────────────────────────────
-  row = sectionHeader(batch, sheetId, row, {
-    title: '📆 BREAKDOWN DIÁRIO', hint: 'mais recente no topo', columnCount: COL_COUNT,
-  });
-  const dailyHeaders = ['Data', 'Saídas', 'Kills', 'Mortes', 'Líquido', 'Entradas', 'Vendas', 'Destaque', ''];
-  row = tableHeader(batch, sheetId, row, dailyHeaders);
-  const firstDataRow = row;
-
+  row = tableHeader(batch, sheetId, row,
+    ['Data', 'Saídas', 'Kills', 'Mortes', 'Líquido', 'Entradas', 'Vendas', 'Destaque', '']);
+  const firstDailyRow = row;
   const dailyRows = daily14.map(d => [
     bodyBoldCell(fmtDate(d.day)),
     numCell(d.ops, NUM_FMT.INT),
@@ -158,15 +160,131 @@ async function syncResumo(batch, sheetId) {
     destaqueBadge(d),
     cell('', { bg: COLOR.BG_APP }),
   ]);
-  row = tableBody(batch, sheetId, row, dailyRows, { basicFilter: true, columnCount: COL_COUNT });
-
+  row = tableBody(batch, sheetId, row, dailyRows);
   if (dailyRows.length) {
-    batch.addRule(conditionalGreaterThan(sheetId, firstDataRow, 4, firstDataRow + dailyRows.length, 5, 0, COLOR.GREEN_SOFT));
-    batch.addRule(conditionalLessThan(sheetId, firstDataRow, 4, firstDataRow + dailyRows.length, 5, 0, COLOR.RED_SIGNAL_SOFT));
+    batch.addRule(conditionalGreaterThan(sheetId, firstDailyRow, 4, firstDailyRow + dailyRows.length, 5, 0, COLOR.GREEN_SOFT));
+    batch.addRule(conditionalLessThan(sheetId, firstDailyRow, 4, firstDailyRow + dailyRows.length, 5, 0, COLOR.RED_SIGNAL_SOFT));
   }
-
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
-  row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Resumo');
+  row = divider(batch, sheetId, row, COL_COUNT, 'accent');
+
+  // ── D. Top / Flop spots ──────────────────────────────────────────────────
+  const top3  = [...spots].sort((a, b) => Number(b.total_net_value || 0) - Number(a.total_net_value || 0)).slice(0, 3);
+  const flop3 = [...spots].sort((a, b) => Number(a.total_net_value || 0) - Number(b.total_net_value || 0)).slice(0, 3);
+
+  row = sectionHeader(batch, sheetId, row, {
+    title: '📍 SPOTS · TOP 3 RENTÁVEIS', hint: 'por lucro líquido acumulado', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, ['#', 'Spot', 'Saídas', 'Winrate', 'Lucro (€)', 'K/D', '', '', '']);
+  row = rankingBlock(batch, sheetId, row, top3.map((s, i) => ({
+    rank: i + 1,
+    label: s.spot || '—',
+    value: Number(s.total_net_value) || 0,
+    valueFormat: NUM_FMT.EURO,
+    sub: `${s.total_saidas} saídas · ${(Number(s.win_rate) * 100).toFixed(0)}% WR`,
+  })), COL_COUNT, { labelCol: 1, valueCol: 4 });
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
+
+  row = sectionHeader(batch, sheetId, row, {
+    title: '⚠️ SPOTS · FLOP 3 PERIGOSOS', hint: 'por prejuízo ou mortes', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, ['#', 'Spot', 'Saídas', 'Mortes', 'Lucro (€)', 'K/D', '', '', '']);
+  row = rankingBlock(batch, sheetId, row, flop3.map((s, i) => ({
+    rank: i + 1,
+    label: s.spot || '—',
+    value: Number(s.total_net_value) || 0,
+    valueFormat: NUM_FMT.EURO,
+    sub: `${s.total_saidas} saídas · ${s.our_deaths} mortes`,
+  })), COL_COUNT, { labelCol: 1, valueCol: 4 });
+  row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
+  row = divider(batch, sheetId, row, COL_COUNT, 'accent');
+
+  // ── E. Rankings competitivos ─────────────────────────────────────────────
+  row = sectionHeader(batch, sheetId, row, {
+    title: '🏆 RANKINGS COMPETITIVOS', hint: 'top 10 por eixo — 1º/2º/3º destacados', columnCount: COL_COUNT,
+  });
+  row = spacer(batch, sheetId, row, COL_COUNT, 'XS');
+
+  row = rankingBlockTop(batch, sheetId, row, {
+    title: '📦 TOP ENTREGAS', hint: 'quantidade de material entregue',
+    columns: ['#', 'Nome', 'Tier', 'Itens', 'Valor (€)', '', '', '', ''],
+    items: rk.topEntregas.map(x => ({
+      render: [
+        bodyBoldCell(x.display_name || '—'),
+        captionCell(x.tier || '—'),
+        numCell(x.qty, NUM_FMT.INT),
+        numCell(Number(x.weighted), NUM_FMT.EURO),
+      ],
+    })),
+  });
+  row = rankingBlockTop(batch, sheetId, row, {
+    title: '🎯 TOP KILLS', hint: 'kills em saídas',
+    columns: ['#', 'Nome', 'Kills', 'K/D', '', '', '', '', ''],
+    items: rk.topKills.map(x => ({
+      render: [
+        bodyBoldCell(x.display_name || '—'),
+        numCell(x.kills_total, NUM_FMT.INT),
+        numCell(Number(x.kd_ratio), NUM_FMT.KD),
+      ],
+    })),
+  });
+  row = rankingBlockTop(batch, sheetId, row, {
+    title: '💰 TOP LUCRO GERADO', hint: 'líquido em saídas lideradas',
+    columns: ['#', 'Nome', 'Lucro (€)', '', '', '', '', '', ''],
+    items: rk.topProfit.map(x => ({
+      render: [
+        bodyBoldCell(x.display_name || '—'),
+        numCell(Number(x.profit_generated), NUM_FMT.EURO),
+      ],
+    })),
+  });
+  row = rankingBlockTop(batch, sheetId, row, {
+    title: '🏆 TOP MVP', hint: 'melhor em cada saída',
+    columns: ['#', 'Nome', 'MVPs', 'Saídas', '% MVP', '', '', '', ''],
+    items: rk.topMVP.map(x => ({
+      render: [
+        bodyBoldCell(x.display_name || '—'),
+        numCell(x.mvp_count, NUM_FMT.INT),
+        numCell(x.saidas_total, NUM_FMT.INT),
+        numCell((x.saidas_total > 0) ? x.mvp_count / x.saidas_total : 0, NUM_FMT.PCT),
+      ],
+    })),
+  });
+  row = rankingBlockTop(batch, sheetId, row, {
+    title: '🛡️ TOP SOBREVIVÊNCIA', hint: 'mínimo 3 saídas',
+    columns: ['#', 'Nome', 'Survival', 'Saídas', '', '', '', '', ''],
+    items: rk.topSurvival.map(x => ({
+      render: [
+        bodyBoldCell(x.display_name || '—'),
+        numCell(Number(x.survival_rate) / 100, NUM_FMT.PCT),
+        numCell(x.saidas_total, NUM_FMT.INT),
+      ],
+    })),
+  });
+  row = rankingBlockTop(batch, sheetId, row, {
+    title: '📋 TOP DISCIPLINA MATERIAL', hint: 'taxa de devolução',
+    columns: ['#', 'Nome', 'Return Rate', '', '', '', '', '', ''],
+    items: rk.topDiscipline.map(x => ({
+      render: [
+        bodyBoldCell(x.display_name || '—'),
+        numCell(Number(x.material_return_rate) / 100, NUM_FMT.PCT),
+      ],
+    })),
+  });
+  row = rankingBlockTop(batch, sheetId, row, {
+    title: '⚔️ TOP K/D', hint: 'mínimo 3 encontros',
+    columns: ['#', 'Nome', 'K/D', 'Kills', 'Deaths', '', '', '', ''],
+    items: rk.topKD.map(x => ({
+      render: [
+        bodyBoldCell(x.display_name || '—'),
+        numCell(Number(x.kd_ratio), NUM_FMT.KD),
+        numCell(x.kills_total, NUM_FMT.INT),
+        numCell(x.deaths_total, NUM_FMT.INT),
+      ],
+    })),
+  });
+
+  row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Resumo & Rankings');
   autoResizeAll(batch, sheetId, row, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }

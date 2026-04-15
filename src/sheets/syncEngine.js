@@ -23,15 +23,12 @@ const PRE_SYNC_MIN_ROWS = 500;
 const PRE_SYNC_MIN_COLS = 30;
 
 const TAB_SYNCERS = {
-  dashboard:     () => require('./tabs/dashboard').syncDashboard,
-  resumo:        () => require('./tabs/resumo').syncResumo,
-  membros:       () => require('./tabs/membros').syncMembros,
-  saidas:        () => require('./tabs/saidas').syncSaidas,
-  participantes: () => require('./tabs/participantes').syncParticipantes,
-  combate:       () => require('./tabs/combate').syncCombate,
-  stock:         () => require('./tabs/stock').syncStock,
-  rankings:      () => require('./tabs/rankings').syncRankings,
-  config:        () => require('./tabs/config').syncConfig,
+  dashboard: () => require('./tabs/dashboard').syncDashboard,
+  resumo:    () => require('./tabs/resumo').syncResumo,
+  membros:   () => require('./tabs/membros').syncMembros,
+  saidas:    () => require('./tabs/saidas').syncSaidas,
+  stock:     () => require('./tabs/stock').syncStock,
+  config:    () => require('./tabs/config').syncConfig,
 };
 
 function getSpreadsheetId() {
