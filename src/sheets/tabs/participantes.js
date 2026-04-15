@@ -7,7 +7,7 @@ const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, nu
   conditionalGradient, conditionalGreaterThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  footerBlock, setWidths, autoResizeColumns,
+  footerBlock, setWidths, autoResizeColumns, autoResizeAll,
 } = require('./_common');
 const { getParticipantsFull } = require('../queries');
 const { growSheet } = require('../cleanup');
@@ -42,31 +42,28 @@ async function syncParticipantes(batch, sheetId) {
   const survivalRate = participacoes ? 1 - (deaths / participacoes) : 0;
 
   growSheet(batch, sheetId, { rows: Math.max(participacoes + 50, 200) });
-
-  const FREEZE_AT = 4;
   let row = headerBlock(batch, sheetId, {
     title: 'Participantes · Quem Rende na Rua',
     subtitle: `${participacoes} participações registadas · ${mvps} MVPs · ${deaths} mortes`,
     columnCount: COL_COUNT,
-    freezeAt: FREEZE_AT,
   });
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
   row = sectionHeader(batch, sheetId, row, {
-    title: '📊 INDICADORES AGREGADOS', hint: 'todas as participações', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
+    title: '📊 INDICADORES AGREGADOS', hint: 'todas as participações', columnCount: COL_COUNT,
   });
   row = kpiStrip(batch, sheetId, row, [
     { label: 'Participações', value: participacoes, numberFormat: NUM_FMT.INT, delta: `${returnedBR} regressaram`, deltaDirection: 'flat' },
     { label: 'MVPs',          value: mvps,          numberFormat: NUM_FMT.INT, delta: `${(participacoes ? mvps / participacoes : 0 * 100).toFixed(0)}% taxa MVP`, deltaDirection: 'flat' },
     { label: 'Kills Totais',  value: totalKills,    numberFormat: NUM_FMT.INT, delta: `${deaths} mortes`, deltaDirection: 'flat' },
     { label: 'Survival Rate', value: survivalRate,  numberFormat: NUM_FMT.PCT, delta: survivalRate >= 0.7 ? 'sólido' : 'atenção', deltaDirection: survivalRate >= 0.7 ? 'up' : 'down' },
-  ], COL_COUNT, { freezeAt: FREEZE_AT });
+  ], COL_COUNT, { });
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
 
   row = sectionHeader(batch, sheetId, row, {
-    title: '📋 LEDGER DE PARTICIPAÇÕES', hint: 'filtros activos', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
+    title: '📋 LEDGER DE PARTICIPAÇÕES', hint: 'filtros activos', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, HEADERS);
   const firstDataRow = row;
@@ -101,12 +98,10 @@ async function syncParticipantes(batch, sheetId) {
     batch.addRule(conditionalGradient(sheetId, firstDataRow, 16, firstDataRow + N, 17, COLOR.RED_SIGNAL_SOFT, COLOR.YELLOW_SOFT, COLOR.GREEN_SOFT));
     batch.addRule(conditionalGradient(sheetId, firstDataRow, 17, firstDataRow + N, 18, COLOR.RED_SIGNAL_SOFT, COLOR.YELLOW_SOFT, COLOR.GREEN_SOFT));
   }
-
-  batch.freezeCols(sheetId, FREEZE_AT);
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
-  row = footerBlock(batch, sheetId, row, COL_COUNT, FREEZE_AT, 'Participantes');
+  row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Participantes');
 
-  autoResizeColumns(batch, sheetId, COL_COUNT);
+  autoResizeAll(batch, sheetId, row, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

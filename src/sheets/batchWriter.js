@@ -61,6 +61,17 @@ class BatchWriter {
     return this;
   }
 
+  /** Desfaz TODOS os merges da tab. Usado no pre-sync para não conflituar
+   * com novos merges desta sync que sobreponham merges antigas. */
+  unmergeAll(sheetId) {
+    this.requests.push({
+      unmergeCells: {
+        range: { sheetId },
+      },
+    });
+    return this;
+  }
+
   /** Congela N linhas no topo. */
   freezeRows(sheetId, rowCount) {
     this.requests.push({

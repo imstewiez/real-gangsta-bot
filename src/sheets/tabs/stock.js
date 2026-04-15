@@ -11,7 +11,7 @@ const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, nu
   conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  footerBlock, autoResizeColumns,
+  footerBlock, autoResizeColumns, autoResizeAll,
 } = require('./_common');
 const { getInventoryFull, getStockByCategory, getMovementsFull } = require('../queries');
 const { growSheet } = require('../cleanup');
@@ -241,7 +241,7 @@ async function syncStock(batch, sheetId) {
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Stock');
-  autoResizeColumns(batch, sheetId, COL_COUNT);
+  autoResizeAll(batch, sheetId, row, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

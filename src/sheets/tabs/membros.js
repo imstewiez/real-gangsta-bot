@@ -8,7 +8,7 @@ const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, numCell, badg
   conditionalGradient, conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  footerBlock, autoResizeColumns,
+  footerBlock, autoResizeColumns, autoResizeAll,
 } = require('./_common');
 const { getMembersFull } = require('../queries');
 const { growSheet } = require('../cleanup');
@@ -82,59 +82,56 @@ async function syncMembros(batch, sheetId) {
 
   // Grow antes de escrever — Membros pode crescer se houver backfill.
   growSheet(batch, sheetId, { rows: Math.max(rows.length + 50, 200) });
-
-  const FREEZE_AT = 1;
   let row = headerBlock(batch, sheetId, {
     title: 'Membros · Ficha da Casa',
     subtitle: `${rows.length} membros · ${moradores.length} moradores · ${oficiais.length} oficiais`,
     columnCount: COL_COUNT,
-    freezeAt: FREEZE_AT,
   });
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
   // ── Secção 1: Resumo Casa ────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '🏠 RESUMO DA CASA', hint: 'todos os membros activos', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
+    title: '🏠 RESUMO DA CASA', hint: 'todos os membros activos', columnCount: COL_COUNT,
   });
   row = kpiStrip(batch, sheetId, row, [
     { label: 'Membros',   value: rows.length,    numberFormat: NUM_FMT.INT, delta: `${moradores.length} moradores · ${oficiais.length} oficiais`, deltaDirection: 'flat' },
     { label: 'Entregues', value: totalEntregas,  numberFormat: NUM_FMT.INT, delta: 'material total', deltaDirection: 'flat' },
     { label: 'Kills',     value: totalKills,     numberFormat: NUM_FMT.INT, delta: `KD médio ${avgKD.toFixed(2)}`, deltaDirection: 'flat' },
     { label: 'Lucro',     value: totalProfit,    numberFormat: NUM_FMT.EURO, delta: 'gerado colectivamente', deltaDirection: totalProfit > 0 ? 'up' : 'flat' },
-  ], COL_COUNT, { freezeAt: FREEZE_AT });
+  ], COL_COUNT, { });
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
 
   // ── Secção 2: Distribuição por tier ──────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '🎖️ MORADORES · DISTRIBUIÇÃO POR TIER', hint: 'topo → base', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
+    title: '🎖️ MORADORES · DISTRIBUIÇÃO POR TIER', hint: 'topo → base', columnCount: COL_COUNT,
   });
   row = kpiStrip(batch, sheetId, row, [
     { label: 'Patrão Di Zona',  value: tierCounts.patrao_di_zona,  numberFormat: NUM_FMT.INT, delta: 'topo da casa', deltaDirection: 'flat' },
     { label: 'Gangster Fodido', value: tierCounts.gangster_fodido, numberFormat: NUM_FMT.INT, delta: 'elite', deltaDirection: 'flat' },
     { label: 'O Gunão',         value: tierCounts.o_gunao,         numberFormat: NUM_FMT.INT, delta: 'estabilizados', deltaDirection: 'flat' },
     { label: 'Young Blood',     value: tierCounts.young_blood,     numberFormat: NUM_FMT.INT, delta: 'a subir', deltaDirection: 'flat' },
-  ], COL_COUNT, { freezeAt: FREEZE_AT });
+  ], COL_COUNT, { });
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
 
   // ── Secção 3: Núcleo oficiais ────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '👑 OFICIAIS · NÚCLEO DA FIRMA', hint: 'performance agregada', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
+    title: '👑 OFICIAIS · NÚCLEO DA FIRMA', hint: 'performance agregada', columnCount: COL_COUNT,
   });
   row = kpiStrip(batch, sheetId, row, [
     { label: 'Oficiais',     value: oficiais.length,  numberFormat: NUM_FMT.INT, delta: `${oficiais.filter(m => m.role === 'chefia').length} chefia`, deltaDirection: 'flat' },
     { label: 'Win Rate',     value: oCollectiveWR,    numberFormat: NUM_FMT.PCT, delta: `${oTotalWins}V em ${oTotalSaidas} saídas`, deltaDirection: oCollectiveWR >= 0.5 ? 'up' : 'down' },
     { label: 'K/D Médio',    value: oAvgKD,           numberFormat: NUM_FMT.KD,  delta: `${oTotalKills} kills totais`, deltaDirection: oAvgKD >= 1 ? 'up' : 'flat' },
     { label: 'MVPs',         value: oTotalMVPs,       numberFormat: NUM_FMT.INT, delta: 'entre oficiais', deltaDirection: 'flat' },
-  ], COL_COUNT, { freezeAt: FREEZE_AT });
+  ], COL_COUNT, { });
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
 
   // ── Secção 4: Roster completo ────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '👥 ROSTER COMPLETO', hint: 'filtros activos — ordena por qualquer coluna', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
+    title: '👥 ROSTER COMPLETO', hint: 'filtros activos — ordena por qualquer coluna', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, HEADERS);
   const firstDataRow = row;
@@ -181,12 +178,9 @@ async function syncMembros(batch, sheetId) {
     batch.addRule(conditionalGreaterThan(sheetId, firstDataRow, 18, firstDataRow + N, 19, 1000, COLOR.GREEN_SOFT));
     batch.addRule(conditionalLessThan(sheetId, firstDataRow, 18, firstDataRow + N, 19, -500, COLOR.RED_SIGNAL_SOFT));
   }
-
-  batch.freezeCols(sheetId, FREEZE_AT);
-
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
-  row = footerBlock(batch, sheetId, row, COL_COUNT, FREEZE_AT, 'Membros');
-  autoResizeColumns(batch, sheetId, COL_COUNT);
+  row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Membros');
+  autoResizeAll(batch, sheetId, row, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

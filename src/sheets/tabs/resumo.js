@@ -11,7 +11,7 @@ const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, mutedCell, numCell, badgeC
   conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  footerBlock, autoResizeColumns,
+  footerBlock, autoResizeColumns, autoResizeAll,
 } = require('./_common');
 const { getWeeklySummary, getDailyBreakdown, getTrending } = require('../queries');
 
@@ -167,7 +167,7 @@ async function syncResumo(batch, sheetId) {
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Resumo');
-  autoResizeColumns(batch, sheetId, COL_COUNT);
+  autoResizeAll(batch, sheetId, row, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

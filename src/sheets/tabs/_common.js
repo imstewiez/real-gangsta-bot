@@ -172,13 +172,12 @@ function kpiStrip(batch, sheetId, row, cards, columnCount, opts = {}) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Table header — linha com headers em red_blood + freeze das rows acima+esta.
+// Table header — linha com headers em red_blood. Sem freeze (decisão UX).
 // ─────────────────────────────────────────────────────────────────────────────
 function tableHeader(batch, sheetId, row, headers) {
   const cells = headers.map(h => headerCell(h));
   batch.updateCells(sheetId, row, 0, [cells]);
   batch.setRowHeight(sheetId, row, ROW_H.TABLE_HEAD);
-  batch.freezeRows(sheetId, row + 1);
   return row + 1;
 }
 
@@ -284,11 +283,22 @@ function setWidths(batch, sheetId, widths) {
   widths.forEach((w, i) => batch.setColumnWidth(sheetId, i, w));
 }
 
-// Auto-resize de todas as colunas usadas até ao conteúdo. Chamar NO FIM da
-// syncOne (depois de todo o conteúdo escrito) para ajustar larguras ao dado.
-// Não toca nas rows — as alturas são design decisions do design system.
+// Auto-resize de colunas usadas até ao conteúdo. Chamar NO FIM da syncOne
+// para ajustar larguras ao dado.
 function autoResizeColumns(batch, sheetId, columnCount) {
   batch.autoResize(sheetId, 'COLUMNS', 0, columnCount);
+}
+
+// Auto-resize de todas as rows usadas. Usa wrap strategy para crescer rows
+// com texto multi-linha. Override de qualquer setRowHeight anterior.
+function autoResizeRows(batch, sheetId, rowCount) {
+  batch.autoResize(sheetId, 'ROWS', 0, rowCount);
+}
+
+// Auto-resize completo (colunas + rows). Chamar NO FIM da sync.
+function autoResizeAll(batch, sheetId, rowCount, columnCount) {
+  autoResizeColumns(batch, sheetId, columnCount);
+  autoResizeRows(batch, sheetId, rowCount);
 }
 
 function _fmtNowPT() {
@@ -325,7 +335,8 @@ const writeFooter = (batch, sheetId, row, columnCount, freezeAt = 0) =>
 module.exports = {
   // API nova
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  rankingBlock, alertBox, footerBlock, setWidths, autoResizeColumns, applyRowBanding,
+  rankingBlock, alertBox, footerBlock, setWidths,
+  autoResizeColumns, autoResizeRows, autoResizeAll, applyRowBanding,
   // API antiga (shims)
   writeHeader, writeKpiBar, writeTableHeader, writeDivider, writeSection, writeFooter,
 };

@@ -12,7 +12,7 @@ const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, nu
   conditionalGradient, conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  rankingBlock, footerBlock, autoResizeColumns,
+  rankingBlock, footerBlock, autoResizeColumns, autoResizeAll,
 } = require('./_common');
 const { getKillsFull, getKillsKPIs, getSpotsFull } = require('../queries');
 const { growSheet } = require('../cleanup');
@@ -170,7 +170,7 @@ async function syncCombate(batch, sheetId) {
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Combate');
-  autoResizeColumns(batch, sheetId, COL_COUNT);
+  autoResizeAll(batch, sheetId, row, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

@@ -16,7 +16,7 @@
 const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, mutedCell, captionCell, numCell, formatDelta } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  rankingBlock, alertBox, footerBlock, setWidths, autoResizeColumns,
+  rankingBlock, alertBox, footerBlock, setWidths, autoResizeColumns, autoResizeAll,
 } = require('./_common');
 const {
   getDashboardKPIs, getTopMovers, getTrending, getAlerts, getStockByCategory,
@@ -203,7 +203,7 @@ async function syncDashboard(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Dashboard');
 
-  autoResizeColumns(batch, sheetId, COL_COUNT);
+  autoResizeAll(batch, sheetId, row, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

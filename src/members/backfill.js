@@ -84,10 +84,12 @@ async function backfillMembers(guild, opts = {}) {
           displayName,
           role: detected.role,
         });
-        // Se foi criado, aplicar tier se detectado (create sempre cria com defaults)
-        if (detected.tier) {
-          const created = await memberRepo.findByDiscordId(gm.id);
-          if (created) await memberRepo.update(created.id, { tier: detected.tier });
+        // Sincroniza tier com o detected (ou limpa se role é oficial/chefia
+        // — DB default é 'young_blood' o que seria lixo para não-moradores).
+        const created = await memberRepo.findByDiscordId(gm.id);
+        if (created) {
+          const targetTier = (detected.role === 'oficial' || detected.role === 'chefia') ? null : detected.tier;
+          if (created.tier !== targetTier) await memberRepo.update(created.id, { tier: targetTier });
         }
         await logAudit({
           action: 'member_backfilled',
@@ -104,7 +106,13 @@ async function backfillMembers(guild, opts = {}) {
       // Existe — verificar se role ou displayName precisa de sync
       const changes = {};
       if (existing.role !== detected.role) changes.role = detected.role;
-      if (!existing.tier && detected.tier) changes.tier = detected.tier;
+      // Tier só faz sentido em moradores. Limpa quando role é oficial/chefia.
+      const finalRole = changes.role || existing.role;
+      if (finalRole === 'oficial' || finalRole === 'chefia') {
+        if (existing.tier !== null) changes.tier = null;
+      } else if (!existing.tier && detected.tier) {
+        changes.tier = detected.tier;
+      }
       if (existing.display_name !== displayName) changes.display_name = displayName;
       if (existing.username !== username) changes.username = username;
       if (existing.status === 'inativo') changes.status = 'ativo'; // reactivar se voltou a ter role

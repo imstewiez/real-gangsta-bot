@@ -55,6 +55,12 @@ async function syncOne(key) {
   // Grow preventivo — evita "Attempting to write row X, beyond last row Y"
   // quando o trim anterior encolheu a grid e os dados agora cresceram.
   growSheet(batch, sheetId, { rows: PRE_SYNC_MIN_ROWS, cols: PRE_SYNC_MIN_COLS });
+  // Reset freezes antigos (se o sync anterior deixou freezes por apagar, os
+  // merges desta sync podem conflituar com a boundary). Zeros = sem freeze.
+  batch.freezeRows(sheetId, 0);
+  batch.freezeCols(sheetId, 0);
+  // Unmerge todos os merges antigos — novos merges podem sobrepor os antigos.
+  batch.unmergeAll(sheetId);
   // Limpa a tab antes de reescrever (simples, idempotente)
   batch.clearRange(sheetId);
   // Syncer pode devolver { lastRow, lastCol } para permitir trim automático.
