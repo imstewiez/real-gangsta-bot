@@ -74,8 +74,24 @@ function typeBadge(type) {
   return m ? badgeCell(m.label, m.bg) : bodyCell(type || '—');
 }
 
-function stateBadge(balance) {
+function stateBadge(balance, item) {
+  // Items com alert_enabled=false não mostram state badge (jóias, armas
+  // estragadas, items de hobby — não fazem sentido monitorar esgotamento).
+  if (item && item.alert_enabled === false) return mutedCell('—', { align: 'CENTER' });
+
   const b = Number(balance || 0);
+  const threshold = item?.alert_threshold;
+
+  // Se tem threshold explícito, compara contra ele (mais preciso).
+  if (threshold && threshold > 0) {
+    if (b <= 0) return badgeCell('ESGOTADO', COLOR.RED_DEEP);
+    if (b < threshold * 0.2) return badgeCell('CRÍTICO',  COLOR.RED_BLOOD);
+    if (b < threshold)       return badgeCell('BAIXO',    COLOR.YELLOW_DEEP);
+    if (b >= threshold * 3)  return badgeCell('ALTO',     COLOR.GREEN_DEEP);
+    return badgeCell('NORMAL', COLOR.GRAPHITE);
+  }
+
+  // Fallback: thresholds genéricos legacy.
   if (b <= 0)   return badgeCell('ESGOTADO', COLOR.RED_DEEP);
   if (b <= 3)   return badgeCell('CRÍTICO',  COLOR.RED_BLOOD);
   if (b <= 10)  return badgeCell('BAIXO',    COLOR.YELLOW_DEEP);
@@ -218,7 +234,7 @@ async function syncStock(batch, sheetId) {
         numCell(i.total_in || 0, NUM_FMT.INT),
         numCell(i.total_out || 0, NUM_FMT.INT),
         captionCell(fmtDT(i.last_movement)),
-        stateBadge(i.balance),
+        stateBadge(i.balance, i),
       ];
       while (cells.length < COL_COUNT) cells.push(cell('', { bg: COLOR.BG_APP }));
       if (zebraIndex % 2 === 1) {

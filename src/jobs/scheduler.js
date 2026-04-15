@@ -88,6 +88,14 @@ function startAll(client) {
     };
   });
 
+  // Stock alerts — corre hourly. Verifica items com alert_threshold definido
+  // e posta no canal alertas-stock se balance < threshold. Throttle 24h.
+  registerJob('stock_alerts', 60 * 60 * 1000, async (client) => {
+    const { setClient, checkAndAlert } = require('../inventory/stockAlertEngine');
+    setClient(client);
+    return await checkAndAlert({ dryRun: false });
+  });
+
   // Rankings mensais + all-time snapshot — corre a cada 6h (idempotente).
   // No primeiro dia do mês apanha o mês anterior; resto dos dias actualiza
   // o mês corrente e mantém all_time_stats frescas.

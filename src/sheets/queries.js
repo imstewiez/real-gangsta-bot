@@ -538,7 +538,7 @@ async function getInventoryFull() {
     SELECT
       i.id, i.name, i.category, i.unit,
       sb.balance, sb.balance_armazem, sb.balance_grupo,
-      i.estimated_value,
+      i.estimated_value, i.alert_enabled, i.alert_threshold,
       (COALESCE(sb.balance,0) * COALESCE(i.estimated_value,0))::numeric AS value_total,
       (COALESCE(sb.balance_armazem,0) * COALESCE(i.estimated_value,0))::numeric AS value_armazem,
       (COALESCE(sb.balance_grupo,0)   * COALESCE(i.estimated_value,0))::numeric AS value_grupo,
