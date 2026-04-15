@@ -11,6 +11,7 @@ const {
   footerBlock, autoResizeColumns,
 } = require('./_common');
 const { getMembersFull } = require('../queries');
+const { growSheet } = require('../cleanup');
 
 const HEADERS = [
   'Nome', 'Discord', 'Role', 'Tier', 'Estado', 'Entrada', 'Última Saída',
@@ -78,6 +79,9 @@ async function syncMembros(batch, sheetId) {
   // Tier counts (dos moradores)
   const tierCounts = {};
   for (const t of TIER_ORDER) tierCounts[t] = moradores.filter(m => m.tier === t).length;
+
+  // Grow antes de escrever — Membros pode crescer se houver backfill.
+  growSheet(batch, sheetId, { rows: Math.max(rows.length + 50, 200) });
 
   const FREEZE_AT = 1;
   let row = headerBlock(batch, sheetId, {

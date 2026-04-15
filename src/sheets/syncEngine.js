@@ -13,7 +13,14 @@ const { log, warn } = require('../logger');
 const { getSheetsClient } = require('./googleAuth');
 const { BatchWriter } = require('./batchWriter');
 const { ensureTabs, rebuildTabs, TABS_BY_KEY } = require('./workbook');
-const { trimSheet } = require('./cleanup');
+const { trimSheet, growSheet } = require('./cleanup');
+
+// Dimensão máxima por defeito antes de cada sync — garante que há sempre
+// espaço para escrever, mesmo depois de trims agressivos em syncs anteriores.
+// Tabs que precisam de mais (ex: movimentos até 2000) podem chamar growSheet
+// adicional dentro do seu próprio syncer.
+const PRE_SYNC_MIN_ROWS = 500;
+const PRE_SYNC_MIN_COLS = 30;
 
 const TAB_SYNCERS = {
   dashboard:     () => require('./tabs/dashboard').syncDashboard,
@@ -45,6 +52,9 @@ async function syncOne(key) {
   if (sheetId === undefined) throw new Error(`SheetId não encontrado para ${key}`);
 
   const batch = new BatchWriter(sheets, spreadsheetId);
+  // Grow preventivo — evita "Attempting to write row X, beyond last row Y"
+  // quando o trim anterior encolheu a grid e os dados agora cresceram.
+  growSheet(batch, sheetId, { rows: PRE_SYNC_MIN_ROWS, cols: PRE_SYNC_MIN_COLS });
   // Limpa a tab antes de reescrever (simples, idempotente)
   batch.clearRange(sheetId);
   // Syncer pode devolver { lastRow, lastCol } para permitir trim automático.
