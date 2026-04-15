@@ -35,10 +35,18 @@ function rolePill(role) {
 
 function tierPill(tier) {
   const map = {
+    // Morador tiers
     young_blood:     { label: 'YB',  bg: COLOR.GRAPHITE },
     o_gunao:         { label: 'OG',  bg: COLOR.RED_BLOOD },
     gangster_fodido: { label: 'GF',  bg: COLOR.RED_DEEP },
+    // Chefe moradores
     patrao_di_zona:  { label: 'PDZ', bg: COLOR.GOLD },
+    // Oficial tiers
+    real_gangster:   { label: 'RG',  bg: COLOR.RED_BLOOD },
+    og:              { label: 'OG',  bg: COLOR.RED_DEEP },
+    // Chefia tiers
+    kingpin:         { label: 'KP',  bg: COLOR.GOLD },
+    manda_chuva:     { label: 'MC',  bg: COLOR.RED_DEEP },
   };
   const m = map[tier];
   return m ? badgeCell(m.label, m.bg) : bodyCell(tier || '—');
@@ -53,48 +61,62 @@ function statusBadge(st) {
 
 function fmtDate(d) { try { return d ? new Date(d).toISOString().split('T')[0] : '—'; } catch { return '—'; } }
 
-const MORADOR_ROLES = new Set(['morador', 'chefe_moradores']);
+const MORADOR_ROLES = new Set(['morador']);
 const OFICIAL_ROLES = new Set(['oficial', 'chefia']);
-const TIER_ORDER    = ['patrao_di_zona', 'gangster_fodido', 'o_gunao', 'young_blood'];
 
 async function syncMembros(batch, sheetId) {
   const rows = await getMembersFull();
 
-  const moradores = rows.filter(m => MORADOR_ROLES.has(m.role));
-  const oficiais  = rows.filter(m => OFICIAL_ROLES.has(m.role));
+  const chefia     = rows.filter(m => m.role === 'chefia');
+  const oficial    = rows.filter(m => m.role === 'oficial');
+  const chefeMor   = rows.filter(m => m.role === 'chefe_moradores');
+  const moradores  = rows.filter(m => MORADOR_ROLES.has(m.role));
+  const allOfficial = [...chefia, ...oficial]; // combate/oficiais ops agregados
 
   const totalEntregas = rows.reduce((a, m) => a + Number(m.weighted_entregas || 0), 0);
   const totalKills    = rows.reduce((a, m) => a + (m.kills || 0), 0);
   const totalProfit   = rows.reduce((a, m) => a + Number(m.profit || 0), 0);
   const avgKD         = rows.length ? rows.reduce((a, m) => a + Number(m.kd || 0), 0) / rows.length : 0;
 
-  // Oficiais agregados
-  const oTotalSaidas  = oficiais.reduce((a, m) => a + (m.saidas_total || 0), 0);
-  const oTotalWins    = oficiais.reduce((a, m) => a + (m.wins || 0), 0);
-  const oTotalKills   = oficiais.reduce((a, m) => a + (m.kills || 0), 0);
-  const oTotalMVPs    = oficiais.reduce((a, m) => a + (m.mvps || 0), 0);
-  const oAvgKD        = oficiais.length ? oficiais.reduce((a, m) => a + Number(m.kd || 0), 0) / oficiais.length : 0;
+  // Oficiais agregados (chefia + oficial)
+  const oTotalSaidas  = allOfficial.reduce((a, m) => a + (m.saidas_total || 0), 0);
+  const oTotalWins    = allOfficial.reduce((a, m) => a + (m.wins || 0), 0);
+  const oTotalKills   = allOfficial.reduce((a, m) => a + (m.kills || 0), 0);
+  const oTotalMVPs    = allOfficial.reduce((a, m) => a + (m.mvps || 0), 0);
+  const oAvgKD        = allOfficial.length ? allOfficial.reduce((a, m) => a + Number(m.kd || 0), 0) / allOfficial.length : 0;
   const oCollectiveWR = oTotalSaidas > 0 ? oTotalWins / oTotalSaidas : 0;
 
-  // Tier counts (dos moradores)
-  const tierCounts = {};
-  for (const t of TIER_ORDER) tierCounts[t] = moradores.filter(m => m.tier === t).length;
+  // Counts por tier — cada classe tem a sua
+  const countTier = (arr, key) => arr.filter(m => m.tier === key).length;
+  const chef = {
+    manda_chuva: countTier(chefia, 'manda_chuva'),
+    kingpin:     countTier(chefia, 'kingpin'),
+  };
+  const ofic = {
+    og:            countTier(oficial, 'og'),
+    real_gangster: countTier(oficial, 'real_gangster'),
+  };
+  const mor = {
+    gangster_fodido: countTier(moradores, 'gangster_fodido'),
+    o_gunao:         countTier(moradores, 'o_gunao'),
+    young_blood:     countTier(moradores, 'young_blood'),
+  };
 
   // Grow antes de escrever — Membros pode crescer se houver backfill.
   growSheet(batch, sheetId, { rows: Math.max(rows.length + 50, 200) });
   let row = headerBlock(batch, sheetId, {
     title: 'Membros · Ficha da Casa',
-    subtitle: `${rows.length} membros · ${moradores.length} moradores · ${oficiais.length} oficiais`,
+    subtitle: `${rows.length} membros · ${chefia.length} chefia · ${oficial.length} oficiais · ${chefeMor.length} chefe moradores · ${moradores.length} moradores`,
     columnCount: COL_COUNT,
   });
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
   // ── Secção 1: Resumo Casa ────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '🏠 RESUMO DA CASA', hint: 'todos os membros activos', columnCount: COL_COUNT,
+    title: '🏠 RESUMO DA CASA', hint: 'totais agregados', columnCount: COL_COUNT,
   });
   row = kpiStrip(batch, sheetId, row, [
-    { label: 'Membros',   value: rows.length,    numberFormat: NUM_FMT.INT, delta: `${moradores.length} moradores · ${oficiais.length} oficiais`, deltaDirection: 'flat' },
+    { label: 'Membros',   value: rows.length,    numberFormat: NUM_FMT.INT, delta: `${chefia.length + oficial.length} oficiais · ${chefeMor.length + moradores.length} moradores`, deltaDirection: 'flat' },
     { label: 'Entregues', value: totalEntregas,  numberFormat: NUM_FMT.INT, delta: 'material total', deltaDirection: 'flat' },
     { label: 'Kills',     value: totalKills,     numberFormat: NUM_FMT.INT, delta: `KD médio ${avgKD.toFixed(2)}`, deltaDirection: 'flat' },
     { label: 'Lucro',     value: totalProfit,    numberFormat: NUM_FMT.EURO, delta: 'gerado colectivamente', deltaDirection: totalProfit > 0 ? 'up' : 'flat' },
@@ -102,28 +124,28 @@ async function syncMembros(batch, sheetId) {
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
 
-  // ── Secção 2: Distribuição por tier ──────────────────────────────────────
+  // ── Secção 2: Distribuição por classe ────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '🎖️ MORADORES · DISTRIBUIÇÃO POR TIER', hint: 'topo → base', columnCount: COL_COUNT,
+    title: '📊 DISTRIBUIÇÃO POR CLASSE', hint: 'hierarquia da firma', columnCount: COL_COUNT,
   });
   row = kpiStrip(batch, sheetId, row, [
-    { label: 'Patrão Di Zona',  value: tierCounts.patrao_di_zona,  numberFormat: NUM_FMT.INT, delta: 'topo da casa', deltaDirection: 'flat' },
-    { label: 'Gangster Fodido', value: tierCounts.gangster_fodido, numberFormat: NUM_FMT.INT, delta: 'elite', deltaDirection: 'flat' },
-    { label: 'O Gunão',         value: tierCounts.o_gunao,         numberFormat: NUM_FMT.INT, delta: 'estabilizados', deltaDirection: 'flat' },
-    { label: 'Young Blood',     value: tierCounts.young_blood,     numberFormat: NUM_FMT.INT, delta: 'a subir', deltaDirection: 'flat' },
+    { label: 'Chefia',          value: chefia.length,   numberFormat: NUM_FMT.INT, delta: `MC: ${chef.manda_chuva} · KP: ${chef.kingpin}`, deltaDirection: 'flat' },
+    { label: 'Oficiais',        value: oficial.length,  numberFormat: NUM_FMT.INT, delta: `OG: ${ofic.og} · RG: ${ofic.real_gangster}`, deltaDirection: 'flat' },
+    { label: 'Chefe Moradores', value: chefeMor.length, numberFormat: NUM_FMT.INT, delta: chefeMor.length ? 'Patrão di Zona' : '—', deltaDirection: 'flat' },
+    { label: 'Moradores',       value: moradores.length, numberFormat: NUM_FMT.INT, delta: `GF: ${mor.gangster_fodido} · OG: ${mor.o_gunao} · YB: ${mor.young_blood}`, deltaDirection: 'flat' },
   ], COL_COUNT, { });
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
 
-  // ── Secção 3: Núcleo oficiais ────────────────────────────────────────────
+  // ── Secção 3: Núcleo operacional (chefia + oficiais) ─────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '👑 OFICIAIS · NÚCLEO DA FIRMA', hint: 'performance agregada', columnCount: COL_COUNT,
+    title: '👑 NÚCLEO OPERACIONAL · CHEFIA + OFICIAIS', hint: 'performance agregada', columnCount: COL_COUNT,
   });
   row = kpiStrip(batch, sheetId, row, [
-    { label: 'Oficiais',     value: oficiais.length,  numberFormat: NUM_FMT.INT, delta: `${oficiais.filter(m => m.role === 'chefia').length} chefia`, deltaDirection: 'flat' },
-    { label: 'Win Rate',     value: oCollectiveWR,    numberFormat: NUM_FMT.PCT, delta: `${oTotalWins}V em ${oTotalSaidas} saídas`, deltaDirection: oCollectiveWR >= 0.5 ? 'up' : 'down' },
-    { label: 'K/D Médio',    value: oAvgKD,           numberFormat: NUM_FMT.KD,  delta: `${oTotalKills} kills totais`, deltaDirection: oAvgKD >= 1 ? 'up' : 'flat' },
-    { label: 'MVPs',         value: oTotalMVPs,       numberFormat: NUM_FMT.INT, delta: 'entre oficiais', deltaDirection: 'flat' },
+    { label: 'Núcleo',       value: allOfficial.length, numberFormat: NUM_FMT.INT, delta: `${chefia.length} chefia · ${oficial.length} oficiais`, deltaDirection: 'flat' },
+    { label: 'Win Rate',     value: oCollectiveWR,      numberFormat: NUM_FMT.PCT, delta: `${oTotalWins}V em ${oTotalSaidas} saídas`, deltaDirection: oCollectiveWR >= 0.5 ? 'up' : 'down' },
+    { label: 'K/D Médio',    value: oAvgKD,             numberFormat: NUM_FMT.KD,  delta: `${oTotalKills} kills totais`, deltaDirection: oAvgKD >= 1 ? 'up' : 'flat' },
+    { label: 'MVPs',         value: oTotalMVPs,         numberFormat: NUM_FMT.INT, delta: 'entre oficiais', deltaDirection: 'flat' },
   ], COL_COUNT, { });
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
@@ -136,9 +158,15 @@ async function syncMembros(batch, sheetId) {
   row = tableHeader(batch, sheetId, row, HEADERS);
   const firstDataRow = row;
 
-  // Ordenar: oficiais primeiro, depois moradores por tier, depois resto
+  // Ordenar por hierarquia: Chefia > Oficiais > Chefe Moradores > Moradores.
+  // Dentro de cada classe, tier mais alto primeiro.
   const roleRank = { chefia: 4, oficial: 3, chefe_moradores: 2, morador: 1, inativo: 0 };
-  const tierRank = { patrao_di_zona: 4, gangster_fodido: 3, o_gunao: 2, young_blood: 1 };
+  const tierRank = {
+    manda_chuva: 2, kingpin: 1,                                  // chefia
+    og: 2,         real_gangster: 1,                             // oficial
+    patrao_di_zona: 1,                                           // chefe_moradores
+    gangster_fodido: 3, o_gunao: 2, young_blood: 1,              // morador
+  };
   rows.sort((a, b) => {
     const rr = (roleRank[b.role] || 0) - (roleRank[a.role] || 0);
     if (rr !== 0) return rr;
