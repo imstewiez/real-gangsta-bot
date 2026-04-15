@@ -548,7 +548,7 @@ async function getInventoryFull() {
     FROM items i
     JOIN stock_balances sb ON sb.id = i.id
     WHERE i.active = true
-    ORDER BY i.category, i.name`);
+    ORDER BY value_total DESC NULLS LAST, i.name`);
   return r.rows;
 }
 

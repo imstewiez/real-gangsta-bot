@@ -12,11 +12,9 @@
  *
  * Mapping movement_type → canal:
  *   saldo_inicial, entrega_morador, venda_morador, entrega_oficial,
- *   devolucao_operacao, apreendido, craftado    → entradas-stock
- *   fornecimento_org, consumo_operacao, perda_operacao  → saídas-stock
- *   ajuste_manual                                → ajustes-stock
+ *   todos os movimentos → stock-log (canal único, badge distingue tipo)
  *
- * Resumo periódico no `resumo-stock` é publicado pelo job stock_summary.
+ * Resumo periódico + alertas → `resumo-stock`.
  */
 
 const { ChannelType, EmbedBuilder } = require('discord.js');
@@ -31,26 +29,35 @@ const _channelCache = new Map(); // logical key → channelId
 function setClient(client) { _client = client; }
 
 // Mapping logical key → emoji + slug (igual a CHANNELS_TO_CREATE no template)
+// Estrutura compactada — 2 canais:
+//   stock_log → todos os movimentos (cor do embed distingue tipo)
+//   resumo    → snapshots periódicos + alertas críticos
 const STOCK_CHANNELS = {
-  resumo:   { emoji: '📊', slug: 'resumo-stock' },
-  entradas: { emoji: '📥', slug: 'entradas-stock' },
-  saidas:   { emoji: '📤', slug: 'saídas-stock' },
-  ajustes:  { emoji: '🧾', slug: 'ajustes-stock' },
+  resumo:    { emoji: '📊', slug: 'resumo-stock' },
+  stock_log: { emoji: '📦', slug: 'stock-log' },
 };
 
-// Movement type → canal lógico
+// Todos os movement types → stock_log (canal único, diferenciação via cor+label)
 const MOVEMENT_TO_CHANNEL = {
-  saldo_inicial:       'entradas',
-  entrega_morador:     'entradas',
-  venda_morador:       'entradas',
-  entrega_oficial:     'entradas',
-  devolucao_operacao:  'entradas',
-  apreendido:          'entradas',
-  craftado:            'entradas',
-  fornecimento_org:    'saidas',
-  consumo_operacao:    'saidas',
-  perda_operacao:      'saidas',
-  ajuste_manual:       'ajustes',
+  saldo_inicial:       'stock_log',
+  entrega_morador:     'stock_log',
+  venda_morador:       'stock_log',
+  entrega_oficial:     'stock_log',
+  devolucao_operacao:  'stock_log',
+  apreendido:          'stock_log',
+  craftado:            'stock_log',
+  fornecimento_org:    'stock_log',
+  consumo_operacao:    'stock_log',
+  perda_operacao:      'stock_log',
+  ajuste_manual:       'stock_log',
+};
+
+// Classificação lógica para cor do embed (entradas verde / saídas laranja / ajustes roxo)
+const MOVEMENT_KIND = {
+  saldo_inicial: 'entradas', entrega_morador: 'entradas', venda_morador: 'entradas',
+  entrega_oficial: 'entradas', devolucao_operacao: 'entradas', apreendido: 'entradas', craftado: 'entradas',
+  fornecimento_org: 'saidas', consumo_operacao: 'saidas', perda_operacao: 'saidas',
+  ajuste_manual: 'ajustes',
 };
 
 const MOVEMENT_LABEL = {
@@ -100,21 +107,27 @@ async function findOrCreateChannel(channelKey) {
   const expectedName = expectedChannelName(channelKey);
   const slug = STOCK_CHANNELS[channelKey].slug;
 
-  const matchesName = (c) =>
-    c.type === ChannelType.GuildText &&
-    (c.name === expectedName || c.name.toLowerCase().includes(slug.toLowerCase()));
+  // Para stock_log aceita fallbacks dos canais antigos por ordem de
+  // preferência (stock-log > entradas > ajustes > saídas). Reutiliza o que
+  // o user já tem em vez de criar 5º canal. Para resumo, só resumo-stock.
+  const slugFallbacks = channelKey === 'stock_log'
+    ? ['stock-log', 'stock_log', 'stocklog', 'entradas-stock', 'ajustes-stock', 'saídas-stock', 'saidas-stock']
+    : [slug];
 
-  // 1) Já está na categoria correcta?
-  let channel = guild.channels.cache.find(c => c.parentId === targetCat.id && matchesName(c));
+  const textChannels = Array.from(guild.channels.cache.values())
+    .filter(c => c.type === ChannelType.GuildText);
 
-  // 2) Existe noutra categoria? Aceita onde está (layout congelado — não
-  //    movemos canais automaticamente. Se o user o pôs noutra categoria,
-  //    respeita a decisão.)
-  if (!channel) {
-    const misplaced = guild.channels.cache.find(c => matchesName(c));
-    if (misplaced) {
-      channel = misplaced;
-      log(`[STOCK-NOTIFY] Canal '${misplaced.name}' encontrado em categoria ${misplaced.parentId} (não movido — layout congelado).`);
+  // Tenta cada fallback por ordem; para cada, procura primeiro na categoria alvo, depois em qualquer outra.
+  let channel = null;
+  for (const s of slugFallbacks) {
+    const re = new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const inCat = textChannels.find(c => c.parentId === targetCat.id && re.test(c.name));
+    if (inCat) { channel = inCat; break; }
+    const anywhere = textChannels.find(c => re.test(c.name));
+    if (anywhere) {
+      channel = anywhere;
+      log(`[STOCK-NOTIFY] Canal '${anywhere.name}' encontrado em categoria ${anywhere.parentId} (layout congelado — não movido).`);
+      break;
     }
   }
 
@@ -159,7 +172,8 @@ async function notifyMovement(movement) {
     if (!channel) return;
 
     const label = MOVEMENT_LABEL[movement.movementType] || movement.movementType;
-    const color = MOVEMENT_COLOR[channelKey] || 0x95A5A6;
+    const kind  = MOVEMENT_KIND[movement.movementType] || 'ajustes';
+    const color = MOVEMENT_COLOR[kind] || 0x95A5A6;
 
     const fields = [
       { name: 'Item', value: `**${movement.itemName || '—'}**`, inline: true },
