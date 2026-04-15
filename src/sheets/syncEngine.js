@@ -13,6 +13,7 @@ const { log, warn } = require('../logger');
 const { getSheetsClient } = require('./googleAuth');
 const { BatchWriter } = require('./batchWriter');
 const { ensureTabs, rebuildTabs, TABS_BY_KEY } = require('./workbook');
+const { trimSheet } = require('./cleanup');
 
 const TAB_SYNCERS = {
   dashboard:     () => require('./tabs/dashboard').syncDashboard,
@@ -52,7 +53,11 @@ async function syncOne(key) {
   const batch = new BatchWriter(sheets, spreadsheetId);
   // Limpa a tab antes de reescrever (simples, idempotente)
   batch.clearRange(sheetId);
-  await syncer()(batch, sheetId);
+  // Syncer pode devolver { lastRow, lastCol } para permitir trim automático.
+  const result = await syncer()(batch, sheetId);
+  if (result && Number.isFinite(result.lastRow) && Number.isFinite(result.lastCol)) {
+    trimSheet(batch, sheetId, result.lastRow, result.lastCol);
+  }
   const flushed = await batch.flush();
 
   const ms = Date.now() - t0;
