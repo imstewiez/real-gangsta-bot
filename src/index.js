@@ -572,15 +572,22 @@ async function _dispatchInteraction(interaction) {
         const { syncAll } = require('./sheets/syncEngine');
         const r = await syncAll();
         if (r.skipped) return safeReply(interaction, { content: `⚠️ Skipped: ${r.skipped}` }, { dismissible: true });
-        const lines = [
-          `**Sync completo** em ${r.ms}ms — ${r.results.length} tabs OK, ${r.errors.length} erros`,
-          ...r.results.slice(0, 15).map(x => `• ${x.tab}: ${x.ops} ops · ${x.ms}ms`),
-        ];
-        if (r.errors.length) {
-          lines.push('', '**Erros:**');
-          for (const e of r.errors.slice(0, 5)) lines.push(`  ⚠️ ${e.tab}: ${e.message}`);
+        const okTabs = r.results.map(x => x.tab);
+        const errTabs = r.errors.map(e => e.tab);
+        const summary = `**Sync completo** em ${r.ms}ms — ${r.results.length} tabs OK, ${r.errors.length} erros`;
+        const okLine = okTabs.length ? `✅ OK (${okTabs.length}): ${okTabs.join(', ')}` : '';
+        const errLines = r.errors.length
+          ? ['', `❌ Erros (${r.errors.length}):`, ...r.errors.map(e => `• **${e.tab}**: ${e.message}`)]
+          : [];
+        const msg = [summary, okLine, ...errLines].filter(Boolean).join('\n');
+        // Se exceder 1900 chars, anexa como ficheiro para ver tudo.
+        if (msg.length > 1900 && r.errors.length) {
+          const { AttachmentBuilder } = require('discord.js');
+          const detail = errLines.join('\n');
+          const file = new AttachmentBuilder(Buffer.from(detail, 'utf8'), { name: 'sync-errors.txt' });
+          return interaction.editReply({ content: summary + '\n' + okLine, files: [file] });
         }
-        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
+        return safeReply(interaction, { content: msg.slice(0, 1990) }, { dismissible: true });
       }
 
       if (cmd === 'rg-sync-sheets-tab') {
