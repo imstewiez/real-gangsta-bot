@@ -38,6 +38,7 @@ function buildChefiaPanel() {
 
   const row4 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('chefia::ver_tops').setLabel('Ver Tops').setStyle(ButtonStyle.Secondary).setEmoji('\uD83C\uDFC6'),
+    new ButtonBuilder().setCustomId('chefia::stats_open').setLabel('Estatísticas').setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDCCA'),
     new ButtonBuilder().setCustomId('chefia::ver_logs').setLabel('Ver Logs').setStyle(ButtonStyle.Secondary).setEmoji('\uD83D\uDCDD'),
   );
 

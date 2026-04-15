@@ -448,6 +448,17 @@ const MIGRATIONS = [
     `
   },
   {
+    id: 12,
+    name: 'saidas_craft_amount_and_settled_flag',
+    // Suporte para:
+    //   - craft_amount (quando had_craft=true, quantos items craftados)
+    //   - operation_participants.settled (marcador usado pelo wizard de fecho)
+    up: `
+      ALTER TABLE operations ADD COLUMN IF NOT EXISTS craft_amount INTEGER DEFAULT 0;
+      ALTER TABLE operation_participants ADD COLUMN IF NOT EXISTS settled BOOLEAN DEFAULT FALSE;
+    `
+  },
+  {
     id: 11,
     name: 'saidas_domain_evolution',
     // Evolução profunda do domínio de saídas (antes "operations"):

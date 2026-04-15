@@ -106,6 +106,8 @@ async function handleCloseSaidaSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const saidaId = parseInt(interaction.values[0]);
   pendingSaidaContext.set(interaction.user.id, { saidaId });
+  // Close modal captura APENAS o contexto macro (result, inimigo, craft, notas).
+  // Kills/deaths per-participante ficam para o wizard a seguir.
   const modal = new ModalBuilder()
     .setCustomId('saida::modal_close')
     .setTitle(`Fechar Saída #${saidaId}`)
@@ -116,19 +118,19 @@ async function handleCloseSaidaSelect(interaction) {
           .setPlaceholder('vitoria / derrota / empate / sem_conflito / abortada')
           .setRequired(true).setMaxLength(15)),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('enemy').setLabel('Inimigo (nome · facção se houve fight)')
+        new TextInputBuilder().setCustomId('enemy').setLabel('Inimigo (nome · facção)')
           .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(120)
-          .setPlaceholder('Ex: Bloods · Red Street')),
+          .setPlaceholder('Ex: Tony Bloods · Red Street')),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('our_kills').setLabel('Kills nossas (total)')
-          .setStyle(TextInputStyle.Short).setPlaceholder('0').setRequired(false).setMaxLength(4)),
+        new TextInputBuilder().setCustomId('craft_amount').setLabel('Craft amount (se houve craft)')
+          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(6).setPlaceholder('0')),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('deaths').setLabel('Nossas mortes')
-          .setStyle(TextInputStyle.Short).setPlaceholder('0').setRequired(false).setMaxLength(4)),
+        new TextInputBuilder().setCustomId('flags').setLabel('Flags (separa com vírgula)')
+          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(120)
+          .setPlaceholder('craft, dominio, voltaram')),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('result_notes').setLabel('Notas · flags: "craft" · "dominio" · "voltaram"')
-          .setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(500)
-          .setPlaceholder('Livre. Inclui "craft" ou "dominio" se aplicável.')),
+        new TextInputBuilder().setCustomId('result_notes').setLabel('Notas do resultado (livre)')
+          .setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(500)),
     );
   await safeShowModal(interaction, modal);
 }
@@ -142,68 +144,32 @@ async function handleCloseSaidaModal(interaction) {
   const resultRaw = getModalField(interaction, 'result').toLowerCase().trim();
   const result = VALID_RESULTS.includes(resultRaw) ? resultRaw : 'sem_conflito';
   const enemyRaw = getModalField(interaction, 'enemy');
-  // "Nome · facção" ou "Nome - facção" ou só nome
   let enemy_name = enemyRaw, enemy_faction = '';
   const sepMatch = enemyRaw.match(/^(.+?)\s*[·\-—]\s*(.+)$/);
   if (sepMatch) { enemy_name = sepMatch[1].trim(); enemy_faction = sepMatch[2].trim(); }
-  const our_kills = parseInt(getModalField(interaction, 'our_kills')) || 0;
-  const deaths = parseInt(getModalField(interaction, 'deaths')) || 0;
+  const craft_amount = parseInt(getModalField(interaction, 'craft_amount')) || 0;
+  const flagsRaw = (getModalField(interaction, 'flags') || '').toLowerCase();
   const result_notes = getModalField(interaction, 'result_notes') || '';
-  const notesLower = result_notes.toLowerCase();
-  const had_craft = notesLower.includes('craft');
-  const had_domination = notesLower.includes('dominio') || notesLower.includes('domínio');
-  const had_fight = result === 'vitoria' || result === 'derrota' || our_kills > 0 || deaths > 0;
+  const had_craft = flagsRaw.includes('craft') || craft_amount > 0;
+  const had_domination = flagsRaw.includes('dominio') || flagsRaw.includes('domínio');
+  const had_fight = result === 'vitoria' || result === 'derrota';
 
+  // Guarda contexto macro na saída — kills/deaths serão agregados pelo wizard
   try {
-    const closed = await saidaEngine.closeSaida(ctx.saidaId, {
+    await saidaRepo.updateStatus(ctx.saidaId, 'em_curso', {
       result, had_fight, had_craft, had_domination,
       enemy_name, enemy_faction,
-      our_kills, deaths, survivors: Math.max(0, (await saidaRepo.getParticipants(ctx.saidaId)).length - deaths),
+      craft_amount,
       result_notes,
-    }, interaction.user.id);
-
-    const r = closed?.reconciliation || {};
-    const v = closed?.values || {};
-
-    // Se houve mortes, segue para multi-select de "quem morreu"
-    if (had_fight && deaths > 0) {
-      const participants = await saidaRepo.getParticipants(ctx.saidaId);
-      if (participants.length) {
-        ctx.closed = true;
-        pendingSaidaContext.set(interaction.user.id, ctx);
-        const options = participants.slice(0, 25).map(p => ({
-          label: `${p.display_name || p.discord_id}`.slice(0, 100),
-          description: p.role_in_op || 'membro',
-          value: p.discord_id,
-        }));
-        const row = new ActionRowBuilder().addComponents(
-          new StringSelectMenuBuilder()
-            .setCustomId(`saida::mark_dead::${ctx.saidaId}`)
-            .setPlaceholder('Marca quem morreu (multi-select)')
-            .setMinValues(0).setMaxValues(Math.min(options.length, 25))
-            .addOptions(options));
-        const summary = [
-          `🏁 Saída **#${ctx.saidaId}** fechada — **${result.toUpperCase()}**.`,
-          `💰 Lucro líquido: **${(v.net || 0).toLocaleString('pt-PT')} €** (${v.was_profitable ? 'lucro' : 'prejuízo'})`,
-          `⚰️ ${deaths} mortes · 🎯 ${our_kills} kills`,
-          r.unaccounted > 0 ? `\n⚠️ ${r.unaccounted} unidades de material por contabilizar.` : '',
-          '\n**Marca quem dos participantes morreu** (o material fornecido a essas pessoas vai para perda):',
-        ].filter(Boolean).join('\n');
-        return safeReply(interaction, { content: summary, components: [row] }, { dismissible: true });
-      }
-    }
-
-    pendingSaidaContext.delete(interaction.user.id);
-    const lines = [
-      `🏁 Saída **#${ctx.saidaId}** concluída — **${result.toUpperCase()}**.`,
-      `💰 Material — fornecido: ${(v.supplied || 0).toLocaleString('pt-PT')} € · devolvido: ${(v.returned || 0).toLocaleString('pt-PT')} € · perdido: ${(v.lost || 0).toLocaleString('pt-PT')} € · consumido: ${(v.consumed || 0).toLocaleString('pt-PT')} €`,
-      `📈 Net: **${(v.net || 0).toLocaleString('pt-PT')} €** (${v.was_profitable ? 'lucro' : 'prejuízo'})`,
-    ];
-    if (r.unaccounted > 0) lines.push(`⚠️ ${r.unaccounted} unidades por contabilizar.`);
-    return safeReply(interaction, { embeds: [successEmbed('Saída Concluída', lines.join('\n'))] }, { dismissible: true });
+    });
   } catch (e) {
-    return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `Erro a guardar contexto: ${e.message}` }, { dismissible: true });
   }
+
+  // Lança o wizard de liquidação por participante
+  const { handleStart } = require('./saidaSettlementWizard');
+  pendingSaidaContext.delete(interaction.user.id);
+  return handleStart(interaction, ctx.saidaId);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

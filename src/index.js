@@ -46,6 +46,8 @@ const {
   handleIssueParticipantSelect, handleIssueItemSelect, handleIssueQtyModal,
   handleMarkDeadSelect,
 } = require('./saidas/saidaHandlers');
+const saidaWizard = require('./saidas/saidaSettlementWizard');
+const saidaStats = require('./saidas/saidaStatsHandlers');
 const { getCurrentWeekRanking, getPreviousWeekRanking } = require('./rankings/rankingEngine');
 const { rankingEmbed, brandEmbed, stockEmbed } = require('./shared/embedBuilders');
 const { inventoryRepo } = require('./repositories');
@@ -489,6 +491,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (id.startsWith('avail::summary::')) return availHandleSummary(interaction);
       if (id.startsWith('avail::refresh::')) return availHandleRefresh(interaction);
 
+      // Saída wizard — botão Concluir
+      if (id.startsWith('saida::wz_finish::')) return saidaWizard.handleFinish(interaction);
+      // Saída stats — botão Estatísticas do painel Chefia
+      if (id === 'chefia::stats_open') return saidaStats.handleStatsOpen(interaction);
+
       // Radio — painel
       if (id.startsWith('radio::random::')) return radioHandleRandom(interaction);
       if (id.startsWith('radio::set::')) return radioHandleSet(interaction);
@@ -654,6 +661,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (id === 'saida::issue_select_participant' || id === 'op::issue_select_participant') return handleIssueParticipantSelect(interaction);
       if (id === 'saida::issue_select_item' || id === 'op::issue_select_item') return handleIssueItemSelect(interaction);
       if (id.startsWith('saida::mark_dead::') || id.startsWith('op::mark_dead::')) return handleMarkDeadSelect(interaction);
+      if (id.startsWith('saida::wz_select::')) return saidaWizard.handleSelectParticipant(interaction);
+      if (id === 'saida::stats_pick') return saidaStats.handleStatsPick(interaction);
 
       return;
     }
@@ -684,6 +693,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (id === 'saida::modal_close' || id === 'op::modal_close') return handleCloseSaidaModal(interaction);
       if (id === 'saida::modal_material_qty' || id === 'op::modal_material_qty') return handleMaterialQtyModal(interaction);
       if (id === 'saida::issue_modal_qty' || id === 'op::issue_modal_qty') return handleIssueQtyModal(interaction);
+      if (id.startsWith('saida::wz_modal::')) return saidaWizard.handleSettleModal(interaction);
 
       // Cemetery modal
       if (id === 'kill::modal' || id === 'cemetery::modal_kill') return handleKillModal(interaction);
