@@ -201,10 +201,7 @@ async function syncDashboard(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Dashboard');
 
-  // Column widths — 12 colunas de ~100px cada
-  const widths = [140, 110, 110, 110, 90, 70, 90, 90, 90, 90, 90, 110];
-  setWidths(batch, sheetId, widths);
-
+  autoResizeColumns(batch, sheetId, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 
