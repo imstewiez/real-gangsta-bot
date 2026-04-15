@@ -334,7 +334,7 @@ const CHANNELS_TO_CREATE = [
   { name: SEPARATOR_NAME, categoryKey: 'GUETTO', position: 7, renameFrom: SEPARATOR_LEGACY_NAMES, reason: 'Separador visual — Tópicos Moradores' },
   // Painéis dedicados — 1 canal por painel, read-only (só bot posta).
   // Perm override específico por canal aplicado em CHANNEL_PERM_OVERRIDES_BY_NAME.
-  { name: ch('👋', 'boas-vindas'),             categoryKey: 'ENTRADA',  renameFrom: [ch('📋', 'painel-entrada'), '👋│boas-vindas', '📋│painel-entrada'], reason: 'Boas-vindas (Pedir Tag) — visível a toda a gente' },
+  { name: ch('👋', 'boas-vindas'),             categoryKey: 'ENTRADA',  renameFrom: [ch('📋', 'painel-entrada'), '👋│boas-vindas', '📋│painel-entrada'], reason: 'Boas-vindas (Pedir Tag) — só Pendentes + staff' },
   { name: ch('📋', 'painel-moradores'),        categoryKey: 'GUETTO',   renameFrom: ['📋│painel-moradores'], reason: 'Painel Morador (registar material/histórico/totais) — só bot posta' },
   { name: ch('📋', 'painel-oficiais'),         categoryKey: 'OFICIAIS', renameFrom: ['📋│painel-oficiais'], reason: 'Painel Oficial — só bot posta' },
   { name: ch('📋', 'painel-chefia'),           categoryKey: 'COMANDO',  renameFrom: ['📋│painel-chefia'], reason: 'Painel Chefia (centro de comando) — só bot posta' },
