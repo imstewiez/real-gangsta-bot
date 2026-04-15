@@ -128,21 +128,15 @@ const commands = [
     .setDescription('Sincroniza apenas uma tab do Google Sheet')
     .addStringOption(opt => opt.setName('tab').setDescription('Qual tab').setRequired(true)
       .addChoices(
-        { name: 'Dashboard', value: 'dashboard' },
-        { name: 'Resumo Semanal', value: 'weekly' },
-        { name: 'Resumo Diário', value: 'daily' },
-        { name: 'Membros', value: 'members' },
-        { name: 'Moradores', value: 'moradores' },
-        { name: 'Oficiais', value: 'oficiais' },
-        { name: 'Saídas', value: 'saidas' },
+        { name: 'Dashboard',     value: 'dashboard' },
+        { name: 'Resumo',        value: 'resumo' },
+        { name: 'Membros',       value: 'membros' },
+        { name: 'Saídas',        value: 'saidas' },
         { name: 'Participantes', value: 'participantes' },
-        { name: 'Kills', value: 'kills' },
-        { name: 'Spots', value: 'spots' },
-        { name: 'Inventário', value: 'inventory' },
-        { name: 'Movimentos', value: 'movements' },
-        { name: 'Rankings', value: 'rankings' },
-        { name: 'Auditoria', value: 'audit' },
-        { name: 'Config', value: 'config' },
+        { name: 'Combate',       value: 'combate' },
+        { name: 'Stock',         value: 'stock' },
+        { name: 'Rankings',      value: 'rankings' },
+        { name: 'Config',        value: 'config' },
       )),
 
   new SlashCommandBuilder()

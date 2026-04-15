@@ -17,19 +17,13 @@ const { trimSheet } = require('./cleanup');
 
 const TAB_SYNCERS = {
   dashboard:     () => require('./tabs/dashboard').syncDashboard,
-  weekly:        () => require('./tabs/weekly').syncWeekly,
-  daily:         () => require('./tabs/daily').syncDaily,
-  members:       () => require('./tabs/members').syncMembers,
-  moradores:     () => require('./tabs/moradores').syncMoradores,
-  oficiais:      () => require('./tabs/oficiais').syncOficiais,
+  resumo:        () => require('./tabs/resumo').syncResumo,
+  membros:       () => require('./tabs/membros').syncMembros,
   saidas:        () => require('./tabs/saidas').syncSaidas,
   participantes: () => require('./tabs/participantes').syncParticipantes,
-  kills:         () => require('./tabs/kills').syncKills,
-  spots:         () => require('./tabs/spots').syncSpots,
-  inventory:     () => require('./tabs/inventory').syncInventory,
-  movements:     () => require('./tabs/movements').syncMovements,
+  combate:       () => require('./tabs/combate').syncCombate,
+  stock:         () => require('./tabs/stock').syncStock,
   rankings:      () => require('./tabs/rankings').syncRankings,
-  audit:         () => require('./tabs/audit').syncAudit,
   config:        () => require('./tabs/config').syncConfig,
 };
 

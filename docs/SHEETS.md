@@ -69,43 +69,31 @@ batch — **fim das folhas com 200 linhas inúteis**.
 
 ## Tabs
 
-15 tabs canónicas, ordem fixa. Criadas automaticamente na primeira sync.
+9 tabs canónicas, ordem fixa. Criadas automaticamente na primeira sync.
 
 | # | Tab | Conteúdo premium |
 | --- | --- | --- |
-| 1 | **Dashboard** | 7 secções: header + 2 KPI strips + destaques + tendência + stock por categoria + alertas + footer |
-| 2 | **Resumo Semanal** | KPI strip (win rate, KD, lucro, entregas) + comparativo detalhado com Δ absoluto, Δ % e direcção colorida |
-| 3 | **Resumo Diário** | KPI strip 14 dias + breakdown com badges contextuais (BOM DIA, A PERDER, PESOU, DIA CARO) |
-| 4 | **Membros** | KPI strip (membros, entregues, kills, lucro) + roster completo com pills role/tier/status e heatmap |
-| 5 | **Moradores** | 2 KPI strips (distribuição por tier + métricas agregadas) + roster ordenado por tier rank |
-| 6 | **Oficiais** | Performance agregada (win rate colectivo, KD médio, lucro, MVPs) + tabela ordenada por K/D |
-| 7 | **Saídas** | Panorama operacional + ledger 24 colunas com badges de status/resultado |
-| 8 | **Participantes** | Indicadores agregados (participações, MVPs, survival rate) + ledger com badges e scores |
-| 9 | **Kills** | Panorama (total, semana, top killer, top facção) + kill log |
-| 10 | **Spots** | Panorama + top 3 rentáveis (gold/silver/bronze) + flop 3 arriscados + tabela completa com tier badges |
-| 11 | **Inventário** | Panorama + breakdown por categoria com % + detalhe agrupado por categoria com subtotais |
-| 12 | **Movimentos** | Resumo monetário + ledger raw denso (até 2k registos) com 11 tipos pill |
-| 13 | **Rankings** | 7 blocos premium (entregas, kills, profit, MVP, survival, discipline, K/D) com top 10 cada |
-| 14 | **Auditoria** | Breakdown por top entidades + ledger raw com badges (SAÍDA/STOCK/MEMBRO/...) |
-| 15 | **Config** | Legendas premium: tiers, resultados, movimentos, cores, material vs €, scores, sync engine |
+| 1 | **Dashboard** | Central de comando: header + 2 KPI strips + destaques + tendência + stock por categoria + alertas |
+| 2 | **Resumo** | Temporal: pilares da semana + comparativo vs anterior + KPI strip 14 dias + breakdown diário (consolida weekly + daily) |
+| 3 | **Membros** | Roster: panorama casa + distribuição por tier + núcleo oficiais + tabela completa filtrável (consolida members + moradores + oficiais) |
+| 4 | **Saídas** | Histórico macro: panorama operacional + ledger 24 colunas com badges de status/resultado |
+| 5 | **Participantes** | Vista micro: indicadores agregados + ledger detalhado por participação com scores + MVP |
+| 6 | **Combate** | Kills + spots: panorama + top 3 / flop 3 spots + tabela completa spots + kill log (consolida kills + spots) |
+| 7 | **Stock** | Material: panorama + breakdown categoria + inventário detalhado agrupado + ledger de movimentos (consolida inventory + movements) |
+| 8 | **Rankings** | 7 blocos (entregas, kills, profit, MVP, survival, discipline, K/D) com top 10 cada, 1º/2º/3º em gold/silver/bronze |
+| 9 | **Config** | Legendas: tiers, resultados, movimentos, cores, material vs €, scores, sync engine |
 
 ### Identidade textual
 
 ```
 Dashboard · Firma RedWood
-Resumo Semanal · Peso da Semana
-Resumo Diário · Balanço da Rua
+Resumo · Peso da Semana & Balanço da Rua
 Membros · Ficha da Casa
-Moradores · Quem Pesa na Casa
-Oficiais · Núcleo da Firma
 Saídas · Movimento da Casa
 Participantes · Quem Rende na Rua
-Kills · Quem Pesou na Rua
-Spots · Ponto dos Spots
-Inventário · Stock da Casa
-Movimentos · Ledger da Rua
+Combate · Quem Pesou na Rua
+Stock · Inventário & Movimentos
 Rankings · Topo do Guetto
-Auditoria · Registo da Casa
 Config · Legendas & Referências
 ```
 
@@ -119,7 +107,7 @@ Assinatura global: `— Firma RedWood`.
 | --- | --- |
 | `/rg-sync-sheets` | Sincroniza todas as 15 tabs |
 | `/rg-sync-sheets-tab tab:<key>` | Sincroniza apenas uma tab |
-| `/rg-sync-sheets-rebuild` | Apaga e recria as 15 tabs canónicas |
+| `/rg-sync-sheets-rebuild` | Apaga e recria as 9 tabs canónicas |
 | `/rg-sync-sheets-rebuild purge:True` | O mesmo + apaga tabs não-canónicas (lixo antigo, duplicados) |
 
 Automático: scheduler corre `syncAll` a cada `SHEETS_SYNC_INTERVAL_MIN`
@@ -141,19 +129,13 @@ src/sheets/
   tabs/
     _common.js        — biblioteca de componentes visuais
     dashboard.js
-    weekly.js
-    daily.js
-    members.js
-    moradores.js
-    oficiais.js
+    resumo.js         — consolida weekly + daily
+    membros.js        — consolida members + moradores + oficiais
     saidas.js
     participantes.js
-    kills.js
-    spots.js
-    inventory.js
-    movements.js
+    combate.js        — consolida kills + spots
+    stock.js          — consolida inventory + movements
     rankings.js
-    audit.js
     config.js
 ```
 
@@ -180,7 +162,7 @@ Todas as tabs analíticas usam gradients e thresholds automáticos:
 - **Queries com JOIN + CTE** em vez de loops N+1.
 - **Sequential** entre tabs — evita rate limit Sheets API.
 - **Parallel queries** dentro de cada tab (Promise.all).
-- Typical syncAll ≈ 7–8 segundos, 15 tabs × ~30 ops cada.
+- Typical syncAll ≈ 15–20 segundos, 9 tabs com conteúdo denso (até 175 ops/tab).
 
 ---
 

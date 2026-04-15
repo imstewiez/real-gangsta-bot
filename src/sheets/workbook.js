@@ -16,22 +16,18 @@ const { COLOR } = require('./theme');
 const { log, warn } = require('../logger');
 
 // Nome canónico + ordem canónica das tabs. Render em ordem no workbook.
+// Consolidação: 15 → 9 tabs. Weekly+Daily→Resumo, Members+Moradores+Oficiais→
+// Membros, Kills+Spots→Combate, Inventory+Movements→Stock, Audit removido.
 const TABS = [
-  { key: 'dashboard',      title: 'Dashboard',         color: COLOR.RED_DEEP,  order:  0 },
-  { key: 'weekly',         title: 'Resumo Semanal',    color: COLOR.RED_DEEP,  order:  1 },
-  { key: 'daily',          title: 'Resumo Diário',     color: COLOR.RED_DEEP,  order:  2 },
-  { key: 'members',        title: 'Membros',           color: COLOR.CHARCOAL,  order:  3 },
-  { key: 'moradores',      title: 'Moradores',         color: COLOR.CHARCOAL,  order:  4 },
-  { key: 'oficiais',       title: 'Oficiais',          color: COLOR.CHARCOAL,  order:  5 },
-  { key: 'saidas',         title: 'Saídas',            color: COLOR.RED_BLOOD, order:  6 },
-  { key: 'participantes',  title: 'Participantes',     color: COLOR.RED_BLOOD, order:  7 },
-  { key: 'kills',          title: 'Kills',             color: COLOR.RED_BLOOD, order:  8 },
-  { key: 'spots',          title: 'Spots',             color: COLOR.RED_BLOOD, order:  9 },
-  { key: 'inventory',      title: 'Inventário',        color: COLOR.GRAPHITE,  order: 10 },
-  { key: 'movements',      title: 'Movimentos',        color: COLOR.GRAPHITE,  order: 11 },
-  { key: 'rankings',       title: 'Rankings',          color: COLOR.GOLD,      order: 12 },
-  { key: 'audit',          title: 'Auditoria',         color: COLOR.GRAY_DARK, order: 13 },
-  { key: 'config',         title: 'Config',            color: COLOR.GRAY_DARK, order: 14 },
+  { key: 'dashboard',     title: 'Dashboard',     color: COLOR.RED_DEEP,  order: 0 },
+  { key: 'resumo',        title: 'Resumo',        color: COLOR.RED_DEEP,  order: 1 },
+  { key: 'membros',       title: 'Membros',       color: COLOR.CHARCOAL,  order: 2 },
+  { key: 'saidas',        title: 'Saídas',        color: COLOR.RED_BLOOD, order: 3 },
+  { key: 'participantes', title: 'Participantes', color: COLOR.RED_BLOOD, order: 4 },
+  { key: 'combate',       title: 'Combate',       color: COLOR.RED_BLOOD, order: 5 },
+  { key: 'stock',         title: 'Stock',         color: COLOR.GRAPHITE,  order: 6 },
+  { key: 'rankings',      title: 'Rankings',      color: COLOR.GOLD,      order: 7 },
+  { key: 'config',        title: 'Config',        color: COLOR.GRAY_DARK, order: 8 },
 ];
 
 const TABS_BY_KEY = Object.fromEntries(TABS.map(t => [t.key, t]));

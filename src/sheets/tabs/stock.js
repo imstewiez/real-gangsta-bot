@@ -1,0 +1,248 @@
+'use strict';
+/**
+ * Tab Stock — inventário + ledger de movimentos numa folha.
+ *   Secção 1: Panorama stock (itens, qtd, valor, críticos)
+ *   Secção 2: Breakdown por categoria
+ *   Secção 3: Inventário detalhado (agrupado por categoria, com subtotais)
+ *   Secção 4: Ledger de movimentos (últimos 500)
+ */
+
+const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, numCell, badgeCell,
+  conditionalGreaterThan, conditionalLessThan } = require('../theme');
+const {
+  headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
+  footerBlock, autoResizeColumns,
+} = require('./_common');
+const { getInventoryFull, getStockByCategory, getMovementsFull } = require('../queries');
+const { growSheet } = require('../cleanup');
+
+const MOVS_HEADERS = [
+  'Data/Hora', 'Tipo', 'Item', 'Categoria', 'Qtd',
+  'Valor Unit.', 'Valor Total', 'Actor',
+  'Nome', 'Role', 'Tier',
+  'Saída', 'Spot', 'Contexto', 'Notas',
+];
+const INV_HEADERS = [
+  'Item', 'Categoria', 'Qtd', 'Un.', 'Valor Unit.', 'Valor Total',
+  'Entradas', 'Saídas', 'Última Mov.', 'Estado',
+];
+const COL_COUNT = MOVS_HEADERS.length; // 15
+
+const MOV_PILL = {
+  entrega_morador:    { label: 'ENTREGA',   bg: COLOR.GREEN_DEEP },
+  entrega_oficial:    { label: 'ENTR.OFIC', bg: COLOR.GREEN_DEEP },
+  venda_morador:      { label: 'VENDA',     bg: COLOR.GOLD },
+  ajuste_manual:      { label: 'AJUSTE',    bg: COLOR.GRAY_DARK },
+  fornecimento_org:   { label: 'FORNECIDO', bg: COLOR.RED_BLOOD },
+  devolucao_operacao: { label: 'DEVOL.',    bg: COLOR.GRAPHITE },
+  perda_operacao:     { label: 'PERDA',     bg: COLOR.RED_DEEP },
+  consumo_operacao:   { label: 'CONSUMO',   bg: COLOR.YELLOW_DEEP },
+  saldo_inicial:      { label: 'SALDO INIC',bg: COLOR.IRON },
+  apreendido:         { label: 'APREEND.',  bg: COLOR.BLUE_DEEP },
+  craftado:           { label: 'CRAFT',     bg: COLOR.GOLD },
+};
+
+function typeBadge(type) {
+  const m = MOV_PILL[type];
+  return m ? badgeCell(m.label, m.bg) : bodyCell(type || '—');
+}
+
+function stateBadge(balance) {
+  const b = Number(balance || 0);
+  if (b <= 0)   return badgeCell('ESGOTADO', COLOR.RED_DEEP);
+  if (b <= 3)   return badgeCell('CRÍTICO',  COLOR.RED_BLOOD);
+  if (b <= 10)  return badgeCell('BAIXO',    COLOR.YELLOW_DEEP);
+  if (b >= 100) return badgeCell('ALTO',     COLOR.GREEN_DEEP);
+  return badgeCell('NORMAL', COLOR.GRAPHITE);
+}
+
+function fmtDT(d) {
+  if (!d) return '—';
+  try { return new Date(d).toISOString().replace('T', ' ').slice(0, 16); } catch { return String(d); }
+}
+
+async function syncStock(batch, sheetId) {
+  const [inv, byCat, movs] = await Promise.all([
+    getInventoryFull(), getStockByCategory(), getMovementsFull(500),
+  ]);
+
+  const totalValue = inv.reduce((a, r) => a + Number(r.value_total || 0), 0);
+  const totalQty   = inv.reduce((a, r) => a + Number(r.balance || 0), 0);
+  const critical   = inv.filter(r => (r.balance || 0) <= 3).length;
+  const zeros      = inv.filter(r => (r.balance || 0) <= 0).length;
+  const totalIn    = movs.filter(r => ['entrega_morador', 'entrega_oficial'].includes(r.movement_type)).reduce((a, r) => a + Number(r.total_value || 0), 0);
+  const totalSales = movs.filter(r => r.movement_type === 'venda_morador').reduce((a, r) => a + Number(r.total_value || 0), 0);
+  const totalLost  = movs.filter(r => r.movement_type === 'perda_operacao').reduce((a, r) => a + Number(r.total_value || 0), 0);
+
+  growSheet(batch, sheetId, { rows: Math.max(inv.length + movs.length + 80, 200) });
+
+  let row = headerBlock(batch, sheetId, {
+    title: 'Stock · Inventário & Movimentos',
+    subtitle: `${inv.length} itens · ${critical} críticos · ${movs.length} movimentos recentes`,
+    columnCount: COL_COUNT,
+  });
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
+
+  // ── Panorama ─────────────────────────────────────────────────────────────
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'PANORAMA DO STOCK', hint: 'valores consolidados', columnCount: COL_COUNT,
+  });
+  row = kpiStrip(batch, sheetId, row, [
+    { label: 'Itens',       value: inv.length,   numberFormat: NUM_FMT.INT,  delta: `${byCat.length} categorias`, deltaDirection: 'flat' },
+    { label: 'Quantidade',  value: totalQty,     numberFormat: NUM_FMT.INT,  delta: 'unidades em stock', deltaDirection: 'flat' },
+    { label: 'Valor Stock', value: totalValue,   numberFormat: NUM_FMT.EURO, delta: `média ${(totalValue / Math.max(inv.length, 1)).toFixed(0)} €/item`, deltaDirection: 'flat' },
+    { label: 'Críticos',    value: critical,     numberFormat: NUM_FMT.INT,  delta: zeros > 0 ? `${zeros} esgotados` : 'nada esgotado', deltaDirection: critical > 0 ? 'down' : 'up' },
+  ], COL_COUNT);
+
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
+  row = kpiStrip(batch, sheetId, row, [
+    { label: 'Entradas €',  value: totalIn,     numberFormat: NUM_FMT.EURO, delta: 'entregas recentes', deltaDirection: 'up' },
+    { label: 'Vendas €',    value: totalSales,  numberFormat: NUM_FMT.EURO, delta: 'vendas recentes', deltaDirection: 'up' },
+    { label: 'Perdido €',   value: totalLost,   numberFormat: NUM_FMT.EURO, delta: 'em operações', deltaDirection: totalLost > 0 ? 'down' : 'flat' },
+    { label: 'Movimentos',  value: movs.length, numberFormat: NUM_FMT.INT,  delta: 'últimos registos', deltaDirection: 'flat' },
+  ], COL_COUNT);
+
+  row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
+  row = divider(batch, sheetId, row, COL_COUNT, 'accent');
+
+  // ── Breakdown por categoria ──────────────────────────────────────────────
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'BREAKDOWN POR CATEGORIA', hint: 'qtd + valor por categoria', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, ['Categoria', 'Nº Itens', 'Quantidade', 'Valor (€)', '% do Valor', ...Array(COL_COUNT - 5).fill('')]);
+  const catRows = byCat.map(c => {
+    const pct = totalValue > 0 ? Number(c.total_value) / totalValue : 0;
+    const cells = [
+      bodyBoldCell(c.category || '—'),
+      numCell(c.items_count, NUM_FMT.INT),
+      numCell(c.total_qty, NUM_FMT.INT),
+      numCell(Number(c.total_value), NUM_FMT.EURO),
+      numCell(pct, NUM_FMT.PCT),
+    ];
+    while (cells.length < COL_COUNT) cells.push(cell('', { bg: COLOR.BG_APP }));
+    return cells;
+  });
+  row = tableBody(batch, sheetId, row, catRows);
+
+  row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
+  row = divider(batch, sheetId, row, COL_COUNT, 'accent');
+
+  // ── Inventário detalhado agrupado por categoria ──────────────────────────
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'INVENTÁRIO DETALHADO', hint: 'agrupado por categoria', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, INV_HEADERS.concat(Array(COL_COUNT - INV_HEADERS.length).fill('')));
+  const invFirstRow = row;
+
+  const groups = new Map();
+  for (const it of inv) {
+    const cat = it.category || '—';
+    if (!groups.has(cat)) groups.set(cat, []);
+    groups.get(cat).push(it);
+  }
+  const sortedCats = Array.from(groups.keys()).sort((a, b) => {
+    const va = groups.get(a).reduce((s, i) => s + Number(i.value_total || 0), 0);
+    const vb = groups.get(b).reduce((s, i) => s + Number(i.value_total || 0), 0);
+    return vb - va;
+  });
+
+  let zebraIndex = 0;
+  for (const cat of sortedCats) {
+    const items = groups.get(cat);
+    // Cabeçalho de categoria
+    const catCells = [
+      bodyBoldCell(cat.toUpperCase(), { bg: COLOR.BG_BLOCK, align: 'LEFT' }),
+      ...Array(COL_COUNT - 1).fill(cell('', { bg: COLOR.BG_BLOCK })),
+    ];
+    batch.updateCells(sheetId, row, 0, [catCells]);
+    batch.setRowHeight(sheetId, row, 22);
+    batch.mergeCells(sheetId, row, row + 1, 0, COL_COUNT);
+    row += 1;
+
+    for (const i of items) {
+      const cells = [
+        bodyCell(i.name),
+        captionCell(i.category || '—'),
+        numCell(i.balance, NUM_FMT.INT),
+        captionCell(i.unit || 'un'),
+        numCell(Number(i.estimated_value), NUM_FMT.EURO_DEC),
+        numCell(Number(i.value_total), NUM_FMT.EURO),
+        numCell(i.total_in || 0, NUM_FMT.INT),
+        numCell(i.total_out || 0, NUM_FMT.INT),
+        captionCell(fmtDT(i.last_movement)),
+        stateBadge(i.balance),
+      ];
+      while (cells.length < COL_COUNT) cells.push(cell('', { bg: COLOR.BG_APP }));
+      if (zebraIndex % 2 === 1) {
+        for (const c of cells) {
+          if (c.userEnteredFormat && c.userEnteredFormat.backgroundColor) {
+            const bg = c.userEnteredFormat.backgroundColor;
+            if (Math.abs(bg.red - COLOR.BG_APP.red) < 0.02) {
+              c.userEnteredFormat.backgroundColor = COLOR.BG_BLOCK;
+            }
+          }
+        }
+      }
+      batch.updateCells(sheetId, row, 0, [cells]);
+      batch.setRowHeight(sheetId, row, 22);
+      row += 1;
+      zebraIndex += 1;
+    }
+
+    // Subtotal
+    const subQty = items.reduce((a, i) => a + Number(i.balance || 0), 0);
+    const subVal = items.reduce((a, i) => a + Number(i.value_total || 0), 0);
+    const subCells = [
+      bodyBoldCell(`⎯ subtotal ${cat}`, { bg: COLOR.BG_BLOCK_ALT, align: 'RIGHT' }),
+      cell('', { bg: COLOR.BG_BLOCK_ALT }),
+      numCell(subQty, NUM_FMT.INT, { bg: COLOR.BG_BLOCK_ALT, font: { fontFamily: 'Inter', fontSize: 10, bold: true, foregroundColor: COLOR.WHITE } }),
+      cell('', { bg: COLOR.BG_BLOCK_ALT }),
+      cell('', { bg: COLOR.BG_BLOCK_ALT }),
+      numCell(subVal, NUM_FMT.EURO, { bg: COLOR.BG_BLOCK_ALT, font: { fontFamily: 'Inter', fontSize: 10, bold: true, foregroundColor: COLOR.WHITE } }),
+      ...Array(COL_COUNT - 6).fill(cell('', { bg: COLOR.BG_BLOCK_ALT })),
+    ];
+    batch.updateCells(sheetId, row, 0, [subCells]);
+    batch.setRowHeight(sheetId, row, 22);
+    row += 1;
+    zebraIndex = 0;
+  }
+
+  if (inv.length) {
+    batch.addRule(conditionalLessThan(sheetId, invFirstRow, 2, row, 3, 4, COLOR.RED_SIGNAL_SOFT));
+    batch.addRule(conditionalGreaterThan(sheetId, invFirstRow, 2, row, 3, 50, COLOR.GREEN_SOFT));
+  }
+
+  row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
+  row = divider(batch, sheetId, row, COL_COUNT, 'accent');
+
+  // ── Ledger de movimentos ─────────────────────────────────────────────────
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'LEDGER DE MOVIMENTOS', hint: `últimos ${movs.length} · filtros activos`, columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, MOVS_HEADERS);
+  const movRows = movs.map(m => [
+    bodyCell(fmtDT(m.created_at)),
+    typeBadge(m.movement_type),
+    bodyBoldCell(m.item),
+    captionCell(m.categoria || '—'),
+    numCell(m.quantity, NUM_FMT.INT),
+    numCell(Number(m.unit_value), NUM_FMT.EURO_DEC),
+    numCell(Number(m.total_value), NUM_FMT.EURO),
+    captionCell(m.actor_id || '—'),
+    bodyCell(m.member_name || '—'),
+    captionCell(m.member_role || '—'),
+    captionCell(m.member_tier || '—'),
+    m.saida_id ? bodyCell(`#${m.saida_id}`) : mutedCell('—'),
+    bodyCell(m.saida_spot || '—'),
+    captionCell(m.context || '—'),
+    bodyCell(m.notes || '', { wrap: true }),
+  ]);
+  row = tableBody(batch, sheetId, row, movRows, { basicFilter: true, columnCount: COL_COUNT });
+
+  row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
+  row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Stock');
+  autoResizeColumns(batch, sheetId, COL_COUNT);
+  return { lastRow: row, lastCol: COL_COUNT };
+}
+
+module.exports = { syncStock };
