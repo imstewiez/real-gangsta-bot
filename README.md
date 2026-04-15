@@ -173,6 +173,11 @@ Sync idempotente: nunca apaga, apenas renomeia/move/cria. Canais fora do templat
 
 ## Documentação adicional
 
+- [`DEPLOYMENT.md`](DEPLOYMENT.md) — Railway setup, environment variables, healthchecks, rollback
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — system design, data flow, module responsibilities
+- [`HANDLERS.md`](HANDLERS.md) — interaction flow diagrams, handler conventions, error patterns
+- [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) — common issues, debug steps, performance tuning
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — code style, testing requirements, PR process
 - [`docs/AUDIT.md`](docs/AUDIT.md) — auditoria do projecto pré-refactor
 - [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — lista completa de mudanças e rationale
 

@@ -3,12 +3,17 @@
 const _startedAt = Date.now();
 const _counters = new Map();
 const _gauges = new Map();
+// Simple histogram: stores sum + count for average
+const _histograms = new Map();
 
 function _ensureCounter(name, help) {
   if (!_counters.has(name)) _counters.set(name, { value: 0, help: help || '' });
 }
 function _ensureGauge(name, help) {
   if (!_gauges.has(name)) _gauges.set(name, { value: 0, help: help || '' });
+}
+function _ensureHistogram(name, help) {
+  if (!_histograms.has(name)) _histograms.set(name, { sum: 0, count: 0, help: help || '' });
 }
 
 function counter(name, help) {
@@ -27,6 +32,29 @@ function gauge(name, help) {
     inc(n = 1) { _gauges.get(name).value += n; },
     dec(n = 1) { _gauges.get(name).value -= n; },
     get() { return _gauges.get(name).value; },
+  };
+}
+
+/**
+ * Histogram — records observations (e.g. latency in ms).
+ * Exposes sum + count in Prometheus summary format.
+ *
+ * @param {string} name
+ * @param {string} [help]
+ * @returns {{ observe(v: number): void, get(): {sum, count, avg} }}
+ */
+function histogram(name, help) {
+  _ensureHistogram(name, help);
+  return {
+    observe(v) {
+      const h = _histograms.get(name);
+      h.sum += v;
+      h.count += 1;
+    },
+    get() {
+      const h = _histograms.get(name);
+      return { sum: h.sum, count: h.count, avg: h.count ? h.sum / h.count : 0 };
+    },
   };
 }
 
@@ -63,18 +91,36 @@ function toPrometheusText() {
     lines.push(`# TYPE ${name} gauge`);
     lines.push(`${name} ${g.value}\n`);
   }
+  for (const [name, h] of _histograms) {
+    if (h.help) lines.push(`# HELP ${name} ${h.help}`);
+    lines.push(`# TYPE ${name} summary`);
+    lines.push(`${name}_sum ${h.sum}`);
+    lines.push(`${name}_count ${h.count}\n`);
+  }
+  // Cache stats (lazy — cache module may not be loaded yet)
+  try {
+    const cacheStats = require('../cache').stats();
+    lines.push('# TYPE rg_cache_hits_total counter');
+    lines.push(`rg_cache_hits_total ${cacheStats.hits}\n`);
+    lines.push('# TYPE rg_cache_misses_total counter');
+    lines.push(`rg_cache_misses_total ${cacheStats.misses}\n`);
+    lines.push('# TYPE rg_cache_size gauge');
+    lines.push(`rg_cache_size ${cacheStats.size}\n`);
+  } catch (_) {}
   return lines.join('\n');
 }
 
 function toJson() {
   const counters = {};
   const gauges = {};
+  const histos = {};
   for (const [k, v] of _counters) counters[k] = v.value;
   for (const [k, v] of _gauges) gauges[k] = v.value;
-  return { ts: new Date().toISOString(), uptimeSeconds: (Date.now() - _startedAt) / 1000, counters, gauges };
+  for (const [k, h] of _histograms) histos[k] = { sum: h.sum, count: h.count, avg: h.count ? h.sum / h.count : 0 };
+  return { ts: new Date().toISOString(), uptimeSeconds: (Date.now() - _startedAt) / 1000, counters, gauges, histograms: histos };
 }
 
-// Pre-defined metrics
+// ── Pre-defined metrics ───────────────────────────────────────────────────────
 const commandInvocationsTotal = counter('rg_command_invocations_total', 'Slash command invocations');
 const discordEventsTotal = counter('rg_discord_events_total', 'Discord events received');
 const jobRunsTotal = counter('rg_job_runs_total', 'Background job executions');
@@ -100,8 +146,12 @@ const dbPoolTotal = gauge('rg_db_pool_total', 'DB connections currently in pool 
 const dbPoolIdle = gauge('rg_db_pool_idle', 'DB connections currently idle');
 const dbPoolWaiting = gauge('rg_db_pool_waiting', 'Queries waiting for DB connection');
 
+// Histograms
+const interactionResponseTimeMs = histogram('rg_interaction_response_time_ms', 'Interaction handler response time in ms');
+const dbQueryDurationMs = histogram('rg_db_query_duration_ms', 'DB query duration in ms');
+
 module.exports = {
-  counter, gauge, toPrometheusText, toJson,
+  counter, gauge, histogram, toPrometheusText, toJson,
   commandInvocationsTotal, discordEventsTotal,
   jobRunsTotal, jobErrorsTotal,
   panelRefreshSuccess, panelRefreshFail,
@@ -112,4 +162,5 @@ module.exports = {
   sheetsSyncTotal, sheetsSyncErrorsTotal,
   membersActive, discordPingMs,
   dbPoolTotal, dbPoolIdle, dbPoolWaiting,
+  interactionResponseTimeMs, dbQueryDurationMs,
 };

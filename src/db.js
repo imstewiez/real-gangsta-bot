@@ -22,12 +22,14 @@ function _resolveSSL() {
 }
 const SSL_CFG = _resolveSSL();
 
-const POOL_MAX = parseInt(process.env.DB_POOL_MAX, 10) || 20;
+const POOL_MAX = parseInt(process.env.DB_POOL_MAX, 10) || 25;
+const POOL_MIN = parseInt(process.env.DB_POOL_MIN, 10) || 5;
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: SSL_CFG,
   max: POOL_MAX,
+  min: POOL_MIN,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
 });
@@ -36,10 +38,22 @@ pool.on('error', (err) => {
   console.error('[DB] Erro inesperado no pool de conexões:', err.message);
 });
 
+const SLOW_QUERY_THRESHOLD_MS = parseInt(process.env.DB_SLOW_QUERY_MS, 10) || 500;
+
 async function query(text, params) {
   const client = await pool.connect();
+  const start = Date.now();
   try {
-    return await client.query(text, params);
+    const result = await client.query(text, params);
+    const elapsed = Date.now() - start;
+    if (elapsed >= SLOW_QUERY_THRESHOLD_MS) {
+      // Lazy require to avoid circular dependency at module load time
+      try {
+        const { warn } = require('./logger');
+        warn(`[DB:SLOW] ${elapsed}ms — ${String(text).slice(0, 120).replace(/\s+/g, ' ')}`);
+      } catch (_) {}
+    }
+    return result;
   } finally {
     client.release();
   }

@@ -74,7 +74,19 @@ function denyMessage(retryAfterMs) {
   return '⏱️ Calma — demasiados pedidos seguidos.';
 }
 
+/**
+ * Guild-level rate limit — prevents a single guild from flooding the bot.
+ * Separate bucket namespace from per-user limits.
+ *
+ * @param {string} guildId
+ * @param {{limit:number, windowMs:number}} opts
+ * @returns {boolean}
+ */
+function allowGuild(guildId, { limit = 100, windowMs = 60_000 } = {}) {
+  return allow(`guild:${guildId}`, '__guild__', { limit, windowMs });
+}
+
 /** Reset explícito (testes). */
 function _reset() { BUCKETS.clear(); }
 
-module.exports = { allow, retryAfter, denyMessage, _reset };
+module.exports = { allow, allowGuild, retryAfter, denyMessage, _reset };

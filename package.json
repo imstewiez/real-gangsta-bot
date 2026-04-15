@@ -15,12 +15,20 @@
     "stock:bootstrap:apply": "node scripts/bootstrapStock.js --apply --confirm",
     "structure:sync": "node scripts/restructureServer.js",
     "structure:sync:apply": "node scripts/restructureServer.js --apply",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "test:coverage": "node --test --experimental-test-coverage test/*.test.js",
+    "lint": "eslint src/ --ext .js",
+    "lint:fix": "eslint src/ --ext .js --fix",
+    "audit": "npm audit --audit-level=moderate",
+    "audit:fix": "npm audit fix"
   },
   "dependencies": {
-    "discord.js": "^14.19.3",
-    "dotenv": "^16.4.5",
-    "googleapis": "^171.4.0",
-    "pg": "^8.20.0"
+    "discord.js": "14.19.3",
+    "dotenv": "16.4.5",
+    "googleapis": "144.0.0",
+    "pg": "8.13.3"
+  },
+  "devDependencies": {
+    "eslint": "9.18.0"
   }
 }

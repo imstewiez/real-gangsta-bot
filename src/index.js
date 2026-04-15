@@ -297,9 +297,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
     try {
       log(`${ctx.tag()} start ${actionKey} · actor=${interaction.user.id}`);
       await _dispatchInteraction(interaction);
-      log(`${ctx.tag()} done ${actionKey} · ${ctx.elapsed()}ms`);
+      const elapsed = ctx.elapsed();
+      metrics.interactionResponseTimeMs.observe(elapsed);
+      log(`${ctx.tag()} done ${actionKey} · ${elapsed}ms`);
     } catch (e) {
-      warn(`${ctx.tag()} failed ${actionKey} · ${e.message} · ${ctx.elapsed()}ms`);
+      const elapsed = ctx.elapsed();
+      metrics.interactionResponseTimeMs.observe(elapsed);
+      warn(`${ctx.tag()} failed ${actionKey} · ${e.message} · ${elapsed}ms`);
       try {
         if (interaction.deferred || interaction.replied) {
           await interaction.followUp({ content: `⛔ Falha interna. Ref: \`${cid}\``, flags: MessageFlags.Ephemeral }).catch(() => {});
