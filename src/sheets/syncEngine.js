@@ -61,15 +61,33 @@ async function syncOne(key) {
   // Limpa a tab antes de reescrever (simples, idempotente)
   batch.clearRange(sheetId);
   // Syncer pode devolver { lastRow, lastCol } para permitir trim automático.
-  const result = await syncer()(batch, sheetId);
-  if (result && Number.isFinite(result.lastRow) && Number.isFinite(result.lastCol)) {
-    trimSheet(batch, sheetId, result.lastRow, result.lastCol);
+  let syncErr = null;
+  let flushed = { replies: [] };
+  try {
+    const result = await syncer()(batch, sheetId);
+    if (result && Number.isFinite(result.lastRow) && Number.isFinite(result.lastCol)) {
+      trimSheet(batch, sheetId, result.lastRow, result.lastCol);
+    }
+    flushed = await batch.flush();
+  } catch (e) {
+    syncErr = e;
   }
-  const flushed = await batch.flush();
 
   const ms = Date.now() - t0;
-  log(`[SHEETS] sync ${key}: ${flushed.replies?.length || 0} ops em ${ms}ms`);
-  return { tab: key, ops: flushed.replies?.length || 0, ms };
+  const ops = flushed.replies?.length || 0;
+  // Regista estado do sync em sheet_sync_state (best-effort).
+  try {
+    const { recordSheetSync } = require('../repositories/_meta');
+    await recordSheetSync(key, {
+      result: syncErr ? 'error' : 'ok',
+      ops, ms,
+      error: syncErr ? syncErr.message.slice(0, 500) : null,
+    });
+  } catch (_) { /* sheet_sync_state pode não existir ainda em DB legacy */ }
+
+  if (syncErr) throw syncErr;
+  log(`[SHEETS] sync ${key}: ${ops} ops em ${ms}ms`);
+  return { tab: key, ops, ms };
 }
 
 async function syncAll() {
