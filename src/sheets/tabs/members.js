@@ -72,20 +72,20 @@ async function syncMembers(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
   row = sectionHeader(batch, sheetId, row, {
-    title: 'RESUMO DA CASA', hint: 'todos os activos', columnCount: COL_COUNT,
+    title: 'RESUMO DA CASA', hint: 'todos os activos', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
   });
   row = kpiStrip(batch, sheetId, row, [
     { label: 'Membros',   value: rows.length,      numberFormat: NUM_FMT.INT, delta: `${moradores} moradores · ${oficiais} oficiais`, deltaDirection: 'flat' },
     { label: 'Entregues', value: totalEntregas,    numberFormat: NUM_FMT.INT, delta: 'material total', deltaDirection: 'flat' },
     { label: 'Kills',     value: totalKills,       numberFormat: NUM_FMT.INT, delta: `KD médio ${avgKD.toFixed(2)}`, deltaDirection: 'flat' },
     { label: 'Lucro',     value: totalProfit,      numberFormat: NUM_FMT.EURO, delta: 'gerado colectivamente', deltaDirection: totalProfit > 0 ? 'up' : 'flat' },
-  ], COL_COUNT);
+  ], COL_COUNT, { freezeAt: FREEZE_AT });
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
 
   row = sectionHeader(batch, sheetId, row, {
-    title: 'ROSTER', hint: 'filtros activos — ordenar por qualquer coluna', columnCount: COL_COUNT,
+    title: 'ROSTER', hint: 'filtros activos — ordenar por qualquer coluna', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
   });
   row = tableHeader(batch, sheetId, row, HEADERS);
   const firstDataRow = row;

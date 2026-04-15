@@ -62,20 +62,20 @@ async function syncMovements(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
   row = sectionHeader(batch, sheetId, row, {
-    title: 'RESUMO MONETÁRIO', hint: 'últimos 2000 registos', columnCount: COL_COUNT,
+    title: 'RESUMO MONETÁRIO', hint: 'últimos 2000 registos', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
   });
   row = kpiStrip(batch, sheetId, row, [
     { label: 'Registos',  value: rows.length, numberFormat: NUM_FMT.INT,  delta: 'até 2k linhas', deltaDirection: 'flat' },
     { label: 'Entradas',  value: totalIn,     numberFormat: NUM_FMT.EURO, delta: 'entregas (material)', deltaDirection: 'up' },
     { label: 'Vendas',    value: totalOut,    numberFormat: NUM_FMT.EURO, delta: 'vendas morador', deltaDirection: 'up' },
     { label: 'Perdido',   value: totalLost,   numberFormat: NUM_FMT.EURO, delta: 'em operações', deltaDirection: totalLost > 0 ? 'down' : 'flat' },
-  ], COL_COUNT);
+  ], COL_COUNT, { freezeAt: FREEZE_AT });
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
 
   row = sectionHeader(batch, sheetId, row, {
-    title: 'LEDGER COMPLETO', hint: 'filtros activos · mais recente no topo', columnCount: COL_COUNT,
+    title: 'LEDGER COMPLETO', hint: 'filtros activos · mais recente no topo', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
   });
   row = tableHeader(batch, sheetId, row, HEADERS);
 

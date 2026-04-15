@@ -95,45 +95,57 @@ function divider(batch, sheetId, row, columnCount, variant = 'accent') {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Section header — subcabeçalho de bloco. Título à esquerda com accent bar,
-// hint opcional à direita (ex: "últimos 7 dias"). Ocupa 1 linha.
+// hint opcional à direita. Respeita `freezeAt` dividindo o merge no boundary.
 // ─────────────────────────────────────────────────────────────────────────────
-function sectionHeader(batch, sheetId, row, { title, hint = null, columnCount }) {
+function sectionHeader(batch, sheetId, row, { title, hint = null, columnCount, freezeAt = 0 }) {
   const cells = [sectionCell(title)];
   const fillCount = hint ? columnCount - 2 : columnCount - 1;
   for (let i = 0; i < fillCount; i++) cells.push(cell('', { bg: COLOR.BG_BLOCK }));
   if (hint) cells.push(sectionHintCell(hint));
   batch.updateCells(sheetId, row, 0, [cells]);
-  batch.mergeCells(sheetId, row, row + 1, 0, hint ? columnCount - 1 : columnCount);
+
+  const mergeEnd = hint ? columnCount - 1 : columnCount;
+  if (freezeAt > 0 && freezeAt < mergeEnd) {
+    if (freezeAt >= 2)           batch.mergeCells(sheetId, row, row + 1, 0, freezeAt);
+    if (mergeEnd - freezeAt >= 2) batch.mergeCells(sheetId, row, row + 1, freezeAt, mergeEnd);
+  } else {
+    batch.mergeCells(sheetId, row, row + 1, 0, mergeEnd);
+  }
   batch.setRowHeight(sheetId, row, ROW_H.SECTION);
   return row + 1;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // KPI strip — 3 linhas verticais (label / value / delta) para N cards lado a lado.
-// Cada card ocupa `span` colunas (default: Math.floor(columnCount/N)).
+// Se `freezeAt` > 0, os cards vivem em [freezeAt, columnCount); a área frozen
+// fica preenchida com empty bg_block cells (nunca merged através do boundary).
 //
 // cards: [{label, value, numberFormat, delta?, deltaDirection?, deltaFormat?, hint?}]
+// Opções: { freezeAt?: number }
 // Retorna próxima row disponível.
 // ─────────────────────────────────────────────────────────────────────────────
-function kpiStrip(batch, sheetId, row, cards, columnCount) {
+function kpiStrip(batch, sheetId, row, cards, columnCount, opts = {}) {
+  const freezeAt = typeof opts === 'number' ? opts : (opts.freezeAt || 0);
+  const startCol = freezeAt;
+  const availCols = columnCount - startCol;
   const n = cards.length;
   if (n === 0) return row;
-  const span = Math.floor(columnCount / n);
-  const remainder = columnCount - span * n;
+  const span = Math.floor(availCols / n);
+  const remainder = availCols - span * n;
 
-  const labelRow = [];
-  const valueRow = [];
-  const deltaRow = [];
+  // Pré-aloca cada row com empty cells em bg_block
+  const labelRow = Array(columnCount).fill(null).map(() => cell('', { bg: COLOR.BG_BLOCK }));
+  const valueRow = Array(columnCount).fill(null).map(() => cell('', { bg: COLOR.BG_BLOCK }));
+  const deltaRow = Array(columnCount).fill(null).map(() => cell('', { bg: COLOR.BG_BLOCK }));
 
+  let col = startCol;
   cards.forEach((c, i) => {
     const w = span + (i < remainder ? 1 : 0);
-    labelRow.push(kpiLabelCell(c.label));
-    for (let k = 1; k < w; k++) labelRow.push(cell('', { bg: COLOR.BG_BLOCK }));
-    valueRow.push(kpiValueCell(c.value, c.numberFormat));
-    for (let k = 1; k < w; k++) valueRow.push(cell('', { bg: COLOR.BG_BLOCK }));
+    labelRow[col] = kpiLabelCell(c.label);
+    valueRow[col] = kpiValueCell(c.value, c.numberFormat);
     const deltaText = c.delta !== undefined ? c.delta : (c.hint || '');
-    deltaRow.push(kpiDeltaCell(deltaText, c.deltaDirection, c.deltaFormat));
-    for (let k = 1; k < w; k++) deltaRow.push(cell('', { bg: COLOR.BG_BLOCK }));
+    deltaRow[col] = kpiDeltaCell(deltaText, c.deltaDirection, c.deltaFormat);
+    col += w;
   });
 
   batch.updateCells(sheetId, row,     0, [labelRow]);
@@ -144,14 +156,14 @@ function kpiStrip(batch, sheetId, row, cards, columnCount) {
   batch.setRowHeight(sheetId, row + 1, ROW_H.KPI);
   batch.setRowHeight(sheetId, row + 2, ROW_H.KPI_LABEL);
 
-  // Merge cells dentro de cada card (unifica visualmente)
-  let col = 0;
+  // Merge cells dentro de cada card (unifica visualmente) — só no unfrozen range
+  col = startCol;
   cards.forEach((c, i) => {
     const w = span + (i < remainder ? 1 : 0);
     if (w >= 2) {
-      batch.mergeCells(sheetId, row,     row + 1, col, col + w); // label
-      batch.mergeCells(sheetId, row + 1, row + 2, col, col + w); // value
-      batch.mergeCells(sheetId, row + 2, row + 3, col, col + w); // delta
+      batch.mergeCells(sheetId, row,     row + 1, col, col + w);
+      batch.mergeCells(sheetId, row + 1, row + 2, col, col + w);
+      batch.mergeCells(sheetId, row + 2, row + 3, col, col + w);
     }
     col += w;
   });
