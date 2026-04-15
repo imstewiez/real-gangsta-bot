@@ -1,6 +1,12 @@
 node_modules/
 .env
+.env.*
+!.env.example
 logs/
 *.log
-juri-490201-54e5053bd43a.json
+*.key
+*.pem
+*-credentials*.json
+juri-*.json
 .claude/
+.DS_Store

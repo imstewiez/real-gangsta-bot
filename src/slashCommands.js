@@ -56,6 +56,22 @@ const commands = [
     .addNumberOption(opt => opt.setName('valor').setDescription('Valor estimado').setRequired(false)),
 
   new SlashCommandBuilder()
+    .setName('rg-item-set-price')
+    .setDescription('Altera o preço estimado de um item do catálogo')
+    .addStringOption(opt => opt.setName('nome').setDescription('Nome exacto do item').setRequired(true))
+    .addNumberOption(opt => opt.setName('preco').setDescription('Novo preço (€)').setRequired(true)),
+
+  new SlashCommandBuilder()
+    .setName('rg-items-sem-preco')
+    .setDescription('Lista itens do catálogo sem preço definido'),
+
+  new SlashCommandBuilder()
+    .setName('rg-catalog-sync-prices')
+    .setDescription('Carrega preços do precário oficial (config/prices-catalog.json)')
+    .addStringOption(opt => opt.setName('modo').setDescription('só preços (default) ou full (+ categoria/unidade)').setRequired(false)
+      .addChoices({ name: 'Preços', value: 'prices' }, { name: 'Full (+cat/unidade)', value: 'full' })),
+
+  new SlashCommandBuilder()
     .setName('rg-close-saida')
     .setDescription('Fecha uma saída pelo ID (fallback ao painel)')
     .addIntegerOption(opt => opt.setName('id').setDescription('ID da saída').setRequired(true)),
@@ -71,9 +87,44 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('rg-sync-perms')
-    .setDescription('Aplica perms do template + renomeia painéis + sync child channels à categoria')
+    .setDescription('Aplica apenas permissões (não renomeia nem move canais — layout congelado)')
     .addStringOption(opt => opt.setName('modo').setDescription('dry-run (default) ou apply').setRequired(false)
       .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
+
+  new SlashCommandBuilder()
+    .setName('rg-layout-check')
+    .setDescription('Compara layout actual do Discord contra o lock file (nunca altera)'),
+
+  // ── Google Sheets sync ──────────────────────────────────────────────────────
+  new SlashCommandBuilder()
+    .setName('rg-sync-sheets')
+    .setDescription('Sincroniza todas as tabs do Google Sheet com a DB'),
+
+  new SlashCommandBuilder()
+    .setName('rg-sync-sheets-tab')
+    .setDescription('Sincroniza apenas uma tab do Google Sheet')
+    .addStringOption(opt => opt.setName('tab').setDescription('Qual tab').setRequired(true)
+      .addChoices(
+        { name: 'Dashboard', value: 'dashboard' },
+        { name: 'Resumo Semanal', value: 'weekly' },
+        { name: 'Resumo Diário', value: 'daily' },
+        { name: 'Membros', value: 'members' },
+        { name: 'Moradores', value: 'moradores' },
+        { name: 'Oficiais', value: 'oficiais' },
+        { name: 'Saídas', value: 'saidas' },
+        { name: 'Participantes', value: 'participantes' },
+        { name: 'Kills', value: 'kills' },
+        { name: 'Spots', value: 'spots' },
+        { name: 'Inventário', value: 'inventory' },
+        { name: 'Movimentos', value: 'movements' },
+        { name: 'Rankings', value: 'rankings' },
+        { name: 'Auditoria', value: 'audit' },
+        { name: 'Config', value: 'config' },
+      )),
+
+  new SlashCommandBuilder()
+    .setName('rg-sync-sheets-rebuild')
+    .setDescription('Apaga e recria todas as tabs do Google Sheet (reset de schema)'),
 
   // ── Sticky messages (admin, raro) ───────────────────────────────────────────
   new SlashCommandBuilder()

@@ -81,14 +81,14 @@ async function handleMemberTotalsButton(interaction) {
     lines.push('');
     lines.push(`\u2500\u2500 **Progresso** \u2500\u2500`);
     lines.push(`Rank atual: **${progress.currentTierName}**`);
-    lines.push(`Material total: **${progress.totalValue.toLocaleString('pt-PT')}\u20AC**`);
+    lines.push(`Material total: **${(progress.totalQty || 0).toLocaleString('pt-PT')} itens**`);
     if (!progress.maxedOut) {
       const filled = Math.round(parseFloat(progress.progress) / 10);
       const empty = 10 - filled;
       const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(empty);
-      lines.push(`Próximo: **${progress.nextTierName}** (${progress.threshold.toLocaleString('pt-PT')}\u20AC)`);
+      lines.push(`Próximo: **${progress.nextTierName}** (${progress.threshold.toLocaleString('pt-PT')} itens)`);
       lines.push(`${bar} **${progress.progress}%**`);
-      lines.push(`Falta: **${progress.remaining.toLocaleString('pt-PT')}\u20AC**`);
+      lines.push(`Falta: **${progress.remaining.toLocaleString('pt-PT')} itens**`);
     } else {
       lines.push('Nível máximo automático atingido!');
     }
@@ -113,7 +113,7 @@ async function handleProgressButton(interaction) {
 
   const lines = [];
   lines.push(`\uD83C\uDFAD **Rank:** ${progress.currentTierName}`);
-  lines.push(`\uD83D\uDC8E **Material Total:** ${progress.totalValue.toLocaleString('pt-PT')}\u20AC`);
+  lines.push(`\uD83D\uDCE6 **Material Total:** ${(progress.totalQty || 0).toLocaleString('pt-PT')} itens`);
   lines.push('');
 
   if (!progress.maxedOut) {
@@ -122,7 +122,7 @@ async function handleProgressButton(interaction) {
     const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(empty);
     lines.push(`\uD83C\uDFAF **Próximo Rank:** ${progress.nextTierName}`);
     lines.push(`${bar} **${progress.progress}%**`);
-    lines.push(`Meta: **${progress.threshold.toLocaleString('pt-PT')}\u20AC** \u2014 Falta: **${progress.remaining.toLocaleString('pt-PT')}\u20AC**`);
+    lines.push(`Meta: **${progress.threshold.toLocaleString('pt-PT')} itens** \u2014 Falta: **${progress.remaining.toLocaleString('pt-PT')} itens**`);
   } else {
     lines.push('\u2705 **Nível máximo automático atingido!**');
     lines.push('Promoções acima deste rank são manuais pela chefia.');
@@ -162,7 +162,7 @@ async function handleTopSemanalButton(interaction) {
   const lines = rankings.map((r, i) => {
     const prefix = medals[i] || `**${i + 1}.**`;
     const isMe = r.discord_id === interaction.user.id ? ' \u2190 **TU**' : '';
-    return `${prefix} <@${r.discord_id}> \u2014 **${parseFloat(r.weighted_value).toLocaleString('pt-PT')}\u20AC** (${r.deliveries} entregas, ${r.sales} vendas)${isMe}`;
+    return `${prefix} <@${r.discord_id}> \u2014 **${parseFloat(r.weighted_value).toLocaleString('pt-PT')} itens** (${r.deliveries} entregas, ${r.sales} vendas)${isMe}`;
   });
 
   // Check if user is in top 10
@@ -173,7 +173,7 @@ async function handleTopSemanalButton(interaction) {
     if (myPos >= 0) {
       lines.push('');
       lines.push(`\u2500\u2500\u2500`);
-      lines.push(`**${myPos + 1}.** <@${interaction.user.id}> \u2014 **${parseFloat(allRankings[myPos].weighted_value).toLocaleString('pt-PT')}\u20AC** \u2190 **TU**`);
+      lines.push(`**${myPos + 1}.** <@${interaction.user.id}> \u2014 **${parseFloat(allRankings[myPos].weighted_value).toLocaleString('pt-PT')} itens** \u2190 **TU**`);
     }
   }
 

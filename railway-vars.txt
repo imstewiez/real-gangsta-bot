@@ -1,0 +1,109 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# Railway — Raw Editor
+# Cola este bloco inteiro em: Railway → projeto → Variables → Raw Editor
+#
+# ⚠️ ANTES DE COLAR, SUBSTITUI NO TOPO:
+#    - DISCORD_BOT_TOKEN (o novo, depois da rotação)
+#    - GOOGLE_SERVICE_ACCOUNT_JSON (o JSON inteiro da nova service account key)
+#    - DATABASE_URL (usa referência `${{Postgres.DATABASE_URL}}` ou URL directa)
+#
+# Depois de colar, clica Save. Railway faz redeploy automático.
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Discord ──────────────────────────────────────────────────────────────────
+DISCORD_BOT_TOKEN=COLA_AQUI_O_NOVO_TOKEN
+DISCORD_GUILD_ID=1490397554372776096
+
+# ── PostgreSQL ───────────────────────────────────────────────────────────────
+# Se usas o Postgres plugin do Railway, usa referência:
+#   DATABASE_URL=${{Postgres.DATABASE_URL}}
+# Caso contrário, cola o URL completo.
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+
+# ── Google Sheets ────────────────────────────────────────────────────────────
+# Cola o JSON da NOVA service account key inteiro (uma linha só, com aspas).
+GOOGLE_SERVICE_ACCOUNT_JSON=COLA_AQUI_O_JSON_INLINE
+SPREADSHEET_ID=1RR_gHG1Ahw2lNXVDUR1Cic7nIgbSjSbFmJsbX4X2Iks
+SHEETS_SYNC_INTERVAL_MIN=15
+
+# ── Role IDs ─────────────────────────────────────────────────────────────────
+MANDA_CHUVA_ROLE_ID=1490397675525242930
+KINGPIN_ROLE_ID=1490397676204855308
+OG_ROLE_ID=1490397683070930945
+REAL_GANGSTER_ROLE_ID=1491223266487173311
+PATRAO_DI_ZONA_ROLE_ID=1490397679753101312
+YOUNG_BLOOD_ROLE_ID=1491213753235275806
+O_GUNAO_ROLE_ID=1491213423613317220
+GANGSTER_FODIDO_ROLE_ID=1491213170961022997
+MORADORES_BASE_ROLE_ID=1490397684597653634
+TROPINHAS_DO_GUETTO_ROLE_ID=1490397688800477215
+PATRULHA_PATA_ROLE_ID=1490795383448928276
+BOT_ROLE_ID=1493165105242832919
+# Pendente — preenche depois de correres /rg-sync-perms apply (o bot cria-o)
+PENDENTE_ROLE_ID=
+
+# ── Category IDs ─────────────────────────────────────────────────────────────
+MORADOR_TOPICOS_CATEGORY_ID=1491543491233448006
+MORADOR_ARQUIVO_CATEGORY_ID=
+
+# ── Channel IDs ──────────────────────────────────────────────────────────────
+TAG_REQUEST_CHANNEL_ID=1490397785948688529
+AUDIT_LOG_CHANNEL_ID=1492739363463758027
+CEMETERY_CHANNEL_ID=1492344204012163122
+SAIDA_RESULTS_CHANNEL_ID=1490397810489692292
+WEEKLY_TOP_CHANNEL_ID=1490397816030236883
+DAILY_SUMMARY_CHANNEL_ID=1491194611543183430
+RADIO_PUBLISH_CHANNEL_ID=1490397808531079449
+AVAILABILITY_CHANNEL_ID=1490397821075984506
+PANEL_ENTRADA_CHANNEL_ID=
+PANEL_MORADORES_CHANNEL_ID=
+PANEL_OFICIAIS_CHANNEL_ID=
+PANEL_CHEFIA_CHANNEL_ID=
+PANEL_CHEFE_MORADORES_CHANNEL_ID=
+STRUCTURE_SYNC_LOG_CHANNEL_ID=
+
+# ── Promoção automática (€) ──────────────────────────────────────────────────
+PROMO_YOUNG_BLOOD_TO_GUNAO=25000
+PROMO_GUNAO_TO_GANGSTER_FODIDO=50000
+
+# ── Comportamento ────────────────────────────────────────────────────────────
+ARCHIVE_ON_PROMOTION=true
+DELETE_ON_PROMOTION=false
+DELETE_ON_LEAVE=true
+ARCHIVE_ON_LEAVE=false
+AUTO_ASSIGN_PENDENTE=true
+ENABLE_BACKGROUND_JOBS=true
+ENFORCE_ROLE_INVARIANTS=true
+PANEL_BOOTSTRAP_ON_READY=true
+AUTO_PUBLISH_WEEKLY_TOP=true
+STRUCTURE_SYNC_LOCKED=false
+
+# ── Painéis sticky ───────────────────────────────────────────────────────────
+PANELS_STICKY_MODE=repost
+PANELS_STICKY_THRESHOLD_MSGS=5
+
+# ── Stock notifier ───────────────────────────────────────────────────────────
+STOCK_NOTIFY_ENABLED=true
+STOCK_AUTOCREATE=false
+STOCK_CHANNELS_CATEGORY_KEY=COMANDO
+STOCK_SUMMARY_INTERVAL_HOURS=4
+
+# ── Rádio ────────────────────────────────────────────────────────────────────
+RADIO_RANDOM_MIN=1000
+RADIO_RANDOM_MAX=9999
+RADIO_ALLOW_ZERO=false
+
+# ── Disponibilidade diária ───────────────────────────────────────────────────
+AVAILABILITY_SLOTS=12:00,14:00,16:00,18:00,20:00,22:00,00:00,02:00
+AVAILABILITY_MENTION_ROLE_IDS=
+AVAILABILITY_AUTO_PUBLISH_ENABLED=true
+AVAILABILITY_AUTO_PUBLISH_HOUR=0
+
+# ── Branding ─────────────────────────────────────────────────────────────────
+BOT_INTERNAL_NAME=Bot di Zona
+BOT_DISPLAY_NAME=Firma RedWood
+BOT_COLOR=E74C3C
+BOT_LOGO_URL=
+
+# ── Logging ──────────────────────────────────────────────────────────────────
+LOG_LEVEL=info

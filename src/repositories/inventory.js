@@ -139,12 +139,15 @@ async function getMemberTotals(memberId) {
 }
 
 async function getWeeklyMovements(weekStart, weekEnd) {
+  // `weighted_value` aqui conta apenas QUANTIDADE (não multiplica por preço).
+  // Semântica alinhada com promoções: 25k itens → O Gunão, 50k → Gangster Fodido.
+  // Coluna mantém o nome por compatibilidade com weekly_rankings.weighted_value.
   const res = await query(`
     SELECT im.member_id, m.discord_id, m.display_name, m.role as member_role,
       SUM(CASE WHEN im.movement_type IN ('entrega_morador', 'entrega_oficial') THEN im.quantity ELSE 0 END) as deliveries,
       SUM(CASE WHEN im.movement_type = 'venda_morador' THEN im.quantity ELSE 0 END) as sales,
-      SUM(CASE WHEN im.movement_type IN ('entrega_morador', 'venda_morador', 'entrega_oficial') THEN
-        im.quantity * COALESCE(i.estimated_value, 1) ELSE 0 END) as weighted_value
+      SUM(CASE WHEN im.movement_type IN ('entrega_morador', 'venda_morador', 'entrega_oficial')
+          THEN im.quantity ELSE 0 END) as weighted_value
     FROM inventory_movements im
     JOIN members m ON m.id = im.member_id
     JOIN items i ON i.id = im.item_id

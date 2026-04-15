@@ -25,6 +25,9 @@ const {
   handleProgressButton, handleTopSemanalButton,
 } = require('./members/memberHandlers');
 const {
+  handleMyPerformance, handleMyMaterial, handleMyProfit,
+} = require('./members/memberStatsHandlers');
+const {
   handleRegistarMaterialButton, handleTipoRegistoSelect,
   handleItemSelect, handleQuantityModal,
   handleStockCommand, handleAdjustStockButton,
@@ -353,59 +356,129 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return safeReply(interaction, { content: `Item **${nome}** adicionado ao catálogo.` }, { dismissible: true });
       }
 
+      if (cmd === 'rg-item-set-price') {
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('editar itens'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const nome = interaction.options.getString('nome');
+        const preco = interaction.options.getNumber('preco');
+        const item = await inventoryRepo.getItemByName(nome);
+        if (!item) return safeReply(interaction, { content: `Item "${nome}" não existe no catálogo.` }, { dismissible: true });
+        const oldPrice = item.estimated_value;
+        await inventoryRepo.updateItem(item.id, { estimated_value: preco });
+        return safeReply(interaction, {
+          content: `💰 **${item.name}**: ${oldPrice || 0}€ → **${preco}€**`
+        }, { dismissible: true });
+      }
+
+      if (cmd === 'rg-catalog-sync-prices') {
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync catálogo'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const modo = interaction.options.getString('modo') || 'prices';
+        const { syncPrices } = require('./inventory/catalogPricesSync');
+        try {
+          const r = await syncPrices({ full: modo === 'full' });
+          const lines = [
+            `📋 **Precário sincronizado** (modo \`${modo}\`)`,
+            `✅ ${r.created.length} criados · ♻️ ${r.updated.length} actualizados · ⚪ ${r.unchanged.length} iguais · ⚠️ ${r.errors.length} erros`,
+          ];
+          if (r.updated.length) {
+            lines.push('', '**Preços alterados:**');
+            for (const u of r.updated.slice(0, 15)) lines.push(`• ${u.name}: ${u.oldPrice}€ → **${u.newPrice}€**`);
+            if (r.updated.length > 15) lines.push(`_… e mais ${r.updated.length - 15}._`);
+          }
+          if (r.created.length) {
+            lines.push('', '**Itens novos:**');
+            for (const c of r.created.slice(0, 15)) lines.push(`• ${c.name} (${c.price}€)`);
+            if (r.created.length > 15) lines.push(`_… e mais ${r.created.length - 15}._`);
+          }
+          if (r.errors.length) {
+            lines.push('', '**Erros:**');
+            for (const e of r.errors.slice(0, 5)) lines.push(`⚠️ ${e.name}: ${e.message}`);
+          }
+          return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
+        } catch (e) {
+          return safeReply(interaction, { content: `❌ ${e.message}` }, { dismissible: true });
+        }
+      }
+
+      if (cmd === 'rg-items-sem-preco') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const { query: dbq } = require('./db');
+        const r = await dbq(`
+          SELECT name, category, unit FROM items
+           WHERE is_active = true AND (estimated_value IS NULL OR estimated_value = 0)
+           ORDER BY category, name
+        `);
+        if (!r.rows.length) {
+          return safeReply(interaction, { content: '✅ Todos os itens activos têm preço definido.' }, { dismissible: true });
+        }
+        const lines = [`⚠️ **${r.rows.length}** itens sem preço (afecta cálculos de saídas):`, ''];
+        const grouped = {};
+        for (const it of r.rows) (grouped[it.category] ||= []).push(it);
+        for (const [cat, items] of Object.entries(grouped)) {
+          lines.push(`**${cat}**`);
+          for (const it of items) lines.push(`  • ${it.name} (${it.unit})`);
+        }
+        lines.push('', '_Usa \`/rg-item-set-price nome:<nome> preco:<€>\` para corrigir._');
+        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
+      }
+
       if (cmd === 'rg-sync-perms') {
         if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync perms'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const modo = interaction.options.getString('modo') || 'dry-run';
         const apply = modo === 'apply';
         const report = await runPermsOnly(interaction.guild, { apply });
+        const { summarize: summarizePerms } = require('./discord/structureSync');
+        return safeReply(interaction, { content: summarizePerms(report).slice(0, 1900) }, { dismissible: true });
+      }
 
-        // Secções especiais separadas: histórico de audit + diagnósticos.
-        const history = report.actions.filter(a => a.type === 'ROLE_AUDIT_HISTORY');
-        const diagCats = report.actions.filter(a => a.type === 'DIAG_CAT_VIEW');
-        const diagChs = report.actions.filter(a => a.type === 'DIAG_CH_VIEW');
-        const rest = report.actions.filter(a => !['ROLE_AUDIT_HISTORY', 'DIAG_CAT_VIEW', 'DIAG_CH_VIEW'].includes(a.type));
+      if (cmd === 'rg-layout-check') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('verificar layout'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const { checkLayout, summarize: summarizeLayout } = require('./discord/layoutCheck');
+        const result = await checkLayout(interaction.guild);
+        return safeReply(interaction, { content: summarizeLayout(result).slice(0, 1900) }, { dismissible: true });
+      }
 
+      if (cmd === 'rg-sync-sheets') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync sheets'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const { syncAll } = require('./sheets/syncEngine');
+        const r = await syncAll();
+        if (r.skipped) return safeReply(interaction, { content: `⚠️ Skipped: ${r.skipped}` }, { dismissible: true });
         const lines = [
-          `**Modo:** \`${report.mode.toUpperCase()}\``,
-          `**Acções:** ${JSON.stringify(report.counts)}`,
+          `**Sync completo** em ${r.ms}ms — ${r.results.length} tabs OK, ${r.errors.length} erros`,
+          ...r.results.slice(0, 15).map(x => `• ${x.tab}: ${x.ops} ops · ${x.ms}ms`),
         ];
-
-        if (diagCats.length || diagChs.length) {
-          lines.push('', '**🔍 Estado actual do @everyone ViewChannel:**');
-          for (const d of diagCats) {
-            const icon = d.detail.everyone === 'DENY' ? '🚫' : d.detail.everyone === 'ALLOW' ? '⚠️ ALLOW' : '◻️';
-            lines.push(`${icon} cat \`${d.detail.key}\` → ${d.detail.everyone}`);
-          }
-          for (const d of diagChs) {
-            const icon = d.detail.everyone === 'DENY' ? '🚫' : d.detail.everyone === 'ALLOW' ? '⚠️ ALLOW' : '◻️';
-            lines.push(`${icon} \`${d.detail.channel}\` → ${d.detail.everyone} (${d.detail.overwrites} overwrites)`);
-          }
+        if (r.errors.length) {
+          lines.push('', '**Erros:**');
+          for (const e of r.errors.slice(0, 5)) lines.push(`  ⚠️ ${e.tab}: ${e.message}`);
         }
-
-        if (history.length) {
-          lines.push('', '**🕰️ Nomes históricos (audit log):**');
-          for (const h of history.slice(0, 15)) {
-            lines.push(`• <@&${h.detail.roleId}> antes: \`${h.detail.oldName}\``);
-          }
-          if (history.length > 15) lines.push(`_… e mais ${history.length - 15}._`);
-        }
-
-        const samples = rest.slice(0, 15);
-        if (samples.length) {
-          lines.push('', '**Acções:**');
-          for (const a of samples) {
-            const detail = a.detail.channel || a.detail.category || a.detail.from || a.detail.name || a.detail.role || '';
-            lines.push(`• \`${a.type}\` — ${detail}`);
-          }
-          if (rest.length > 15) lines.push(`_… e mais ${rest.length - 15}._`);
-        }
-        if (report.errors.length) {
-          lines.push('', `**Erros (${report.errors.length}):**`);
-          for (const e of report.errors.slice(0, 5)) lines.push(`❌ ${e.stage}: ${e.message}`);
-        }
-        if (!apply) lines.push('', '> _Dry-run — usa `modo:apply` para aplicar._');
         return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
+      }
+
+      if (cmd === 'rg-sync-sheets-tab') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync sheets'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const tab = interaction.options.getString('tab');
+        const { syncOne } = require('./sheets/syncEngine');
+        try {
+          const r = await syncOne(tab);
+          if (r.skipped) return safeReply(interaction, { content: `⚠️ Skipped: ${r.skipped}` }, { dismissible: true });
+          return safeReply(interaction, { content: `✅ Tab **${tab}**: ${r.ops} ops em ${r.ms}ms.` }, { dismissible: true });
+        } catch (e) {
+          return safeReply(interaction, { content: `❌ ${tab}: ${e.message}` }, { dismissible: true });
+        }
+      }
+
+      if (cmd === 'rg-sync-sheets-rebuild') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('rebuild sheets'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const { rebuildWorkbook } = require('./sheets/syncEngine');
+        const r = await rebuildWorkbook();
+        if (r.skipped) return safeReply(interaction, { content: `⚠️ Skipped: ${r.skipped}` }, { dismissible: true });
+        return safeReply(interaction, { content: `🔄 Rebuild completo em ${r.ms}ms — ${r.results.length} tabs OK, ${r.errors.length} erros.` }, { dismissible: true });
       }
 
       if (cmd === 'rg-sticky-set') {
@@ -516,6 +589,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (id === 'morador::totais') return handleMemberTotalsButton(interaction);
       if (id === 'morador::progresso') return handleProgressButton(interaction);
       if (id === 'morador::top_semanal') return handleTopSemanalButton(interaction);
+      if (id === 'morador::my_performance') return handleMyPerformance(interaction);
+      if (id === 'morador::my_material') return handleMyMaterial(interaction);
+      if (id === 'morador::my_profit') return handleMyProfit(interaction);
 
       // Oficial buttons
       if (id === 'oficial::ver_saidas' || id === 'oficial::ver_operacoes') return handleViewSaidasButton(interaction);

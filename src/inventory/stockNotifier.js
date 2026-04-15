@@ -107,17 +107,14 @@ async function findOrCreateChannel(channelKey) {
   // 1) Já está na categoria correcta?
   let channel = guild.channels.cache.find(c => c.parentId === targetCat.id && matchesName(c));
 
-  // 2) Existe noutra categoria? Move em vez de duplicar.
+  // 2) Existe noutra categoria? Aceita onde está (layout congelado — não
+  //    movemos canais automaticamente. Se o user o pôs noutra categoria,
+  //    respeita a decisão.)
   if (!channel) {
     const misplaced = guild.channels.cache.find(c => matchesName(c));
     if (misplaced) {
-      try {
-        await misplaced.setParent(targetCat.id, { lockPermissions: false });
-        log(`[STOCK-NOTIFY] Canal '${misplaced.name}' movido de <${misplaced.parentId}> para ${catKey} (${targetCat.id}).`);
-        channel = misplaced;
-      } catch (e) {
-        warn(`[STOCK-NOTIFY] Falha a mover '${misplaced.name}' para ${catKey}: ${e.message}`);
-      }
+      channel = misplaced;
+      log(`[STOCK-NOTIFY] Canal '${misplaced.name}' encontrado em categoria ${misplaced.parentId} (não movido — layout congelado).`);
     }
   }
 

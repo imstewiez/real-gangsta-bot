@@ -2,8 +2,8 @@
 /**
  * Publisher de resultados de saídas — 3 embeds ricos ao fecho:
  *   1. Resumo: spot, tipo, líder, inimigo, resultado, kills/mortes, lucro, material
- *   2. Destaques: MVP, kills por membro, mortos, quem devolveu, quem ficou a dever
- *   3. Impacto histórico: win/loss do spot, org kills totais, top killer, streaks
+ *   2. Destaques: MVP, kills por nome, mortos, quem devolveu, quem ficou a dever
+ *   3. Impacto histórico: winrate do spot, kills da firma, topo, streaks
  *
  * Publica em CONFIG.SAIDA_RESULTS_CHANNEL_ID se definido; caso contrário
  * faz fallback para AUDIT_LOG_CHANNEL_ID. Sem canal, no-op silencioso.
@@ -13,19 +13,15 @@ const { EmbedBuilder } = require('discord.js');
 const CONFIG = require('../config');
 const { saidaRepo, killRepo, spotStatsRepo, memberSaidaStatsRepo } = require('../repositories');
 const { brandEmbed } = require('../shared/embedBuilders');
+const { SAIDAS, EMOJI, SAIDA_TYPE } = require('../content');
 const { log, warn } = require('../logger');
 
 const RESULT_META = {
-  vitoria:      { emoji: '🏆', label: 'VITÓRIA',    color: 0x2ECC71 },
-  derrota:      { emoji: '💀', label: 'DERROTA',    color: 0xE74C3C },
-  empate:       { emoji: '🤝', label: 'EMPATE',     color: 0xF1C40F },
-  sem_conflito: { emoji: '🕊️', label: 'SEM CONFLITO', color: 0x3498DB },
-  abortada:     { emoji: '🚫', label: 'ABORTADA',   color: 0x95A5A6 },
-};
-
-const SAIDA_TYPE_LABEL = {
-  craft: 'Craft', dominio: 'Domínio', ataque: 'Ataque',
-  defesa: 'Defesa', recolha: 'Recolha', outra: 'Outra',
+  vitoria:      { emoji: EMOJI.VITORIA, label: 'Vitória',      color: 0x2ECC71 },
+  derrota:      { emoji: EMOJI.DERROTA, label: 'Derrota',      color: 0xE74C3C },
+  empate:       { emoji: EMOJI.EMPATE,  label: 'Empate',       color: 0xF1C40F },
+  sem_conflito: { emoji: EMOJI.INFO,    label: 'Sem conflito', color: 0x3498DB },
+  abortada:     { emoji: EMOJI.WARN,    label: 'Abortada',     color: 0x95A5A6 },
 };
 
 function formatMoney(v) {
@@ -35,42 +31,43 @@ function formatMoney(v) {
 
 function buildResumoEmbed(saida, participants) {
   const meta = RESULT_META[saida.result] || RESULT_META.sem_conflito;
-  const type = SAIDA_TYPE_LABEL[saida.operation_type] || saida.operation_type;
-  const profitTag = saida.was_profitable ? '📈 Lucro' : '📉 Prejuízo';
+  const type = SAIDA_TYPE[saida.operation_type] || saida.operation_type;
+  const profitTag = saida.was_profitable ? `${EMOJI.LUCRO} Lucro` : `${EMOJI.WARN} Prejuízo`;
 
+  const L = SAIDAS.LABELS;
   const fields = [
-    { name: 'Spot', value: saida.spot || '—', inline: true },
-    { name: 'Tipo', value: type, inline: true },
-    { name: 'Líder', value: saida.leader_name || '—', inline: true },
+    { name: L.SPOT, value: saida.spot || '—', inline: true },
+    { name: L.TIPO, value: type, inline: true },
+    { name: L.LIDER, value: saida.leader_name || '—', inline: true },
     { name: 'Data', value: String(saida.date).split('T')[0], inline: true },
-    { name: 'Participantes', value: String(participants.length), inline: true },
-    { name: 'Resultado', value: `${meta.emoji} **${meta.label}**`, inline: true },
+    { name: 'Na saída', value: String(participants.length), inline: true },
+    { name: L.RESULTADO, value: `${meta.emoji} **${meta.label}**`, inline: true },
   ];
 
   if (saida.had_fight) {
     const enemy = [saida.enemy_name, saida.enemy_faction].filter(Boolean).join(' · ') || '—';
     fields.push(
-      { name: 'Inimigo', value: enemy, inline: true },
-      { name: '🎯 Kills nossas', value: String(saida.our_kills || 0), inline: true },
-      { name: '⚰️ Mortes nossas', value: String(saida.deaths || 0), inline: true },
+      { name: L.INIMIGO, value: enemy, inline: true },
+      { name: `${EMOJI.KILL} ${L.KILLS}`, value: String(saida.our_kills || 0), inline: true },
+      { name: `${EMOJI.MORTE} ${L.MORTES}`, value: String(saida.deaths || 0), inline: true },
     );
   }
 
-  if (saida.had_craft) fields.push({ name: 'Craft', value: '✅', inline: true });
-  if (saida.had_domination) fields.push({ name: 'Domínio', value: '✅', inline: true });
+  if (saida.had_craft) fields.push({ name: 'Craft', value: EMOJI.OK, inline: true });
+  if (saida.had_domination) fields.push({ name: 'Domínio', value: EMOJI.OK, inline: true });
 
   fields.push(
-    { name: '📦 Fornecido', value: formatMoney(saida.supplied_value), inline: true },
-    { name: '↩️ Devolvido', value: formatMoney(saida.returned_value), inline: true },
-    { name: '💥 Perdido',   value: formatMoney(saida.lost_value),     inline: true },
-    { name: '🔥 Consumido', value: formatMoney(saida.consumed_value), inline: true },
-    { name: '💰 Bruto',     value: formatMoney(saida.gross_value),    inline: true },
-    { name: `💵 Líquido (${profitTag})`, value: formatMoney(saida.net_value), inline: true },
+    { name: `${EMOJI.MATERIAL} ${L.MATERIAL_FORNECIDO}`, value: formatMoney(saida.supplied_value), inline: true },
+    { name: `${EMOJI.DEVOLVER} ${L.MATERIAL_DEVOLVIDO}`, value: formatMoney(saida.returned_value), inline: true },
+    { name: `${EMOJI.PERDIDO} ${L.MATERIAL_PERDIDO}`,    value: formatMoney(saida.lost_value),     inline: true },
+    { name: `${EMOJI.CRAFT} Consumido`,                   value: formatMoney(saida.consumed_value), inline: true },
+    { name: `${EMOJI.LUCRO} ${L.LUCRO_BRUTO}`,            value: formatMoney(saida.gross_value),    inline: true },
+    { name: `${EMOJI.DINHEIRO} ${L.LUCRO_LIQUIDO} (${profitTag})`, value: formatMoney(saida.net_value), inline: true },
   );
 
   if (saida.result_notes) fields.push({ name: 'Notas', value: saida.result_notes.slice(0, 200), inline: false });
 
-  return brandEmbed()
+  return brandEmbed('MOVEMENT')
     .setColor(meta.color)
     .setTitle(`${meta.emoji} Saída #${saida.id} — ${meta.label}`)
     .addFields(fields);
@@ -85,59 +82,61 @@ function buildDestaquesEmbed(saida, participants) {
   const ficaramDevendo = participants.filter(p => (p.issued_value || 0) > (p.returned_value || 0) + (p.lost_value || 0) + (p.consumed_value || 0));
 
   const fmt = (p) => `<@${p.discord_id}> (${p.display_name})`;
+  const L = SAIDAS.LABELS;
 
   const fields = [];
   fields.push({
-    name: '🏅 MVP',
+    name: `${EMOJI.MVP} ${L.MVP}`,
     value: mvp
-      ? `${fmt(mvp)} · ${mvp.kills || 0} kills · perf **${Math.round(mvp.performance_score)}** · disc **${Math.round(mvp.discipline_score)}%**`
-      : '_(nenhum destaque)_',
+      ? `${fmt(mvp)} · ${mvp.kills || 0} kills · peso **${Math.round(mvp.performance_score)}** · disciplina **${Math.round(mvp.discipline_score)}%**`
+      : '_(sem destaque)_',
     inline: false,
   });
 
   if (killers.length) {
     fields.push({
-      name: '🎯 Kills por membro',
+      name: `${EMOJI.KILL} Kills por nome`,
       value: killers.slice(0, 10).map(k => `• ${fmt(k)} — **${k.kills}** kill${k.kills === 1 ? '' : 's'}`).join('\n'),
       inline: false,
     });
   }
   if (mortos.length) {
     fields.push({
-      name: '☠️ Morreram',
+      name: `${EMOJI.MORTE} ${L.MORTOS}`,
       value: mortos.map(m => `• ${fmt(m)}`).join('\n'),
       inline: false,
     });
   }
   if (devolveram.length) {
     fields.push({
-      name: '✅ Devolveram tudo',
+      name: `${EMOJI.OK} ${L.DEVOLVERAM}`,
       value: devolveram.slice(0, 10).map(m => `• ${fmt(m)}`).join('\n'),
       inline: false,
     });
   }
   if (ficaramDevendo.length) {
     fields.push({
-      name: '⚠️ Ficaram a dever',
+      name: `${EMOJI.WARN} ${L.DEVENDO}`,
       value: ficaramDevendo.slice(0, 10).map(m => `• ${fmt(m)} (${formatMoney(m.issued_value - m.returned_value - m.lost_value - m.consumed_value)})`).join('\n'),
       inline: false,
     });
   }
 
-  return brandEmbed()
+  return brandEmbed('MOVEMENT')
     .setColor(0xE67E22)
-    .setTitle(`🌟 Destaques individuais — Saída #${saida.id}`)
+    .setTitle(`${EMOJI.MVP} ${SAIDAS.DESTAQUES_TITLE} — Saída #${saida.id}`)
     .addFields(fields.length ? fields : [{ name: '—', value: 'Sem destaques.' }]);
 }
 
 async function buildImpactoEmbed(saida) {
   const fields = [];
+  const L = SAIDAS.LABELS;
   if (saida.spot) {
     const ss = await spotStatsRepo.getBySpot(saida.spot);
     if (ss) {
       const winRate = ss.total_saidas > 0 ? Math.round((ss.wins / ss.total_saidas) * 100) : 0;
       fields.push({
-        name: `📍 Spot "${saida.spot}"`,
+        name: `${EMOJI.ZONA} Spot "${saida.spot}"`,
         value: `${ss.total_saidas} saídas · ${ss.wins}W / ${ss.losses}L / ${ss.draws}D · winrate **${winRate}%** · net **${formatMoney(ss.total_net_value)}** · ${ss.our_kills} kills / ${ss.our_deaths} mortes`,
         inline: false,
       });
@@ -145,13 +144,15 @@ async function buildImpactoEmbed(saida) {
   }
 
   const totalKills = await killRepo.totalOrgKills();
-  fields.push({ name: '💀 Kills totais da org', value: String(totalKills), inline: true });
+  fields.push({ name: `${EMOJI.DERROTA} ${L.ORG_KILLS}`, value: String(totalKills), inline: true });
+
+  const medals = [EMOJI.MEDAL_1, EMOJI.MEDAL_2, EMOJI.MEDAL_3];
 
   const topKillers = await killRepo.getLeaderboard(3);
   if (topKillers.length) {
     fields.push({
-      name: '👑 Top killers (all-time)',
-      value: topKillers.map((k, i) => `${['🥇','🥈','🥉'][i]} <@${k.discord_id}> — ${k.kills}`).join('\n'),
+      name: `${EMOJI.LIDER} Top killers (all-time)`,
+      value: topKillers.map((k, i) => `${medals[i]} <@${k.discord_id}> — ${k.kills}`).join('\n'),
       inline: false,
     });
   }
@@ -159,15 +160,15 @@ async function buildImpactoEmbed(saida) {
   const topProfit = await memberSaidaStatsRepo.listTop('profit_generated', 3);
   if (topProfit.length) {
     fields.push({
-      name: '💰 Top lucro gerado',
-      value: topProfit.map((m, i) => `${['🥇','🥈','🥉'][i]} <@${m.discord_id}> — ${formatMoney(m.profit_generated)}`).join('\n'),
+      name: `${EMOJI.LUCRO} Top lucro gerado`,
+      value: topProfit.map((m, i) => `${medals[i]} <@${m.discord_id}> — ${formatMoney(m.profit_generated)}`).join('\n'),
       inline: false,
     });
   }
 
-  return brandEmbed()
+  return brandEmbed('TOP')
     .setColor(0x9B59B6)
-    .setTitle('📈 Impacto histórico')
+    .setTitle(SAIDAS.IMPACTO_TITLE)
     .addFields(fields.length ? fields : [{ name: '—', value: 'Sem histórico suficiente.' }]);
 }
 

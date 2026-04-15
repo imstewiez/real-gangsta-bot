@@ -28,6 +28,8 @@ const { saidaRepo, killRepo, memberRepo } = require('../repositories');
 const { query } = require('../db');
 const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
 const { brandEmbed } = require('../shared/embedBuilders');
+const { SAIDAS, EMOJI } = require('../content');
+const CONFIG = require('../config');
 const { log, warn } = require('../logger');
 
 async function _renderWizardMessage(saidaId) {
@@ -38,16 +40,16 @@ async function _renderWizardMessage(saidaId) {
   const settled = participants.filter(p => p.settled);
 
   const lines = [
-    `**Saída #${saidaId}** — liquidação por participante`,
+    SAIDAS.WIZARD_DESC(saidaId),
     saida?.result ? `Resultado: **${saida.result.toUpperCase()}**` : '',
     '',
     `Pendentes: **${pending.length}** · Liquidados: **${settled.length}**`,
   ].filter(Boolean);
 
   if (settled.length) {
-    lines.push('', '**✅ Liquidados:**');
+    lines.push('', `**${EMOJI.OK} Liquidados:**`);
     for (const p of settled.slice(0, 10)) {
-      const status = p.died ? '☠️ Morto' : '✅ Vivo';
+      const status = p.died ? `${EMOJI.MORTE} Morto` : `${EMOJI.OK} Vivo`;
       const k = p.kills ? ` · **${p.kills}k**` : '';
       const d = p.downs ? ` · ${p.downs}d` : '';
       lines.push(`• <@${p.discord_id}> — ${status}${k}${d}`);
@@ -57,7 +59,7 @@ async function _renderWizardMessage(saidaId) {
 
   const embed = brandEmbed()
     .setColor(0x9B59B6)
-    .setTitle('🏁 Liquidação de Saída')
+    .setTitle(SAIDAS.WIZARD_TITLE)
     .setDescription(lines.join('\n'));
 
   const components = [];
@@ -71,7 +73,7 @@ async function _renderWizardMessage(saidaId) {
     components.push(new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId(`saida::wz_select::${saidaId}`)
-        .setPlaceholder(`Seleciona próximo participante (${pending.length} pendente${pending.length === 1 ? '' : 's'})`)
+        .setPlaceholder(SAIDAS.WIZARD_SELECT_PLACEHOLDER(pending.length))
         .setMinValues(1).setMaxValues(1)
         .addOptions(options)
     ));
@@ -81,8 +83,8 @@ async function _renderWizardMessage(saidaId) {
     new ButtonBuilder()
       .setCustomId(`saida::wz_finish::${saidaId}`)
       .setStyle(pending.length ? ButtonStyle.Primary : ButtonStyle.Success)
-      .setLabel(pending.length ? 'Concluir (auto-liquida os restantes como vivos s/ kills)' : 'Finalizar saída e publicar resultados')
-      .setEmoji('🏁')
+      .setLabel(pending.length ? SAIDAS.WIZARD_BTN_FINISH_PENDING : SAIDAS.WIZARD_BTN_FINISH_DONE)
+      .setEmoji(EMOJI.FECHAR)
   ));
 
   return { embed, components };
@@ -106,27 +108,27 @@ async function handleSelectParticipant(interaction) {
     .addComponents(
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('kills')
-          .setLabel('Kills (nº)')
+          .setLabel(SAIDAS.MODAL.KILLS_LABEL)
           .setStyle(TextInputStyle.Short)
           .setRequired(false).setMaxLength(4).setPlaceholder('0')),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('downs')
-          .setLabel('Downs (nº)')
+          .setLabel(SAIDAS.MODAL.DOWNS_LABEL)
           .setStyle(TextInputStyle.Short)
           .setRequired(false).setMaxLength(4).setPlaceholder('0')),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('died')
-          .setLabel('Morreu? (S/N)')
+          .setLabel(SAIDAS.MODAL.DIED_LABEL)
           .setStyle(TextInputStyle.Short)
           .setRequired(true).setMaxLength(3).setPlaceholder('N')),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('died_with_mat')
-          .setLabel('Morreu com material da org? (S/N)')
+          .setLabel(SAIDAS.MODAL.DIED_WITH_MAT_LABEL)
           .setStyle(TextInputStyle.Short)
           .setRequired(false).setMaxLength(3).setPlaceholder('N')),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('notes')
-          .setLabel('Notas (opcional)')
+          .setLabel(SAIDAS.MODAL.NOTES_LABEL)
           .setStyle(TextInputStyle.Paragraph)
           .setRequired(false).setMaxLength(300)),
     );
@@ -251,11 +253,9 @@ async function handleFinish(interaction) {
   }, interaction.user.id);
 
   const v = result?.values || {};
+  const channelId = CONFIG.SAIDA_RESULTS_CHANNEL_ID || CONFIG.AUDIT_CHANNEL_ID || '';
   return safeReply(interaction, {
-    content: `🏁 Saída **#${saidaId}** finalizada.\n`
-      + `🎯 ${totalKills} kills · ⚰️ ${totalDeaths} mortes · 🛡️ ${survivors} sobreviventes\n`
-      + `💵 Lucro líquido: **${(v.net || 0).toLocaleString('pt-PT')} €** (${v.was_profitable ? 'lucro' : 'prejuízo'})\n`
-      + `📊 Resultados publicados em \`SAIDA_RESULTS_CHANNEL_ID\` (ou fallback AUDIT).`,
+    content: SAIDAS.WIZARD_SUMMARY(saidaId, totalKills, totalDeaths, survivors, v.net, v.was_profitable, channelId),
   }, { dismissible: true });
 }
 

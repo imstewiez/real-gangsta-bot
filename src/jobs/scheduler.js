@@ -51,10 +51,12 @@ function startAll(client) {
     }
   });
 
-  // Sync para Google Sheets a cada 30 minutos
-  if (CONFIG.SPREADSHEET_ID) {
-    const { syncAll } = require('../sheets/inventorySync');
-    registerJob('sheets_sync', 30 * 60 * 1000, async () => { await syncAll(); });
+  // Sync do Google Sheet (dashboard premium). Intervalo configurável via
+  // SHEETS_SYNC_INTERVAL_MIN (default 15). Suporta SPREADSHEET_ID legado.
+  if (CONFIG.SPREADSHEET_ID || CONFIG.GOOGLE_SHEET_ID || CONFIG.SHEET_ID) {
+    const { syncAll } = require('../sheets/syncEngine');
+    const minutes = Number(CONFIG.SHEETS_SYNC_INTERVAL_MIN) || 15;
+    registerJob('sheets_sync', minutes * 60 * 1000, async () => { await syncAll(); });
   }
 
   // Sticky messages — refresh time-based (modo repost com threshold_minutes)

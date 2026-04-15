@@ -12,6 +12,7 @@ module.exports = {
   killRepo: require('./kill'),
   spotStatsRepo: require('./spotStats'),
   memberSaidaStatsRepo: require('./memberSaidaStats'),
+  memberAnalyticsRepo: require('./memberAnalytics'),
   rankingRepo: require('./ranking'),
   auditRepo: require('./audit'),
   jobRepo: require('./job'),

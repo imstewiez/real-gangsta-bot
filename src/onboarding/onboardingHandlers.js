@@ -6,6 +6,7 @@ const {
 const CONFIG = require('../config');
 const { safeReply, safeShowModal, getModalField, isDuplicate, lockMessageComponents } = require('../shared/interactionHelpers');
 const { brandEmbed, successEmbed } = require('../shared/embedBuilders');
+const { EMOJI, footer } = require('../content');
 const { isChefeMoradores } = require('../permissions/permissionEngine');
 const { query } = require('../db');
 const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
@@ -15,18 +16,18 @@ const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
 // ═══════════════════════════════════════════════════════════════════════════
 
 function buildEntradaPanel() {
-  const embed = new EmbedBuilder()
+  const { applyLogo } = require('../shared/embedBuilders');
+  const embed = applyLogo(new EmbedBuilder()
     .setColor(CONFIG.BOT_COLOR)
-    .setTitle('🔥 Bem-vindo ao bairro')
+    .setTitle(`${EMOJI.FIRMA} Entrada`)
     .setDescription(
-      'Queres entrar para o GUETTO? Faz o pedido aqui.\n\n' +
-      'Clica no botão, mete o **nome in-game** e a **alcunha**.\n' +
-      'Um oficial analisa o teu pedido — se tudo bater certo recebes tag, ' +
-      'acesso ao bairro e um canal só teu.\n\n' +
-      '_A rua é para quem aparece._'
+      'Queres entrar pro guetto? Faz o pedido aqui.\n\n' +
+      'Carrega no botão, mete o **nome in-game** e a **alcunha**.\n' +
+      'Um oficial lê o pedido — se bater certo, tens tag, acesso e canal só teu.\n\n' +
+      '_A rua é pra quem aparece._'
     )
-    .setFooter({ text: `— ${CONFIG.BOT_DISPLAY_NAME} ·` })
-    .setTimestamp();
+    .setFooter(footer('SHORT', CONFIG.BOT_LOGO_URL))
+    .setTimestamp());
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -51,7 +52,7 @@ async function handlePedirTagButton(interaction) {
   );
   if (existing.rows.length > 0) {
     return safeReply(interaction, {
-      content: 'Já tens um pedido de tag pendente. Aguarda pela aprovação.',
+      content: `${EMOJI.PENDENTE} Já tens pedido em análise. Espera — o oficial vai ler.`,
       flags: MessageFlags.Ephemeral,
     }, { dismissible: true });
   }
@@ -61,7 +62,7 @@ async function handlePedirTagButton(interaction) {
   const hasRole = moradorRoleIds.some(id => interaction.member.roles.cache.has(id));
   if (hasRole) {
     return safeReply(interaction, {
-      content: 'Já tens uma tag de morador. Não precisas de pedir novamente.',
+      content: `${EMOJI.WARN} Já estás na casa — não precisas de pedir outra vez.`,
       flags: MessageFlags.Ephemeral,
     }, { dismissible: true });
   }
@@ -242,14 +243,19 @@ function buildMoradorChannelPanel() {
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('morador::registar_material').setLabel('Registar Material').setStyle(ButtonStyle.Success).setEmoji('\uD83D\uDCE6'),
     new ButtonBuilder().setCustomId('morador::encomendar').setLabel('Encomendar').setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDED2'),
-    new ButtonBuilder().setCustomId('morador::historico').setLabel('Meu Histórico').setStyle(ButtonStyle.Secondary).setEmoji('\uD83D\uDCCB'),
+    new ButtonBuilder().setCustomId('morador::historico').setLabel('Histórico').setStyle(ButtonStyle.Secondary).setEmoji('\uD83D\uDCCB'),
   );
   const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('morador::progresso').setLabel('Meu Progresso').setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDCCA'),
+    new ButtonBuilder().setCustomId('morador::progresso').setLabel('Progresso').setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDCCA'),
     new ButtonBuilder().setCustomId('morador::top_semanal').setLabel('Top Semanal').setStyle(ButtonStyle.Secondary).setEmoji('\uD83C\uDFC6'),
   );
+  const row3 = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('morador::my_performance').setLabel('Performance').setStyle(ButtonStyle.Primary).setEmoji('\uD83C\uDFAF'),
+    new ButtonBuilder().setCustomId('morador::my_material').setLabel('Meu Material').setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDCE6'),
+    new ButtonBuilder().setCustomId('morador::my_profit').setLabel('Meu Lucro').setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDCB0'),
+  );
 
-  return [row1, row2];
+  return [row1, row2, row3];
 }
 
 module.exports = {

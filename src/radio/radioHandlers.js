@@ -20,6 +20,7 @@ const {
   notifyStickyChange,
 } = require('./radioEngine');
 const { safeReply } = require('../shared/interactionHelpers');
+const { RADIO, EMOJI } = require('../content');
 const { warn } = require('../logger');
 
 function parseId(customId) {
@@ -48,10 +49,10 @@ async function handleRandom(interaction) {
     notifyStickyChange(interaction.client).catch(() => {});
     const meta = TYPE_META[type];
     return safeReply(interaction, {
-      content: `${meta.emoji} ${meta.label} aleatória: \`${result.value}\` (era \`${result.previous || '∅'}\`).`,
+      content: RADIO.RANDOM(meta.label, meta.emoji, result.previous, result.value),
     }, { dismissible: true });
   } catch (e) {
-    return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
   }
 }
 
@@ -59,15 +60,14 @@ async function handleSet(interaction) {
   const [, , type] = parseId(interaction.customId);
   if (!TYPE_META[type]) return;
   const meta = TYPE_META[type];
-  // Abre modal para o user inserir o valor.
   const modal = new ModalBuilder()
     .setCustomId(`radio::modal_set::${type}`)
-    .setTitle(`Definir Rádio ${meta.label}`)
+    .setTitle(`Rádio ${meta.label}`)
     .addComponents(
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
           .setCustomId('value')
-          .setLabel(`Valor da rádio ${meta.label.toLowerCase()}`)
+          .setLabel(`Valor (${meta.label.toLowerCase()})`)
           .setStyle(TextInputStyle.Short)
           .setRequired(true)
           .setMaxLength(8)
@@ -97,10 +97,10 @@ async function handleSetModal(interaction) {
     notifyStickyChange(interaction.client).catch(() => {});
     const meta = TYPE_META[type];
     return safeReply(interaction, {
-      content: `${meta.emoji} ${meta.label}: \`${result.previous || '∅'}\` → \`${result.value}\`.`,
+      content: RADIO.SET(meta.label, meta.emoji, result.previous, result.value),
     }, { dismissible: true });
   } catch (e) {
-    return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
   }
 }
 
@@ -111,10 +111,10 @@ async function handleSwap(interaction) {
     await refreshMessage(interaction);
     notifyStickyChange(interaction.client).catch(() => {});
     return safeReply(interaction, {
-      content: `🔁 Trocadas: 📻 \`${swapped.principal}\` • 🤝 \`${swapped.parceria}\`.`,
+      content: RADIO.SWAPPED(swapped.principal, swapped.parceria),
     }, { dismissible: true });
   } catch (e) {
-    return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
   }
 }
 
@@ -127,7 +127,7 @@ async function handleHistory(interaction) {
 async function handleRefresh(interaction) {
   await refreshMessage(interaction);
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  return safeReply(interaction, { content: '🔄 Atualizado.' }, { dismissible: true });
+  return safeReply(interaction, { content: `${EMOJI.REFRESH} Actualizado.` }, { dismissible: true });
 }
 
 module.exports = {

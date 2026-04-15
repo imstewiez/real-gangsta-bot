@@ -5,10 +5,13 @@ const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
 const { queueMemberOp, queueChannelOp } = require('../discordQueue');
 const { log, warn } = require('../logger');
 
-// ── Thresholds (entrega/venda acumulada em material) ────────────────────────
-// Young Blood (entry) → O Gunão:        25.000€
-// O Gunão → Gangster Fodido:            50.000€
+// ── Thresholds (entrega/venda acumulada — UNIDADES de material) ─────────────
+// Young Blood (entry) → O Gunão:        25.000 itens
+// O Gunão → Gangster Fodido:            50.000 itens
 // Gangster Fodido → cima:               manual (Patrão di Zona, Real Gangster, OG, etc.)
+//
+// Nota: o valor conta apenas QUANTIDADE (soma de quantity), nunca valor em €.
+// O preço estimado dos itens é usado só para cálculos económicos em saídas.
 // Promoções excepcionais (fora do threshold) continuam a ser feitas por
 // atribuição manual de role via Discord — o GuildMemberUpdate listener detecta
 // adições de roles oficiais e arquiva canal individual quando aplicável.
@@ -37,20 +40,23 @@ const PROMOTIONS = [
 ];
 
 /**
- * Calcula o valor total de material entregue/vendido por um membro.
- * Usa o preço do item (estimated_value) × quantidade.
+ * Calcula a QUANTIDADE total de material (unidades) entregue/vendido por um
+ * membro. Não usa preço — só soma quantity. É esta métrica que conta para
+ * promoções automáticas.
  */
-async function getMemberMaterialValue(memberId) {
+async function getMemberMaterialQty(memberId) {
   const { query } = require('../db');
   const res = await query(`
-    SELECT COALESCE(SUM(im.quantity * COALESCE(i.estimated_value, 0)), 0) as total_value
+    SELECT COALESCE(SUM(im.quantity), 0) as total_qty
     FROM inventory_movements im
-    JOIN items i ON i.id = im.item_id
     WHERE im.member_id = $1
       AND im.movement_type IN ('entrega_morador', 'venda_morador', 'entrega_oficial')
   `, [memberId]);
-  return parseFloat(res.rows[0]?.total_value || 0);
+  return parseInt(res.rows[0]?.total_qty || 0, 10);
 }
+// Alias legado — quem ainda importar pelo nome antigo continua a funcionar,
+// mas recebe quantidade (não valor). Nome antigo deprecated.
+const getMemberMaterialValue = getMemberMaterialQty;
 
 /**
  * Verifica se um membro merece promoção automática e aplica-a.
@@ -76,8 +82,8 @@ async function checkAndPromote(discordId, guild, client) {
   const threshold = CONFIG[promotion.thresholdKey];
   if (!threshold) return null;
 
-  const totalValue = await getMemberMaterialValue(dbMember.id);
-  if (totalValue < threshold) return null; // Ainda não atingiu
+  const totalQty = await getMemberMaterialQty(dbMember.id);
+  if (totalQty < threshold) return null; // Ainda não atingiu
 
   // ── Promover! ──────────────────────────────────────────────────────────
   const fromRoleId = CONFIG[promotion.fromRoleKey];
@@ -96,7 +102,7 @@ async function checkAndPromote(discordId, guild, client) {
     if (fromRoleId && guildMember.roles.cache.has(fromRoleId)) {
       await queueMemberOp(() => guildMember.roles.remove(fromRoleId, `Auto-promoção: ${promotion.from} → ${promotion.to}`));
     }
-    await queueMemberOp(() => guildMember.roles.add(toRoleId, `Auto-promoção: atingiu ${threshold}€ em material`));
+    await queueMemberOp(() => guildMember.roles.add(toRoleId, `Auto-promoção: atingiu ${threshold.toLocaleString('pt-PT')} itens entregues`));
 
     // Atualizar DB
     await memberRepo.update(dbMember.id, { tier: promotion.to });
@@ -129,20 +135,20 @@ async function checkAndPromote(discordId, guild, client) {
       entityId: discordId,
       actorId: 'system',
       actorName: CONFIG.BOT_DISPLAY_NAME,
-      beforeState: { tier: promotion.from, totalValue },
+      beforeState: { tier: promotion.from, totalQty },
       afterState: { tier: promotion.to, threshold },
-      context: `Material acumulado: ${totalValue.toLocaleString('pt-PT')}€ (meta: ${threshold.toLocaleString('pt-PT')}€)`,
+      context: `Material acumulado: ${totalQty.toLocaleString('pt-PT')} itens (meta: ${threshold.toLocaleString('pt-PT')} itens)`,
     });
 
     await sendAuditToChannel(client, {
       title: 'Promoção Automática!',
-      description: `<@${discordId}> subiu de **${formatTierName(promotion.from)}** para **${formatTierName(promotion.to)}**!\n\nMaterial acumulado: **${totalValue.toLocaleString('pt-PT')}€** (meta: ${threshold.toLocaleString('pt-PT')}€)`,
+      description: `<@${discordId}> subiu de **${formatTierName(promotion.from)}** para **${formatTierName(promotion.to)}**!\n\nMaterial acumulado: **${totalQty.toLocaleString('pt-PT')} itens** (meta: ${threshold.toLocaleString('pt-PT')} itens)`,
       color: 0xFFD700,
     });
 
-    log(`[AUTO-PROMO] ${dbMember.display_name}: ${promotion.from} → ${promotion.to} (${totalValue}€)`);
+    log(`[AUTO-PROMO] ${dbMember.display_name}: ${promotion.from} → ${promotion.to} (${totalQty} itens)`);
 
-    return { promoted: true, from: promotion.from, to: promotion.to, value: totalValue };
+    return { promoted: true, from: promotion.from, to: promotion.to, qty: totalQty };
   } catch (e) {
     warn(`[AUTO-PROMO] Falha ao promover ${dbMember.display_name}: ${e.message}`);
     return null;
@@ -173,13 +179,15 @@ async function getPromotionProgress(discordId) {
   const currentTier = dbMember.tier || CONFIG.MORADOR_DEFAULT_TIER;
   const promotion = PROMOTIONS.find(p => p.from === currentTier);
 
-  const totalValue = await getMemberMaterialValue(dbMember.id);
+  const totalQty = await getMemberMaterialQty(dbMember.id);
 
   if (!promotion) {
     return {
       currentTier,
       currentTierName: formatTierName(currentTier),
-      totalValue,
+      totalQty,
+      // Campo legado — aponta para totalQty agora; alguns callers ainda leem.
+      totalValue: totalQty,
       nextTier: null,
       nextTierName: null,
       threshold: null,
@@ -190,13 +198,14 @@ async function getPromotionProgress(discordId) {
   }
 
   const threshold = CONFIG[promotion.thresholdKey];
-  const remaining = Math.max(0, threshold - totalValue);
-  const progress = Math.min(100, (totalValue / threshold) * 100);
+  const remaining = Math.max(0, threshold - totalQty);
+  const progress = Math.min(100, (totalQty / threshold) * 100);
 
   return {
     currentTier,
     currentTierName: formatTierName(currentTier),
-    totalValue,
+    totalQty,
+    totalValue: totalQty, // legado
     nextTier: promotion.to,
     nextTierName: formatTierName(promotion.to),
     threshold,
@@ -206,4 +215,4 @@ async function getPromotionProgress(discordId) {
   };
 }
 
-module.exports = { checkAndPromote, getPromotionProgress, getMemberMaterialValue, formatTierName, TIERS, PROMOTIONS };
+module.exports = { checkAndPromote, getPromotionProgress, getMemberMaterialQty, getMemberMaterialValue, formatTierName, TIERS, PROMOTIONS };
