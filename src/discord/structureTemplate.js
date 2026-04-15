@@ -341,21 +341,28 @@ const CHANNELS_TO_CREATE = [
   { name: ch('📋', 'painel-chefe-moradores'),  categoryKey: 'GUETTO',   renameFrom: ['📋│painel-chefe-moradores'], reason: 'Painel Patrão di Zona — só bot posta, moradores NÃO vêem' },
 ];
 
-// ── Role display names (bold unicode, consistente com os canais) ─────────────
+// ── Role display names (emoji + bold unicode, mesma estética dos canais) ────
 // Mapa de ROLE_ID_KEY → display name. Usado pelo sync-perms para renomear.
+// Formato: `<emoji> <bold(nome)>` — coerente com os canais (que usam `emoji・nome`).
 const ROLE_DISPLAY_NAMES = {
-  MANDA_CHUVA_ROLE_ID:         bold('Manda-Chuva'),
-  KINGPIN_ROLE_ID:             bold('Kingpin'),
-  OG_ROLE_ID:                  bold('OG'),
-  REAL_GANGSTER_ROLE_ID:       bold('Real Gangster'),
-  PATRAO_DI_ZONA_ROLE_ID:      bold('Patrão di Zona'),
-  GANGSTER_FODIDO_ROLE_ID:     bold('Gangster Fodido'),
-  O_GUNAO_ROLE_ID:             bold('O Gunão'),
-  YOUNG_BLOOD_ROLE_ID:         bold('Young Blood'),
-  MORADORES_BASE_ROLE_ID:      bold('Moradores'),
-  TROPINHAS_DO_GUETTO_ROLE_ID: bold('Tropinhas do Guetto'),
-  PATRULHA_PATA_ROLE_ID:       bold('Patrulha Pata'),
-  PENDENTE_ROLE_ID:            bold('Pendente'),
+  // Comando — topo
+  MANDA_CHUVA_ROLE_ID:         `🐉 ${bold('Manda-Chuva')}`,
+  KINGPIN_ROLE_ID:             `💎 ${bold('Kingpin')}`,
+  // Supervisão — oficiais
+  OG_ROLE_ID:                  `🏆 ${bold('OG')}`,
+  REAL_GANGSTER_ROLE_ID:       `🥷 ${bold('Real Gangster')}`,
+  // Chefe do GUETTO
+  PATRAO_DI_ZONA_ROLE_ID:      `👑 ${bold('Patrão di Zona')}`,
+  // Tiers de morador (entry → topo)
+  YOUNG_BLOOD_ROLE_ID:         `🍼 ${bold('Young Blood')}`,
+  O_GUNAO_ROLE_ID:             `🔫 ${bold('O Gunão')}`,
+  GANGSTER_FODIDO_ROLE_ID:     `💀 ${bold('Gangster Fodido')}`,
+  // Base + flavor
+  MORADORES_BASE_ROLE_ID:      `🏚️ ${bold('Moradores')}`,
+  TROPINHAS_DO_GUETTO_ROLE_ID: `👶 ${bold('Tropinhas do Guetto')}`,
+  PATRULHA_PATA_ROLE_ID:       `🐕 ${bold('Patrulha Pata')}`,
+  // Newcomer
+  PENDENTE_ROLE_ID:            `⏳ ${bold('Pendente')}`,
 };
 
 // ── Role guild-level permissions (bitfield em nomes discord.js) ──────────────
