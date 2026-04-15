@@ -1,20 +1,26 @@
 'use strict';
 /**
- * Tab Saídas — histórico completo de saídas com KPI bar + banding.
+ * Tab Saídas — histórico completo com KPIs operacionais e tabela premium.
  */
 
-const { COLOR, NUM_FMT, cell, bodyCell, numCell, pillCell, conditionalGreaterThan, conditionalLessThan } = require('../theme');
-const { writeHeader, writeKpiBar, writeTableHeader, writeDivider, setWidths, applyRowBanding, writeFooter } = require('./_common');
+const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, numCell, badgeCell,
+  conditionalGreaterThan, conditionalLessThan } = require('../theme');
+const {
+  headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
+  footerBlock, setWidths,
+} = require('./_common');
 const { getSaidasFull } = require('../queries');
+const { growSheet } = require('../cleanup');
 
 const HEADERS = [
   'ID', 'Data', 'Hora', 'Spot', 'Tipo', 'Líder', 'Grupo', 'Estado', 'Resultado',
-  'Inimigo · Facção', 'Nomes', 'K', 'M', 'Vivos', 'Vieram',
+  'Inimigo', 'Facção', 'Pplzz', 'K', 'M', 'Viv.', 'Vol.',
   'Fornecido', 'Devolvido', 'Perdido', 'Consumido',
-  'Bruto', 'Líquido', 'Lucro', 'Notas',
+  'Bruto', 'Líquido', 'Δ', 'Notas',
 ];
+const COL_COUNT = HEADERS.length;
 
-function resultPill(r) {
+function resultBadge(r) {
   const map = {
     vitoria:      { label: 'VITÓRIA', bg: COLOR.GREEN_DEEP },
     derrota:      { label: 'DERROTA', bg: COLOR.RED_DEEP },
@@ -23,55 +29,75 @@ function resultPill(r) {
     abortada:     { label: 'ABORT.',  bg: COLOR.GRAPHITE },
   };
   const m = map[r];
-  return m ? pillCell(m.label, m.bg) : bodyCell('—');
+  return m ? badgeCell(m.label, m.bg) : mutedCell('—', { align: 'CENTER' });
 }
 
-function statusPill(s) {
+function statusBadge(s) {
   const map = {
-    aberta:        { label: 'ABERTA',    bg: COLOR.GREEN_DEEP },
-    em_preparacao: { label: 'PREP.',     bg: COLOR.YELLOW_DEEP },
-    em_curso:      { label: 'EM CURSO',  bg: COLOR.RED_DEEP },
-    concluida:     { label: 'FECHADA',   bg: COLOR.GRAPHITE },
-    cancelada:     { label: 'CANCEL.',   bg: COLOR.GRAY_DARK },
+    aberta:        { label: 'ABERTA',  bg: COLOR.GREEN_DEEP },
+    em_preparacao: { label: 'PREP',    bg: COLOR.YELLOW_DEEP },
+    em_curso:      { label: 'CURSO',   bg: COLOR.RED_DEEP },
+    concluida:     { label: 'FECHADA', bg: COLOR.GRAPHITE },
+    cancelada:     { label: 'CANCEL',  bg: COLOR.GRAY_DARK },
   };
   const m = map[s];
-  return m ? pillCell(m.label, m.bg) : bodyCell(s || '—');
+  return m ? badgeCell(m.label, m.bg) : bodyCell(s || '—');
 }
 
 async function syncSaidas(batch, sheetId) {
   const rows = await getSaidasFull(500);
-  const COL_COUNT = HEADERS.length;
 
-  // ── KPI bar: agrega rápido sobre todas as saídas ────────────────────────
-  const wins = rows.filter(r => r.result === 'vitoria').length;
-  const losses = rows.filter(r => r.result === 'derrota').length;
+  const concluidas = rows.filter(r => r.status === 'concluida');
+  const wins       = concluidas.filter(r => r.result === 'vitoria').length;
+  const losses     = concluidas.filter(r => r.result === 'derrota').length;
+  const draws      = concluidas.filter(r => r.result === 'empate').length;
   const totalKills = rows.reduce((a, r) => a + (r.kills || 0), 0);
-  const totalNet = rows.reduce((a, r) => a + Number(r.net || 0), 0);
+  const totalDeath = rows.reduce((a, r) => a + (r.deaths || 0), 0);
+  const totalNet   = rows.reduce((a, r) => a + Number(r.net || 0), 0);
+  const totalLost  = rows.reduce((a, r) => a + Number(r.lost || 0), 0);
+  const winRate    = concluidas.length ? wins / concluidas.length : 0;
 
-  let row = writeHeader(batch, sheetId, 'Saídas · Movimento da Casa', COL_COUNT);
-  row = writeKpiBar(batch, sheetId, row, [
-    { label: 'Total',   value: rows.length, fmt: NUM_FMT.INT },
-    { label: 'Vitórias',value: wins,        fmt: NUM_FMT.INT },
-    { label: 'Derrotas',value: losses,      fmt: NUM_FMT.INT },
-    { label: 'Kills',   value: totalKills,  fmt: NUM_FMT.INT },
-    { label: 'Líquido', value: totalNet,    fmt: NUM_FMT.EURO },
-    { label: 'Winrate', value: rows.length ? wins / rows.length : 0, fmt: NUM_FMT.PCT },
+  // Grow antes de escrever — saidas pode ter 500+ rows
+  growSheet(batch, sheetId, { rows: Math.max(rows.length + 40, 200) });
+
+  let row = headerBlock(batch, sheetId, {
+    title: 'Saídas · Movimento da Casa',
+    subtitle: `histórico completo — ${rows.length} saídas (${concluidas.length} concluídas)`,
+    columnCount: COL_COUNT,
+  });
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
+
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'PANORAMA OPERACIONAL', hint: 'acumulado', columnCount: COL_COUNT,
+  });
+  row = kpiStrip(batch, sheetId, row, [
+    { label: 'Saídas',    value: rows.length,  numberFormat: NUM_FMT.INT,  delta: `${concluidas.length} concluídas`, deltaDirection: 'flat' },
+    { label: 'Win Rate',  value: winRate,      numberFormat: NUM_FMT.PCT,  delta: `${wins}V · ${losses}D · ${draws}E`, deltaDirection: winRate >= 0.5 ? 'up' : 'down' },
+    { label: 'K/D Org',   value: totalDeath > 0 ? totalKills / totalDeath : totalKills, numberFormat: NUM_FMT.KD, delta: `${totalKills}k · ${totalDeath}d`, deltaDirection: 'flat' },
+    { label: 'Balanço',   value: totalNet,     numberFormat: NUM_FMT.EURO, delta: `perdido: ${Math.round(totalLost)} €`, deltaDirection: totalNet > 0 ? 'up' : 'down' },
   ], COL_COUNT);
-  row = writeDivider(batch, sheetId, row, COL_COUNT);
-  row = writeTableHeader(batch, sheetId, row, HEADERS);
+
+  row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
+  row = divider(batch, sheetId, row, COL_COUNT, 'accent');
+
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'LEDGER DE SAÍDAS', hint: 'mais recentes no topo — filtros activos', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, HEADERS);
   const firstDataRow = row;
 
   const dataRows = rows.map(s => [
-    bodyCell(`#${s.id}`),
-    bodyCell(s.date ? new Date(s.date).toISOString().split('T')[0] : ''),
+    bodyBoldCell(`#${s.id}`),
+    bodyCell(s.date ? new Date(s.date).toISOString().split('T')[0] : '—'),
     bodyCell(s.hora || '—'),
     bodyCell(s.spot || '—'),
-    bodyCell(s.tipo || '—'),
+    captionCell(s.tipo || '—'),
     bodyCell(s.leader_name || '—'),
     numCell(s.group_number || 1, NUM_FMT.INT),
-    statusPill(s.status),
-    resultPill(s.result),
-    bodyCell([s.enemy_name, s.enemy_faction].filter(Boolean).join(' · ') || '—'),
+    statusBadge(s.status),
+    resultBadge(s.result),
+    bodyCell(s.enemy_name || '—'),
+    captionCell(s.enemy_faction || '—'),
     numCell(s.participantes, NUM_FMT.INT),
     numCell(s.kills, NUM_FMT.INT),
     numCell(s.deaths, NUM_FMT.INT),
@@ -83,23 +109,33 @@ async function syncSaidas(batch, sheetId) {
     numCell(Number(s.consumed), NUM_FMT.EURO),
     numCell(Number(s.gross), NUM_FMT.EURO),
     numCell(Number(s.net), NUM_FMT.EURO),
-    bodyCell(s.was_profitable === true ? '▲' : s.was_profitable === false ? '▼' : '—', { align: 'CENTER' }),
+    cell(s.was_profitable === true ? '▲' : s.was_profitable === false ? '▼' : '—', {
+      bg: COLOR.BG_APP,
+      font: s.was_profitable === true
+        ? { fontFamily: 'Inter', fontSize: 11, bold: true, foregroundColor: COLOR.GREEN_DEEP }
+        : s.was_profitable === false
+        ? { fontFamily: 'Inter', fontSize: 11, bold: true, foregroundColor: COLOR.RED_SIGNAL }
+        : { fontFamily: 'Inter', fontSize: 11, foregroundColor: COLOR.GRAY },
+      align: 'CENTER', vAlign: 'MIDDLE',
+    }),
     bodyCell(s.result_notes || '', { wrap: true }),
   ]);
 
-  if (dataRows.length) batch.updateCells(sheetId, row, 0, applyRowBanding(dataRows));
+  row = tableBody(batch, sheetId, row, dataRows, { basicFilter: true, columnCount: COL_COUNT });
 
-  // Conditional formatting
-  batch.addRule(conditionalGreaterThan(sheetId, firstDataRow, 11, firstDataRow + dataRows.length, 12, 3, COLOR.GREEN_SOFT));
-  batch.addRule(conditionalGreaterThan(sheetId, firstDataRow, 12, firstDataRow + dataRows.length, 13, 2, COLOR.RED_SIGNAL_SOFT));
-  batch.addRule(conditionalLessThan(sheetId, firstDataRow, 20, firstDataRow + dataRows.length, 21, 0, COLOR.RED_SIGNAL_SOFT));
-  batch.addRule(conditionalGreaterThan(sheetId, firstDataRow, 20, firstDataRow + dataRows.length, 21, 500, COLOR.GREEN_SOFT));
+  if (dataRows.length) {
+    const N = dataRows.length;
+    batch.addRule(conditionalGreaterThan(sheetId, firstDataRow, 12, firstDataRow + N, 13, 3, COLOR.GREEN_SOFT));
+    batch.addRule(conditionalGreaterThan(sheetId, firstDataRow, 13, firstDataRow + N, 14, 2, COLOR.RED_SIGNAL_SOFT));
+    batch.addRule(conditionalLessThan(sheetId, firstDataRow, 21, firstDataRow + N, 22, 0, COLOR.RED_SIGNAL_SOFT));
+    batch.addRule(conditionalGreaterThan(sheetId, firstDataRow, 21, firstDataRow + N, 22, 500, COLOR.GREEN_SOFT));
+  }
 
-  batch.setBasicFilter(sheetId, firstDataRow - 1, firstDataRow + dataRows.length, 0, COL_COUNT);
+  row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
+  row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Saídas');
 
-  writeFooter(batch, sheetId, firstDataRow + dataRows.length + 2, COL_COUNT);
-
-  setWidths(batch, sheetId, [50, 90, 55, 140, 80, 140, 55, 85, 90, 180, 55, 45, 45, 55, 60, 85, 85, 75, 85, 85, 85, 55, 240]);
+  setWidths(batch, sheetId, [55, 90, 55, 140, 75, 140, 50, 85, 90, 130, 100, 50, 40, 40, 45, 45, 85, 85, 75, 85, 85, 85, 45, 220]);
+  return { lastRow: row, lastCol: COL_COUNT };
 }
 
 module.exports = { syncSaidas };

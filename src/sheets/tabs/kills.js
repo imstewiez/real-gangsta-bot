@@ -1,15 +1,19 @@
 'use strict';
 /**
- * Tab Kills — kill log com KPI bar premium + banding.
+ * Tab Kills — kill log com KPIs operacionais e tabela limpa.
  */
 
-const { COLOR, NUM_FMT, bodyCell, numCell } = require('../theme');
-const { writeHeader, writeKpiBar, writeTableHeader, writeDivider, setWidths, applyRowBanding, writeFooter } = require('./_common');
+const { COLOR, NUM_FMT, bodyCell, bodyBoldCell, captionCell, mutedCell, numCell } = require('../theme');
+const {
+  headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
+  footerBlock, setWidths,
+} = require('./_common');
 const { getKillsFull, getKillsKPIs } = require('../queries');
 
 const HEADERS = [
   'Data/Hora', 'Killer', 'Vítima', 'Facção', 'Spot', 'Saída', 'Confirmado', 'Notas',
 ];
+const COL_COUNT = HEADERS.length;
 
 function fmtDT(d) {
   if (!d) return '—';
@@ -17,39 +21,53 @@ function fmtDT(d) {
 }
 
 async function syncKills(batch, sheetId) {
-  const kpi = await getKillsKPIs();
-  const rows = await getKillsFull(1000);
-  const COL_COUNT = HEADERS.length;
+  const [kpi, rows] = await Promise.all([getKillsKPIs(), getKillsFull(1000)]);
 
-  let row = writeHeader(batch, sheetId, 'Kills · Quem Pesou na Rua', COL_COUNT);
-  row = writeKpiBar(batch, sheetId, row, [
-    { label: 'Total',         value: kpi.total, fmt: NUM_FMT.INT },
-    { label: 'Esta Semana',   value: kpi.week,  fmt: NUM_FMT.INT },
-    { label: 'Top Killer',    value: kpi.topKiller ? `${kpi.topKiller.display_name} (${kpi.topKiller.kills})` : '—', fmt: null },
-    { label: 'Top Facção',    value: kpi.topFaction ? `${kpi.topFaction.victim_faction} (${kpi.topFaction.n})` : '—', fmt: null },
+  let row = headerBlock(batch, sheetId, {
+    title: 'Kills · Quem Pesou na Rua',
+    subtitle: `${kpi.total} kills registadas · ${kpi.week} esta semana`,
+    columnCount: COL_COUNT,
+  });
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
+
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'PANORAMA DE KILLS', hint: 'all-time + semana', columnCount: COL_COUNT,
+  });
+
+  const topKillerName   = kpi.topKiller   ? `${kpi.topKiller.display_name}` : '—';
+  const topFactionName  = kpi.topFaction  ? `${kpi.topFaction.victim_faction}` : '—';
+  row = kpiStrip(batch, sheetId, row, [
+    { label: 'Total',       value: kpi.total,          numberFormat: NUM_FMT.INT, delta: 'all-time', deltaDirection: 'flat' },
+    { label: 'Esta Semana', value: kpi.week,           numberFormat: NUM_FMT.INT, delta: `${kpi.week > 0 ? '▲ activa' : '— calma'}`, deltaDirection: kpi.week > 0 ? 'up' : 'flat' },
+    { label: 'Top Killer',  value: topKillerName,      numberFormat: null,        delta: kpi.topKiller ? `${kpi.topKiller.kills} kills` : '—', deltaDirection: 'up' },
+    { label: 'Top Facção',  value: topFactionName,     numberFormat: null,        delta: kpi.topFaction ? `${kpi.topFaction.n} vítimas` : '—', deltaDirection: 'flat' },
   ], COL_COUNT);
-  row = writeDivider(batch, sheetId, row, COL_COUNT);
-  row = writeTableHeader(batch, sheetId, row, HEADERS);
-  const firstDataRow = row;
+
+  row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
+  row = divider(batch, sheetId, row, COL_COUNT, 'accent');
+
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'KILL LOG', hint: 'mais recentes primeiro · filtros activos', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, HEADERS);
 
   const dataRows = rows.map(k => [
     bodyCell(fmtDT(k.created_at)),
-    bodyCell(k.killer_name || '—'),
+    bodyBoldCell(k.killer_name || '—'),
     bodyCell(k.victim_name || '—'),
-    bodyCell(k.victim_faction || '—'),
+    captionCell(k.victim_faction || '—'),
     bodyCell(k.spot || '—'),
-    k.saida_id ? bodyCell(`#${k.saida_id}`) : bodyCell('—'),
-    bodyCell(k.confirmed_by_name || '—'),
+    k.saida_id ? bodyCell(`#${k.saida_id}`) : mutedCell('—'),
+    captionCell(k.confirmed_by_name || '—'),
     bodyCell(k.notes || '', { wrap: true }),
   ]);
+  row = tableBody(batch, sheetId, row, dataRows, { basicFilter: true, columnCount: COL_COUNT });
 
-  if (dataRows.length) batch.updateCells(sheetId, row, 0, applyRowBanding(dataRows));
-
-  batch.setBasicFilter(sheetId, firstDataRow - 1, firstDataRow + dataRows.length, 0, COL_COUNT);
-
-  writeFooter(batch, sheetId, firstDataRow + dataRows.length + 2, COL_COUNT);
+  row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
+  row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Kills');
 
   setWidths(batch, sheetId, [140, 160, 160, 130, 140, 70, 160, 260]);
+  return { lastRow: row, lastCol: COL_COUNT };
 }
 
 module.exports = { syncKills };
