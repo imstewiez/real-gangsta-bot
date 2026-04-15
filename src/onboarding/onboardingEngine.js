@@ -99,41 +99,16 @@ async function processApproval(tagRequest, approverMember, client) {
   const { formatResidentChannelName, TIER_LABEL } = require('../discord/structureTemplate');
   const channelName = formatResidentChannelName(entryTier, nickname);
 
-  if (CONFIG.MORADOR_TOPICOS_CATEGORY_ID) {
+  if (CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID) {
     try {
       const botMember = guild.members.me;
-      const permissionOverwrites = [
-        { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-        { id: discordId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-        { id: botMember.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageMessages] },
-      ];
-
-      // Comando total (Manda-Chuva, Kingpin) — full control
-      for (const roleId of CONFIG.COMMAND_ROLE_IDS) {
-        permissionOverwrites.push({
-          id: roleId,
-          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageMessages, PermissionFlagsBits.ManageChannels],
-        });
-      }
-      // Supervisão (OG, Real Gangster) — read/write
-      for (const roleId of CONFIG.SUPERVISOR_ROLE_IDS) {
-        permissionOverwrites.push({
-          id: roleId,
-          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
-        });
-      }
-      // Patrão di Zona — gestão do GUETTO
-      for (const roleId of CONFIG.CHEFE_MORADORES_ROLE_IDS) {
-        permissionOverwrites.push({
-          id: roleId,
-          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageMessages],
-        });
-      }
+      const { buildBairristaChannelOverwrites } = require('../members/channelInvariants');
+      const permissionOverwrites = buildBairristaChannelOverwrites(guild, discordId, botMember.id);
 
       const channel = await queueChannelOp(() => guild.channels.create({
         name: channelName,
         type: ChannelType.GuildText,
-        parent: CONFIG.MORADOR_TOPICOS_CATEGORY_ID,
+        parent: CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID,
         permissionOverwrites,
         topic: `Canal individual de ${fullName} (${nickname})`,
       }));
@@ -143,7 +118,7 @@ async function processApproval(tagRequest, approverMember, client) {
       await query(
         `INSERT INTO resident_channels (member_id, discord_id, channel_id, channel_name, category_id)
          VALUES ($1, $2, $3, $4, $5)`,
-        [dbMember.id, discordId, channel.id, channelName, CONFIG.MORADOR_TOPICOS_CATEGORY_ID]
+        [dbMember.id, discordId, channel.id, channelName, CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID]
       );
 
       // Send welcome embed + enhanced panel

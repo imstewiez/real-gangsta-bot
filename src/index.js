@@ -569,7 +569,15 @@ async function _dispatchInteraction(interaction) {
         const apply = modo === 'apply';
         const report = await runPermsOnly(interaction.guild, { apply });
         const { summarize: summarizePerms } = require('./discord/structureSync');
-        return safeReply(interaction, { content: summarizePerms(report).slice(0, 1900) }, { dismissible: true });
+
+        // Reconcile canais individuais de bairristas — garante que só o dono
+        // + PDZ + oficiais + chefia vêem cada canal (não outros bairristas).
+        const { reconcileBairristaChannels } = require('./members/channelInvariants');
+        const chReport = await reconcileBairristaChannels(interaction.guild, { dryRun: !apply });
+
+        const summary = summarizePerms(report);
+        const chSummary = `\n\n**Canais individuais de bairristas:** scanned=${chReport.scanned} · fixed=${chReport.fixed} · missing=${chReport.missing} · errors=${chReport.errors.length}`;
+        return safeReply(interaction, { content: (summary + chSummary).slice(0, 1900) }, { dismissible: true });
       }
 
       if (cmd === 'rg-layout-check') {
