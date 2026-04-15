@@ -105,6 +105,16 @@ class BatchWriter {
     return this;
   }
 
+  /** Auto-resize — ajusta a dimensão ao conteúdo. Dimension: 'COLUMNS' | 'ROWS'. */
+  autoResize(sheetId, dimension, startIndex, endIndex) {
+    this.requests.push({
+      autoResizeDimensions: {
+        dimensions: { sheetId, dimension, startIndex, endIndex },
+      },
+    });
+    return this;
+  }
+
   /** Bandas alternadas (ímpar/par). */
   banding(sheetId, startRow, endRow, startCol, endCol, firstBand, secondBand, header) {
     const bandedRange = {

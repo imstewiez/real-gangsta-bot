@@ -7,7 +7,7 @@ const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, nu
   conditionalGradient, conditionalGreaterThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  footerBlock, setWidths,
+  footerBlock, setWidths, autoResizeColumns,
 } = require('./_common');
 const { getParticipantsFull } = require('../queries');
 const { growSheet } = require('../cleanup');
@@ -106,7 +106,7 @@ async function syncParticipantes(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, FREEZE_AT, 'Participantes');
 
-  setWidths(batch, sheetId, [55, 85, 120, 150, 85, 75, 75, 85, 85, 80, 85, 40, 40, 70, 70, 60, 65, 65, 200]);
+  autoResizeColumns(batch, sheetId, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

@@ -8,7 +8,7 @@ const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, numCell, pill
   conditionalGradient, conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  footerBlock, setWidths,
+  footerBlock, setWidths, autoResizeColumns,
 } = require('./_common');
 const { getMembersFull } = require('../queries');
 
@@ -130,7 +130,7 @@ async function syncMembers(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, FREEZE_AT, 'Membros');
 
-  setWidths(batch, sheetId, [180, 150, 95, 55, 95, 95, 95, 75, 100, 65, 65, 40, 40, 40, 40, 55, 65, 75, 100, 55]);
+  autoResizeColumns(batch, sheetId, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

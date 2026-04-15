@@ -6,7 +6,7 @@
 const { COLOR, NUM_FMT, bodyCell, bodyBoldCell, captionCell, mutedCell, badgeCell } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  footerBlock, setWidths,
+  footerBlock, setWidths, autoResizeColumns,
 } = require('./_common');
 const { getAuditFull } = require('../queries');
 const { growSheet } = require('../cleanup');
@@ -100,7 +100,7 @@ async function syncAudit(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Auditoria');
 
-  setWidths(batch, sheetId, [170, 160, 200, 110, 100, 240, 320]);
+  autoResizeColumns(batch, sheetId, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

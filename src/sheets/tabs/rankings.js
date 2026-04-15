@@ -7,7 +7,7 @@
 const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, numCell, rankCell } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, tableHeader, tableBody,
-  footerBlock, setWidths,
+  footerBlock, setWidths, autoResizeColumns,
 } = require('./_common');
 const { getRankings } = require('../queries');
 
@@ -150,7 +150,7 @@ async function syncRankings(batch, sheetId) {
   });
 
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Rankings');
-  setWidths(batch, sheetId, [60, 200, 110, 100, 100, 100, 80]);
+  autoResizeColumns(batch, sheetId, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

@@ -6,7 +6,7 @@
 const { COLOR, NUM_FMT, bodyCell, bodyBoldCell, captionCell, mutedCell, numCell, badgeCell } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  footerBlock, setWidths,
+  footerBlock, setWidths, autoResizeColumns,
 } = require('./_common');
 const { getMovementsFull } = require('../queries');
 const { growSheet } = require('../cleanup');
@@ -102,7 +102,7 @@ async function syncMovements(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, FREEZE_AT, 'Movimentos');
 
-  setWidths(batch, sheetId, [140, 110, 160, 110, 55, 85, 95, 130, 140, 80, 80, 55, 110, 130, 200]);
+  autoResizeColumns(batch, sheetId, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

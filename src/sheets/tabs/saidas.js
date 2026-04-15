@@ -7,7 +7,7 @@ const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, nu
   conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  footerBlock, setWidths,
+  footerBlock, setWidths, autoResizeColumns,
 } = require('./_common');
 const { getSaidasFull } = require('../queries');
 const { growSheet } = require('../cleanup');
@@ -134,7 +134,7 @@ async function syncSaidas(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Saídas');
 
-  setWidths(batch, sheetId, [55, 90, 55, 140, 75, 140, 50, 85, 90, 130, 100, 50, 40, 40, 45, 45, 85, 85, 75, 85, 85, 85, 45, 220]);
+  autoResizeColumns(batch, sheetId, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

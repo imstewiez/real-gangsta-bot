@@ -6,7 +6,7 @@
 const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, mutedCell, numCell, badgeCell, conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  footerBlock, setWidths,
+  footerBlock, setWidths, autoResizeColumns,
 } = require('./_common');
 const { getDailyBreakdown } = require('../queries');
 
@@ -88,7 +88,7 @@ async function syncDaily(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Resumo Diário');
 
-  setWidths(batch, sheetId, [110, 65, 60, 65, 110, 95, 95, 120, 60]);
+  autoResizeColumns(batch, sheetId, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

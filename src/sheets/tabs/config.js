@@ -7,7 +7,7 @@
 const { COLOR, cell, bodyCell, bodyBoldCell, captionCell, badgeCell } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, tableHeader, tableBody,
-  footerBlock, setWidths,
+  footerBlock, setWidths, autoResizeColumns,
 } = require('./_common');
 
 const COL_COUNT = 5;
@@ -147,7 +147,7 @@ async function syncConfig(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Config');
 
-  setWidths(batch, sheetId, [220, 420, 140, 80, 80]);
+  autoResizeColumns(batch, sheetId, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

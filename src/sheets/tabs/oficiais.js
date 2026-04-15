@@ -8,7 +8,7 @@ const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, numCell, badg
   conditionalGradient, conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  footerBlock, setWidths,
+  footerBlock, setWidths, autoResizeColumns,
 } = require('./_common');
 const { getMembersFull } = require('../queries');
 
@@ -102,7 +102,7 @@ async function syncOficiais(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Oficiais');
 
-  setWidths(batch, sheetId, [170, 90, 60, 40, 40, 85, 55, 60, 55, 60, 110, 75, 70, 95]);
+  autoResizeColumns(batch, sheetId, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

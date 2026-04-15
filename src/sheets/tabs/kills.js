@@ -6,7 +6,7 @@
 const { COLOR, NUM_FMT, bodyCell, bodyBoldCell, captionCell, mutedCell, numCell } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  footerBlock, setWidths,
+  footerBlock, setWidths, autoResizeColumns,
 } = require('./_common');
 const { getKillsFull, getKillsKPIs } = require('../queries');
 
@@ -66,7 +66,7 @@ async function syncKills(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Kills');
 
-  setWidths(batch, sheetId, [140, 160, 160, 130, 140, 70, 160, 260]);
+  autoResizeColumns(batch, sheetId, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

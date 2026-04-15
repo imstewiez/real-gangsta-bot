@@ -7,7 +7,7 @@ const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, nu
   conditionalGradient, conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  rankingBlock, footerBlock, setWidths,
+  rankingBlock, footerBlock, setWidths, autoResizeColumns,
 } = require('./_common');
 const { getSpotsFull } = require('../queries');
 
@@ -128,7 +128,7 @@ async function syncSpots(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Spots');
 
-  setWidths(batch, sheetId, [140, 65, 45, 45, 45, 55, 75, 80, 55, 60, 55, 90, 95, 85, 140, 95]);
+  autoResizeColumns(batch, sheetId, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

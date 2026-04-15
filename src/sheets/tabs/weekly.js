@@ -6,7 +6,7 @@
 const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, mutedCell, numCell, formatDelta } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  footerBlock, setWidths,
+  footerBlock, setWidths, autoResizeColumns,
 } = require('./_common');
 const { getWeeklySummary, getTrending } = require('../queries');
 
@@ -104,7 +104,7 @@ async function syncWeekly(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Resumo Semanal');
 
-  setWidths(batch, sheetId, [200, 120, 130, 120, 100, 70, 80, 80]);
+  autoResizeColumns(batch, sheetId, COL_COUNT);
   return { lastRow: row, lastCol: COL_COUNT };
 }
 

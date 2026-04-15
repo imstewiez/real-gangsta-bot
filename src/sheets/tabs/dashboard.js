@@ -16,7 +16,7 @@
 const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, mutedCell, captionCell, numCell, formatDelta } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  rankingBlock, alertBox, footerBlock, setWidths,
+  rankingBlock, alertBox, footerBlock, setWidths, autoResizeColumns,
 } = require('./_common');
 const {
   getDashboardKPIs, getTopMovers, getTrending, getAlerts, getStockByCategory,
