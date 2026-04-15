@@ -192,6 +192,19 @@ const commands = [
     .addStringOption(opt => opt.setName('modo').setDescription('dry-run mostra o que seria feito; apply executa').setRequired(true)
       .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
 
+  new SlashCommandBuilder()
+    .setName('rg-reconcile')
+    .setDescription('Detecta drift entre DB e Discord/Sheet; opcionalmente corrige')
+    .addStringOption(opt => opt.setName('dominio').setDescription('Qual área reconciliar').setRequired(true)
+      .addChoices(
+        { name: 'Todos',       value: 'all' },
+        { name: 'Membros',     value: 'members' },
+        { name: 'Channels',    value: 'channels' },
+        { name: 'Sheet',       value: 'sheet' },
+      ))
+    .addStringOption(opt => opt.setName('modo').setDescription('dry-run ou apply').setRequired(true)
+      .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
+
   // ── Google Sheets sync ──────────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName('rg-sync-sheets')

@@ -597,6 +597,35 @@ async function _dispatchInteraction(interaction) {
         return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
       }
 
+      if (cmd === 'rg-reconcile') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('reconcile'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const dominio = interaction.options.getString('dominio');
+        const modo    = interaction.options.getString('modo');
+        const dryRun  = modo === 'dry-run';
+        const { runReconcile } = require('./reconcile');
+        const r = await runReconcile({ domain: dominio, guild: interaction.guild, dryRun, actor: `discord:${interaction.user.id}` });
+        const tag = dryRun ? '**DRY-RUN**' : '**APLICADO**';
+        const lines = [`${tag} · Reconcile \`${dominio}\` em ${r.ms}ms`, ''];
+        for (const [d, entry] of Object.entries(r.per_domain)) {
+          if (entry.error) { lines.push(`❌ **${d}**: ${entry.error}`); continue; }
+          const c = entry.check;
+          const driftBits = [];
+          if (c.role_mismatch?.length) driftBits.push(`${c.role_mismatch.length} role mismatch`);
+          if (c.tier_mismatch?.length) driftBits.push(`${c.tier_mismatch.length} tier mismatch`);
+          if (c.missing_in_db?.length) driftBits.push(`${c.missing_in_db.length} missing`);
+          if (c.orphan_in_db?.length) driftBits.push(`${c.orphan_in_db.length} orphan`);
+          if (c.stale?.length) driftBits.push(`${c.stale.length} stale tabs`);
+          if (c.errors?.length) driftBits.push(`${c.errors.length} error tabs`);
+          if (c.never_synced?.length) driftBits.push(`${c.never_synced.length} never synced`);
+          if (c.channels_missing?.length) driftBits.push(`${c.channels_missing.length} missing channels`);
+          const summary = c.has_drift ? driftBits.join(' · ') : `${c.ok} ok, sem drift`;
+          const apply = entry.apply ? ` → ✅ ${entry.apply.corrected} corrigidos` : '';
+          lines.push(`🔍 **${d}**: ${c.total_checked} verificados · ${summary}${apply}`);
+        }
+        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
+      }
+
       if (cmd === 'rg-retention-run') {
         if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('retention'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });

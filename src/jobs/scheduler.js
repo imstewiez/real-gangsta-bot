@@ -66,6 +66,15 @@ function startAll(client) {
     return await runRetention({ dryRun: false, actor: 'system:scheduler' });
   });
 
+  // Reconcile drift Discord↔DB — corre 1x por dia (dry-run apenas por
+  // padrão). Chefia corre com /rg-reconcile apply se quiser corrigir.
+  registerJob('reconcile_daily', 24 * 60 * 60 * 1000, async (client) => {
+    const guild = client?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
+    if (!guild) return { skipped: 'no_guild' };
+    const { runReconcile } = require('../reconcile');
+    return await runReconcile({ domain: 'all', guild, dryRun: true, actor: 'system:scheduler' });
+  });
+
   // Rankings mensais + all-time snapshot — corre a cada 6h (idempotente).
   // No primeiro dia do mês apanha o mês anterior; resto dos dias actualiza
   // o mês corrente e mantém all_time_stats frescas.
