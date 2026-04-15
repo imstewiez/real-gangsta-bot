@@ -566,6 +566,23 @@ async function _dispatchInteraction(interaction) {
         return safeReply(interaction, { content: summarizeLayout(result).slice(0, 1900) }, { dismissible: true });
       }
 
+      if (cmd === 'rg-backfill-members') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('backfill membros'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const modo = interaction.options.getString('modo') || 'dry-run';
+        const dryRun = modo === 'dry-run';
+        const { backfillMembers } = require('./members/backfill');
+        const r = await backfillMembers(interaction.guild, { dryRun, actor: `discord:${interaction.user.id}` });
+        const tag = dryRun ? '**DRY-RUN**' : '**APLICADO**';
+        const lines = [
+          `${tag} · Backfill de membros concluído`,
+          `• Scanned: ${r.scanned}  ·  Bots: ${r.skippedBot}  ·  Sem role RP: ${r.skippedNoRole}`,
+          `• Criados: ${r.created}  ·  Actualizados: ${r.updated}  ·  Sem mudança: ${r.unchanged}`,
+          r.errors.length ? `⚠️ Erros: ${r.errors.length} (ver logs)` : '',
+        ].filter(Boolean);
+        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
+      }
+
       if (cmd === 'rg-sync-sheets') {
         if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync sheets'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });

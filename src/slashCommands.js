@@ -118,6 +118,12 @@ const commands = [
     .setName('rg-layout-check')
     .setDescription('Compara layout actual do Discord contra o lock file (nunca altera)'),
 
+  new SlashCommandBuilder()
+    .setName('rg-backfill-members')
+    .setDescription('Importa para a DB todos os membros do Discord com role RP')
+    .addStringOption(opt => opt.setName('modo').setDescription('dry-run ou aplicar')
+      .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
+
   // ── Google Sheets sync ──────────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName('rg-sync-sheets')
