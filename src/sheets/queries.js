@@ -38,31 +38,54 @@ function daysAgoISO(n) {
   return d.toISOString().split('T')[0];
 }
 
+// Sinal de cada movement_type para cálculo de saldo de stock.
+// Mantém-se em sync com src/repositories/inventory.js::getStock.
+const STOCK_BALANCE_CASE = `
+  CASE
+    WHEN im.movement_type IN (
+      'saldo_inicial', 'entrega_morador', 'venda_morador', 'entrega_oficial',
+      'devolucao_operacao', 'apreendido', 'craftado'
+    ) THEN im.quantity
+    WHEN im.movement_type IN ('fornecimento_org', 'consumo_operacao', 'perda_operacao')
+      THEN -im.quantity
+    WHEN im.movement_type = 'ajuste_manual'
+      THEN im.quantity
+    ELSE 0
+  END`;
+
 // ─── KPIs do Dashboard ───────────────────────────────────────────────────────
 async function getDashboardKPIs() {
   const w = weekBounds();
   const pw = prevWeekBounds();
 
-  // 1) Stock total (qtd + valor estimado)
+  // 1) Stock total (qtd + valor estimado) — balance calculado a partir de movimentos
   const stock = await query(`
+    WITH stock_balances AS (
+      SELECT i.id, i.estimated_value,
+        COALESCE(SUM(${STOCK_BALANCE_CASE}), 0) AS balance
+      FROM items i
+      LEFT JOIN inventory_movements im ON im.item_id = i.id
+      WHERE i.active = true
+      GROUP BY i.id, i.estimated_value
+    )
     SELECT
       COALESCE(SUM(balance), 0)::int AS total_qty,
       COALESCE(SUM(balance * COALESCE(estimated_value, 0)), 0)::numeric AS total_value
-    FROM items WHERE is_active = true`);
+    FROM stock_balances`);
 
   // 2) Movimentos da semana (entradas/vendas em UNIDADES, não €)
   const weekMov = await query(`
     SELECT
       SUM(CASE WHEN movement_type IN ('entrega_morador','entrega_oficial') THEN quantity ELSE 0 END)::int AS entradas,
       SUM(CASE WHEN movement_type = 'venda_morador' THEN quantity ELSE 0 END)::int AS vendas
-    FROM stock_movements sm
+    FROM inventory_movements sm
     WHERE sm.created_at >= $1::date`,
     [w.start]);
 
   const prevMov = await query(`
     SELECT
       SUM(CASE WHEN movement_type IN ('entrega_morador','entrega_oficial') THEN quantity ELSE 0 END)::int AS entradas
-    FROM stock_movements sm
+    FROM inventory_movements sm
     WHERE sm.created_at >= $1::date AND sm.created_at < $2::date`,
     [pw.start, pw.end]);
 
@@ -102,7 +125,7 @@ async function getDashboardKPIs() {
   // 5) Top contributor (week) — em UNIDADES de material entregue
   const topContrib = await query(`
     SELECT m.discord_id, m.display_name, SUM(sm.quantity)::int AS value
-    FROM stock_movements sm
+    FROM inventory_movements sm
     JOIN members m ON m.id = sm.member_id
     WHERE sm.created_at >= $1::date AND sm.movement_type IN ('entrega_morador','entrega_oficial')
     GROUP BY m.discord_id, m.display_name
@@ -192,7 +215,7 @@ async function getWeeklySummary() {
       SUM(CASE WHEN sm.movement_type = 'venda_morador' THEN quantity ELSE 0 END)::int AS vendas,
       SUM(CASE WHEN sm.movement_type IN ('entrega_morador','entrega_oficial','venda_morador')
           THEN quantity ELSE 0 END)::int AS weighted
-    FROM stock_movements sm
+    FROM inventory_movements sm
     WHERE sm.created_at >= $1::date`,
     [w.start]);
 
@@ -225,7 +248,7 @@ async function getDailyBreakdown(days = 14) {
       SELECT
         SUM(CASE WHEN sm.movement_type IN ('entrega_morador','entrega_oficial') THEN quantity ELSE 0 END)::int AS entradas,
         SUM(CASE WHEN sm.movement_type = 'venda_morador' THEN quantity ELSE 0 END)::int AS vendas
-      FROM stock_movements sm
+      FROM inventory_movements sm
       WHERE DATE(sm.created_at) = d::date
     ) mov ON true
     ORDER BY d DESC`,
@@ -271,7 +294,7 @@ async function getMembersFull() {
         -- é usado só em cálculos económicos de saídas, não aqui.
         SUM(CASE WHEN movement_type IN ('entrega_morador','entrega_oficial') THEN quantity ELSE 0 END)::int AS weighted_entregas,
         SUM(CASE WHEN movement_type = 'venda_morador' THEN quantity ELSE 0 END)::int AS vendas
-      FROM stock_movements sm
+      FROM inventory_movements sm
       WHERE sm.member_id = m.id
     ) mv ON true
     LEFT JOIN member_saida_stats mss ON mss.member_id = m.id
@@ -350,7 +373,7 @@ async function getKillsFull(limit = 1000) {
       cm.display_name AS confirmed_by_name
     FROM kill_logs k
     JOIN members km ON km.id = k.killer_id
-    LEFT JOIN members cm ON cm.id = k.confirmed_by
+    LEFT JOIN members cm ON cm.discord_id = k.confirmed_by
     ORDER BY k.created_at DESC
     LIMIT $1`,
     [limit]);
@@ -402,7 +425,7 @@ async function getRankings() {
     SELECT m.discord_id, m.display_name, m.tier,
            SUM(sm.quantity)::int AS qty,
            SUM(sm.quantity * COALESCE(i.estimated_value,0))::numeric AS weighted
-    FROM stock_movements sm
+    FROM inventory_movements sm
     JOIN items i ON i.id = sm.item_id
     JOIN members m ON m.id = sm.member_id
     WHERE sm.movement_type IN ('entrega_morador','entrega_oficial')
@@ -457,14 +480,22 @@ async function getRankings() {
 // ─── Inventário / movimentos ─────────────────────────────────────────────────
 async function getInventoryFull() {
   const r = await query(`
+    WITH stock_balances AS (
+      SELECT i.id, COALESCE(SUM(${STOCK_BALANCE_CASE}), 0) AS balance
+      FROM items i
+      LEFT JOIN inventory_movements im ON im.item_id = i.id
+      WHERE i.active = true
+      GROUP BY i.id
+    )
     SELECT
-      i.id, i.name, i.category, i.unit, i.balance, i.estimated_value,
-      (COALESCE(i.balance,0) * COALESCE(i.estimated_value,0))::numeric AS value_total,
-      (SELECT MAX(created_at) FROM stock_movements WHERE item_id = i.id) AS last_movement,
-      (SELECT SUM(quantity)::int FROM stock_movements WHERE item_id = i.id AND movement_type IN ('entrega_morador','entrega_oficial')) AS total_in,
-      (SELECT SUM(quantity)::int FROM stock_movements WHERE item_id = i.id AND movement_type NOT IN ('entrega_morador','entrega_oficial')) AS total_out
+      i.id, i.name, i.category, i.unit, sb.balance, i.estimated_value,
+      (COALESCE(sb.balance,0) * COALESCE(i.estimated_value,0))::numeric AS value_total,
+      (SELECT MAX(created_at) FROM inventory_movements WHERE item_id = i.id) AS last_movement,
+      (SELECT SUM(quantity)::int FROM inventory_movements WHERE item_id = i.id AND movement_type IN ('entrega_morador','entrega_oficial')) AS total_in,
+      (SELECT SUM(quantity)::int FROM inventory_movements WHERE item_id = i.id AND movement_type NOT IN ('entrega_morador','entrega_oficial')) AS total_out
     FROM items i
-    WHERE i.is_active = true
+    JOIN stock_balances sb ON sb.id = i.id
+    WHERE i.active = true
     ORDER BY i.category, i.name`);
   return r.rows;
 }
@@ -477,13 +508,13 @@ async function getMovementsFull(limit = 2000) {
       sm.quantity,
       COALESCE(i.estimated_value, 0)::numeric AS unit_value,
       (sm.quantity * COALESCE(i.estimated_value,0))::numeric AS total_value,
-      sm.actor_id,
+      sm.created_by AS actor_id,
       m.display_name AS member_name, m.role AS member_role, m.tier AS member_tier,
       sm.context,
       sm.operation_id AS saida_id,
       o.spot AS saida_spot,
       sm.notes
-    FROM stock_movements sm
+    FROM inventory_movements sm
     JOIN items i ON i.id = sm.item_id
     LEFT JOIN members m ON m.id = sm.member_id
     LEFT JOIN operations o ON o.id = sm.operation_id
@@ -495,8 +526,10 @@ async function getMovementsFull(limit = 2000) {
 
 async function getAuditFull(limit = 1000) {
   const r = await query(`
-    SELECT a.*, m.display_name AS actor_name
-    FROM audit_log a
+    SELECT a.id, a.action, a.entity_type, a.entity_id,
+           a.actor_id, a.before_state, a.after_state, a.context, a.created_at,
+           COALESCE(NULLIF(a.actor_name, ''), m.display_name) AS actor_name
+    FROM audit_logs a
     LEFT JOIN members m ON m.discord_id = a.actor_id
     ORDER BY a.created_at DESC
     LIMIT $1`,

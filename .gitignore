@@ -8,5 +8,6 @@ logs/
 *.pem
 *-credentials*.json
 juri-*.json
+google-sa-base64.txt
 .claude/
 .DS_Store
