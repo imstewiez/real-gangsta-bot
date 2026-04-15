@@ -22,8 +22,8 @@ const PANELS = {
     },
   },
 
-  MORADOR: {
-    TITLE: `${E.CASA} Casa — Morador`,
+  BAIRRISTA: {
+    TITLE: `${E.CASA} Casa — Bairrista`,
     DESCRIPTION:
       'Esta é a tua casa. Cada entrega, cada venda, cada movimento — fica aqui.\n' +
       '\n' +
@@ -35,6 +35,8 @@ const PANELS = {
       TOTAIS: 'Ver Totais',
     },
   },
+  // Legacy alias — código antigo ainda importa PANELS.MORADOR
+  get MORADOR() { return this.BAIRRISTA; },
 
   OFICIAL: {
     TITLE: `${E.TAG} Oficial — Secretaria`,
@@ -74,11 +76,12 @@ const PANELS = {
     },
   },
 
-  CHEFE_MORADORES: {
-    TITLE: `${E.LIDER} Chefe de Moradores`,
+  PATRAO_DI_ZONA: {
+    TITLE: `${E.LIDER} Patrão di Zona`,
     DESCRIPTION:
-      'Tu és o elo entre os moradores e a chefia. Aqui vês quem rende, quem some, e quem precisa de puxão.',
+      'Tu és o elo entre os bairristas e a chefia. Aqui vês quem rende, quem some, e quem precisa de puxão.',
   },
+  get CHEFE_MORADORES() { return this.PATRAO_DI_ZONA; }, // legacy alias
 };
 
 module.exports = PANELS;

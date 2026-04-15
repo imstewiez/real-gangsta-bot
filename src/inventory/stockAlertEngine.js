@@ -36,7 +36,7 @@ async function _resolveAlertChannel() {
 // Calcula balance global por item (soma over all locations).
 const BALANCE_CASE = `
   CASE
-    WHEN movement_type IN ('saldo_inicial','entrega_morador','venda_morador','entrega_oficial','devolucao_operacao','apreendido','craftado')
+    WHEN movement_type IN ('saldo_inicial','entrega_bairrista','venda_bairrista','entrega_oficial','entrega_morador','venda_morador','devolucao_operacao','apreendido','craftado')
       THEN quantity
     WHEN movement_type IN ('fornecimento_org','consumo_operacao','perda_operacao')
       THEN -quantity

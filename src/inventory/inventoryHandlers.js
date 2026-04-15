@@ -78,11 +78,11 @@ async function handleItemSelect(interaction) {
   pending.itemId = parseInt(itemId);
   pending.itemName = item.name;
   pending.itemPrice = parseFloat(item.estimated_value) || 0;
-  pending.movementType = isVenda ? 'venda_morador' : 'entrega_morador';
+  pending.movementType = isVenda ? 'venda_bairrista' : 'entrega_bairrista';
   pendingItemSelections.set(interaction.user.id, pending);
 
   const modal = new ModalBuilder()
-    .setCustomId(isVenda ? 'inv::modal_venda_morador' : 'inv::modal_entrega_morador')
+    .setCustomId(isVenda ? 'inv::modal_venda_bairrista' : 'inv::modal_entrega_bairrista')
     .setTitle(isVenda ? `Vender ${item.name}` : `Entregar ${item.name}`)
     .addComponents(
       new ActionRowBuilder().addComponents(
@@ -129,7 +129,7 @@ async function handleQuantityModal(interaction) {
   try {
     const member = await memberRepo.findByDiscordId(interaction.user.id);
     let movementType = pending.movementType;
-    if (member?.role === 'oficial' && movementType === 'entrega_morador') {
+    if (member?.role === 'oficial' && (movementType === 'entrega_bairrista' || movementType === 'entrega_morador')) {
       movementType = 'entrega_oficial';
     }
 
@@ -144,7 +144,7 @@ async function handleQuantityModal(interaction) {
 
     pendingItemSelections.delete(interaction.user.id);
 
-    const isVenda = movementType === 'venda_morador';
+    const isVenda = movementType === 'venda_bairrista' || movementType === 'venda_morador';
     const movValue = quantity * (pending.itemPrice || 0);
 
     let description = `**${quantity}x** ${pending.itemName}`;

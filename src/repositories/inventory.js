@@ -66,7 +66,9 @@ async function getStock() {
       COALESCE(SUM(
         CASE
           WHEN im.movement_type IN (
-            'saldo_inicial', 'entrega_morador', 'venda_morador', 'entrega_oficial',
+            'saldo_inicial',
+            'entrega_bairrista', 'venda_bairrista', 'entrega_oficial',
+            'entrega_morador', 'venda_morador',  -- legacy
             'devolucao_operacao', 'apreendido', 'craftado'
           ) THEN im.quantity
           WHEN im.movement_type IN ('fornecimento_org', 'consumo_operacao', 'perda_operacao')
@@ -144,15 +146,15 @@ async function getWeeklyMovements(weekStart, weekEnd) {
   // Coluna mantém o nome por compatibilidade com weekly_rankings.weighted_value.
   const res = await query(`
     SELECT im.member_id, m.discord_id, m.display_name, m.role as member_role,
-      SUM(CASE WHEN im.movement_type IN ('entrega_morador', 'entrega_oficial') THEN im.quantity ELSE 0 END) as deliveries,
-      SUM(CASE WHEN im.movement_type = 'venda_morador' THEN im.quantity ELSE 0 END) as sales,
-      SUM(CASE WHEN im.movement_type IN ('entrega_morador', 'venda_morador', 'entrega_oficial')
+      SUM(CASE WHEN im.movement_type IN ('entrega_bairrista', 'entrega_morador', 'entrega_oficial') THEN im.quantity ELSE 0 END) as deliveries,
+      SUM(CASE WHEN im.movement_type IN ('venda_bairrista', 'venda_morador') THEN im.quantity ELSE 0 END) as sales,
+      SUM(CASE WHEN im.movement_type IN ('entrega_bairrista', 'venda_bairrista', 'entrega_oficial', 'entrega_morador', 'venda_morador')
           THEN im.quantity ELSE 0 END) as weighted_value
     FROM inventory_movements im
     JOIN members m ON m.id = im.member_id
     JOIN items i ON i.id = im.item_id
     WHERE im.created_at >= $1 AND im.created_at <= $2
-      AND im.movement_type IN ('entrega_morador', 'venda_morador', 'entrega_oficial')
+      AND im.movement_type IN ('entrega_bairrista', 'venda_bairrista', 'entrega_oficial', 'entrega_morador', 'venda_morador')
     GROUP BY im.member_id, m.discord_id, m.display_name, m.role
     ORDER BY weighted_value DESC
   `, [weekStart, weekEnd]);

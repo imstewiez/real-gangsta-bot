@@ -25,16 +25,16 @@ async function handleMemberLeave(guildMember, client) {
 
   const dbMember = await memberRepo.findByDiscordId(discordId);
   if (!dbMember) {
-    // Não era morador registado — nothing to do.
+    // Não era bairrista registado — nothing to do.
     log(`[OFFBOARDING] ${displayName} (${discordId}) saiu mas não estava registado.`);
     return { action: 'noop', reason: 'not_registered' };
   }
 
-  const wasMorador = dbMember.role === 'morador';
+  const wasBairrista = dbMember.role === 'bairrista' || dbMember.role === 'morador';
   const channelId = dbMember.channel_id;
   let channelAction = 'none';
 
-  if (wasMorador && channelId) {
+  if (wasBairrista && channelId) {
     const guild = guildMember.guild;
     try {
       const channel = await guild.channels.fetch(channelId).catch(() => null);
@@ -87,7 +87,7 @@ async function handleMemberLeave(guildMember, client) {
     color: 0x95A5A6,
   }).catch(() => {});
 
-  return { action: 'offboarded', channelAction, wasMorador };
+  return { action: 'offboarded', channelAction, wasBairrista, wasMorador: wasBairrista };
 }
 
 module.exports = { handleMemberLeave };

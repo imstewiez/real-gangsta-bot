@@ -19,8 +19,10 @@ async function handleMemberCommand(interaction) {
   const totals = await inventoryRepo.getMemberTotals(member.id);
   if (Object.keys(totals).length > 0) {
     const lines = [];
-    if (totals.entrega_morador) lines.push(`Entregas: **${totals.entrega_morador}**`);
-    if (totals.venda_morador) lines.push(`Vendas: **${totals.venda_morador}**`);
+    const totalEntregas = (totals.entrega_bairrista || 0) + (totals.entrega_morador || 0);
+    const totalVendas   = (totals.venda_bairrista   || 0) + (totals.venda_morador   || 0);
+    if (totalEntregas) lines.push(`Entregas: **${totalEntregas}**`);
+    if (totalVendas)   lines.push(`Vendas: **${totalVendas}**`);
     if (totals.entrega_oficial) lines.push(`Entregas (oficial): **${totals.entrega_oficial}**`);
     embed.addFields({ name: 'Totais de Material', value: lines.join('\n') || '\u2014' });
   }
@@ -40,7 +42,8 @@ async function handleMemberHistoryButton(interaction) {
   }
 
   const typeLabels = {
-    entrega_morador: 'Entrega', venda_morador: 'Venda',
+    entrega_bairrista: 'Entrega', venda_bairrista: 'Venda',
+    entrega_morador: 'Entrega', venda_morador: 'Venda', // legacy
     entrega_oficial: 'Entrega (oficial)', devolucao_operacao: 'Devolução',
   };
 
@@ -65,13 +68,18 @@ async function handleMemberTotalsButton(interaction) {
 
   const totals = await inventoryRepo.getMemberTotals(member.id);
   const lines = [];
+  const aggregated = {
+    entregas: (totals.entrega_bairrista || 0) + (totals.entrega_morador || 0),
+    vendas:   (totals.venda_bairrista   || 0) + (totals.venda_morador   || 0),
+    entrega_oficial:    totals.entrega_oficial    || 0,
+    devolucao_operacao: totals.devolucao_operacao || 0,
+  };
   const labels = {
-    entrega_morador: 'Entregas', venda_morador: 'Vendas',
+    entregas: 'Entregas', vendas: 'Vendas',
     entrega_oficial: 'Entregas (oficial)', devolucao_operacao: 'Devoluções',
   };
-
   for (const [type, label] of Object.entries(labels)) {
-    lines.push(`${label}: **${totals[type] || 0}**`);
+    lines.push(`${label}: **${aggregated[type] || 0}**`);
   }
 
   // Progresso de promoção

@@ -3,7 +3,7 @@
  * Role invariants — regras que o bot garante em todas as operações.
  *
  * Invariante core: qualquer membro com YB/OG/GF tem obrigatoriamente
- * de ter também a role base Moradores (`MORADORES_BASE_ROLE_ID`).
+ * de ter também a role base Bairristas (`BAIRRISTAS_BASE_ROLE_ID`).
  *
  * Aplicado em:
  *   - onboardingEngine.processApproval
@@ -18,14 +18,16 @@ const { logAudit } = require('../audit/auditEngine');
 const { log, warn } = require('../logger');
 
 function hasAnyTier(guildMember) {
-  const ids = CONFIG.MORADOR_TIER_ROLE_IDS;
+  const ids = CONFIG.BAIRRISTA_TIER_ROLE_IDS;
   return ids.some(id => id && guildMember.roles.cache.has(id));
 }
 
-function hasBaseMoradores(guildMember) {
-  const baseId = CONFIG.MORADORES_BASE_ROLE_ID;
+function hasBairristasBase(guildMember) {
+  const baseId = CONFIG.BAIRRISTAS_BASE_ROLE_ID;
   return baseId ? guildMember.roles.cache.has(baseId) : true;
 }
+/** @deprecated usa hasBairristasBase */
+const hasBaseMoradores = hasBairristasBase;
 
 /**
  * Verifica e corrige invariantes num único membro.
@@ -47,30 +49,30 @@ async function ensureInvariants(guildMember, opts = {}) {
   const violations = [];
   const fixes = [];
 
-  // Invariante 1: tier ⇒ base Moradores
-  if (hasAnyTier(guildMember) && !hasBaseMoradores(guildMember)) {
-    violations.push('tier_without_base_moradores');
-    if (!dryRun && CONFIG.MORADORES_BASE_ROLE_ID && CONFIG.ENFORCE_ROLE_INVARIANTS) {
+  // Invariante 1: tier ⇒ base Bairristas
+  if (hasAnyTier(guildMember) && !hasBairristasBase(guildMember)) {
+    violations.push('tier_without_bairristas_base');
+    if (!dryRun && CONFIG.BAIRRISTAS_BASE_ROLE_ID && CONFIG.ENFORCE_ROLE_INVARIANTS) {
       try {
         await queueMemberOp(() =>
-          guildMember.roles.add(CONFIG.MORADORES_BASE_ROLE_ID, reason)
+          guildMember.roles.add(CONFIG.BAIRRISTAS_BASE_ROLE_ID, reason)
         );
-        fixes.push('added_base_moradores');
+        fixes.push('added_bairristas_base');
         await logAudit({
           action: 'invariant_fix',
           entityType: 'member',
           entityId: guildMember.id,
           actorId: actor,
-          context: 'tier_without_base_moradores → added Moradores base',
+          context: 'tier_without_bairristas_base → added Bairristas base',
         });
       } catch (e) {
-        warn(`[INVARIANT] Falha ao aplicar base Moradores em ${guildMember.id}: ${e.message}`);
+        warn(`[INVARIANT] Falha ao aplicar base Bairristas em ${guildMember.id}: ${e.message}`);
       }
     }
   }
 
   // Invariante 2: no máximo UM tier simultâneo (YB/OG/GF mutuamente exclusivos)
-  const tierIds = CONFIG.MORADOR_TIER_ROLE_IDS.filter(id => id && guildMember.roles.cache.has(id));
+  const tierIds = CONFIG.BAIRRISTA_TIER_ROLE_IDS.filter(id => id && guildMember.roles.cache.has(id));
   if (tierIds.length > 1) {
     violations.push('multiple_tiers');
     if (!dryRun && CONFIG.ENFORCE_ROLE_INVARIANTS) {
@@ -147,7 +149,8 @@ async function reconcileAllMembers(guild, opts = {}) {
 
 module.exports = {
   hasAnyTier,
-  hasBaseMoradores,
+  hasBairristasBase,
+  hasBaseMoradores,   // legacy alias
   ensureInvariants,
   reconcileAllMembers,
 };

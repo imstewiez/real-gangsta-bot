@@ -1,12 +1,12 @@
 'use strict';
 /**
- * Copy das fichas pessoais do morador — performance/material/lucro.
+ * Copy das fichas pessoais do bairrista — performance/material/lucro.
  */
 
 const E = require('./emojis');
 
 const MEMBER_STATS = {
-  // Botões no painel morador
+  // Botões no painel bairrista
   BUTTON: {
     PERFORMANCE: 'Minha Performance',
     MATERIAL: 'Meu Material',

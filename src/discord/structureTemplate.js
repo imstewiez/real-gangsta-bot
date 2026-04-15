@@ -9,8 +9,8 @@
  *   está, a não ser que o utilizador peça algo específico.
  *
  *   O que o bot AINDA faz (contextual, não é alteração global):
- *     - Cria o canal individual de cada morador no onboarding
- *     - Renomeia esse canal pessoal quando o morador é promovido
+ *     - Cria o canal individual de cada bairrista no onboarding
+ *     - Renomeia esse canal pessoal quando o bairrista é promovido
  *     - Aplica permissões nas categorias e canais conhecidos (segurança)
  *     - Cria o role Pendente se não existir (necessário para onboarding)
  *
@@ -58,7 +58,7 @@ function unbold(s) {
 }
 
 /**
- * Extrai o nick original de um canal morador já formatado (ver docs
+ * Extrai o nick original de um canal de bairrista já formatado (ver docs
  * originais). Continua a ser usado pelo onboarding + promoção.
  */
 function extractNicknameFromFormatted(channelName) {
@@ -85,7 +85,7 @@ function extractNicknameFromFormatted(channelName) {
 }
 
 // ── Tier emoji + resident channel naming ─────────────────────────────────────
-// Usado APENAS para canais individuais de morador (onboarding + promoção).
+// Usado APENAS para canais individuais de bairrista (onboarding + promoção).
 const TIER_EMOJI = {
   young_blood:     '🍼',
   o_gunao:         '🔫',
@@ -112,7 +112,7 @@ const _TIER_LABELS_FOR_EXTRACT = Object.values(TIER_LABEL)
 
 function formatResidentChannelName(tier, nickname) {
   const emoji = TIER_EMOJI[tier] || TIER_EMOJI.young_blood;
-  const label = TIER_LABEL[tier] || 'Morador';
+  const label = TIER_LABEL[tier] || 'Bairrista';
   const safeNick = (nickname || '').trim() || 'sem-nome';
   const maxNickChars = 30;
   const truncatedNick = safeNick.length > maxNickChars ? `${safeNick.slice(0, maxNickChars)}…` : safeNick;
@@ -217,20 +217,20 @@ const ROLE_GUILD_PERMS = {
     'MuteMembers', 'DeafenMembers', 'MoveMembers',
     'KickMembers', 'ViewAuditLog',
   ],
-  chefe_moradores: [
+  patrao_di_zona: [
     'ViewChannel', 'SendMessages', 'EmbedLinks', 'AttachFiles',
     'ReadMessageHistory', 'AddReactions', 'UseExternalEmojis', 'UseExternalStickers',
     'Connect', 'Speak', 'UseVAD', 'Stream',
     'ChangeNickname', 'ManageMessages',
     'MuteMembers', 'DeafenMembers', 'MoveMembers',
   ],
-  moradores_base: [
+  bairristas_base: [
     'ViewChannel', 'SendMessages', 'EmbedLinks', 'AttachFiles',
     'ReadMessageHistory', 'AddReactions', 'UseExternalEmojis', 'UseExternalStickers',
     'Connect', 'Speak', 'UseVAD', 'Stream',
     'ChangeNickname', 'SendMessagesInThreads',
   ],
-  morador_tiers: [
+  bairrista_tiers: [
     'ViewChannel', 'SendMessages', 'EmbedLinks', 'AttachFiles',
     'ReadMessageHistory', 'AddReactions', 'UseExternalEmojis', 'UseExternalStickers',
     'Connect', 'Speak', 'UseVAD', 'Stream',
@@ -242,44 +242,48 @@ const ROLE_GUILD_PERMS = {
 };
 
 const ROLE_KEY_TO_ID_KEYS = {
-  command:        ['MANDA_CHUVA_ROLE_ID', 'KINGPIN_ROLE_ID'],
-  supervisor:     ['OG_ROLE_ID', 'REAL_GANGSTER_ROLE_ID'],
-  chefe_moradores:['PATRAO_DI_ZONA_ROLE_ID'],
-  morador_tiers:  ['YOUNG_BLOOD_ROLE_ID', 'O_GUNAO_ROLE_ID', 'GANGSTER_FODIDO_ROLE_ID'],
-  moradores_base: ['MORADORES_BASE_ROLE_ID'],
-  pendente:       ['PENDENTE_ROLE_ID'],
-  tropinhas:      ['TROPINHAS_DO_GUETTO_ROLE_ID'],
-  patrulha_pata:  ['PATRULHA_PATA_ROLE_ID'],
+  command:         ['MANDA_CHUVA_ROLE_ID', 'KINGPIN_ROLE_ID'],
+  supervisor:      ['OG_ROLE_ID', 'REAL_GANGSTER_ROLE_ID'],
+  patrao_di_zona:  ['PATRAO_DI_ZONA_ROLE_ID'],
+  bairrista_tiers: ['YOUNG_BLOOD_ROLE_ID', 'O_GUNAO_ROLE_ID', 'GANGSTER_FODIDO_ROLE_ID'],
+  bairristas_base: ['BAIRRISTAS_BASE_ROLE_ID'],
+  pendente:        ['PENDENTE_ROLE_ID'],
+  tropinhas:       ['TROPINHAS_DO_GUETTO_ROLE_ID'],
+  patrulha_pata:   ['PATRULHA_PATA_ROLE_ID'],
 };
 
 function rolesFor(key) {
   switch (key) {
     case 'command':         return CONFIG.COMMAND_ROLE_IDS;
     case 'supervisor':      return CONFIG.SUPERVISOR_ROLE_IDS;
-    case 'chefe_moradores': return CONFIG.CHEFE_MORADORES_ROLE_IDS;
-    case 'morador_tiers':   return CONFIG.MORADOR_TIER_ROLE_IDS;
-    case 'moradores_base':  return [CONFIG.MORADORES_BASE_ROLE_ID].filter(Boolean);
+    case 'patrao_di_zona':  return CONFIG.PATRAO_DI_ZONA_ROLE_IDS;
+    case 'bairrista_tiers': return CONFIG.BAIRRISTA_TIER_ROLE_IDS;
+    case 'bairristas_base': return [CONFIG.BAIRRISTAS_BASE_ROLE_ID].filter(Boolean);
     case 'pendente':        return [CONFIG.PENDENTE_ROLE_ID].filter(Boolean);
     case 'tropinhas':       return [CONFIG.TROPINHAS_DO_GUETTO_ROLE_ID].filter(Boolean);
     case 'patrulha_pata':   return [CONFIG.PATRULHA_PATA_ROLE_ID].filter(Boolean);
     case 'bot':             return [CONFIG.BOT_ROLE_ID].filter(Boolean);
+    // Legacy aliases — aceita keys antigas (morador_tiers, moradores_base, chefe_moradores)
+    case 'chefe_moradores': return CONFIG.PATRAO_DI_ZONA_ROLE_IDS;
+    case 'morador_tiers':   return CONFIG.BAIRRISTA_TIER_ROLE_IDS;
+    case 'moradores_base':  return [CONFIG.BAIRRISTAS_BASE_ROLE_ID].filter(Boolean);
     default:                return [];
   }
 }
 
 // ── Category permissions ──────────────────────────────────────────────────────
-// Estas SÃO aplicadas — são segurança, não layout. Moradores não vêem staff
+// Estas SÃO aplicadas — são segurança, não layout. Bairristas não vêem staff
 // areas, etc. Mantêm-se porque protegem contra regressões acidentais de
-// permissões (ninguém mexe a mão e abre o inventory a moradores).
+// permissões (ninguém mexe a mão e abre o inventory a bairristas).
 const CATEGORY_PERMS = {
   ENTRADA: {
     denyEveryone: ['ViewChannel'],
     deny: [
-      { roleSources: ['morador_tiers', 'moradores_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
+      { roleSources: ['bairrista_tiers', 'bairristas_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
     ],
     allow: [
       { roleSources: ['pendente'], perms: ['ViewChannel', 'ReadMessageHistory'] },
-      { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'ReadMessageHistory'] },
+      { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'ReadMessageHistory'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages', 'ManageMessages'] },
     ],
   },
@@ -300,57 +304,57 @@ const CATEGORY_PERMS = {
   GUETTO: {
     denyEveryone: ['ViewChannel', 'Connect'],
     allow: [
-      { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'Connect', 'SendMessages', 'ManageMessages'] },
-      { roleSources: ['morador_tiers', 'moradores_base'], perms: ['ViewChannel', 'Connect', 'SendMessages'] },
+      { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'Connect', 'SendMessages', 'ManageMessages'] },
+      { roleSources: ['bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'Connect', 'SendMessages'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages', 'ManageChannels', 'ManageMessages'] },
     ],
   },
   INVENTARIO: {
     denyEveryone: ['ViewChannel', 'Connect'],
     allow: [
-      { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'Connect', 'SendMessages'] },
+      { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'Connect', 'SendMessages'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
   },
   ARSENAL: {
     denyEveryone: ['ViewChannel'],
     allow: [
-      { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'SendMessages'] },
+      { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages'] },
       { roleSources: ['bot'], perms: ['ViewChannel'] },
     ],
   },
   OPERACOES: {
     denyEveryone: ['ViewChannel'],
     allow: [
-      { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'SendMessages'] },
+      { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages'] },
       { roleSources: ['bot'], perms: ['ViewChannel'] },
     ],
   },
   ECONOMIA: {
     denyEveryone: ['ViewChannel'],
     allow: [
-      { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'SendMessages'] },
+      { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
   },
   REPUTACAO: {
     denyEveryone: ['ViewChannel'],
     allow: [
-      { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'SendMessages'] },
-      { roleSources: ['morador_tiers', 'moradores_base'], perms: ['ViewChannel', 'SendMessages'] },
+      { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages'] },
+      { roleSources: ['bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'SendMessages'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
   },
   CALLS: {
     denyEveryone: ['ViewChannel', 'Connect'],
     allow: [
-      { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'Connect'] },
+      { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'Connect'] },
     ],
   },
   GERAL: {
     denyEveryone: ['ViewChannel'],
     allow: [
-      { roleSources: ['command', 'supervisor', 'chefe_moradores', 'morador_tiers', 'moradores_base'], perms: ['ViewChannel', 'Connect', 'SendMessages'] },
+      { roleSources: ['command', 'supervisor', 'patrao_di_zona', 'bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'Connect', 'SendMessages'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
   },
@@ -361,10 +365,10 @@ const CHANNEL_PERM_OVERRIDES = {
   [DISCOVERED.CH_CHEFIA_MOR_CHAT]: {
     denyEveryone: ['ViewChannel'],
     allow: [
-      { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'SendMessages'] },
+      { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages'] },
       { roleSources: ['bot'], perms: ['ViewChannel'] },
     ],
-    reason: 'chefia-moradores é privado — só chefia + patrão di zona',
+    reason: 'patrao-di-zona é privado — só chefia + patrão di zona',
   },
   [DISCOVERED.CH_TAGS]: {
     denyEveryone: ['ViewChannel'],
@@ -385,11 +389,11 @@ const CHANNEL_PERM_OVERRIDES = {
   [DISCOVERED.CH_CEMITERIO]: {
     denyEveryone: ['ViewChannel', 'SendMessages'],
     allow: [
-      { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'SendMessages'] },
-      { roleSources: ['morador_tiers', 'moradores_base'], perms: ['ViewChannel'] },
+      { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages'] },
+      { roleSources: ['bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
-    reason: 'Cemitério — moradores só vêem; staff e bot postam kills',
+    reason: 'Cemitério — bairristas só vêem; staff e bot postam kills',
   },
 };
 
@@ -403,11 +407,11 @@ const _BOT_PANEL_PERMS = ['ViewChannel', 'SendMessages', 'ManageMessages', 'Mana
 const PERMS_BOAS_VINDAS = {
   denyEveryone: ['ViewChannel', ..._PANEL_WRITE_DENIES],
   deny: [
-    { roleSources: ['morador_tiers', 'moradores_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
+    { roleSources: ['bairrista_tiers', 'bairristas_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
   ],
   allow: [
     { roleSources: ['pendente'], perms: ['ViewChannel', 'ReadMessageHistory'] },
-    { roleSources: ['command', 'supervisor', 'chefe_moradores'], perms: ['ViewChannel', 'ReadMessageHistory'] },
+    { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'ReadMessageHistory'] },
     { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
   ],
   reason: 'boas-vindas — só Pendentes + staff',
@@ -419,14 +423,16 @@ const PERMS_PAINEL_READ_ONLY = {
   reason: 'painel — read-only, só bot publica',
 };
 
-const PERMS_PAINEL_CHEFE_MORADORES = {
+const PERMS_PAINEL_PATRAO_DI_ZONA = {
   denyEveryone: _PANEL_WRITE_DENIES,
   deny: [
-    { roleSources: ['morador_tiers', 'moradores_base'], perms: ['ViewChannel'] },
+    { roleSources: ['bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel'] },
   ],
   allow: [{ roleSources: ['bot'], perms: _BOT_PANEL_PERMS }],
-  reason: 'painel-chefe-moradores — staff only',
+  reason: 'painel-patrao-di-zona — staff only',
 };
+// Legacy alias — ainda referenciado acima
+const PERMS_PAINEL_CHEFE_MORADORES = PERMS_PAINEL_PATRAO_DI_ZONA;
 
 // Aceita tanto o nome formatado (`emoji・𝗻𝗼𝗺𝗲`) como nomes legacy
 // (`emoji│nome`). Assim, seja qual for o que existe, as perms aplicam-se.
@@ -436,17 +442,19 @@ const _BOAS_VINDAS_NAMES = [
   ch('📋', 'painel-entrada'),
   '📋│painel-entrada',
 ];
-const _PAINEL_MORADORES_NAMES = [ch('📋', 'painel-moradores'), '📋│painel-moradores'];
-const _PAINEL_OFICIAIS_NAMES  = [ch('📋', 'painel-oficiais'), '📋│painel-oficiais'];
-const _PAINEL_CHEFIA_NAMES    = [ch('📋', 'painel-chefia'), '📋│painel-chefia'];
-const _PAINEL_CHEFE_MOR_NAMES = [ch('📋', 'painel-chefe-moradores'), '📋│painel-chefe-moradores'];
+const _PAINEL_BAIRRISTAS_NAMES   = [ch('📋', 'painel-bairristas'), '📋│painel-bairristas',
+                                    ch('📋', 'painel-moradores'),  '📋│painel-moradores']; // legacy
+const _PAINEL_OFICIAIS_NAMES     = [ch('📋', 'painel-oficiais'),   '📋│painel-oficiais'];
+const _PAINEL_CHEFIA_NAMES       = [ch('📋', 'painel-chefia'),     '📋│painel-chefia'];
+const _PAINEL_PATRAO_DI_ZONA_NAMES = [ch('📋', 'painel-patrao-di-zona'), '📋│painel-patrao-di-zona',
+                                      ch('📋', 'painel-chefe-moradores'), '📋│painel-chefe-moradores']; // legacy
 
 const CHANNEL_PERM_OVERRIDES_BY_NAME = {};
-for (const n of _BOAS_VINDAS_NAMES)       CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_BOAS_VINDAS;
-for (const n of _PAINEL_MORADORES_NAMES)  CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_READ_ONLY;
-for (const n of _PAINEL_OFICIAIS_NAMES)   CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_READ_ONLY;
-for (const n of _PAINEL_CHEFIA_NAMES)     CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_READ_ONLY;
-for (const n of _PAINEL_CHEFE_MOR_NAMES)  CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_CHEFE_MORADORES;
+for (const n of _BOAS_VINDAS_NAMES)            CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_BOAS_VINDAS;
+for (const n of _PAINEL_BAIRRISTAS_NAMES)      CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_READ_ONLY;
+for (const n of _PAINEL_OFICIAIS_NAMES)        CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_READ_ONLY;
+for (const n of _PAINEL_CHEFIA_NAMES)          CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_READ_ONLY;
+for (const n of _PAINEL_PATRAO_DI_ZONA_NAMES)  CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_CHEFE_MORADORES;
 
 module.exports = {
   bold,

@@ -73,12 +73,15 @@ const RESULT = {
 
 // Tradução de roles/tiers (usada em embeds e audits).
 const ROLE = {
-  morador: 'Morador',
+  bairrista: 'Bairrista',
+  patrao_di_zona: 'Patrão di Zona',
   oficial: 'Oficial',
   chefia: 'Chefia',
-  chefe_moradores: 'Chefe de Moradores',
   inativo: 'Inactivo',
   pendente: 'Pendente',
+  // Legacy aliases
+  morador: 'Bairrista',
+  chefe_moradores: 'Patrão di Zona',
 };
 
 // Tipo de saída → label curta pt-PT.

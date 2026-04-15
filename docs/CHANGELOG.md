@@ -2,6 +2,30 @@
 
 ---
 
+## v2.2 — Migração de domínio: Bairristas / Patrão di Zona (2026-04-15)
+
+Rename ponta a ponta do vocabulário de domínio:
+
+- **`role='morador'` → `role='bairrista'`** (DB, código, UI, Sheets)
+- **`role='chefe_moradores'` → `role='patrao_di_zona'`** (novo role enum, não apenas tier)
+- **`movement_type='entrega_morador'` → `'entrega_bairrista'`**
+- **`movement_type='venda_morador'` → `'venda_bairrista'`**
+- **Config**: `MORADORES_BASE_ROLE_ID` → `BAIRRISTAS_BASE_ROLE_ID` (+ fallback)
+- **Config**: `MORADOR_*` getters → `BAIRRISTA_*` (antigos permanecem como alias)
+- **Discord**: role source keys `moradores_base`/`morador_tiers`/`chefe_moradores` → `bairristas_base`/`bairrista_tiers`/`patrao_di_zona`
+- **Sheets**: labels "Moradores"/"Chefe Moradores" → "Bairristas"/"Patrão di Zona"
+- **UI**: todas as strings user-facing actualizadas
+- **Permissões**: `isMorador`/`isChefeMoradores` → `isBairrista`/`isPatraoDiZona` (antigas mantidas como aliases)
+
+Migração DB 20 (idempotente): estende CHECK constraints + UPDATE de dados
+existentes. Valores legacy mantêm-se aceites durante 1 release para segurança.
+
+Bug fix embutido: 3 membros com tag Patrão di Zona no Discord apareciam como 0
+no Sheet porque estavam em DB com `role='morador'`. Script `migrateDomain.js`
+corre backfill para reclassificar.
+
+---
+
 ## v2.1 — Evolução em 7 fases (2026-04-13)
 
 Refactor adicional sobre a v2 já consolidada. Foco: corrigir hierarquia

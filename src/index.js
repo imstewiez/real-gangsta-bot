@@ -967,34 +967,40 @@ async function _dispatchInteraction(interaction) {
         return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
       }
 
-      // Chefe de Moradores buttons
+      // Patrão di Zona buttons
       if (id === 'chefe_mor::listar_moradores') {
-        if (!isChefeMoradores(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('listar moradores'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!isChefeMoradores(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('listar bairristas'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const moradores = await memberRepo.findByRole('morador');
-        if (!moradores.length) return safeReply(interaction, { content: 'Sem moradores registados.' }, { dismissible: true });
-        const lines = moradores.map(m => `<@${m.discord_id}> — ${m.display_name} (desde ${m.joined_at?.toISOString?.()?.split('T')[0] || '-'})`);
-        const embed = brandEmbed().setTitle('Moradores').setDescription(lines.join('\n'));
+        const { query } = require('./db');
+        const resBair = await query(
+          `SELECT * FROM members WHERE role IN ('bairrista', 'morador') AND status = 'ativo' ORDER BY display_name`
+        );
+        const bairristas = resBair.rows;
+        if (!bairristas.length) return safeReply(interaction, { content: 'Sem bairristas registados.' }, { dismissible: true });
+        const lines = bairristas.map(m => `<@${m.discord_id}> — ${m.display_name} (desde ${m.joined_at?.toISOString?.()?.split('T')[0] || '-'})`);
+        const embed = brandEmbed().setTitle('Bairristas').setDescription(lines.join('\n'));
         return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
       }
 
       if (id === 'chefe_mor::ver_entregas' || id === 'chefe_mor::ver_vendas') {
         if (!isChefeMoradores(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver dados'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const type = id.includes('entregas') ? 'entrega_morador' : 'venda_morador';
+        const types = id.includes('entregas')
+          ? ['entrega_bairrista', 'entrega_morador']
+          : ['venda_bairrista', 'venda_morador'];
         const label = id.includes('entregas') ? 'Entregas' : 'Vendas';
         const { query } = require('./db');
         const res = await query(`
           SELECT m.display_name, m.discord_id, SUM(im.quantity) as total
           FROM inventory_movements im
           JOIN members m ON m.id = im.member_id
-          WHERE im.movement_type = $1
+          WHERE im.movement_type = ANY($1)
           GROUP BY m.display_name, m.discord_id
           ORDER BY total DESC LIMIT 20
-        `, [type]);
+        `, [types]);
         if (!res.rows.length) return safeReply(interaction, { content: `Sem ${label.toLowerCase()} registadas.` }, { dismissible: true });
         const lines = res.rows.map((r, i) => `**${i + 1}.** <@${r.discord_id}> — ${r.total} unidades`);
-        const embed = brandEmbed().setTitle(`${label} por Morador`).setDescription(lines.join('\n'));
+        const embed = brandEmbed().setTitle(`${label} por Bairrista`).setDescription(lines.join('\n'));
         return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
       }
 
@@ -1004,9 +1010,11 @@ async function _dispatchInteraction(interaction) {
         const { rankingRepo } = require('./repositories');
         const { start, end } = weekBounds();
         const weekStart = start.toISOString().split('T')[0];
-        const rankings = await rankingRepo.getWeekRankingByRole(weekStart, 'morador', 10);
+        // Primeiro tenta role novo; fallback para legacy.
+        let rankings = await rankingRepo.getWeekRankingByRole(weekStart, 'bairrista', 10);
+        if (!rankings.length) rankings = await rankingRepo.getWeekRankingByRole(weekStart, 'morador', 10);
         const weekLabel = `${start.toISOString().split('T')[0]} a ${end.toISOString().split('T')[0]}`;
-        const embed = rankingEmbed('Top Moradores', rankings, weekLabel);
+        const embed = rankingEmbed('Top Bairristas', rankings, weekLabel);
         return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
       }
 
@@ -1064,7 +1072,8 @@ async function _dispatchInteraction(interaction) {
       if (id === 'onboard::modal_tag') return handleTagModal(interaction);
 
       // Inventory modals
-      if (id === 'inv::modal_entrega_morador' || id === 'inv::modal_venda_morador') return handleQuantityModal(interaction);
+      if (id === 'inv::modal_entrega_bairrista' || id === 'inv::modal_venda_bairrista'
+        || id === 'inv::modal_entrega_morador' || id === 'inv::modal_venda_morador') return handleQuantityModal(interaction);
       if (id === 'inv::modal_ajuste_manual') return handleAdjustModal(interaction);
       if (id === 'inv::modal_add_item') return handleAddItemModal(interaction);
       if (id === 'inv::modal_edit_price') return handleEditPriceModal(interaction);

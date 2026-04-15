@@ -33,7 +33,7 @@ async function syncConfig(batch, sheetId) {
 
   // ── TIERS ────────────────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '🎖️ TIERS DE MORADOR', hint: 'níveis de progressão', columnCount: COL_COUNT,
+    title: '🎖️ TIERS DE BAIRRISTA', hint: 'níveis de progressão', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, ['Tier', 'Descrição', 'Badge', '', '']);
   const tiers = [
@@ -66,9 +66,9 @@ async function syncConfig(batch, sheetId) {
   });
   row = tableHeader(batch, sheetId, row, ['Tipo', 'Descrição', 'Sinal', '', '']);
   const mtypes = [
-    ['entrega_morador',    'entrega de material feita por morador',       badgeCell('+',    COLOR.GREEN_DEEP)],
+    ['entrega_bairrista',  'entrega de material feita por bairrista',     badgeCell('+',    COLOR.GREEN_DEEP)],
     ['entrega_oficial',    'entrega feita por oficial',                   badgeCell('+',    COLOR.GREEN_DEEP)],
-    ['venda_morador',      'venda na rua',                                badgeCell('+',    COLOR.GOLD)],
+    ['venda_bairrista',    'venda na rua',                                badgeCell('+',    COLOR.GOLD)],
     ['fornecimento_org',   'material retirado do stock para saída',       badgeCell('−',    COLOR.RED_BLOOD)],
     ['devolucao_operacao', 'material devolvido após saída',               badgeCell('+',    COLOR.GRAPHITE)],
     ['perda_operacao',     'material perdido em saída',                   badgeCell('−',    COLOR.RED_DEEP)],

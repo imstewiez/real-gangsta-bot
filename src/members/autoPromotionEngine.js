@@ -17,9 +17,9 @@ const { log, warn } = require('../logger');
 // adições de roles oficiais e arquiva canal individual quando aplicável.
 
 const TIERS = [
-  { tier: 'young_blood', roleIdKey: 'YOUNG_BLOOD_ROLE_ID', dbRole: 'morador', level: 1 },
-  { tier: 'o_gunao', roleIdKey: 'O_GUNAO_ROLE_ID', dbRole: 'morador', level: 2 },
-  { tier: 'gangster_fodido', roleIdKey: 'GANGSTER_FODIDO_ROLE_ID', dbRole: 'morador', level: 3 },
+  { tier: 'young_blood', roleIdKey: 'YOUNG_BLOOD_ROLE_ID', dbRole: 'bairrista', level: 1 },
+  { tier: 'o_gunao', roleIdKey: 'O_GUNAO_ROLE_ID', dbRole: 'bairrista', level: 2 },
+  { tier: 'gangster_fodido', roleIdKey: 'GANGSTER_FODIDO_ROLE_ID', dbRole: 'bairrista', level: 3 },
 ];
 
 const PROMOTIONS = [
@@ -50,7 +50,10 @@ async function getMemberMaterialQty(memberId) {
     SELECT COALESCE(SUM(im.quantity), 0) as total_qty
     FROM inventory_movements im
     WHERE im.member_id = $1
-      AND im.movement_type IN ('entrega_morador', 'venda_morador', 'entrega_oficial')
+      AND im.movement_type IN (
+        'entrega_bairrista', 'venda_bairrista', 'entrega_oficial',
+        'entrega_morador', 'venda_morador'
+      )
   `, [memberId]);
   return parseInt(res.rows[0]?.total_qty || 0, 10);
 }
@@ -71,9 +74,10 @@ async function checkAndPromote(discordId, guild, client) {
   const dbMember = await memberRepo.findByDiscordId(discordId);
   if (!dbMember) return null;
 
-  // Determinar tier atual pela DB
-  const currentTier = dbMember.role === 'morador' ? (dbMember.tier || CONFIG.MORADOR_DEFAULT_TIER) : null;
-  if (!currentTier) return null; // Não é morador, não aplica
+  // Determinar tier atual pela DB (aceita role bairrista ou legacy 'morador')
+  const isBairristaRole = dbMember.role === 'bairrista' || dbMember.role === 'morador';
+  const currentTier = isBairristaRole ? (dbMember.tier || CONFIG.BAIRRISTA_DEFAULT_TIER) : null;
+  if (!currentTier) return null; // Não é bairrista, não aplica
 
   // Ver se há promoção disponível para este tier
   const promotion = PROMOTIONS.find(p => p.from === currentTier);

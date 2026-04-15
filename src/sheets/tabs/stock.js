@@ -56,9 +56,11 @@ const CAT_DISPLAY = {
 function catLabel(cat) { return (CAT_DISPLAY[cat] || cat || '—').toUpperCase(); }
 
 const MOV_PILL = {
-  entrega_morador:    { label: 'ENTREGA',   bg: COLOR.GREEN_DEEP },
+  entrega_bairrista:  { label: 'ENTREGA',   bg: COLOR.GREEN_DEEP },
+  entrega_morador:    { label: 'ENTREGA',   bg: COLOR.GREEN_DEEP }, // legacy
   entrega_oficial:    { label: 'ENTR.OFIC', bg: COLOR.GREEN_DEEP },
-  venda_morador:      { label: 'VENDA',     bg: COLOR.GOLD },
+  venda_bairrista:    { label: 'VENDA',     bg: COLOR.GOLD },
+  venda_morador:      { label: 'VENDA',     bg: COLOR.GOLD },       // legacy
   ajuste_manual:      { label: 'AJUSTE',    bg: COLOR.GRAY_DARK },
   fornecimento_org:   { label: 'FORNECIDO', bg: COLOR.RED_BLOOD },
   devolucao_operacao: { label: 'DEVOL.',    bg: COLOR.GRAPHITE },
@@ -117,8 +119,8 @@ async function syncStock(batch, sheetId) {
   const valueGrupo   = inv.reduce((a, r) => a + Number(r.value_grupo || 0), 0);
   const critical   = inv.filter(r => (r.balance || 0) <= 3).length;
   const zeros      = inv.filter(r => (r.balance || 0) <= 0).length;
-  const totalIn    = movs.filter(r => ['entrega_morador', 'entrega_oficial'].includes(r.movement_type)).reduce((a, r) => a + Number(r.total_value || 0), 0);
-  const totalSales = movs.filter(r => r.movement_type === 'venda_morador').reduce((a, r) => a + Number(r.total_value || 0), 0);
+  const totalIn    = movs.filter(r => ['entrega_bairrista', 'entrega_oficial', 'entrega_morador'].includes(r.movement_type)).reduce((a, r) => a + Number(r.total_value || 0), 0);
+  const totalSales = movs.filter(r => ['venda_bairrista', 'venda_morador'].includes(r.movement_type)).reduce((a, r) => a + Number(r.total_value || 0), 0);
   const totalLost  = movs.filter(r => r.movement_type === 'perda_operacao').reduce((a, r) => a + Number(r.total_value || 0), 0);
 
   growSheet(batch, sheetId, { rows: Math.max(inv.length + movs.length + 80, 200) });

@@ -4,8 +4,8 @@ const CONFIG = require('../config');
 const { PANELS, footer, EMOJI, MEMBER_STATS } = require('../content');
 const { applyLogo } = require('../shared/embedBuilders');
 
-function buildMoradorPanel() {
-  const P = PANELS.MORADOR;
+function buildBairristaPanel() {
+  const P = PANELS.BAIRRISTA || PANELS.MORADOR;
   const MS = MEMBER_STATS.BUTTON;
   const embed = applyLogo(new EmbedBuilder()
     .setColor(CONFIG.BOT_COLOR)
@@ -38,4 +38,7 @@ function buildMoradorPanel() {
   return { embeds: [embed], components: [row1, row2] };
 }
 
-module.exports = { buildMoradorPanel };
+// Alias legado — código antigo importa buildMoradorPanel.
+const buildMoradorPanel = buildBairristaPanel;
+
+module.exports = { buildBairristaPanel, buildMoradorPanel };

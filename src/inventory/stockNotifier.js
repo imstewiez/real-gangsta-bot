@@ -40,8 +40,10 @@ const STOCK_CHANNELS = {
 // Todos os movement types → stock_log (canal único, diferenciação via cor+label)
 const MOVEMENT_TO_CHANNEL = {
   saldo_inicial:       'stock_log',
-  entrega_morador:     'stock_log',
-  venda_morador:       'stock_log',
+  entrega_bairrista:   'stock_log',
+  venda_bairrista:     'stock_log',
+  entrega_morador:     'stock_log', // legacy
+  venda_morador:       'stock_log', // legacy
   entrega_oficial:     'stock_log',
   devolucao_operacao:  'stock_log',
   apreendido:          'stock_log',
@@ -54,7 +56,8 @@ const MOVEMENT_TO_CHANNEL = {
 
 // Classificação lógica para cor do embed (entradas verde / saídas laranja / ajustes roxo)
 const MOVEMENT_KIND = {
-  saldo_inicial: 'entradas', entrega_morador: 'entradas', venda_morador: 'entradas',
+  saldo_inicial: 'entradas', entrega_bairrista: 'entradas', venda_bairrista: 'entradas',
+  entrega_morador: 'entradas', venda_morador: 'entradas', // legacy
   entrega_oficial: 'entradas', devolucao_operacao: 'entradas', apreendido: 'entradas', craftado: 'entradas',
   fornecimento_org: 'saidas', consumo_operacao: 'saidas', perda_operacao: 'saidas',
   ajuste_manual: 'ajustes',
@@ -62,8 +65,10 @@ const MOVEMENT_KIND = {
 
 const MOVEMENT_LABEL = {
   saldo_inicial:       '📦 Saldo Inicial',
-  entrega_morador:     '📥 Entrega (Morador)',
-  venda_morador:       '💰 Venda (Morador)',
+  entrega_bairrista:   '📥 Entrega (Bairrista)',
+  venda_bairrista:     '💰 Venda (Bairrista)',
+  entrega_morador:     '📥 Entrega (Bairrista)', // legacy → mesmo label
+  venda_morador:       '💰 Venda (Bairrista)',   // legacy → mesmo label
   entrega_oficial:     '📥 Entrega (Oficial)',
   devolucao_operacao:  '↩️ Devolução de Operação',
   apreendido:          '🪪 Apreendido',

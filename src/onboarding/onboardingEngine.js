@@ -12,9 +12,9 @@ const { buildMoradorChannelPanel } = require('./onboardingHandlers');
 
 /**
  * Process an approved tag request:
- * 1. Add Moradores (base) + tier de entrada (O Gunão) roles
+ * 1. Add Bairristas (base) + tier de entrada (Young Blood) roles
  * 2. Try to set nickname to "FullName (Nickname)"
- * 3. Create/update member in DB (tier=o_gunao por defeito)
+ * 3. Create/update member in DB (tier=young_blood por defeito)
  * 4. Create individual channel in GUETTO
  * 5. Send welcome panel in channel
  * 6. Enforce role invariants
@@ -34,15 +34,15 @@ async function processApproval(tagRequest, approverMember, client) {
     return result;
   }
 
-  // ── 2. Add roles (Moradores base + tier de entrada) + remove Pendente ──
-  // O tier de entrada é resolvido por nome a partir de MORADOR_DEFAULT_TIER
+  // ── 2. Add roles (Bairristas base + tier de entrada) + remove Pendente ──
+  // O tier de entrada é resolvido por nome a partir de BAIRRISTA_DEFAULT_TIER
   // para acompanhar mudanças de hierarquia sem editar o engine.
-  const entryTier = CONFIG.MORADOR_DEFAULT_TIER || 'young_blood';
+  const entryTier = CONFIG.BAIRRISTA_DEFAULT_TIER || 'young_blood';
   const entryRoleKey = `${entryTier.toUpperCase()}_ROLE_ID`;
   const entryRoleId = CONFIG[entryRoleKey];
   try {
-    if (CONFIG.MORADORES_BASE_ROLE_ID) {
-      await queueMemberOp(() => guildMember.roles.add(CONFIG.MORADORES_BASE_ROLE_ID, 'Onboarding: role base Moradores'));
+    if (CONFIG.BAIRRISTAS_BASE_ROLE_ID) {
+      await queueMemberOp(() => guildMember.roles.add(CONFIG.BAIRRISTAS_BASE_ROLE_ID, 'Onboarding: role base Bairristas'));
     }
     if (entryRoleId) {
       await queueMemberOp(() => guildMember.roles.add(entryRoleId, `Onboarding: tier ${entryTier}`));
@@ -85,7 +85,7 @@ async function processApproval(tagRequest, approverMember, client) {
       discordId,
       username: tagRequest.username || guildMember.user.username,
       displayName: fullName,
-      role: 'morador',
+      role: 'bairrista',
     });
   }
   await query(
@@ -178,7 +178,7 @@ async function processApproval(tagRequest, approverMember, client) {
   });
 
   await sendAuditToChannel(client, {
-    title: '\uD83C\uDFF7\uFE0F Novo Morador — Tag Aprovada',
+    title: '\uD83C\uDFF7\uFE0F Novo Bairrista — Tag Aprovada',
     description: `<@${discordId}> entrou como **${TIER_LABEL[entryTier] || entryTier}** (tier 1)\nNome: **${fullName} (${nickname})**${result.channelCreated ? `\nCanal: <#${result.channelId}>` : ''}`,
     color: 0x2ECC71,
   });
@@ -187,7 +187,7 @@ async function processApproval(tagRequest, approverMember, client) {
 }
 
 /**
- * Handle promotion to oficial — archive/delete morador channel
+ * Handle promotion to oficial — archive/delete bairrista channel
  */
 async function handlePromotionToOficial(member, client) {
   const discordId = member.id;
@@ -244,7 +244,7 @@ async function handlePromotionToOficial(member, client) {
   await memberRepo.update(dbMember.id, { channel_id: null });
 
   await sendAuditToChannel(client, {
-    title: 'Promoção \u2014 Morador \u2192 Oficial',
+    title: 'Promoção \u2014 Bairrista \u2192 Oficial',
     description: `<@${discordId}> foi promovido a **Oficial**.`,
     color: 0xF39C12,
   });

@@ -37,16 +37,18 @@ const CONFIG = {
   // Supervisão (oficiais seniores)
   OG_ROLE_ID: optId('OG_ROLE_ID', '1490397683070930945'),
   REAL_GANGSTER_ROLE_ID: optId('REAL_GANGSTER_ROLE_ID', '1491223266487173311'),
-  // Chefe do Guetto
+  // Patrão di Zona — chefe do bairro (antes: "Chefe de Moradores")
   PATRAO_DI_ZONA_ROLE_ID: optId('PATRAO_DI_ZONA_ROLE_ID', '1490397679753101312'),
-  // Moradores — tier ordering (entry → topo):
+  // Bairristas — tier ordering (entry → topo):
   //   young_blood (tier 1, entrada) → o_gunao (tier 2, após 25k€) → gangster_fodido (tier 3, após 50k€).
   //   Promoções excepcionais acima de Gangster Fodido são manuais.
   YOUNG_BLOOD_ROLE_ID: optId('YOUNG_BLOOD_ROLE_ID', '1491213753235275806'),
   O_GUNAO_ROLE_ID: optId('O_GUNAO_ROLE_ID', '1491213423613317220'),
   GANGSTER_FODIDO_ROLE_ID: optId('GANGSTER_FODIDO_ROLE_ID', '1491213170961022997'),
-  // Role base obrigatória para qualquer morador (invariante)
-  MORADORES_BASE_ROLE_ID: optId('MORADORES_BASE_ROLE_ID', '1490397684597653634'),
+  // Role base obrigatória para qualquer bairrista (invariante). Aceita env
+  // antiga MORADORES_BASE_ROLE_ID como fallback (migração de domínio).
+  BAIRRISTAS_BASE_ROLE_ID: optId('BAIRRISTAS_BASE_ROLE_ID', optId('MORADORES_BASE_ROLE_ID', '1490397684597653634')),
+  get MORADORES_BASE_ROLE_ID() { return this.BAIRRISTAS_BASE_ROLE_ID; }, // legacy alias
   // Pendente — atribuído automaticamente a quem acaba de chegar ao servidor.
   // Único role que vê boas-vindas. Removido quando o pedido de tag é aprovado.
   PENDENTE_ROLE_ID: optId('PENDENTE_ROLE_ID'),
@@ -72,19 +74,25 @@ const CONFIG = {
     // Oficiais = Supervisão (OG, Real Gangster)
     return this.SUPERVISOR_ROLE_IDS;
   },
-  get CHEFE_MORADORES_ROLE_IDS() {
+  /** IDs da role "Patrão di Zona" (gestão do ramo dos bairristas). */
+  get PATRAO_DI_ZONA_ROLE_IDS() {
     return [this.PATRAO_DI_ZONA_ROLE_ID].filter(Boolean);
   },
-  /** Tiers de morador (ordem: entry → topo) */
-  get MORADOR_TIER_ROLE_IDS() {
+  /** Alias legado — antes chamava-se "Chefe de Moradores". */
+  get CHEFE_MORADORES_ROLE_IDS() { return this.PATRAO_DI_ZONA_ROLE_IDS; },
+
+  /** Tiers de bairrista (ordem: entry → topo). */
+  get BAIRRISTA_TIER_ROLE_IDS() {
     return [this.YOUNG_BLOOD_ROLE_ID, this.O_GUNAO_ROLE_ID, this.GANGSTER_FODIDO_ROLE_ID].filter(Boolean);
   },
-  /** Legado — alguns módulos ainda usam este nome */
-  get MORADOR_ROLE_IDS() { return this.MORADOR_TIER_ROLE_IDS; },
-  get ALL_MORADOR_TIER_IDS() { return this.MORADOR_TIER_ROLE_IDS; },
+  /** Aliases legados — código antigo ainda importava estes nomes. */
+  get MORADOR_TIER_ROLE_IDS() { return this.BAIRRISTA_TIER_ROLE_IDS; },
+  get MORADOR_ROLE_IDS() { return this.BAIRRISTA_TIER_ROLE_IDS; },
+  get ALL_MORADOR_TIER_IDS() { return this.BAIRRISTA_TIER_ROLE_IDS; },
 
-  /** Tier por defeito para entrada no GUETTO (set pela onboardingEngine). */
-  MORADOR_DEFAULT_TIER: 'young_blood',
+  /** Tier por defeito para entrada no BAIRRO (set pela onboardingEngine). */
+  BAIRRISTA_DEFAULT_TIER: process.env.BAIRRISTA_DEFAULT_TIER || process.env.MORADOR_DEFAULT_TIER || 'young_blood',
+  get MORADOR_DEFAULT_TIER() { return this.BAIRRISTA_DEFAULT_TIER; }, // legacy alias
 
   // ── Promoção automática por material (valor em €) ─────────────────────────
   // Ordem natural: YB (entry) → 25k€ → O Gunão → 50k€ → Gangster Fodido.
@@ -103,8 +111,11 @@ const CONFIG = {
   ),
 
   // ── Category IDs ──────────────────────────────────────────────────────────
-  MORADOR_TOPICOS_CATEGORY_ID: optId('MORADOR_TOPICOS_CATEGORY_ID', '1491543491233448006'),
-  MORADOR_ARQUIVO_CATEGORY_ID: optId('MORADOR_ARQUIVO_CATEGORY_ID'),
+  // Canais individuais dos bairristas (antes: moradores).
+  BAIRRISTA_TOPICOS_CATEGORY_ID: optId('BAIRRISTA_TOPICOS_CATEGORY_ID', optId('MORADOR_TOPICOS_CATEGORY_ID', '1491543491233448006')),
+  BAIRRISTA_ARQUIVO_CATEGORY_ID: optId('BAIRRISTA_ARQUIVO_CATEGORY_ID', optId('MORADOR_ARQUIVO_CATEGORY_ID')),
+  get MORADOR_TOPICOS_CATEGORY_ID() { return this.BAIRRISTA_TOPICOS_CATEGORY_ID; }, // legacy alias
+  get MORADOR_ARQUIVO_CATEGORY_ID() { return this.BAIRRISTA_ARQUIVO_CATEGORY_ID; }, // legacy alias
 
   // ── Channel IDs ───────────────────────────────────────────────────────────
   TAG_REQUEST_CHANNEL_ID: optId('TAG_REQUEST_CHANNEL_ID', '1490397785948688529'),
@@ -117,15 +128,17 @@ const CONFIG = {
   // Se vazio, faz fallback para AUDIT_LOG_CHANNEL_ID.
   SAIDA_RESULTS_CHANNEL_ID: optId('SAIDA_RESULTS_CHANNEL_ID'),
   STRUCTURE_SYNC_LOG_CHANNEL_ID: optId('STRUCTURE_SYNC_LOG_CHANNEL_ID'),
-  PANEL_MORADORES_CHANNEL_ID: optId('PANEL_MORADORES_CHANNEL_ID'),
+  PANEL_BAIRRISTAS_CHANNEL_ID: optId('PANEL_BAIRRISTAS_CHANNEL_ID', optId('PANEL_MORADORES_CHANNEL_ID')),
   PANEL_OFICIAIS_CHANNEL_ID: optId('PANEL_OFICIAIS_CHANNEL_ID'),
   PANEL_CHEFIA_CHANNEL_ID: optId('PANEL_CHEFIA_CHANNEL_ID'),
-  PANEL_CHEFE_MORADORES_CHANNEL_ID: optId('PANEL_CHEFE_MORADORES_CHANNEL_ID'),
+  PANEL_PATRAO_DI_ZONA_CHANNEL_ID: optId('PANEL_PATRAO_DI_ZONA_CHANNEL_ID', optId('PANEL_CHEFE_MORADORES_CHANNEL_ID')),
+  get PANEL_MORADORES_CHANNEL_ID() { return this.PANEL_BAIRRISTAS_CHANNEL_ID; }, // legacy alias
+  get PANEL_CHEFE_MORADORES_CHANNEL_ID() { return this.PANEL_PATRAO_DI_ZONA_CHANNEL_ID; }, // legacy alias
 
   // ── Comportamento ─────────────────────────────────────────────────────────
   ARCHIVE_ON_PROMOTION: optBool('ARCHIVE_ON_PROMOTION', true),
   DELETE_ON_PROMOTION: optBool('DELETE_ON_PROMOTION', false),
-  // Quando morador sai do servidor: arquivar ou apagar canal individual.
+  // Quando bairrista sai do servidor: arquivar ou apagar canal individual.
   // Default: apagar (DELETE_ON_LEAVE=true) — servidor fica limpo.
   DELETE_ON_LEAVE: optBool('DELETE_ON_LEAVE', true),
   ARCHIVE_ON_LEAVE: optBool('ARCHIVE_ON_LEAVE', false),
@@ -182,8 +195,8 @@ const CONFIG = {
     '12:00,14:00,16:00,18:00,20:00,22:00,00:00,02:00')
     .split(',').map(s => s.trim()).filter(Boolean).slice(0, 8),
   // Roles a mencionar ao publicar (separadas por vírgula). Se vazio, o engine
-  // faz fallback para [MORADORES_BASE_ROLE_ID] automaticamente — todos os
-  // moradores são alertados.
+  // faz fallback para [BAIRRISTAS_BASE_ROLE_ID] automaticamente — todos os
+  // bairristas são alertados.
   AVAILABILITY_MENTION_ROLE_IDS: (process.env.AVAILABILITY_MENTION_ROLE_IDS || '')
     .split(',').map(s => s.trim()).filter(Boolean),
   // Job auto-publish — default ligado, dispara à meia-noite local do servidor.

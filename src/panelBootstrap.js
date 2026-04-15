@@ -197,7 +197,7 @@ async function backfillResidentPanels(client) {
       );
       if (existing) { skipped++; continue; }
 
-      const name = row.full_name || row.display_name || row.nickname || 'morador';
+      const name = row.full_name || row.display_name || row.nickname || 'bairrista';
       await ch.send({
         embeds: [welcomeChannelEmbed(name)],
         components: buildMoradorChannelPanel(),

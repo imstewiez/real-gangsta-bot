@@ -1,7 +1,7 @@
 'use strict';
 /**
  * Backfill — importa para a DB todos os membros do Discord que têm pelo
- * menos uma role de RP (chefia, oficial, chefe_moradores, morador tier).
+ * menos uma role de RP (chefia, oficial, patrao_di_zona, bairrista tier).
  *
  * Útil quando o bot é instalado num servidor onde já existem membros com
  * tags atribuídas antes do sistema de onboarding ter sido usado.
@@ -18,10 +18,10 @@ const { logAudit } = require('../audit/auditEngine');
 
 // Ordem de prioridade dentro de cada classe (topo → base). Topo ganha.
 // Hierarquia completa:
-//   CHEFIA:          manda_chuva > kingpin
-//   OFICIAL:         og > real_gangster
-//   CHEFE MORADORES: patrao_di_zona (responsável pelos moradores, classe separada)
-//   MORADOR:         gangster_fodido > o_gunao > young_blood
+//   CHEFIA:         manda_chuva > kingpin
+//   OFICIAL:        og > real_gangster
+//   PATRÃO DI ZONA: patrao_di_zona (chefe do bairro, classe separada)
+//   BAIRRISTA:      gangster_fodido > o_gunao > young_blood
 const CHEFIA_TIERS = [
   { key: 'manda_chuva', getId: () => CONFIG.MANDA_CHUVA_ROLE_ID },
   { key: 'kingpin',     getId: () => CONFIG.KINGPIN_ROLE_ID },
@@ -30,7 +30,7 @@ const OFICIAL_TIERS = [
   { key: 'og',            getId: () => CONFIG.OG_ROLE_ID },
   { key: 'real_gangster', getId: () => CONFIG.REAL_GANGSTER_ROLE_ID },
 ];
-const MORADOR_TIERS = [
+const BAIRRISTA_TIERS = [
   { key: 'gangster_fodido', getId: () => CONFIG.GANGSTER_FODIDO_ROLE_ID },
   { key: 'o_gunao',         getId: () => CONFIG.O_GUNAO_ROLE_ID },
   { key: 'young_blood',     getId: () => CONFIG.YOUNG_BLOOD_ROLE_ID },
@@ -66,16 +66,16 @@ function detectRoleFromGuildMember(gm) {
   if (CONFIG.OFICIAL_ROLE_IDS.some(id => id && roles.has(id))) {
     return { role: 'oficial', tier: _resolveTier(roles, OFICIAL_TIERS) };
   }
-  // Chefe moradores (Patrão di Zona — responsável pelos moradores, não é morador)
-  if (CONFIG.CHEFE_MORADORES_ROLE_IDS.some(id => id && roles.has(id))) {
-    return { role: 'chefe_moradores', tier: 'patrao_di_zona' };
+  // Patrão di Zona — chefe do bairro (classe separada dos bairristas)
+  if (CONFIG.PATRAO_DI_ZONA_ROLE_IDS.some(id => id && roles.has(id))) {
+    return { role: 'patrao_di_zona', tier: 'patrao_di_zona' };
   }
-  // Morador com tier — detecta o mais alto
-  const moradorTier = _resolveTier(roles, MORADOR_TIERS);
-  if (moradorTier) return { role: 'morador', tier: moradorTier };
-  // Base moradores sem tier específico — assume entry
-  if (CONFIG.MORADORES_BASE_ROLE_ID && roles.has(CONFIG.MORADORES_BASE_ROLE_ID)) {
-    return { role: 'morador', tier: CONFIG.MORADOR_DEFAULT_TIER || 'young_blood' };
+  // Bairrista com tier — detecta o mais alto
+  const bairristaTier = _resolveTier(roles, BAIRRISTA_TIERS);
+  if (bairristaTier) return { role: 'bairrista', tier: bairristaTier };
+  // Base bairristas sem tier específico — assume entry
+  if (CONFIG.BAIRRISTAS_BASE_ROLE_ID && roles.has(CONFIG.BAIRRISTAS_BASE_ROLE_ID)) {
+    return { role: 'bairrista', tier: CONFIG.BAIRRISTA_DEFAULT_TIER || 'young_blood' };
   }
   return null; // Sem role RP — ignorar
 }

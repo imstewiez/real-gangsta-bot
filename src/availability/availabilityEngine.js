@@ -134,13 +134,13 @@ async function createSession({ client, channelId, createdBy, headerText, mention
     return { session: existing, alreadyOpen: true };
   }
 
-  // Resolve menções: explicit > config > MORADORES_BASE como fallback final
-  // (assim, se nada estiver configurado, todos os moradores são alertados).
+  // Resolve menções: explicit > config > BAIRRISTAS_BASE como fallback final
+  // (assim, se nada estiver configurado, todos os bairristas são alertados).
   let resolvedMentions = mentionRoleIds;
   if (!resolvedMentions || !resolvedMentions.length) {
     resolvedMentions = CONFIG.AVAILABILITY_MENTION_ROLE_IDS.length
       ? CONFIG.AVAILABILITY_MENTION_ROLE_IDS
-      : (CONFIG.MORADORES_BASE_ROLE_ID ? [CONFIG.MORADORES_BASE_ROLE_ID] : []);
+      : (CONFIG.BAIRRISTAS_BASE_ROLE_ID ? [CONFIG.BAIRRISTAS_BASE_ROLE_ID] : []);
   }
 
   const session = await availabilityRepo.createSession({

@@ -29,13 +29,13 @@ npm test
  2. Kingpin          │
  3. OG               │ Supervisão          (isSupervisor, isOficial)
  4. Real Gangster    │
- 5. Patrão di Zona   │ Chefe do Guetto     (isChefeMoradores)
+ 5. Patrão di Zona   │ Chefe do Bairro     (isPatraoDiZona)
  6. Gangster Fodido  │ tier 3 (topo)       ┐
- 7. Young Blood      │ tier 2 (mid)        ├─ Moradores
+ 7. Young Blood      │ tier 2 (mid)        ├─ Bairristas
  8. O Gunão          │ tier 1 (entrada)    ┘
 ```
 
-**Invariante core**: qualquer tier (Gun/YB/GF) ⇒ role base **Moradores**. Aplicada em onboarding, promoções e via job diário.
+**Invariante core**: qualquer tier (Gun/YB/GF) ⇒ role base **Bairristas**. Aplicada em onboarding, promoções e via job diário.
 
 A ordem foi corrigida na Fase 2 (era inversa). Membros existentes em produção podem ser migrados via `/rg-fix-tiers modo:dry-run` → `apply` (swap YB↔O Gunão + DB tier + rename do canal individual).
 
@@ -45,7 +45,7 @@ A ordem foi corrigida na Fase 2 (era inversa). Membros existentes em produção 
 1. Pessoa clica "Pedir Tag" no painel de entrada → modal (nome + alcunha).
 2. Pedido fica pendente em `tag_requests`. Chefia aprova no canal `🏷️│tags`.
 3. Aprovação:
-   - adiciona `Moradores` (base) + `Young Blood` (tier 1)
+   - adiciona `Bairristas` (base) + `Young Blood` (tier 1)
    - cria registo em `members` (tier=young_blood)
    - cria canal individual no GUETTO com overwrites para o próprio + Comando + Supervisão + Patrão di Zona
    - envia embed de boas-vindas com painel pessoal
@@ -63,7 +63,7 @@ Env vars: `PROMO_GUNAO_TO_YOUNG_BLOOD` e `PROMO_YOUNG_BLOOD_TO_GANGSTER_FODIDO` 
 - Canal individual é arquivado (`ARCHIVE_ON_PROMOTION=true`) — não apagado.
 
 ### Inventário (ledger)
-Tipos de movimento: `saldo_inicial`, `entrega_morador`, `venda_morador`, `entrega_oficial`, `fornecimento_org`, `consumo_operacao`, `devolucao_operacao`, `ajuste_manual`, `perda_operacao`, `apreendido`, `craftado`.
+Tipos de movimento: `saldo_inicial`, `entrega_bairrista`, `venda_bairrista`, `entrega_oficial`, `fornecimento_org`, `consumo_operacao`, `devolucao_operacao`, `ajuste_manual`, `perda_operacao`, `apreendido`, `craftado`. (Legacy: `entrega_morador`, `venda_morador` — aceites em leitura durante transição.)
 
 Stock é sempre calculado a partir do ledger — nunca sobreposto.
 
@@ -146,10 +146,10 @@ npm run structure:sync:apply         # aplica
 | Painel | Canal | Funcionalidades |
 |---|---|---|
 | Entrada | ENTRADA | Pedir Tag |
-| Morador | GUETTO | Registar material, histórico, totais, progresso, top semanal |
+| Bairrista | GUETTO | Registar material, histórico, totais, progresso, top semanal |
 | Oficial | OFICIAIS | Registar material, operações, histórico |
 | Chefia | COMANDO | Criar/fechar operações, adicionar participantes, material, stock, gerir materiais, tops, logs |
-| Chefe de Moradores | GUETTO | Listar moradores, entregas/vendas, tops moradores |
+| Patrão di Zona | GUETTO | Listar bairristas, entregas/vendas, tops bairristas |
 
 ## Estrutura do Discord (template)
 
@@ -159,7 +159,7 @@ npm run structure:sync:apply         # aplica
 ╭・𝗘𝗡𝗧𝗥𝗔𝗗𝗔          divulgação · entradas · tags · regras · info
 ╭・𝗖𝗢𝗠𝗔𝗡𝗗𝗢          comunicados · chefia · preços · logs · logs-bot
 ╭・𝗢𝗙𝗜𝗖𝗜𝗔𝗜𝗦          chat · disponibilidade · ausências · rádio · baú
-╭・𝗚𝗨𝗘𝗧𝗧𝗢            chefia-moradores · baú-casa · encomendas · material · canais individuais
+╭・𝗚𝗨𝗘𝗧𝗧𝗢            patrao-di-zona · baú-casa · encomendas · material · canais individuais
 ╭・𝗜𝗡𝗩𝗘𝗡𝗧Á𝗥𝗜𝗢       resumo-stock · entradas/saídas/ajustes
 ╭・𝗔𝗥𝗦𝗘𝗡𝗔𝗟          armas · munições · carregadores · droga
 ╭・𝗢𝗣𝗘𝗥𝗔𝗖̧𝗢̃𝗘𝗦         mapas · spots · planeamento · resultados

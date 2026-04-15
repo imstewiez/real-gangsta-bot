@@ -259,7 +259,7 @@ async function _resolveOrCreateMember(discordId, guild = null) {
     discordId,
     username: username || discordId,
     displayName: display || username || `member-${discordId}`,
-    role: 'morador',
+    role: 'bairrista',
   });
   warn(`[SAIDA] Membro ${discordId} não estava na DB — criado automaticamente.`);
   return member;

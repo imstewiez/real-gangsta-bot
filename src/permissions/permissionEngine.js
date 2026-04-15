@@ -7,9 +7,9 @@ const CONFIG = require('../config');
  *   2. Kingpin           ├─ Comando Total  (isCommand / isChefia)
  *   3. OG                ┐
  *   4. Real Gangster     ├─ Supervisão     (isSupervisor / isOficial)
- *   5. Patrão di Zona    ── Chefe do Guetto (isChefeMoradores)
+ *   5. Patrão di Zona    ── Chefe do Bairro (isPatraoDiZona)
  *   6. Gangster Fodido   ┐
- *   7. O Gunão           ├─ Moradores      (isMorador)
+ *   7. O Gunão           ├─ Bairristas     (isBairrista)
  *   8. Young Blood       ┘
  *
  * Roles flavor (não-core): Tropinhas do Guetto, Patrulha Pata
@@ -34,18 +34,20 @@ function getMemberRoles(member) {
   const roles = new Set();
   if (hasAny(ids, CONFIG.COMMAND_ROLE_IDS)) roles.add('command');
   if (hasAny(ids, CONFIG.SUPERVISOR_ROLE_IDS)) roles.add('supervisor');
-  if (hasAny(ids, CONFIG.CHEFE_MORADORES_ROLE_IDS)) roles.add('chefe_moradores');
-  if (hasAny(ids, CONFIG.MORADOR_TIER_ROLE_IDS)) roles.add('morador');
+  if (hasAny(ids, CONFIG.PATRAO_DI_ZONA_ROLE_IDS)) roles.add('patrao_di_zona');
+  if (hasAny(ids, CONFIG.BAIRRISTA_TIER_ROLE_IDS)) roles.add('bairrista');
   return roles;
 }
 
-function getMoradorTier(member) {
+function getBairristaTier(member) {
   const ids = memberRoleIds(member);
   if (ids.has(CONFIG.GANGSTER_FODIDO_ROLE_ID)) return 'gangster_fodido';
   if (ids.has(CONFIG.O_GUNAO_ROLE_ID)) return 'o_gunao';
   if (ids.has(CONFIG.YOUNG_BLOOD_ROLE_ID)) return 'young_blood';
   return null;
 }
+/** @deprecated usa getBairristaTier */
+const getMoradorTier = getBairristaTier;
 
 function getExactRole(member) {
   const ids = memberRoleIds(member);
@@ -71,31 +73,37 @@ function isSupervisor(member) { return hasAny(memberRoleIds(member), CONFIG.SUPE
 /** Chefia = Comando total (compatibilidade com código existente). */
 function isChefia(member) { return isCommand(member); }
 
-/** Oficial = Supervisão OU Comando (quem manda acima da linha de moradores). */
+/** Oficial = Supervisão OU Comando (quem manda acima da linha dos bairristas). */
 function isOficial(member) { return isCommand(member) || isSupervisor(member); }
 
 /** Patrão di Zona ou qualquer escalão acima. */
-function isChefeMoradores(member) {
-  return hasAny(memberRoleIds(member), CONFIG.CHEFE_MORADORES_ROLE_IDS)
+function isPatraoDiZona(member) {
+  return hasAny(memberRoleIds(member), CONFIG.PATRAO_DI_ZONA_ROLE_IDS)
     || isCommand(member)
     || isSupervisor(member);
 }
+/** @deprecated usa isPatraoDiZona */
+const isChefeMoradores = isPatraoDiZona;
 
-function isMorador(member) { return hasAny(memberRoleIds(member), CONFIG.MORADOR_TIER_ROLE_IDS); }
+function isBairrista(member) { return hasAny(memberRoleIds(member), CONFIG.BAIRRISTA_TIER_ROLE_IDS); }
+/** @deprecated usa isBairrista */
+const isMorador = isBairrista;
 
 function isAnyMember(member) {
-  return isCommand(member) || isSupervisor(member) || isChefeMoradores(member) || isMorador(member);
+  return isCommand(member) || isSupervisor(member) || isPatraoDiZona(member) || isBairrista(member);
 }
 
 // ── Capacidades (intent-level) ────────────────────────────────────────────
 
 function canManageInventory(member) { return isCommand(member) || isSupervisor(member); }
 function canManageOperations(member) { return isCommand(member) || isSupervisor(member); }
-function canManageGuetto(member) {
+function canManageBairro(member) {
   return isCommand(member) || isSupervisor(member)
-    || hasAny(memberRoleIds(member), CONFIG.CHEFE_MORADORES_ROLE_IDS);
+    || hasAny(memberRoleIds(member), CONFIG.PATRAO_DI_ZONA_ROLE_IDS);
 }
-function canViewAllMembers(member) { return canManageGuetto(member); }
+/** @deprecated usa canManageBairro */
+const canManageGuetto = canManageBairro;
+function canViewAllMembers(member) { return canManageBairro(member); }
 function canRegisterMaterial(member) { return isAnyMember(member); }
 function canManageStructure(member) { return isCommand(member); }
 function canBootstrapStock(member) { return isCommand(member); }
@@ -104,20 +112,24 @@ function canRegisterKill(member) { return isAnyMember(member); }
 module.exports = {
   // introspection
   getMemberRoles,
-  getMoradorTier,
+  getBairristaTier,
+  getMoradorTier,      // legacy alias
   getExactRole,
   // predicates
   isCommand,
   isSupervisor,
   isChefia,
   isOficial,
-  isChefeMoradores,
-  isMorador,
+  isPatraoDiZona,
+  isChefeMoradores,    // legacy alias
+  isBairrista,
+  isMorador,           // legacy alias
   isAnyMember,
   // capabilities
   canManageInventory,
   canManageOperations,
-  canManageGuetto,
+  canManageBairro,
+  canManageGuetto,     // legacy alias
   canViewAllMembers,
   canRegisterMaterial,
   canManageStructure,

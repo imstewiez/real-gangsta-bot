@@ -92,9 +92,9 @@ async function publishDailySummary(client) {
       : null;
     if (guild) await guild.members.fetch().catch(() => null);
 
-    const moradorCount = await _countDiscordRoleMembers(guild, [
-      ...CONFIG.MORADOR_TIER_ROLE_IDS,
-      ...CONFIG.CHEFE_MORADORES_ROLE_IDS,
+    const bairristaCount = await _countDiscordRoleMembers(guild, [
+      ...CONFIG.BAIRRISTA_TIER_ROLE_IDS,
+      ...CONFIG.PATRAO_DI_ZONA_ROLE_IDS,
     ]);
     const oficialCount = await _countDiscordRoleMembers(guild, [
       ...CONFIG.OFICIAL_ROLE_IDS,
@@ -113,9 +113,9 @@ async function publishDailySummary(client) {
 
     const matRes = await query(
       `SELECT
-         COUNT(*) FILTER (WHERE movement_type = 'entrega_morador')::int AS entregas,
-         COUNT(*) FILTER (WHERE movement_type = 'venda_morador')::int AS vendas,
-         COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_morador', 'venda_morador')), 0)::int AS qty
+         COUNT(*) FILTER (WHERE movement_type IN ('entrega_bairrista','entrega_morador'))::int AS entregas,
+         COUNT(*) FILTER (WHERE movement_type IN ('venda_bairrista','venda_morador'))::int AS vendas,
+         COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_bairrista','venda_bairrista','entrega_morador','venda_morador')), 0)::int AS qty
        FROM inventory_movements
        WHERE created_at::date = $1`,
       [today]
@@ -125,11 +125,11 @@ async function publishDailySummary(client) {
     const embed = brandEmbed()
       .setTitle(`Resumo Diário — ${today}`)
       .addFields(
-        { name: 'Moradores', value: String(moradorCount), inline: true },
+        { name: 'Bairristas', value: String(bairristaCount), inline: true },
         { name: 'Oficiais', value: String(oficialCount), inline: true },
         { name: 'Kills Hoje', value: String(killsToday), inline: true },
         { name: 'Saídas Hoje', value: `${todayOps.length} (${concluidas} fechadas · ${emCurso} em curso)`, inline: false },
-        { name: 'Material p/ Moradores', value: `${mat.entregas} entregas · ${mat.vendas} vendas · ${mat.qty} unidades`, inline: false },
+        { name: 'Material p/ Bairristas', value: `${mat.entregas} entregas · ${mat.vendas} vendas · ${mat.qty} unidades`, inline: false },
       );
 
     if (todayOps.length > 0) {

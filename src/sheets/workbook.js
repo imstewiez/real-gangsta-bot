@@ -16,7 +16,7 @@ const { COLOR } = require('./theme');
 const { log, warn } = require('../logger');
 
 // Nome canónico + ordem canónica das tabs. Render em ordem no workbook.
-// Consolidação: 15 → 9 tabs. Weekly+Daily→Resumo, Members+Moradores+Oficiais→
+// Consolidação: 15 → 9 tabs. Weekly+Daily→Resumo, Members+Bairristas+Oficiais→
 // Membros, Kills+Spots→Combate, Inventory+Movements→Stock, Audit removido.
 // 6 tabs canónicas — compactação máxima. Secções internas bem organizadas
 // substituem tabs separadas para reduzir ruído de navegação.

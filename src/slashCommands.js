@@ -136,7 +136,7 @@ const commands = [
       .addChoices(
         { name: 'Apreendido', value: 'apreendido' },
         { name: 'Craftado', value: 'craftado' },
-        { name: 'Entrega Morador', value: 'entrega_morador' },
+        { name: 'Entrega Bairrista', value: 'entrega_bairrista' },
         { name: 'Entrega Oficial', value: 'entrega_oficial' },
         { name: 'Devolução de Saída', value: 'devolucao_operacao' },
       ))
@@ -152,7 +152,7 @@ const commands = [
       .addChoices({ name: 'Armazém (chefes)', value: 'armazem' }, { name: 'Grupo (oficiais)', value: 'grupo' }))
     .addStringOption(opt => opt.setName('tipo').setDescription('Razão da saída').setRequired(true)
       .addChoices(
-        { name: 'Venda Morador', value: 'venda_morador' },
+        { name: 'Venda Bairrista', value: 'venda_bairrista' },
         { name: 'Fornecimento Org (saída)', value: 'fornecimento_org' },
         { name: 'Consumo em Operação', value: 'consumo_operacao' },
         { name: 'Perda em Operação', value: 'perda_operacao' },

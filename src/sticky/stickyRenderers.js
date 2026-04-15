@@ -50,10 +50,12 @@ function registerBuiltinRenderers() {
     const { buildEntradaPanel } = require('../panels/entradaPanel');
     return buildEntradaPanel();
   });
-  registerRenderer('panel:moradores', async () => {
-    const { buildMoradorPanel } = require('../panels/moradorPanel');
-    return buildMoradorPanel();
-  });
+  const bairristaPanel = async () => {
+    const { buildBairristaPanel } = require('../panels/moradorPanel');
+    return buildBairristaPanel();
+  };
+  registerRenderer('panel:bairristas', bairristaPanel);
+  registerRenderer('panel:moradores', bairristaPanel); // legacy alias
   registerRenderer('panel:oficiais', async () => {
     const { buildOficialPanel } = require('../panels/oficialPanel');
     return buildOficialPanel();
@@ -62,10 +64,12 @@ function registerBuiltinRenderers() {
     const { buildChefiaPanel } = require('../panels/chefiaPanel');
     return buildChefiaPanel();
   });
-  registerRenderer('panel:chefe_moradores', async () => {
-    const { buildChefeMoradoresPanel } = require('../panels/chefeMoradoresPanel');
-    return buildChefeMoradoresPanel();
-  });
+  const patraoPanel = async () => {
+    const { buildPatraoDiZonaPanel } = require('../panels/chefeMoradoresPanel');
+    return buildPatraoDiZonaPanel();
+  };
+  registerRenderer('panel:patrao_di_zona', patraoPanel);
+  registerRenderer('panel:chefe_moradores', patraoPanel); // legacy alias
 }
 
 module.exports = { registerBuiltinRenderers };

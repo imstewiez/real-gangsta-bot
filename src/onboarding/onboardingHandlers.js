@@ -57,9 +57,9 @@ async function handlePedirTagButton(interaction) {
     }, { dismissible: true });
   }
 
-  // Check if already a morador
-  const moradorRoleIds = CONFIG.ALL_MORADOR_TIER_IDS;
-  const hasRole = moradorRoleIds.some(id => interaction.member.roles.cache.has(id));
+  // Check if already a bairrista
+  const bairristaRoleIds = CONFIG.BAIRRISTA_TIER_ROLE_IDS;
+  const hasRole = bairristaRoleIds.some(id => interaction.member.roles.cache.has(id));
   if (hasRole) {
     return safeReply(interaction, {
       content: `${EMOJI.WARN} Já estás na casa — não precisas de pedir outra vez.`,
@@ -69,7 +69,7 @@ async function handlePedirTagButton(interaction) {
 
   const modal = new ModalBuilder()
     .setCustomId('onboard::modal_tag')
-    .setTitle('Pedir Tag de Morador')
+    .setTitle('Pedir Tag de Bairrista')
     .addComponents(
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
@@ -250,7 +250,7 @@ async function handleDenyButton(interaction, requestId) {
 // PAINEL DO CANAL INDIVIDUAL (enhanced — 5 botões)
 // ═══════════════════════════════════════════════════════════════════════════
 
-function buildMoradorChannelPanel() {
+function buildBairristaChannelPanel() {
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('morador::registar_material').setLabel('Registar Material').setStyle(ButtonStyle.Success).setEmoji('\uD83D\uDCE6'),
     new ButtonBuilder().setCustomId('morador::encomendar').setLabel('Encomendar').setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDED2'),
@@ -275,5 +275,6 @@ module.exports = {
   handleTagModal,
   handleApproveButton,
   handleDenyButton,
-  buildMoradorChannelPanel,
+  buildBairristaChannelPanel,
+  buildMoradorChannelPanel: buildBairristaChannelPanel, // legacy alias
 };

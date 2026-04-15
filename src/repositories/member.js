@@ -21,7 +21,7 @@ async function findByRole(role) {
   return res.rows;
 }
 
-async function create({ discordId, username, displayName, role = 'morador', channelId = null }) {
+async function create({ discordId, username, displayName, role = 'bairrista', channelId = null }) {
   const res = await query(
     `INSERT INTO members (discord_id, username, display_name, role, channel_id)
      VALUES ($1, $2, $3, $4, $5) RETURNING *`,
