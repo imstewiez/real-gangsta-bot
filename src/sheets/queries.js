@@ -537,6 +537,185 @@ async function getAuditFull(limit = 1000) {
   return r.rows;
 }
 
+// ─── Top movers (top 3 por eixo, para o Dashboard) ───────────────────────────
+async function getTopMovers() {
+  const w = weekBounds();
+
+  const topEntregas = await query(`
+    SELECT m.display_name, SUM(sm.quantity)::int AS value
+    FROM inventory_movements sm
+    JOIN members m ON m.id = sm.member_id
+    WHERE sm.created_at >= $1::date
+      AND sm.movement_type IN ('entrega_morador','entrega_oficial')
+    GROUP BY m.display_name
+    ORDER BY value DESC NULLS LAST LIMIT 3`, [w.start]);
+
+  const topKills = await query(`
+    SELECT m.display_name, COUNT(*)::int AS value
+    FROM kill_logs k
+    JOIN members m ON m.id = k.killer_id
+    WHERE k.created_at >= $1::date
+    GROUP BY m.display_name
+    ORDER BY value DESC NULLS LAST LIMIT 3`, [w.start]);
+
+  const topProfit = await query(`
+    SELECT m.display_name, SUM(COALESCE(o.net_value,0))::numeric AS value
+    FROM operations o
+    LEFT JOIN members m ON m.id = o.leader_id
+    WHERE o.date >= $1::date AND o.status = 'concluida'
+    GROUP BY m.display_name
+    ORDER BY value DESC NULLS LAST LIMIT 3`, [w.start]);
+
+  return { topEntregas: topEntregas.rows, topKills: topKills.rows, topProfit: topProfit.rows };
+}
+
+// ─── Tendências semanais (para a secção "TENDÊNCIA" do Dashboard) ────────────
+async function getTrending() {
+  const w = weekBounds();
+  const pw = prevWeekBounds();
+
+  const sqlSaidas = (s, e) => query(`
+    SELECT
+      COUNT(*)::int AS saidas,
+      SUM(CASE WHEN result = 'vitoria' THEN 1 ELSE 0 END)::int AS wins,
+      SUM(COALESCE(our_kills,0))::int AS kills,
+      SUM(COALESCE(deaths,0))::int AS deaths,
+      SUM(COALESCE(net_value,0))::numeric AS net,
+      SUM(COALESCE(gross_value,0))::numeric AS gross,
+      SUM(COALESCE(lost_value,0))::numeric AS lost
+    FROM operations
+    WHERE date >= $1::date AND date < $2::date AND status = 'concluida'`, [s, e]);
+
+  const sqlMov = (s, e) => query(`
+    SELECT
+      SUM(CASE WHEN movement_type IN ('entrega_morador','entrega_oficial') THEN quantity ELSE 0 END)::int AS entregas,
+      SUM(CASE WHEN movement_type = 'venda_morador' THEN quantity ELSE 0 END)::int AS vendas
+    FROM inventory_movements
+    WHERE created_at >= $1::date AND created_at < $2::date`, [s, e]);
+
+  const nextDay = d => { const x = new Date(d); x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().split('T')[0]; };
+  const curEndExcl = nextDay(w.end);
+
+  const [cs, ps, cm, pm] = await Promise.all([
+    sqlSaidas(w.start, curEndExcl),
+    sqlSaidas(pw.start, pw.end),
+    sqlMov(w.start, curEndExcl),
+    sqlMov(pw.start, pw.end),
+  ]);
+
+  const C = cs.rows[0] || {}; const P = ps.rows[0] || {};
+  const CM = cm.rows[0] || {}; const PM = pm.rows[0] || {};
+
+  return {
+    saidas:   { current: Number(C.saidas) || 0, previous: Number(P.saidas) || 0 },
+    wins:     { current: Number(C.wins)   || 0, previous: Number(P.wins)   || 0 },
+    kills:    { current: Number(C.kills)  || 0, previous: Number(P.kills)  || 0 },
+    deaths:   { current: Number(C.deaths) || 0, previous: Number(P.deaths) || 0 },
+    net:      { current: Number(C.net)    || 0, previous: Number(P.net)    || 0 },
+    gross:    { current: Number(C.gross)  || 0, previous: Number(P.gross)  || 0 },
+    lost:     { current: Number(C.lost)   || 0, previous: Number(P.lost)   || 0 },
+    entregas: { current: Number(CM.entregas) || 0, previous: Number(PM.entregas) || 0 },
+    vendas:   { current: Number(CM.vendas)   || 0, previous: Number(PM.vendas)   || 0 },
+  };
+}
+
+// ─── Alertas automáticos para o Dashboard ────────────────────────────────────
+// Produz uma lista de {kind:'warn'|'danger'|'info', message:string}.
+async function getAlerts() {
+  const alerts = [];
+
+  // 1) Stock crítico (balance <= 3 e active)
+  const criticalStock = await query(`
+    WITH stock_balances AS (
+      SELECT i.id, i.name, i.category,
+        COALESCE(SUM(${STOCK_BALANCE_CASE}), 0) AS balance
+      FROM items i
+      LEFT JOIN inventory_movements im ON im.item_id = i.id
+      WHERE i.active = true
+      GROUP BY i.id, i.name, i.category
+    )
+    SELECT name, category, balance FROM stock_balances
+    WHERE balance <= 3
+    ORDER BY balance ASC, name
+    LIMIT 5`);
+  for (const r of criticalStock.rows) {
+    alerts.push({
+      kind: r.balance <= 0 ? 'danger' : 'warn',
+      message: `Stock crítico: ${r.name} (${r.category}) — ${r.balance} restantes`,
+    });
+  }
+
+  // 2) Spots com queda brusca (last saida perdida + >1 morte)
+  const badSpots = await query(`
+    SELECT spot, our_deaths, total_saidas
+    FROM spot_stats
+    WHERE total_saidas >= 3 AND our_deaths >= our_kills AND our_deaths > 0
+    ORDER BY our_deaths DESC LIMIT 3`);
+  for (const r of badSpots.rows) {
+    alerts.push({
+      kind: 'warn',
+      message: `Spot ${r.spot} acumula ${r.our_deaths} mortes em ${r.total_saidas} saídas — reavaliar.`,
+    });
+  }
+
+  // 3) Semana sem saídas concluídas
+  const w = weekBounds();
+  const weekOps = await query(`
+    SELECT COUNT(*)::int AS n FROM operations
+    WHERE date >= $1::date AND status = 'concluida'`, [w.start]);
+  if ((weekOps.rows[0]?.n || 0) === 0) {
+    alerts.push({ kind: 'info', message: 'Nenhuma saída concluída esta semana ainda.' });
+  }
+
+  return alerts;
+}
+
+// ─── Stock agrupado por categoria (para secção de breakdown) ─────────────────
+async function getStockByCategory() {
+  const r = await query(`
+    WITH stock_balances AS (
+      SELECT i.id, i.category, i.estimated_value,
+        COALESCE(SUM(${STOCK_BALANCE_CASE}), 0) AS balance
+      FROM items i
+      LEFT JOIN inventory_movements im ON im.item_id = i.id
+      WHERE i.active = true
+      GROUP BY i.id, i.category, i.estimated_value
+    )
+    SELECT category,
+      COUNT(*)::int AS items_count,
+      SUM(balance)::int AS total_qty,
+      SUM(balance * COALESCE(estimated_value, 0))::numeric AS total_value
+    FROM stock_balances
+    GROUP BY category
+    ORDER BY total_value DESC NULLS LAST`);
+  return r.rows;
+}
+
+// ─── Streaks (wins consecutivas em saídas recentes) ──────────────────────────
+async function getMemberStreaks(limit = 5) {
+  const r = await query(`
+    WITH recent AS (
+      SELECT op.member_id, o.date, o.result,
+        ROW_NUMBER() OVER (PARTITION BY op.member_id ORDER BY o.date DESC, o.id DESC) AS rn
+      FROM operation_participants op
+      JOIN operations o ON o.id = op.operation_id
+      WHERE o.status = 'concluida'
+    ),
+    last5 AS (
+      SELECT member_id,
+        SUM(CASE WHEN result = 'vitoria' THEN 1 ELSE 0 END)::int AS wins,
+        COUNT(*)::int AS total
+      FROM recent WHERE rn <= 5
+      GROUP BY member_id
+    )
+    SELECT m.display_name, l.wins, l.total
+    FROM last5 l
+    JOIN members m ON m.id = l.member_id
+    WHERE l.total >= 3
+    ORDER BY l.wins DESC, l.total DESC LIMIT $1`, [limit]);
+  return r.rows;
+}
+
 module.exports = {
   weekBounds, prevWeekBounds, daysAgoISO,
   getDashboardKPIs,
@@ -551,4 +730,10 @@ module.exports = {
   getInventoryFull,
   getMovementsFull,
   getAuditFull,
+  // Novos — Dashboard premium
+  getTopMovers,
+  getTrending,
+  getAlerts,
+  getStockByCategory,
+  getMemberStreaks,
 };
