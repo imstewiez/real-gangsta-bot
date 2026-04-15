@@ -53,7 +53,7 @@ function valueFormat() { return cellFormat(C.BLACK, C.GOLD, true, 22, 'CENTER');
 function labelFormat() { return cellFormat(C.DARK, C.LIGHT, false, 10, 'LEFT'); }
 
 async function run() {
-  console.log('Setting up Real Gangsta Google Sheet...\n');
+  console.log('Setting up Bot di Zona Google Sheet...\n');
 
   // ── Step 1: Get current sheet state ──────────────────────────────────────
   const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID });
@@ -210,7 +210,7 @@ async function run() {
 
   // Resumo Geral
   values['📊 Resumo Geral!A1'] = [
-    ['🩸 REAL GANGSTA — RESUMO GERAL 🩸'],
+    ['🩸 BOT DI ZONA — RESUMO GERAL 🩸'],
     [],
     ['', '📊  VISÃO GERAL', '', ''],
     ['', 'Total Membros Ativos', '—', '(dados atualizados pelo bot)'],
@@ -313,7 +313,7 @@ async function run() {
   // Rename the spreadsheet
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId: SHEET_ID,
-    requestBody: { requests: [{ updateSpreadsheetProperties: { properties: { title: '🩸 Real Gangsta — Gestão' }, fields: 'title' } }] },
+    requestBody: { requests: [{ updateSpreadsheetProperties: { properties: { title: '🩸 Bot di Zona — Gestão' }, fields: 'title' } }] },
   });
 
   console.log('\n✅ Google Sheet configurada com sucesso!');

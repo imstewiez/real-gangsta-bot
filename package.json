@@ -1,7 +1,7 @@
 {
-  "name": "real-gangsta-bot",
+  "name": "bot-di-zona",
   "version": "1.0.0",
-  "description": "Real Gangsta — Bot de gestão de bairro/grupo RP para Discord",
+  "description": "Bot di Zona — Bot de gestão de bairro/grupo RP para Discord",
   "main": "src/index.js",
   "type": "commonjs",
   "engines": {

@@ -2,7 +2,7 @@
 const CONFIG = require('../config');
 
 /**
- * Hierarquia Real Gangsta:
+ * Hierarquia Bot di Zona:
  *   1. Manda-Chuva      ─┐
  *   2. Kingpin           ├─ Comando Total  (isCommand / isChefia)
  *   3. OG                ┐

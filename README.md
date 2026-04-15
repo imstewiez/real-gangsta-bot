@@ -1,6 +1,6 @@
-# Real Gangsta
+# Bot di Zona
 
-Bot de gestão do bairro/grupo RP **Real Gangsta**. Gere onboarding, hierarquia, inventário (ledger), operações/saídas, tops semanais, cemitério e auditoria — tudo com o Discord como interface e PostgreSQL como fonte de verdade.
+Bot de gestão do bairro/grupo RP **Bot di Zona**. Gere onboarding, hierarquia, inventário (ledger), operações/saídas, tops semanais, cemitério e auditoria — tudo com o Discord como interface e PostgreSQL como fonte de verdade.
 
 ## Stack
 

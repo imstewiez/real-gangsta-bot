@@ -1,4 +1,4 @@
-# Real Gangsta — Auditoria do projecto (Fase 1)
+# Bot di Zona — Auditoria do projecto (Fase 1)
 
 Data: 2026-04-13
 Branch base: `master`
