@@ -185,6 +185,13 @@ const commands = [
     .setDescription('Mostra o stock actual de um item (por casa)')
     .addStringOption(opt => opt.setName('item').setDescription('Nome do item').setRequired(true).setAutocomplete(true)),
 
+  // ── Data lifecycle / retenção ────────────────────────────────────────────
+  new SlashCommandBuilder()
+    .setName('rg-retention-run')
+    .setDescription('Corre políticas de retenção (audit/job_runs/radio_history antigos)')
+    .addStringOption(opt => opt.setName('modo').setDescription('dry-run mostra o que seria feito; apply executa').setRequired(true)
+      .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
+
   // ── Google Sheets sync ──────────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName('rg-sync-sheets')

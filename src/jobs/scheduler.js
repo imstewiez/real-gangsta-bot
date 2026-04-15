@@ -59,6 +59,13 @@ function startAll(client) {
     registerJob('sheets_sync', minutes * 60 * 1000, async () => { await syncAll(); });
   }
 
+  // Retention — corre 1x por dia (24h interval). Remove audit_logs > 365d,
+  // job_runs > 90d, radio_history > 365d. Soft-delete availability > 180d.
+  registerJob('retention', 24 * 60 * 60 * 1000, async () => {
+    const { runRetention } = require('./retentionJob');
+    return await runRetention({ dryRun: false, actor: 'system:scheduler' });
+  });
+
   // Rankings mensais + all-time snapshot — corre a cada 6h (idempotente).
   // No primeiro dia do mês apanha o mês anterior; resto dos dias actualiza
   // o mês corrente e mantém all_time_stats frescas.

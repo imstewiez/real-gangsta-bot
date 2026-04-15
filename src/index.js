@@ -597,6 +597,32 @@ async function _dispatchInteraction(interaction) {
         return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
       }
 
+      if (cmd === 'rg-retention-run') {
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('retention'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const modo = interaction.options.getString('modo');
+        const dryRun = modo === 'dry-run';
+        const { runRetention } = require('./jobs/retentionJob');
+        const r = await runRetention({ dryRun, actor: `discord:${interaction.user.id}` });
+        const tag = dryRun ? '**DRY-RUN**' : '**APLICADO**';
+        const lines = [
+          `${tag} · Retenção concluída em ${r.ms}ms`,
+          `• Políticas avaliadas: ${r.actions.length}`,
+          `• Rows afectados: ${r.summary.totalRows}`,
+          `• Erros: ${r.summary.errors}`,
+          '',
+          '**Detalhe:**',
+          ...r.actions.map(a => {
+            const status = a.error ? `❌ ${a.error.slice(0, 60)}`
+                         : a.applied ? `✅ ${a.count} rows`
+                         : a.count === 0 ? `⚪ nada a fazer`
+                         : `🔸 ${a.count} rows (não aplicado)`;
+            return `  • \`${a.key}\` → ${status}`;
+          }),
+        ];
+        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
+      }
+
       // ── Stock manual ──────────────────────────────────────────────────────
       if (cmd === 'rg-stock-add' || cmd === 'rg-stock-remove' || cmd === 'rg-stock-transfer' || cmd === 'rg-stock-adjust' || cmd === 'rg-stock-check') {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
