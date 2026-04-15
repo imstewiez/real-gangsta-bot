@@ -117,6 +117,39 @@ async function runPermsOnly(guild, opts = {}) {
   await guild.channels.fetch().catch(() => null);
   await guild.roles.fetch().catch(() => null);
 
+  // ── DIAG (dry-run only): estado actual do @everyone ViewChannel em cada
+  //    canal da nossa lista de overrides + categorias. Dá visibilidade directa
+  //    de quem consegue ver o quê, evita debug por tentativa-erro.
+  if (!apply) {
+    try {
+      const everyoneId = guild.roles.everyone.id;
+      const viewBit = PermissionFlagsBits.ViewChannel;
+
+      for (const [key] of Object.entries(CATEGORY_PERMS)) {
+        const tpl = CATEGORY_BY_KEY[key];
+        if (!tpl || !tpl.id) continue;
+        const cat = guild.channels.cache.get(tpl.id);
+        if (!cat) continue;
+        const ow = cat.permissionOverwrites.cache.get(everyoneId);
+        const allow = ow?.allow.has(viewBit) || false;
+        const deny = ow?.deny.has(viewBit) || false;
+        act('DIAG_CAT_VIEW', { key, everyone: allow ? 'ALLOW' : deny ? 'DENY' : 'NEUTRAL' });
+      }
+
+      for (const chName of Object.keys(CHANNEL_PERM_OVERRIDES_BY_NAME || {})) {
+        const ch = guild.channels.cache.find(c => c.name === chName);
+        if (!ch) continue;
+        const ow = ch.permissionOverwrites.cache.get(everyoneId);
+        const allow = ow?.allow.has(viewBit) || false;
+        const deny = ow?.deny.has(viewBit) || false;
+        const allOwCount = ch.permissionOverwrites.cache.size;
+        act('DIAG_CH_VIEW', { channel: ch.name, everyone: allow ? 'ALLOW' : deny ? 'DENY' : 'NEUTRAL', overwrites: allOwCount });
+      }
+    } catch (e) {
+      warn(`[PERMS-SYNC] diag falhou: ${e.message}`);
+    }
+  }
+
   // ── ROLE 0 (dry-run only): Audit log lookup — mostra nomes históricos
   //    que o bot renomeou. Ajuda a recuperar emojis que existiam antes do
   //    rename e que agora não temos. Idempotente, apenas lê.
