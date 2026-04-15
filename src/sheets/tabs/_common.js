@@ -10,13 +10,24 @@ const {
 } = require('../theme');
 
 // Título de tab — 1 linha em fundo preto com assinatura à direita.
-function writeHeader(batch, sheetId, title, columnCount) {
+// `freezeAt` (opcional): se > 0, o merge do título é dividido no boundary para
+// permitir freezeCols(freezeAt) sem o erro "can't freeze part of merged cell".
+function writeHeader(batch, sheetId, title, columnCount, freezeAt = 0) {
   const titleRow = [titleCell(title)];
   for (let i = 1; i < columnCount - 1; i++) titleRow.push(cell('', { bg: COLOR.BLACK }));
   titleRow.push(signatureCell());
 
   batch.updateCells(sheetId, 0, 0, [titleRow]);
-  batch.mergeCells(sheetId, 0, 1, 0, Math.max(1, columnCount - 1));
+
+  const mergeEnd = Math.max(1, columnCount - 1);
+  if (freezeAt > 0 && freezeAt < mergeEnd) {
+    // Dois merges: [0..freezeAt) e [freezeAt..mergeEnd). Cada um tem de ter
+    // >=2 colunas para fazer sentido; caso contrário deixa-se a célula solta.
+    if (freezeAt >= 2) batch.mergeCells(sheetId, 0, 1, 0, freezeAt);
+    if (mergeEnd - freezeAt >= 2) batch.mergeCells(sheetId, 0, 1, freezeAt, mergeEnd);
+  } else {
+    batch.mergeCells(sheetId, 0, 1, 0, mergeEnd);
+  }
   batch.setRowHeight(sheetId, 0, 36);
   return 2;
 }
@@ -90,10 +101,17 @@ function setWidths(batch, sheetId, widths) {
 }
 
 // Footer — assinatura discreta no fim da tab.
-function writeFooter(batch, sheetId, row, columnCount) {
+// `freezeAt` (opcional): como em writeHeader, divide o merge no boundary.
+function writeFooter(batch, sheetId, row, columnCount, freezeAt = 0) {
   const cells = [signatureCell(), ...Array(columnCount - 1).fill(cell('', { bg: COLOR.BLACK }))];
   batch.updateCells(sheetId, row, 0, [cells]);
-  batch.mergeCells(sheetId, row, row + 1, 0, columnCount);
+
+  if (freezeAt > 0 && freezeAt < columnCount) {
+    if (freezeAt >= 2) batch.mergeCells(sheetId, row, row + 1, 0, freezeAt);
+    if (columnCount - freezeAt >= 2) batch.mergeCells(sheetId, row, row + 1, freezeAt, columnCount);
+  } else {
+    batch.mergeCells(sheetId, row, row + 1, 0, columnCount);
+  }
   batch.setRowHeight(sheetId, row, 20);
   return row + 1;
 }

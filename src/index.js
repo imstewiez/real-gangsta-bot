@@ -600,10 +600,12 @@ async function _dispatchInteraction(interaction) {
       if (cmd === 'rg-sync-sheets-rebuild') {
         if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('rebuild sheets'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const purge = interaction.options.getBoolean('purge') || false;
         const { rebuildWorkbook } = require('./sheets/syncEngine');
-        const r = await rebuildWorkbook();
+        const r = await rebuildWorkbook(null, { purgeOthers: purge });
         if (r.skipped) return safeReply(interaction, { content: `⚠️ Skipped: ${r.skipped}` }, { dismissible: true });
-        return safeReply(interaction, { content: `🔄 Rebuild completo em ${r.ms}ms — ${r.results.length} tabs OK, ${r.errors.length} erros.` }, { dismissible: true });
+        const purgedTag = r.purged ? ' (lixo apagado)' : '';
+        return safeReply(interaction, { content: `🔄 Rebuild${purgedTag} em ${r.ms}ms — ${r.results.length} tabs OK, ${r.errors.length} erros.` }, { dismissible: true });
       }
 
       if (cmd === 'rg-sticky-set') {

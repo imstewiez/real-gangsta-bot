@@ -97,17 +97,32 @@ async function deleteTab(sheets, spreadsheetId, sheetId) {
 /**
  * Rebuild — apaga tabs conhecidas e cria de novo com as propriedades
  * canónicas. Útil quando o schema mudou ou o user quer reset.
+ *
+ * Se `purgeOthers` for true, também apaga QUALQUER tab que não faça parte do
+ * layout canónico (lixo antigo, duplicados, tabs manuais). O Google Sheets
+ * exige pelo menos 1 sheet no workbook, por isso garantimos que o batch
+ * cria as canónicas ao mesmo tempo que apaga.
  */
-async function rebuildTabs(sheets, spreadsheetId, keys = null) {
+async function rebuildTabs(sheets, spreadsheetId, keys = null, { purgeOthers = false } = {}) {
   const targets = keys ? keys.map(k => TABS_BY_KEY[k]).filter(Boolean) : TABS;
+  const canonicalTitles = new Set(TABS.map(t => t.title));
   const meta = await sheets.spreadsheets.get({ spreadsheetId });
-  const byTitle = new Map((meta.data.sheets || []).map(s => [s.properties.title, s.properties.sheetId]));
+  const allSheets = meta.data.sheets || [];
+  const byTitle = new Map(allSheets.map(s => [s.properties.title, s.properties.sheetId]));
 
-  // Remove e recria. Cuidado: sheets com frozen/charts perdem.
   const deletes = [];
   for (const tab of targets) {
     if (byTitle.has(tab.title)) deletes.push({ deleteSheet: { sheetId: byTitle.get(tab.title) } });
   }
+  if (purgeOthers) {
+    for (const s of allSheets) {
+      const t = s.properties.title;
+      if (!canonicalTitles.has(t)) {
+        deletes.push({ deleteSheet: { sheetId: s.properties.sheetId } });
+      }
+    }
+  }
+
   const creates = targets.map(tab => ({
     addSheet: {
       properties: {
@@ -119,11 +134,10 @@ async function rebuildTabs(sheets, spreadsheetId, keys = null) {
     },
   }));
 
-  const res = await sheets.spreadsheets.batchUpdate({
+  await sheets.spreadsheets.batchUpdate({
     spreadsheetId, requestBody: { requests: [...deletes, ...creates] },
   });
 
-  // Reconstrói o map
   return ensureTabs(sheets, spreadsheetId);
 }
 

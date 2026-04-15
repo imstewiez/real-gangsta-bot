@@ -511,13 +511,13 @@ async function getMovementsFull(limit = 2000) {
       sm.created_by AS actor_id,
       m.display_name AS member_name, m.role AS member_role, m.tier AS member_tier,
       sm.context,
-      sm.operation_id AS saida_id,
+      sm.saida_id,
       o.spot AS saida_spot,
       sm.notes
     FROM inventory_movements sm
     JOIN items i ON i.id = sm.item_id
     LEFT JOIN members m ON m.id = sm.member_id
-    LEFT JOIN operations o ON o.id = sm.operation_id
+    LEFT JOIN operations o ON o.id = sm.saida_id
     ORDER BY sm.created_at DESC
     LIMIT $1`,
     [limit]);

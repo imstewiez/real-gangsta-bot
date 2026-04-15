@@ -37,7 +37,8 @@ async function syncParticipantes(batch, sheetId) {
   const deaths = rows.filter(p => p.survived === false).length;
   const totalKills = rows.reduce((a, p) => a + (p.kills || 0), 0);
 
-  let row = writeHeader(batch, sheetId, 'Participantes · Quem Rende na Rua', COL_COUNT);
+  const FREEZE_AT = 4;
+  let row = writeHeader(batch, sheetId, 'Participantes · Quem Rende na Rua', COL_COUNT, FREEZE_AT);
   row = writeKpiBar(batch, sheetId, row, [
     { label: 'Participações', value: rows.length, fmt: NUM_FMT.INT },
     { label: 'MVPs',          value: mvps,        fmt: NUM_FMT.INT },
@@ -77,9 +78,9 @@ async function syncParticipantes(batch, sheetId) {
   batch.addRule(conditionalGradient(sheetId, firstDataRow, 17, firstDataRow + dataRows.length, 18, COLOR.RED_SIGNAL_SOFT, COLOR.YELLOW_SOFT, COLOR.GREEN_SOFT));
 
   batch.setBasicFilter(sheetId, firstDataRow - 1, firstDataRow + dataRows.length, 0, COL_COUNT);
-  batch.freezeCols(sheetId, 4);
+  batch.freezeCols(sheetId, FREEZE_AT);
 
-  writeFooter(batch, sheetId, firstDataRow + dataRows.length + 2, COL_COUNT);
+  writeFooter(batch, sheetId, firstDataRow + dataRows.length + 2, COL_COUNT, FREEZE_AT);
 
   setWidths(batch, sheetId, [60, 85, 120, 150, 90, 75, 75, 85, 85, 80, 85, 40, 40, 70, 70, 60, 65, 65, 200]);
 }

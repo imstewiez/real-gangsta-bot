@@ -87,19 +87,19 @@ async function syncAll() {
   return { ok: errors.length === 0, results, errors, ms };
 }
 
-async function rebuildWorkbook(keys = null) {
+async function rebuildWorkbook(keys = null, { purgeOthers = false } = {}) {
   const sheets = getSheetsClient();
   if (!sheets) return { skipped: 'no_sheets_client' };
   const spreadsheetId = getSpreadsheetId();
   if (!spreadsheetId) return { skipped: 'no_spreadsheet_id' };
 
   const t0 = Date.now();
-  warn(`[SHEETS] rebuildWorkbook — keys=${keys || 'ALL'}`);
-  await rebuildTabs(sheets, spreadsheetId, keys);
+  warn(`[SHEETS] rebuildWorkbook — keys=${keys || 'ALL'}, purgeOthers=${purgeOthers}`);
+  await rebuildTabs(sheets, spreadsheetId, keys, { purgeOthers });
   const result = await syncAll();
   const ms = Date.now() - t0;
   log(`[SHEETS] rebuildWorkbook concluído em ${ms}ms`);
-  return { ...result, rebuilt: true, ms };
+  return { ...result, rebuilt: true, purged: purgeOthers, ms };
 }
 
 module.exports = { syncAll, syncOne, rebuildWorkbook, TAB_SYNCERS };

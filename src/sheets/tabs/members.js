@@ -54,7 +54,8 @@ async function syncMembers(batch, sheetId) {
   const totalWeightedEntregas = rows.reduce((a, m) => a + Number(m.weighted_entregas || 0), 0);
   const totalKills = rows.reduce((a, m) => a + (m.kills || 0), 0);
 
-  let row = writeHeader(batch, sheetId, 'Membros · Ficha da Casa', COL_COUNT);
+  const FREEZE_AT = 1;
+  let row = writeHeader(batch, sheetId, 'Membros · Ficha da Casa', COL_COUNT, FREEZE_AT);
   row = writeKpiBar(batch, sheetId, row, [
     { label: 'Na Casa',         value: rows.length,           fmt: NUM_FMT.INT },
     { label: 'Moradores',       value: moradores,             fmt: NUM_FMT.INT },
@@ -98,9 +99,9 @@ async function syncMembers(batch, sheetId) {
   batch.addRule(conditionalLessThan(sheetId, firstDataRow, 18, firstDataRow + dataRows.length, 19, -500, COLOR.RED_SIGNAL_SOFT));
 
   batch.setBasicFilter(sheetId, firstDataRow - 1, firstDataRow + dataRows.length, 0, COL_COUNT);
-  batch.freezeCols(sheetId, 1);
+  batch.freezeCols(sheetId, FREEZE_AT);
 
-  writeFooter(batch, sheetId, firstDataRow + dataRows.length + 2, COL_COUNT);
+  writeFooter(batch, sheetId, firstDataRow + dataRows.length + 2, COL_COUNT, FREEZE_AT);
 
   setWidths(batch, sheetId, [160, 150, 85, 60, 80, 95, 95, 75, 100, 65, 65, 45, 45, 45, 45, 55, 65, 75, 95, 60]);
 }

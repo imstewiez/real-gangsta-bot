@@ -42,7 +42,8 @@ async function syncMovements(batch, sheetId) {
   const totalIn = rows.filter(r => ['entrega_morador', 'entrega_oficial'].includes(r.movement_type)).reduce((a, r) => a + Number(r.total_value || 0), 0);
   const totalOut = rows.filter(r => r.movement_type === 'venda_morador').reduce((a, r) => a + Number(r.total_value || 0), 0);
 
-  let row = writeHeader(batch, sheetId, 'Movimentos · Ledger da Rua', COL_COUNT);
+  const FREEZE_AT = 1;
+  let row = writeHeader(batch, sheetId, 'Movimentos · Ledger da Rua', COL_COUNT, FREEZE_AT);
   row = writeKpiBar(batch, sheetId, row, [
     { label: 'Registos', value: rows.length, fmt: NUM_FMT.INT },
     { label: 'Entradas', value: totalIn,     fmt: NUM_FMT.EURO },
@@ -73,9 +74,9 @@ async function syncMovements(batch, sheetId) {
   if (dataRows.length) batch.updateCells(sheetId, row, 0, applyRowBanding(dataRows));
 
   batch.setBasicFilter(sheetId, firstDataRow - 1, firstDataRow + dataRows.length, 0, COL_COUNT);
-  batch.freezeCols(sheetId, 1);
+  batch.freezeCols(sheetId, FREEZE_AT);
 
-  writeFooter(batch, sheetId, firstDataRow + dataRows.length + 2, COL_COUNT);
+  writeFooter(batch, sheetId, firstDataRow + dataRows.length + 2, COL_COUNT, FREEZE_AT);
 
   setWidths(batch, sheetId, [140, 110, 160, 120, 55, 85, 95, 130, 140, 85, 95, 60, 110, 140, 220]);
 }

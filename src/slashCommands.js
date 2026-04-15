@@ -147,7 +147,9 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('rg-sync-sheets-rebuild')
-    .setDescription('Apaga e recria todas as tabs do Google Sheet (reset de schema)'),
+    .setDescription('Apaga e recria todas as tabs do Google Sheet (reset de schema)')
+    .addBooleanOption(opt => opt.setName('purge')
+      .setDescription('Apagar também tabs não-canónicas (duplicados, lixo antigo). Default: false')),
 
   // ── Sticky messages (admin, raro) ───────────────────────────────────────────
   new SlashCommandBuilder()
