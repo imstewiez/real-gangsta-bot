@@ -95,48 +95,76 @@ async function deleteTab(sheets, spreadsheetId, sheetId) {
 }
 
 /**
- * Rebuild — apaga tabs conhecidas e cria de novo com as propriedades
- * canónicas. Útil quando o schema mudou ou o user quer reset.
+ * Rebuild — apaga tabs canónicas (e opcionalmente todas as não-canónicas)
+ * e cria de novo com as propriedades certas.
  *
- * Se `purgeOthers` for true, também apaga QUALQUER tab que não faça parte do
- * layout canónico (lixo antigo, duplicados, tabs manuais). O Google Sheets
- * exige pelo menos 1 sheet no workbook, por isso garantimos que o batch
- * cria as canónicas ao mesmo tempo que apaga.
+ * O Google Sheets valida cada request do batchUpdate sequencialmente e
+ * rejeita qualquer deleteSheet que levasse a 0 tabs no workbook. Para
+ * garantir que nunca chegamos a 0 mesmo a meio do batch, criamos um
+ * "anchor" temporário antes do rebuild e apagamo-lo no fim.
  */
 async function rebuildTabs(sheets, spreadsheetId, keys = null, { purgeOthers = false } = {}) {
   const targets = keys ? keys.map(k => TABS_BY_KEY[k]).filter(Boolean) : TABS;
   const canonicalTitles = new Set(TABS.map(t => t.title));
-  const meta = await sheets.spreadsheets.get({ spreadsheetId });
-  const allSheets = meta.data.sheets || [];
-  const byTitle = new Map(allSheets.map(s => [s.properties.title, s.properties.sheetId]));
 
-  const deletes = [];
-  for (const tab of targets) {
-    if (byTitle.has(tab.title)) deletes.push({ deleteSheet: { sheetId: byTitle.get(tab.title) } });
-  }
-  if (purgeOthers) {
+  // Passo 1: criar anchor temporário — garante que nunca chegamos a 0 sheets.
+  const anchorTitle = `_rebuild_anchor_${Date.now()}`;
+  const anchorRes = await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: { requests: [{ addSheet: { properties: { title: anchorTitle } } }] },
+  });
+  const anchorId = anchorRes.data.replies?.[0]?.addSheet?.properties?.sheetId;
+  if (anchorId === undefined) throw new Error('Falhou a criar anchor temporária para rebuild');
+
+  try {
+    // Passo 2: apurar estado actual e construir deletes + creates.
+    const meta = await sheets.spreadsheets.get({ spreadsheetId });
+    const allSheets = meta.data.sheets || [];
+    const targetTitles = new Set(targets.map(t => t.title));
+
+    const deletesCanonical = [];
+    const deletesNonCanonical = [];
     for (const s of allSheets) {
       const t = s.properties.title;
-      if (!canonicalTitles.has(t)) {
-        deletes.push({ deleteSheet: { sheetId: s.properties.sheetId } });
+      if (s.properties.sheetId === anchorId) continue;
+      if (targetTitles.has(t)) {
+        deletesCanonical.push({ deleteSheet: { sheetId: s.properties.sheetId } });
+      } else if (purgeOthers && !canonicalTitles.has(t)) {
+        deletesNonCanonical.push({ deleteSheet: { sheetId: s.properties.sheetId } });
       }
     }
-  }
 
-  const creates = targets.map(tab => ({
-    addSheet: {
-      properties: {
-        title: tab.title,
-        index: tab.order,
-        tabColor: tab.color,
-        gridProperties: { rowCount: 200, columnCount: 26 },
+    const creates = targets.map(tab => ({
+      addSheet: {
+        properties: {
+          title: tab.title,
+          index: tab.order,
+          tabColor: tab.color,
+          gridProperties: { rowCount: 200, columnCount: 26 },
+        },
       },
-    },
-  }));
+    }));
 
-  await sheets.spreadsheets.batchUpdate({
-    spreadsheetId, requestBody: { requests: [...deletes, ...creates] },
-  });
+    // Ordem: deletes → creates → remover anchor. Com anchor activa nunca
+    // chegamos a 0 sheets.
+    const requests = [
+      ...deletesCanonical,
+      ...deletesNonCanonical,
+      ...creates,
+      { deleteSheet: { sheetId: anchorId } },
+    ];
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId, requestBody: { requests },
+    });
+  } catch (err) {
+    // Se falhou antes de apagar a anchor, tenta limpá-la para não deixar lixo.
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: { requests: [{ deleteSheet: { sheetId: anchorId } }] },
+    }).catch(() => {});
+    throw err;
+  }
 
   return ensureTabs(sheets, spreadsheetId);
 }
