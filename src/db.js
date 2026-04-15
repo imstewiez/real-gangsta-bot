@@ -8,13 +8,16 @@ if (!process.env.DATABASE_URL) {
 }
 
 // SSL config:
-//   - Default em produção: strict (rejectUnauthorized: true)
-//   - Railway/Heroku usam certs válidos por default — strict funciona
-//   - Se a tua DB usa cert self-signed (caso raro), setar DB_SSL_INSECURE=true
-//     explicitamente em vez de ficar sempre vulnerável a MITM.
+//   - Dev: SSL off.
+//   - Railway: Postgres interno usa cert self-signed numa rede privada — relax.
+//   - Outros ambientes produção: strict por default; override explícito via
+//     DB_SSL_INSECURE=true se a DB usar cert self-signed.
 function _resolveSSL() {
   if (process.env.NODE_ENV !== 'production') return false;
   if (process.env.DB_SSL_INSECURE === 'true') return { rejectUnauthorized: false };
+  if (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID) {
+    return { rejectUnauthorized: false };
+  }
   return { rejectUnauthorized: true };
 }
 const SSL_CFG = _resolveSSL();
