@@ -35,9 +35,9 @@ function startAll(client) {
   }
 
   if (CONFIG.AUTO_PUBLISH_WEEKLY_TOP) {
-    registerJob('weekly_rankings', 60 * 60 * 1000, publishWeeklyTop);
+    registerJob('weekly_rankings', 30 * 60 * 1000, publishWeeklyTop);
   }
-  registerJob('daily_summary', 60 * 60 * 1000, publishDailySummary);
+  registerJob('daily_summary', 30 * 60 * 1000, publishDailySummary);
 
   // Reconciliação de invariantes de roles (diário, 4h da manhã aprox)
   registerJob('role_invariants', 24 * 60 * 60 * 1000, async (client) => {
@@ -108,13 +108,6 @@ function startAll(client) {
     job.timer = setInterval(() => runJob(job), job.intervalMs);
     job.timer.unref();
     log(`[SCHEDULER] Job '${job.name}' registered (${job.intervalMs / 1000}s interval).`);
-  }
-
-  const now = new Date();
-  const isSunday = now.getDay() === 0;
-  const is23h = now.getHours() === 23;
-  if (isSunday && is23h) {
-    runJob(jobs.find(j => j.name === 'weekly_rankings'));
   }
 }
 

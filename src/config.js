@@ -135,6 +135,9 @@ const CONFIG = {
   ENFORCE_ROLE_INVARIANTS: optBool('ENFORCE_ROLE_INVARIANTS', true),
   PANEL_BOOTSTRAP_ON_READY: optBool('PANEL_BOOTSTRAP_ON_READY', true),
   AUTO_PUBLISH_WEEKLY_TOP: optBool('AUTO_PUBLISH_WEEKLY_TOP', true),
+  WEEKLY_TOP_DAY: Number(process.env.WEEKLY_TOP_DAY ?? 0), // 0=Dom..6=Sáb
+  WEEKLY_TOP_HOUR: Number(process.env.WEEKLY_TOP_HOUR ?? 23),
+  DAILY_SUMMARY_HOUR: Number(process.env.DAILY_SUMMARY_HOUR ?? 20),
 
   // Guard-rail: quando true, /rg-sync-structure fica travado em apply.
   // Use true em servidores onde a estrutura está personalizada manualmente
