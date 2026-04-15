@@ -1,101 +1,154 @@
 'use strict';
 /**
- * Tab Config / Legendas — explicações + listas auxiliares.
- * Conteúdo estático (não vem da DB).
+ * Tab Config · Legendas & Referências — documentação visual do workbook.
+ * Conteúdo estático organizado em secções premium.
  */
 
-const { COLOR, cell, bodyCell, subHeaderCell, headerCell, titleCell } = require('../theme');
-const { writeHeader, setWidths } = require('./_common');
+const { COLOR, cell, bodyCell, bodyBoldCell, captionCell, badgeCell } = require('../theme');
+const {
+  headerBlock, sectionHeader, spacer, divider, tableHeader, tableBody,
+  footerBlock, setWidths,
+} = require('./_common');
 
-const COL_COUNT = 4;
+const COL_COUNT = 5;
 
-function section(batch, sheetId, row, title) {
-  batch.updateCells(sheetId, row, 0, [[
-    subHeaderCell(title),
-    ...Array(COL_COUNT - 1).fill(cell('', { bg: COLOR.CHARCOAL })),
-  ]]);
-  batch.mergeCells(sheetId, row, row + 1, 0, COL_COUNT);
-  batch.setRowHeight(sheetId, row, 26);
-  return row + 1;
-}
-
-function pair(batch, sheetId, row, k, v) {
-  batch.updateCells(sheetId, row, 0, [[
-    cell(k, { bg: COLOR.BLACK, font: { bold: true, fontSize: 10, foregroundColor: COLOR.GRAY_LIGHT }, align: 'LEFT', vAlign: 'MIDDLE' }),
-    cell(v, { bg: COLOR.BLACK, font: { fontSize: 10, foregroundColor: COLOR.OFF_WHITE }, align: 'LEFT', vAlign: 'MIDDLE' }),
-    cell('', { bg: COLOR.BLACK }),
-    cell('', { bg: COLOR.BLACK }),
-  ]]);
-  batch.mergeCells(sheetId, row, row + 1, 1, COL_COUNT);
-  return row + 1;
+function pairRow(k, v, badge) {
+  const cells = [
+    bodyBoldCell(k),
+    bodyCell(v, { wrap: true }),
+    badge || cell('', { bg: COLOR.BG_APP }),
+    cell('', { bg: COLOR.BG_APP }),
+    cell('', { bg: COLOR.BG_APP }),
+  ];
+  return cells;
 }
 
 async function syncConfig(batch, sheetId) {
-  let row = writeHeader(batch, sheetId, 'Config · Legendas & Referências', COL_COUNT);
+  let row = headerBlock(batch, sheetId, {
+    title: 'Config · Legendas & Referências',
+    subtitle: 'guia visual — legendas, tiers, cores, métricas',
+    columnCount: COL_COUNT,
+  });
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
-  row = section(batch, sheetId, row, 'TIERS DE MORADOR');
-  for (const [key, label, emoji] of [
-    ['young_blood', 'Young Blood', '🍼'],
-    ['o_gunao', 'O Gunão', '🔫'],
-    ['gangster_fodido', 'Gangster Fodido', '💀'],
-    ['patrao_di_zona', 'Patrão di Zona', '👑'],
-  ]) row = pair(batch, sheetId, row, `${emoji} ${label}`, `tier = ${key}`);
+  // ── TIERS ────────────────────────────────────────────────────────────────
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'TIERS DE MORADOR', hint: 'níveis de progressão', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, ['Tier', 'Descrição', 'Badge', '', '']);
+  const tiers = [
+    ['Young Blood',     'entrada na casa — a ganhar terreno',         badgeCell('YB',  COLOR.GRAPHITE)],
+    ['O Gunão',         'estabilizado — entrega consistente',          badgeCell('OG',  COLOR.RED_BLOOD)],
+    ['Gangster Fodido', 'elite — alto output e fiabilidade',           badgeCell('GF',  COLOR.RED_DEEP)],
+    ['Patrão di Zona',  'topo — comando e influência',                 badgeCell('PDZ', COLOR.GOLD)],
+  ];
+  row = tableBody(batch, sheetId, row, tiers.map(t => pairRow(t[0], t[1], t[2])));
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
-  row = section(batch, sheetId, row, 'RESULTADOS DE SAÍDA');
-  for (const [k, v] of [
-    ['vitoria', '🏆 Vitória'],
-    ['derrota', '💀 Derrota'],
-    ['empate', '⚖️ Empate'],
-    ['sem_conflito', 'Sem conflito'],
-    ['abortada', '🚫 Abortada'],
-  ]) row = pair(batch, sheetId, row, v, `result = ${k}`);
+  // ── RESULTADOS ───────────────────────────────────────────────────────────
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'RESULTADOS DE SAÍDA', hint: 'estados finais', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, ['Resultado', 'Descrição', 'Badge', '', '']);
+  const results = [
+    ['Vitória',     'saída bem-sucedida — wins',                 badgeCell('VITÓRIA', COLOR.GREEN_DEEP)],
+    ['Derrota',     'saída com perdas significativas',           badgeCell('DERROTA', COLOR.RED_DEEP)],
+    ['Empate',      'saída sem vantagem clara',                  badgeCell('EMPATE',  COLOR.YELLOW_DEEP)],
+    ['Sem conflito','operação sem encontro inimigo',             badgeCell('NEUTRO',  COLOR.GRAY_DARK)],
+    ['Abortada',    'cancelada antes de completar',              badgeCell('ABORT.',  COLOR.GRAPHITE)],
+  ];
+  row = tableBody(batch, sheetId, row, results.map(r => pairRow(r[0], r[1], r[2])));
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
-  row = section(batch, sheetId, row, 'TIPOS DE MOVIMENTO');
-  for (const [k, v] of [
-    ['entrega_morador', 'Entrega feita por morador'],
-    ['entrega_oficial', 'Entrega feita por oficial'],
-    ['venda_morador', 'Venda na rua'],
-    ['fornecimento_org', 'Material que saiu da org para saída'],
-    ['devolucao_saida', 'Material devolvido após saída'],
-    ['perda_saida', 'Material perdido em saída'],
-    ['consumo_saida', 'Material gasto em saída'],
-  ]) row = pair(batch, sheetId, row, k, v);
+  // ── MOVIMENTOS ───────────────────────────────────────────────────────────
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'TIPOS DE MOVIMENTO', hint: 'inventory_movements.movement_type', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, ['Tipo', 'Descrição', 'Sinal', '', '']);
+  const mtypes = [
+    ['entrega_morador',    'entrega de material feita por morador',       badgeCell('+',    COLOR.GREEN_DEEP)],
+    ['entrega_oficial',    'entrega feita por oficial',                   badgeCell('+',    COLOR.GREEN_DEEP)],
+    ['venda_morador',      'venda na rua',                                badgeCell('+',    COLOR.GOLD)],
+    ['fornecimento_org',   'material retirado do stock para saída',       badgeCell('−',    COLOR.RED_BLOOD)],
+    ['devolucao_operacao', 'material devolvido após saída',               badgeCell('+',    COLOR.GRAPHITE)],
+    ['perda_operacao',     'material perdido em saída',                   badgeCell('−',    COLOR.RED_DEEP)],
+    ['consumo_operacao',   'material gasto em saída',                     badgeCell('−',    COLOR.YELLOW_DEEP)],
+    ['ajuste_manual',      'correção manual do stock',                    badgeCell('±',    COLOR.GRAY_DARK)],
+    ['saldo_inicial',      'bootstrap inicial do stock',                  badgeCell('+',    COLOR.IRON)],
+    ['apreendido',         'material capturado / apreendido',             badgeCell('+',    COLOR.BLUE_DEEP)],
+    ['craftado',           'material produzido internamente',             badgeCell('+',    COLOR.GOLD)],
+  ];
+  row = tableBody(batch, sheetId, row, mtypes.map(m => pairRow(m[0], m[1], m[2])));
+  row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
+  row = divider(batch, sheetId, row, COL_COUNT, 'accent');
 
-  row = section(batch, sheetId, row, 'LEGENDA DE CORES (condicional)');
-  for (const [k, v] of [
-    ['🟢 Verde', 'Acima da média · performance forte'],
-    ['🟡 Amarelo', 'Média · atenção'],
-    ['🔴 Vermelho', 'Abaixo · acção necessária'],
-    ['🔴 Dia caro', 'Muitas mortes / prejuízo'],
-    ['🟢 Bom dia', 'Lucro de saídas > 500€'],
-  ]) row = pair(batch, sheetId, row, k, v);
+  // ── CORES / CONDITIONAL ──────────────────────────────────────────────────
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'LEGENDA DE CORES', hint: 'conditional formatting no workbook', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, ['Sinal', 'Significado', 'Exemplo', '', '']);
+  const colors = [
+    ['Verde',        'métrica positiva · acima da média · bom dia',  badgeCell('POSITIVO', COLOR.GREEN_DEEP)],
+    ['Amarelo',      'atenção · média · volatilidade',               badgeCell('ATENÇÃO',  COLOR.YELLOW_DEEP)],
+    ['Vermelho',     'negativo · abaixo · acção necessária',         badgeCell('NEG.',     COLOR.RED_SIGNAL)],
+    ['Gold',         'destaque pontual · MVP · 1º lugar · elite',    badgeCell('DESTAQUE', COLOR.GOLD)],
+    ['Gradient',     'heatmap — min→max colorido auto em tabelas',   badgeCell('HEAT',     COLOR.RED_DEEP)],
+  ];
+  row = tableBody(batch, sheetId, row, colors.map(c => pairRow(c[0], c[1], c[2])));
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
-  row = section(batch, sheetId, row, 'MATERIAL vs DINHEIRO');
-  for (const [k, v] of [
-    ['Material (itens)', 'Entregas, vendas, progresso de tier — contam UNIDADES'],
-    ['Lucro de saídas (€)', 'Valor económico das saídas (fornecido/devolvido/perdido/net)'],
-    ['Promoção YB → O Gunão', '25.000 itens entregues'],
-    ['Promoção O Gunão → Gangster Fodido', '50.000 itens entregues'],
-  ]) row = pair(batch, sheetId, row, k, v);
+  // ── MATERIAL vs DINHEIRO ─────────────────────────────────────────────────
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'MATERIAL vs DINHEIRO', hint: 'duas contabilidades distintas', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, ['Conceito', 'Detalhe', '', '', '']);
+  const concepts = [
+    ['Material (itens)',      'entregas, vendas, progresso de tier — contam UNIDADES'],
+    ['Lucro de saídas (€)',   'valor económico das saídas: fornecido / devolvido / perdido / net'],
+    ['Promoção YB → OG',      '25.000 itens entregues'],
+    ['Promoção OG → GF',      '50.000 itens entregues'],
+    ['Stock (€)',             'quantidade × valor estimado por item'],
+  ];
+  row = tableBody(batch, sheetId, row, concepts.map(c => pairRow(c[0], c[1])));
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
-  row = section(batch, sheetId, row, 'SCORES');
-  for (const [k, v] of [
-    ['K/D', 'Kills ÷ Mortes — métrica de eficácia em combate'],
-    ['Return Rate', 'Valor devolvido ÷ valor recebido — disciplina'],
-    ['Survival Rate', 'Saídas sem morrer ÷ saídas totais'],
-    ['Performance Score', 'Combate + sobrevivência + resultado (0-100)'],
-    ['Discipline Score', 'Gestão de material durante saída (0-100)'],
-    ['Hybrid Score', 'Contribuição × 0.4 + Performance × 0.4 + Fiabilidade × 0.2'],
-  ]) row = pair(batch, sheetId, row, k, v);
+  // ── SCORES ───────────────────────────────────────────────────────────────
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'MÉTRICAS COMPOSTAS', hint: 'scores derivados', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, ['Score', 'Fórmula', '', '', '']);
+  const scores = [
+    ['K/D',               'kills ÷ mortes — eficácia em combate'],
+    ['Return Rate',       'valor devolvido ÷ valor recebido — disciplina'],
+    ['Survival Rate',     'saídas sem morrer ÷ saídas totais'],
+    ['Win Rate',          'vitórias ÷ saídas concluídas'],
+    ['Performance Score', 'combate + sobrevivência + resultado (0-100)'],
+    ['Discipline Score',  'gestão de material durante saída (0-100)'],
+    ['Hybrid Score',      'contribuição × 0.4 + performance × 0.4 + fiabilidade × 0.2'],
+  ];
+  row = tableBody(batch, sheetId, row, scores.map(s => pairRow(s[0], s[1])));
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
-  row += 2;
-  batch.updateCells(sheetId, row, 0, [[
-    cell('— Firma RedWood', { bg: COLOR.BLACK, font: { italic: true, fontSize: 10, foregroundColor: COLOR.GRAY }, align: 'RIGHT' }),
-    ...Array(COL_COUNT - 1).fill(cell('', { bg: COLOR.BLACK })),
-  ]]);
-  batch.mergeCells(sheetId, row, row + 1, 0, COL_COUNT);
+  // ── Sync engine info ─────────────────────────────────────────────────────
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'SYNC ENGINE', hint: 'como o workbook é mantido', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, ['Comando', 'Efeito', '', '', '']);
+  const cmds = [
+    ['/rg-sync-sheets',                       'sincroniza todas as 15 tabs (intervalo auto: 15min)'],
+    ['/rg-sync-sheets-tab tab:<key>',         'sincroniza apenas uma tab específica'],
+    ['/rg-sync-sheets-rebuild',               'apaga e recria as 15 tabs canónicas (reset visual)'],
+    ['/rg-sync-sheets-rebuild purge:True',    'o mesmo + apaga quaisquer tabs não-canónicas'],
+    ['Trim automático',                       'cada sync encolhe a tab ao tamanho necessário (cleanup engine)'],
+    ['Design system',                         'theme.js + _common.js — consistência premium'],
+  ];
+  row = tableBody(batch, sheetId, row, cmds.map(c => pairRow(c[0], c[1])));
 
-  setWidths(batch, sheetId, [220, 320, 120, 120]);
+  row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
+  row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Config');
+
+  setWidths(batch, sheetId, [220, 420, 140, 80, 80]);
+  return { lastRow: row, lastCol: COL_COUNT };
 }
 
 module.exports = { syncConfig };
