@@ -58,6 +58,11 @@ function _pickDisplayName(gm) {
 
 function detectRoleFromGuildMember(gm) {
   const roles = gm.roles.cache;
+  // Patrão di Zona — ganha sempre que o membro tiver a tag, mesmo que tenha
+  // outras roles (Oficial, Chefia). Regra simples: se tem tag PDZ → é PDZ.
+  if (CONFIG.PATRAO_DI_ZONA_ROLE_IDS.some(id => id && roles.has(id))) {
+    return { role: 'patrao_di_zona', tier: 'patrao_di_zona' };
+  }
   // Chefia — topo da hierarquia
   if (CONFIG.CHEFIA_ROLE_IDS.some(id => id && roles.has(id))) {
     return { role: 'chefia', tier: _resolveTier(roles, CHEFIA_TIERS) };
@@ -65,10 +70,6 @@ function detectRoleFromGuildMember(gm) {
   // Oficial
   if (CONFIG.OFICIAL_ROLE_IDS.some(id => id && roles.has(id))) {
     return { role: 'oficial', tier: _resolveTier(roles, OFICIAL_TIERS) };
-  }
-  // Patrão di Zona — chefe do bairro (classe separada dos bairristas)
-  if (CONFIG.PATRAO_DI_ZONA_ROLE_IDS.some(id => id && roles.has(id))) {
-    return { role: 'patrao_di_zona', tier: 'patrao_di_zona' };
   }
   // Bairrista com tier — detecta o mais alto
   const bairristaTier = _resolveTier(roles, BAIRRISTA_TIERS);
