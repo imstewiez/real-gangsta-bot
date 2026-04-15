@@ -62,7 +62,7 @@ async function syncCombate(batch, sheetId) {
 
   // ── Panorama ─────────────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'PANORAMA DE COMBATE', hint: 'all-time + semana', columnCount: COL_COUNT,
+    title: '⚔️ PANORAMA DE COMBATE', hint: 'all-time + semana', columnCount: COL_COUNT,
   });
   row = kpiStrip(batch, sheetId, row, [
     { label: 'Kills Total', value: kpi.total, numberFormat: NUM_FMT.INT,  delta: `${kpi.week} esta semana`, deltaDirection: kpi.week > 0 ? 'up' : 'flat' },
@@ -76,7 +76,7 @@ async function syncCombate(batch, sheetId) {
 
   // ── Top 3 spots rentáveis ────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'TOP 3 · SPOTS MAIS RENTÁVEIS', hint: 'por lucro líquido', columnCount: COL_COUNT,
+    title: '🏆 TOP 3 · SPOTS MAIS RENTÁVEIS', hint: 'por lucro líquido', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, ['#', 'Spot', 'Saídas', 'Winrate', 'Lucro (€)', ...Array(COL_COUNT - 5).fill('')]);
   row = rankingBlock(batch, sheetId, row, top3.map((s, i) => ({
@@ -91,7 +91,7 @@ async function syncCombate(batch, sheetId) {
 
   // ── Flop 3 spots arriscados ──────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'FLOP 3 · SPOTS ARRISCADOS', hint: 'por prejuízo ou mortes', columnCount: COL_COUNT,
+    title: '⚠️ FLOP 3 · SPOTS ARRISCADOS', hint: 'por prejuízo ou mortes', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, ['#', 'Spot', 'Saídas', 'Mortes', 'Lucro (€)', ...Array(COL_COUNT - 5).fill('')]);
   row = rankingBlock(batch, sheetId, row, flop3.map((s, i) => ({
@@ -107,7 +107,7 @@ async function syncCombate(batch, sheetId) {
 
   // ── Tabela spots ─────────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'TABELA COMPLETA · SPOTS', hint: 'todos com actividade registada', columnCount: COL_COUNT,
+    title: '📍 TABELA COMPLETA · SPOTS', hint: 'todos com actividade registada', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, SPOTS_HEADERS);
   const spotsFirstRow = row;
@@ -148,7 +148,7 @@ async function syncCombate(batch, sheetId) {
 
   // ── Kill log ─────────────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'KILL LOG', hint: `últimas ${kills.length} kills · filtros activos`, columnCount: COL_COUNT,
+    title: '🔫 KILL LOG', hint: `últimas ${kills.length} kills · filtros activos`, columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, KILLS_HEADERS.concat(Array(COL_COUNT - KILLS_HEADERS.length).fill('')));
 

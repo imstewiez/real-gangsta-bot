@@ -15,7 +15,7 @@ const { growSheet } = require('../cleanup');
 const HEADERS = [
   'Saída', 'Data', 'Spot', 'Nome', 'Role',
   'Próprio?', 'Org?',
-  'Fornecido', 'Devolvido', 'Perdido', 'Consumido',
+  'Fornecido (un)', 'Devolvido (un)', 'Perdido (un)', 'Consumido (un)',
   'K', 'M', 'Vivo?', 'Veio?', 'MVP',
   'Perf', 'Disc', 'Notas',
 ];
@@ -53,7 +53,7 @@ async function syncParticipantes(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
   row = sectionHeader(batch, sheetId, row, {
-    title: 'INDICADORES AGREGADOS', hint: 'todas as participações', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
+    title: '📊 INDICADORES AGREGADOS', hint: 'todas as participações', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
   });
   row = kpiStrip(batch, sheetId, row, [
     { label: 'Participações', value: participacoes, numberFormat: NUM_FMT.INT, delta: `${returnedBR} regressaram`, deltaDirection: 'flat' },
@@ -66,7 +66,7 @@ async function syncParticipantes(batch, sheetId) {
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
 
   row = sectionHeader(batch, sheetId, row, {
-    title: 'LEDGER DE PARTICIPAÇÕES', hint: 'filtros activos', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
+    title: '📋 LEDGER DE PARTICIPAÇÕES', hint: 'filtros activos', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
   });
   row = tableHeader(batch, sheetId, row, HEADERS);
   const firstDataRow = row;
@@ -79,10 +79,10 @@ async function syncParticipantes(batch, sheetId) {
     captionCell(p.role || 'membro'),
     boolBadge(p.brought_own_material),
     boolBadge(p.received_org_material),
-    numCell(Number(p.issued), NUM_FMT.EURO),
-    numCell(Number(p.returned), NUM_FMT.EURO),
-    numCell(Number(p.lost), NUM_FMT.EURO),
-    numCell(Number(p.consumed), NUM_FMT.EURO),
+    numCell(p.issued_units, NUM_FMT.INT),
+    numCell(p.returned_units, NUM_FMT.INT),
+    numCell(p.lost_units, NUM_FMT.INT),
+    numCell(p.consumed_units, NUM_FMT.INT),
     numCell(p.kills, NUM_FMT.INT),
     numCell(p.deaths, NUM_FMT.INT),
     boolBadge(p.survived),

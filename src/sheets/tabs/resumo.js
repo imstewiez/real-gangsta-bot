@@ -47,7 +47,7 @@ async function syncResumo(batch, sheetId) {
 
   // ── Secção 1: Pilares da semana ──────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'PILARES DA SEMANA', hint: `${current.ops || 0} saídas concluídas`, columnCount: COL_COUNT,
+    title: '🎯 PILARES DA SEMANA', hint: `${current.ops || 0} saídas concluídas`, columnCount: COL_COUNT,
   });
 
   const winRate = (current.ops || 0) > 0 ? (current.wins || 0) / current.ops : 0;
@@ -71,26 +71,27 @@ async function syncResumo(batch, sheetId) {
 
   // ── Secção 2: Comparativo detalhado ──────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'COMPARATIVO · ESTA vs ANTERIOR', hint: 'deltas a verde/vermelho', columnCount: COL_COUNT,
+    title: '📊 COMPARATIVO · ESTA vs ANTERIOR', hint: 'deltas a verde/vermelho', columnCount: COL_COUNT,
   });
 
   const cmpHeaders = ['Métrica', 'Esta Semana', 'Semana Anterior', 'Δ Absoluto', 'Δ %', ''];
   row = tableHeader(batch, sheetId, row, cmpHeaders.concat(Array(COL_COUNT - cmpHeaders.length).fill('')));
 
   const cmpData = [
-    { label: 'Saídas',             cur: current.ops       || 0, prev: previous.ops       || 0, fmt: NUM_FMT.INT },
-    { label: 'Vitórias',           cur: current.wins      || 0, prev: previous.wins      || 0, fmt: NUM_FMT.INT },
-    { label: 'Derrotas',           cur: current.losses    || 0, prev: previous.losses    || 0, fmt: NUM_FMT.INT },
-    { label: 'Empates',            cur: current.draws     || 0, prev: previous.draws     || 0, fmt: NUM_FMT.INT },
-    { label: 'Kills',              cur: current.kills     || 0, prev: previous.kills     || 0, fmt: NUM_FMT.INT },
-    { label: 'Mortes',             cur: current.deaths    || 0, prev: previous.deaths    || 0, fmt: NUM_FMT.INT },
-    { label: 'Material Fornecido', cur: Number(current.supplied) || 0, prev: Number(previous.supplied) || 0, fmt: NUM_FMT.EURO },
-    { label: 'Material Devolvido', cur: Number(current.returned) || 0, prev: Number(previous.returned) || 0, fmt: NUM_FMT.EURO },
-    { label: 'Lucro Bruto',        cur: Number(current.gross)    || 0, prev: Number(previous.gross)    || 0, fmt: NUM_FMT.EURO },
-    { label: 'Lucro Líquido',      cur: Number(current.net)      || 0, prev: Number(previous.net)      || 0, fmt: NUM_FMT.EURO },
-    { label: 'Material Perdido',   cur: Number(trend.lost.current),   prev: Number(trend.lost.previous), fmt: NUM_FMT.EURO },
-    { label: 'Entregas (itens)',   cur: current.entregas  || 0, prev: null, fmt: NUM_FMT.INT },
-    { label: 'Vendas (itens)',     cur: current.vendas    || 0, prev: null, fmt: NUM_FMT.INT },
+    { label: 'Saídas',                  cur: current.ops       || 0, prev: previous.ops       || 0, fmt: NUM_FMT.INT },
+    { label: 'Vitórias',                cur: current.wins      || 0, prev: previous.wins      || 0, fmt: NUM_FMT.INT },
+    { label: 'Derrotas',                cur: current.losses    || 0, prev: previous.losses    || 0, fmt: NUM_FMT.INT },
+    { label: 'Empates',                 cur: current.draws     || 0, prev: previous.draws     || 0, fmt: NUM_FMT.INT },
+    { label: 'Kills',                   cur: current.kills     || 0, prev: previous.kills     || 0, fmt: NUM_FMT.INT },
+    { label: 'Mortes',                  cur: current.deaths    || 0, prev: previous.deaths    || 0, fmt: NUM_FMT.INT },
+    { label: 'Material Fornecido (un)', cur: trend.supplied_units.current, prev: trend.supplied_units.previous, fmt: NUM_FMT.INT },
+    { label: 'Material Devolvido (un)', cur: trend.returned_units.current, prev: trend.returned_units.previous, fmt: NUM_FMT.INT },
+    { label: 'Material Perdido (un)',   cur: trend.lost_units.current,     prev: trend.lost_units.previous,     fmt: NUM_FMT.INT },
+    { label: 'Material Consumido (un)', cur: trend.consumed_units.current, prev: trend.consumed_units.previous, fmt: NUM_FMT.INT },
+    { label: 'Lucro Bruto (€)',         cur: Number(current.gross) || 0, prev: Number(previous.gross) || 0, fmt: NUM_FMT.EURO },
+    { label: 'Lucro Líquido (€)',       cur: Number(current.net)   || 0, prev: Number(previous.net)   || 0, fmt: NUM_FMT.EURO },
+    { label: 'Entregas (itens)',        cur: current.entregas  || 0, prev: null, fmt: NUM_FMT.INT },
+    { label: 'Vendas (itens)',          cur: current.vendas    || 0, prev: null, fmt: NUM_FMT.INT },
   ].map(m => {
     const hasPrev = m.prev !== null;
     const absDelta = hasPrev ? m.cur - m.prev : 0;
@@ -126,7 +127,7 @@ async function syncResumo(batch, sheetId) {
   const diasOps    = daily14.filter(r => (r.ops || 0) > 0).length;
 
   row = sectionHeader(batch, sheetId, row, {
-    title: 'JANELA DE 14 DIAS', hint: 'acumulado', columnCount: COL_COUNT,
+    title: '📅 JANELA DE 14 DIAS', hint: 'acumulado', columnCount: COL_COUNT,
   });
   row = kpiStrip(batch, sheetId, row, [
     { label: 'Dias c/ Operação', value: diasOps,    numberFormat: NUM_FMT.INT,  delta: `${daily14.length} dias totais`, deltaDirection: 'flat' },
@@ -140,7 +141,7 @@ async function syncResumo(batch, sheetId) {
 
   // ── Secção 4: Breakdown diário ───────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'BREAKDOWN DIÁRIO', hint: 'mais recente no topo', columnCount: COL_COUNT,
+    title: '📆 BREAKDOWN DIÁRIO', hint: 'mais recente no topo', columnCount: COL_COUNT,
   });
   const dailyHeaders = ['Data', 'Saídas', 'Kills', 'Mortes', 'Líquido', 'Entradas', 'Vendas', 'Destaque', ''];
   row = tableHeader(batch, sheetId, row, dailyHeaders);

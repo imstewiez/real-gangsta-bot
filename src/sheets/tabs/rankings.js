@@ -40,7 +40,7 @@ async function syncRankings(batch, sheetId) {
 
   // Top entregas
   row = buildBlock(batch, sheetId, row, {
-    title: 'TOP ENTREGAS',
+    title: '📦 TOP ENTREGAS',
     hint: 'quantidade de material entregue (all-time)',
     headers: ['#', 'Nome', 'Tier', 'Itens', 'Valor (€)', ''],
     items: r.topEntregas,
@@ -56,7 +56,7 @@ async function syncRankings(batch, sheetId) {
 
   // Top kills
   row = buildBlock(batch, sheetId, row, {
-    title: 'TOP KILLS',
+    title: '🎯 TOP KILLS',
     hint: 'kills totais em saídas',
     headers: ['#', 'Nome', 'Kills', 'K/D', '', ''],
     items: r.topKills,
@@ -72,7 +72,7 @@ async function syncRankings(batch, sheetId) {
 
   // Top profit
   row = buildBlock(batch, sheetId, row, {
-    title: 'TOP LUCRO GERADO',
+    title: '💰 TOP LUCRO GERADO',
     hint: 'lucro líquido gerado nas saídas',
     headers: ['#', 'Nome', 'Lucro (€)', '', '', ''],
     items: r.topProfit,
@@ -88,7 +88,7 @@ async function syncRankings(batch, sheetId) {
 
   // MVP
   row = buildBlock(batch, sheetId, row, {
-    title: 'TOP MVP',
+    title: '🏆 TOP MVP',
     hint: 'melhor jogador em cada saída',
     headers: ['#', 'Nome', 'MVPs', 'Saídas', '% MVP', ''],
     items: r.topMVP,
@@ -104,7 +104,7 @@ async function syncRankings(batch, sheetId) {
 
   // Survival
   row = buildBlock(batch, sheetId, row, {
-    title: 'TOP SOBREVIVÊNCIA',
+    title: '🛡️ TOP SOBREVIVÊNCIA',
     hint: 'mínimo 3 saídas',
     headers: ['#', 'Nome', 'Survival', 'Saídas', '', ''],
     items: r.topSurvival,
@@ -120,7 +120,7 @@ async function syncRankings(batch, sheetId) {
 
   // Discipline
   row = buildBlock(batch, sheetId, row, {
-    title: 'TOP DISCIPLINA MATERIAL',
+    title: '📋 TOP DISCIPLINA MATERIAL',
     hint: 'taxa de devolução de material',
     headers: ['#', 'Nome', 'Return Rate', '', '', ''],
     items: r.topDiscipline,
@@ -136,7 +136,7 @@ async function syncRankings(batch, sheetId) {
 
   // K/D
   row = buildBlock(batch, sheetId, row, {
-    title: 'TOP K/D',
+    title: '⚔️ TOP K/D',
     hint: 'mínimo 3 encontros (kills + deaths)',
     headers: ['#', 'Nome', 'K/D', 'Kills', 'Deaths', ''],
     items: r.topKD,

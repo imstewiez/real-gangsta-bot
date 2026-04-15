@@ -169,12 +169,28 @@ function cell(value, opts = {}) {
   if (opts.borders) fmt.borders = opts.borders;
   if (opts.padding) fmt.padding = opts.padding;
   if (Object.keys(fmt).length) v.userEnteredFormat = fmt;
+
+  // Brand run: detecta "RedWood" e destaca a vermelho no meio do texto.
+  // Aplica apenas se o valor for string e contiver "RedWood".
+  if (opts.brandRed && typeof value === 'string') {
+    const idx = value.indexOf('RedWood');
+    const brandEnd = idx + 'RedWood'.length;
+    if (idx >= 0) {
+      const baseFont = opts.font || {};
+      const runs = [];
+      if (idx > 0) runs.push({ startIndex: 0, format: { ...baseFont } });
+      runs.push({ startIndex: idx, format: { ...baseFont, foregroundColor: COLOR.RED_DEEP, bold: true } });
+      // Só adiciona o reset se houver texto depois de "RedWood"
+      if (brandEnd < value.length) runs.push({ startIndex: brandEnd, format: { ...baseFont } });
+      v.textFormatRuns = runs;
+    }
+  }
   return v;
 }
 
 // ─── Células semânticas (camada 1: blocos base) ──────────────────────────────
 function titleCell(value) {
-  return cell(value, { bg: COLOR.BG_HEADER, font: FONT.TITLE, align: 'LEFT', vAlign: 'MIDDLE' });
+  return cell(value, { bg: COLOR.BG_HEADER, font: FONT.TITLE, align: 'LEFT', vAlign: 'MIDDLE', brandRed: true });
 }
 function subtitleCell(value) {
   return cell(value, { bg: COLOR.BG_HEADER, font: FONT.SUBTITLE, align: 'LEFT', vAlign: 'MIDDLE' });
@@ -208,7 +224,7 @@ function numCell(value, numberFormat, opts = {}) {
   return cell(value, { bg: COLOR.BG_APP, font: FONT.BODY, align: 'RIGHT', vAlign: 'MIDDLE', numberFormat, ...opts });
 }
 function signatureCell(text) {
-  return cell(text || `— ${SIGNATURE}`, { bg: COLOR.BG_HEADER, font: FONT.SIG, align: 'RIGHT', vAlign: 'MIDDLE' });
+  return cell(text || `— ${SIGNATURE}`, { bg: COLOR.BG_HEADER, font: FONT.SIG, align: 'RIGHT', vAlign: 'MIDDLE', brandRed: true });
 }
 
 // ─── Células semânticas (camada 2: KPIs / badges / rankings) ─────────────────

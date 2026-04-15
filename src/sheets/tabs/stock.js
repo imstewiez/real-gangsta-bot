@@ -85,7 +85,7 @@ async function syncStock(batch, sheetId) {
 
   // ── Panorama ─────────────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'PANORAMA DO STOCK', hint: 'valores consolidados', columnCount: COL_COUNT,
+    title: '📦 PANORAMA DO STOCK', hint: 'valores consolidados', columnCount: COL_COUNT,
   });
   row = kpiStrip(batch, sheetId, row, [
     { label: 'Itens',       value: inv.length,   numberFormat: NUM_FMT.INT,  delta: `${byCat.length} categorias`, deltaDirection: 'flat' },
@@ -107,7 +107,7 @@ async function syncStock(batch, sheetId) {
 
   // ── Breakdown por categoria ──────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'BREAKDOWN POR CATEGORIA', hint: 'qtd + valor por categoria', columnCount: COL_COUNT,
+    title: '📊 BREAKDOWN POR CATEGORIA', hint: 'qtd + valor por categoria', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, ['Categoria', 'Nº Itens', 'Quantidade', 'Valor (€)', '% do Valor', ...Array(COL_COUNT - 5).fill('')]);
   const catRows = byCat.map(c => {
@@ -129,7 +129,7 @@ async function syncStock(batch, sheetId) {
 
   // ── Inventário detalhado agrupado por categoria ──────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'INVENTÁRIO DETALHADO', hint: 'agrupado por categoria', columnCount: COL_COUNT,
+    title: '📋 INVENTÁRIO DETALHADO', hint: 'agrupado por categoria', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, INV_HEADERS.concat(Array(COL_COUNT - INV_HEADERS.length).fill('')));
   const invFirstRow = row;
@@ -217,7 +217,7 @@ async function syncStock(batch, sheetId) {
 
   // ── Ledger de movimentos ─────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'LEDGER DE MOVIMENTOS', hint: `últimos ${movs.length} · filtros activos`, columnCount: COL_COUNT,
+    title: '🔄 LEDGER DE MOVIMENTOS', hint: `últimos ${movs.length} · filtros activos`, columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, MOVS_HEADERS);
   const movRows = movs.map(m => [

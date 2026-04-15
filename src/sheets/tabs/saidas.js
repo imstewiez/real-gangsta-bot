@@ -15,8 +15,8 @@ const { growSheet } = require('../cleanup');
 const HEADERS = [
   'ID', 'Data', 'Hora', 'Spot', 'Tipo', 'Líder', 'Grupo', 'Estado', 'Resultado',
   'Inimigo', 'Facção', 'Pplzz', 'K', 'M', 'Viv.', 'Vol.',
-  'Fornecido', 'Devolvido', 'Perdido', 'Consumido',
-  'Bruto', 'Líquido', 'Δ', 'Notas',
+  'Fornecido (un)', 'Devolvido (un)', 'Perdido (un)', 'Consumido (un)',
+  'Bruto (€)', 'Líquido (€)', 'Δ', 'Notas',
 ];
 const COL_COUNT = HEADERS.length;
 
@@ -54,7 +54,7 @@ async function syncSaidas(batch, sheetId) {
   const totalKills = rows.reduce((a, r) => a + (r.kills || 0), 0);
   const totalDeath = rows.reduce((a, r) => a + (r.deaths || 0), 0);
   const totalNet   = rows.reduce((a, r) => a + Number(r.net || 0), 0);
-  const totalLost  = rows.reduce((a, r) => a + Number(r.lost || 0), 0);
+  const totalLostUnits = rows.reduce((a, r) => a + (r.lost_units || 0), 0);
   const winRate    = concluidas.length ? wins / concluidas.length : 0;
 
   // Grow antes de escrever — saidas pode ter 500+ rows
@@ -68,20 +68,20 @@ async function syncSaidas(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
   row = sectionHeader(batch, sheetId, row, {
-    title: 'PANORAMA OPERACIONAL', hint: 'acumulado', columnCount: COL_COUNT,
+    title: '🎯 PANORAMA OPERACIONAL', hint: 'acumulado', columnCount: COL_COUNT,
   });
   row = kpiStrip(batch, sheetId, row, [
     { label: 'Saídas',    value: rows.length,  numberFormat: NUM_FMT.INT,  delta: `${concluidas.length} concluídas`, deltaDirection: 'flat' },
     { label: 'Win Rate',  value: winRate,      numberFormat: NUM_FMT.PCT,  delta: `${wins}V · ${losses}D · ${draws}E`, deltaDirection: winRate >= 0.5 ? 'up' : 'down' },
     { label: 'K/D Org',   value: totalDeath > 0 ? totalKills / totalDeath : totalKills, numberFormat: NUM_FMT.KD, delta: `${totalKills}k · ${totalDeath}d`, deltaDirection: 'flat' },
-    { label: 'Balanço',   value: totalNet,     numberFormat: NUM_FMT.EURO, delta: `perdido: ${Math.round(totalLost)} €`, deltaDirection: totalNet > 0 ? 'up' : 'down' },
+    { label: 'Balanço',   value: totalNet,     numberFormat: NUM_FMT.EURO, delta: `perdido: ${totalLostUnits} un.`, deltaDirection: totalNet > 0 ? 'up' : 'down' },
   ], COL_COUNT);
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
 
   row = sectionHeader(batch, sheetId, row, {
-    title: 'LEDGER DE SAÍDAS', hint: 'mais recentes no topo — filtros activos', columnCount: COL_COUNT,
+    title: '📋 LEDGER DE SAÍDAS', hint: 'mais recentes no topo — filtros activos', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, HEADERS);
   const firstDataRow = row;
@@ -103,10 +103,10 @@ async function syncSaidas(batch, sheetId) {
     numCell(s.deaths, NUM_FMT.INT),
     numCell(s.survivors, NUM_FMT.INT),
     numCell(s.returned_bairro, NUM_FMT.INT),
-    numCell(Number(s.supplied), NUM_FMT.EURO),
-    numCell(Number(s.returned), NUM_FMT.EURO),
-    numCell(Number(s.lost), NUM_FMT.EURO),
-    numCell(Number(s.consumed), NUM_FMT.EURO),
+    numCell(s.supplied_units, NUM_FMT.INT),
+    numCell(s.returned_units, NUM_FMT.INT),
+    numCell(s.lost_units, NUM_FMT.INT),
+    numCell(s.consumed_units, NUM_FMT.INT),
     numCell(Number(s.gross), NUM_FMT.EURO),
     numCell(Number(s.net), NUM_FMT.EURO),
     cell(s.was_profitable === true ? '▲' : s.was_profitable === false ? '▼' : '—', {

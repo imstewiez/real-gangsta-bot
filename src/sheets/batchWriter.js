@@ -35,14 +35,16 @@ class BatchWriter {
     return this;
   }
 
-  /** Escreve `rows` (array de arrays de cell objects) a partir de (startRow, startCol). */
+  /** Escreve `rows` (array de arrays de cell objects) a partir de (startRow, startCol).
+   * Inclui textFormatRuns no fields para suportar texto multi-cor (ex: "RedWood" a
+   * vermelho dentro do título). Células sem runs têm-nas limpas — idempotente. */
   updateCells(sheetId, startRow, startCol, rows) {
     if (!rows.length) return this;
     this.requests.push({
       updateCells: {
         start: { sheetId, rowIndex: startRow, columnIndex: startCol },
         rows: rows.map(row => ({ values: row })),
-        fields: 'userEnteredValue,userEnteredFormat',
+        fields: 'userEnteredValue,userEnteredFormat,textFormatRuns',
       },
     });
     return this;

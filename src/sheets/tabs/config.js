@@ -33,7 +33,7 @@ async function syncConfig(batch, sheetId) {
 
   // ── TIERS ────────────────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'TIERS DE MORADOR', hint: 'níveis de progressão', columnCount: COL_COUNT,
+    title: '🎖️ TIERS DE MORADOR', hint: 'níveis de progressão', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, ['Tier', 'Descrição', 'Badge', '', '']);
   const tiers = [
@@ -47,7 +47,7 @@ async function syncConfig(batch, sheetId) {
 
   // ── RESULTADOS ───────────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'RESULTADOS DE SAÍDA', hint: 'estados finais', columnCount: COL_COUNT,
+    title: '🏁 RESULTADOS DE SAÍDA', hint: 'estados finais', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, ['Resultado', 'Descrição', 'Badge', '', '']);
   const results = [
@@ -62,7 +62,7 @@ async function syncConfig(batch, sheetId) {
 
   // ── MOVIMENTOS ───────────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'TIPOS DE MOVIMENTO', hint: 'inventory_movements.movement_type', columnCount: COL_COUNT,
+    title: '🔄 TIPOS DE MOVIMENTO', hint: 'inventory_movements.movement_type', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, ['Tipo', 'Descrição', 'Sinal', '', '']);
   const mtypes = [
@@ -84,7 +84,7 @@ async function syncConfig(batch, sheetId) {
 
   // ── CORES / CONDITIONAL ──────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'LEGENDA DE CORES', hint: 'conditional formatting no workbook', columnCount: COL_COUNT,
+    title: '🎨 LEGENDA DE CORES', hint: 'conditional formatting no workbook', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, ['Sinal', 'Significado', 'Exemplo', '', '']);
   const colors = [
@@ -99,7 +99,7 @@ async function syncConfig(batch, sheetId) {
 
   // ── MATERIAL vs DINHEIRO ─────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'MATERIAL vs DINHEIRO', hint: 'duas contabilidades distintas', columnCount: COL_COUNT,
+    title: '💰 MATERIAL vs DINHEIRO', hint: 'duas contabilidades distintas', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, ['Conceito', 'Detalhe', '', '', '']);
   const concepts = [
@@ -114,7 +114,7 @@ async function syncConfig(batch, sheetId) {
 
   // ── SCORES ───────────────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'MÉTRICAS COMPOSTAS', hint: 'scores derivados', columnCount: COL_COUNT,
+    title: '📊 MÉTRICAS COMPOSTAS', hint: 'scores derivados', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, ['Score', 'Fórmula', '', '', '']);
   const scores = [
@@ -131,7 +131,7 @@ async function syncConfig(batch, sheetId) {
 
   // ── Sync engine info ─────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'SYNC ENGINE', hint: 'como o workbook é mantido', columnCount: COL_COUNT,
+    title: '⚙️ SYNC ENGINE', hint: 'como o workbook é mantido', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, ['Comando', 'Efeito', '', '', '']);
   const cmds = [

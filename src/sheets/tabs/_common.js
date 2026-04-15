@@ -245,7 +245,7 @@ function alertBox(batch, sheetId, row, { message, kind = 'info', columnCount }) 
 // ─────────────────────────────────────────────────────────────────────────────
 function footerBlock(batch, sheetId, row, columnCount, freezeAt = 0, context = '') {
   const left = cell(context ? `${SIGNATURE} · ${context}` : SIGNATURE, {
-    bg: COLOR.BG_HEADER, font: FONT.SIG, align: 'LEFT', vAlign: 'MIDDLE',
+    bg: COLOR.BG_HEADER, font: FONT.SIG, align: 'LEFT', vAlign: 'MIDDLE', brandRed: true,
   });
   const right = cell(`gerado ${_fmtNowPT()}`, {
     bg: COLOR.BG_HEADER, font: FONT.CAPTION, align: 'RIGHT', vAlign: 'MIDDLE',

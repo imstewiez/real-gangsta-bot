@@ -51,7 +51,7 @@ async function syncDashboard(batch, sheetId) {
 
   // ── 2. KPI strip principal ───────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'PANORAMA DA SEMANA', hint: 'últimos 7 dias', columnCount: COL_COUNT,
+    title: '🎯 PANORAMA DA SEMANA', hint: 'últimos 7 dias', columnCount: COL_COUNT,
   });
 
   const d_net    = _deltaCard(k.netWeek, k.netPrevWeek);
@@ -81,8 +81,8 @@ async function syncDashboard(batch, sheetId) {
       delta: `${k.stockQty} unidades em stock`, deltaDirection: 'flat' },
     { label: 'Kills Semana',   value: k.killsWeek, numberFormat: NUM_FMT.INT,
       delta: d_kills.hint, deltaDirection: d_kills.direction },
-    { label: 'Material Perd.', value: Number(k.lostMaterial) || 0, numberFormat: NUM_FMT.EURO,
-      delta: `devolvido: ${Math.round(Number(k.returnedMaterial) || 0)} €`, deltaDirection: 'flat' },
+    { label: 'Material Perd.', value: k.lostUnitsWeek, numberFormat: NUM_FMT.INT,
+      delta: `devolvido: ${k.returnedUnitsWeek} un. · fornecido: ${k.suppliedUnitsWeek}`, deltaDirection: 'flat' },
   ], COL_COUNT);
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
@@ -90,7 +90,7 @@ async function syncDashboard(batch, sheetId) {
 
   // ── 4. Destaques ─────────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'DESTAQUES DA SEMANA', hint: 'top performers', columnCount: COL_COUNT,
+    title: '🏆 DESTAQUES DA SEMANA', hint: 'top performers', columnCount: COL_COUNT,
   });
 
   const fmtMover = (r) => r ? `${r.display_name} · ${Number(r.value).toLocaleString('pt-PT')}` : '—';
@@ -119,21 +119,23 @@ async function syncDashboard(batch, sheetId) {
 
   // ── 5. Tendência ─────────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'TENDÊNCIA', hint: 'esta semana vs anterior', columnCount: COL_COUNT,
+    title: '📈 TENDÊNCIA', hint: 'esta semana vs anterior', columnCount: COL_COUNT,
   });
 
   const trendHeaders = ['Métrica', 'Esta Semana', 'Semana Anterior', 'Δ Absoluto', 'Δ %', 'Direcção'];
   row = tableHeader(batch, sheetId, row, trendHeaders.concat(Array(COL_COUNT - trendHeaders.length).fill('')));
 
   const trendRows = [
-    ['Saídas',     trend.saidas,   NUM_FMT.INT],
-    ['Vitórias',   trend.wins,     NUM_FMT.INT],
-    ['Kills',      trend.kills,    NUM_FMT.INT],
-    ['Mortes',     trend.deaths,   NUM_FMT.INT],
-    ['Lucro (€)',  trend.net,      NUM_FMT.EURO],
-    ['Bruto (€)',  trend.gross,    NUM_FMT.EURO],
-    ['Perdido (€)',trend.lost,     NUM_FMT.EURO],
-    ['Entregas',   trend.entregas, NUM_FMT.INT],
+    ['Saídas',           trend.saidas,         NUM_FMT.INT],
+    ['Vitórias',         trend.wins,           NUM_FMT.INT],
+    ['Kills',            trend.kills,          NUM_FMT.INT],
+    ['Mortes',           trend.deaths,         NUM_FMT.INT],
+    ['Lucro (€)',        trend.net,            NUM_FMT.EURO],
+    ['Bruto (€)',        trend.gross,          NUM_FMT.EURO],
+    ['Perdido (un)',     trend.lost_units,     NUM_FMT.INT],
+    ['Devolvido (un)',   trend.returned_units, NUM_FMT.INT],
+    ['Fornecido (un)',   trend.supplied_units, NUM_FMT.INT],
+    ['Entregas (itens)', trend.entregas,       NUM_FMT.INT],
   ].map(([label, series, fmt]) => {
     const cur = Number(series.current) || 0;
     const prev = Number(series.previous) || 0;
@@ -160,7 +162,7 @@ async function syncDashboard(batch, sheetId) {
 
   // ── 6. Stock por categoria ───────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'STOCK POR CATEGORIA', hint: `${byCat.length} categorias activas`, columnCount: COL_COUNT,
+    title: '📦 STOCK POR CATEGORIA', hint: `${byCat.length} categorias activas`, columnCount: COL_COUNT,
   });
 
   const catHeaders = ['Categoria', 'Nº Itens', 'Quantidade', 'Valor (€)', '% do Total'];
@@ -186,7 +188,7 @@ async function syncDashboard(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
   row = sectionHeader(batch, sheetId, row, {
-    title: 'ALERTAS', hint: alerts.length ? `${alerts.length} itens` : 'tudo sob controlo', columnCount: COL_COUNT,
+    title: '⚠️ ALERTAS', hint: alerts.length ? `${alerts.length} itens` : 'tudo sob controlo', columnCount: COL_COUNT,
   });
 
   if (alerts.length === 0) {

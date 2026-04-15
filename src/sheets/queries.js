@@ -98,12 +98,21 @@ async function getDashboardKPIs() {
       SUM(COALESCE(our_kills, 0))::int AS kills,
       SUM(COALESCE(deaths, 0))::int AS deaths,
       SUM(COALESCE(net_value, 0))::numeric AS net,
-      SUM(COALESCE(gross_value, 0))::numeric AS gross,
-      SUM(COALESCE(lost_value, 0))::numeric AS lost,
-      SUM(COALESCE(returned_value, 0))::numeric AS returned,
-      SUM(COALESCE(supplied_value, 0))::numeric AS supplied
+      SUM(COALESCE(gross_value, 0))::numeric AS gross
     FROM operations
     WHERE date >= $1::date AND status = 'concluida'`,
+    [w.start]);
+
+  // Material desta semana em UNIDADES
+  const matWeek = await query(`
+    SELECT
+      SUM(CASE WHEN om.direction='fornecido' THEN om.quantity ELSE 0 END)::int AS supplied_units,
+      SUM(CASE WHEN om.direction='devolvido' THEN om.quantity ELSE 0 END)::int AS returned_units,
+      SUM(CASE WHEN om.direction='perdido'   THEN om.quantity ELSE 0 END)::int AS lost_units,
+      SUM(CASE WHEN om.direction='consumido' THEN om.quantity ELSE 0 END)::int AS consumed_units
+    FROM operation_materials om
+    JOIN operations o ON o.id = om.operation_id
+    WHERE o.date >= $1::date AND o.status = 'concluida'`,
     [w.start]);
 
   const prevSaidas = await query(`
@@ -172,8 +181,11 @@ async function getDashboardKPIs() {
     killsPrevWeek:   prevSaidas.rows[0]?.kills || 0,
     deathsWeek:      totalDeaths,
     kdOrg:           totalDeaths > 0 ? totalKills / totalDeaths : totalKills,
-    lostMaterial:    Number(saidas.rows[0]?.lost) || 0,
-    returnedMaterial:Number(saidas.rows[0]?.returned) || 0,
+    // Material em UNIDADES (fonte de verdade: operation_materials)
+    lostUnitsWeek:    Number(matWeek.rows[0]?.lost_units) || 0,
+    returnedUnitsWeek:Number(matWeek.rows[0]?.returned_units) || 0,
+    suppliedUnitsWeek:Number(matWeek.rows[0]?.supplied_units) || 0,
+    consumedUnitsWeek:Number(matWeek.rows[0]?.consumed_units) || 0,
     moradoresAtivos: members.rows[0]?.moradores || 0,
     oficiaisAtivos:  members.rows[0]?.oficiais || 0,
     topContributor:  topContrib.rows[0] || null,
@@ -304,6 +316,9 @@ async function getMembersFull() {
 }
 
 // ─── Saídas full ─────────────────────────────────────────────────────────────
+// Material é medido em UNIDADES (ok.supplied_units/returned_units/lost_units/
+// consumed_units) e também disponibilizado em € (gross/net para bottom-line
+// económico). A contabilização de material deve usar sempre unidades.
 async function getSaidasFull(limit = 500) {
   const r = await query(`
     SELECT
@@ -317,15 +332,24 @@ async function getSaidasFull(limit = 500) {
       COALESCE(o.deaths, 0)::int AS deaths,
       COALESCE(o.survivors, 0)::int AS survivors,
       COALESCE(o.returned_to_bairro_count, 0)::int AS returned_bairro,
-      COALESCE(o.supplied_value, 0)::numeric AS supplied,
-      COALESCE(o.returned_value, 0)::numeric AS returned,
-      COALESCE(o.lost_value, 0)::numeric AS lost,
-      COALESCE(o.consumed_value, 0)::numeric AS consumed,
+      COALESCE(omu.supplied_units, 0)::int AS supplied_units,
+      COALESCE(omu.returned_units, 0)::int AS returned_units,
+      COALESCE(omu.lost_units,     0)::int AS lost_units,
+      COALESCE(omu.consumed_units, 0)::int AS consumed_units,
       COALESCE(o.gross_value, 0)::numeric AS gross,
       COALESCE(o.net_value, 0)::numeric AS net,
       o.was_profitable, o.result_notes
     FROM operations o
     LEFT JOIN members m ON m.id = o.leader_id
+    LEFT JOIN LATERAL (
+      SELECT
+        SUM(CASE WHEN direction='fornecido' THEN quantity ELSE 0 END)::int AS supplied_units,
+        SUM(CASE WHEN direction='devolvido' THEN quantity ELSE 0 END)::int AS returned_units,
+        SUM(CASE WHEN direction='perdido'   THEN quantity ELSE 0 END)::int AS lost_units,
+        SUM(CASE WHEN direction='consumido' THEN quantity ELSE 0 END)::int AS consumed_units
+      FROM operation_materials
+      WHERE operation_id = o.id
+    ) omu ON TRUE
     ORDER BY o.date DESC, o.id DESC
     LIMIT $1`,
     [limit]);
@@ -333,6 +357,9 @@ async function getSaidasFull(limit = 500) {
 }
 
 // ─── Participantes full ──────────────────────────────────────────────────────
+// Material por participação em UNIDADES (issued_units, returned_units,
+// lost_units, consumed_units) via JOIN operation_materials agregado por
+// (operation_id, member_id).
 async function getParticipantsFull(limit = 2000) {
   const r = await query(`
     SELECT
@@ -342,10 +369,10 @@ async function getParticipantsFull(limit = 2000) {
       op.role_in_op AS role,
       op.brought_own_material,
       op.received_org_material,
-      COALESCE(op.issued_value, 0)::numeric AS issued,
-      COALESCE(op.returned_value, 0)::numeric AS returned,
-      COALESCE(op.lost_value, 0)::numeric AS lost,
-      COALESCE(op.consumed_value, 0)::numeric AS consumed,
+      COALESCE(pmu.issued_units,   0)::int AS issued_units,
+      COALESCE(pmu.returned_units, 0)::int AS returned_units,
+      COALESCE(pmu.lost_units,     0)::int AS lost_units,
+      COALESCE(pmu.consumed_units, 0)::int AS consumed_units,
       COALESCE(op.kills, 0)::int AS kills,
       COALESCE(op.deaths_count, 0)::int AS deaths,
       op.survived, op.returned AS returned_bairro,
@@ -356,6 +383,15 @@ async function getParticipantsFull(limit = 2000) {
     FROM operation_participants op
     JOIN operations o ON o.id = op.operation_id
     JOIN members m ON m.id = op.member_id
+    LEFT JOIN LATERAL (
+      SELECT
+        SUM(CASE WHEN direction='fornecido' THEN quantity ELSE 0 END)::int AS issued_units,
+        SUM(CASE WHEN direction='devolvido' THEN quantity ELSE 0 END)::int AS returned_units,
+        SUM(CASE WHEN direction='perdido'   THEN quantity ELSE 0 END)::int AS lost_units,
+        SUM(CASE WHEN direction='consumido' THEN quantity ELSE 0 END)::int AS consumed_units
+      FROM operation_materials
+      WHERE operation_id = op.operation_id AND member_id = op.member_id
+    ) pmu ON TRUE
     ORDER BY o.date DESC, op.operation_id DESC, m.display_name
     LIMIT $1`,
     [limit]);
@@ -581,10 +617,20 @@ async function getTrending() {
       SUM(COALESCE(our_kills,0))::int AS kills,
       SUM(COALESCE(deaths,0))::int AS deaths,
       SUM(COALESCE(net_value,0))::numeric AS net,
-      SUM(COALESCE(gross_value,0))::numeric AS gross,
-      SUM(COALESCE(lost_value,0))::numeric AS lost
+      SUM(COALESCE(gross_value,0))::numeric AS gross
     FROM operations
     WHERE date >= $1::date AND date < $2::date AND status = 'concluida'`, [s, e]);
+
+  // Material em UNIDADES (fornecido/devolvido/perdido/consumido)
+  const sqlMatUnits = (s, e) => query(`
+    SELECT
+      SUM(CASE WHEN om.direction='fornecido' THEN om.quantity ELSE 0 END)::int AS supplied,
+      SUM(CASE WHEN om.direction='devolvido' THEN om.quantity ELSE 0 END)::int AS returned,
+      SUM(CASE WHEN om.direction='perdido'   THEN om.quantity ELSE 0 END)::int AS lost,
+      SUM(CASE WHEN om.direction='consumido' THEN om.quantity ELSE 0 END)::int AS consumed
+    FROM operation_materials om
+    JOIN operations o ON o.id = om.operation_id
+    WHERE o.date >= $1::date AND o.date < $2::date AND o.status = 'concluida'`, [s, e]);
 
   const sqlMov = (s, e) => query(`
     SELECT
@@ -596,15 +642,18 @@ async function getTrending() {
   const nextDay = d => { const x = new Date(d); x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().split('T')[0]; };
   const curEndExcl = nextDay(w.end);
 
-  const [cs, ps, cm, pm] = await Promise.all([
+  const [cs, ps, cm, pm, cMat, pMat] = await Promise.all([
     sqlSaidas(w.start, curEndExcl),
     sqlSaidas(pw.start, pw.end),
     sqlMov(w.start, curEndExcl),
     sqlMov(pw.start, pw.end),
+    sqlMatUnits(w.start, curEndExcl),
+    sqlMatUnits(pw.start, pw.end),
   ]);
 
   const C = cs.rows[0] || {}; const P = ps.rows[0] || {};
   const CM = cm.rows[0] || {}; const PM = pm.rows[0] || {};
+  const CT = cMat.rows[0] || {}; const PT = pMat.rows[0] || {};
 
   return {
     saidas:   { current: Number(C.saidas) || 0, previous: Number(P.saidas) || 0 },
@@ -613,7 +662,11 @@ async function getTrending() {
     deaths:   { current: Number(C.deaths) || 0, previous: Number(P.deaths) || 0 },
     net:      { current: Number(C.net)    || 0, previous: Number(P.net)    || 0 },
     gross:    { current: Number(C.gross)  || 0, previous: Number(P.gross)  || 0 },
-    lost:     { current: Number(C.lost)   || 0, previous: Number(P.lost)   || 0 },
+    // Material em UNIDADES (não €)
+    supplied_units: { current: Number(CT.supplied) || 0, previous: Number(PT.supplied) || 0 },
+    returned_units: { current: Number(CT.returned) || 0, previous: Number(PT.returned) || 0 },
+    lost_units:     { current: Number(CT.lost)     || 0, previous: Number(PT.lost)     || 0 },
+    consumed_units: { current: Number(CT.consumed) || 0, previous: Number(PT.consumed) || 0 },
     entregas: { current: Number(CM.entregas) || 0, previous: Number(PM.entregas) || 0 },
     vendas:   { current: Number(CM.vendas)   || 0, previous: Number(PM.vendas)   || 0 },
   };

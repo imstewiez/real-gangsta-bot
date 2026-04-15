@@ -90,7 +90,7 @@ async function syncMembros(batch, sheetId) {
 
   // ── Secção 1: Resumo Casa ────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'RESUMO DA CASA', hint: 'todos os membros activos', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
+    title: '🏠 RESUMO DA CASA', hint: 'todos os membros activos', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
   });
   row = kpiStrip(batch, sheetId, row, [
     { label: 'Membros',   value: rows.length,    numberFormat: NUM_FMT.INT, delta: `${moradores.length} moradores · ${oficiais.length} oficiais`, deltaDirection: 'flat' },
@@ -103,7 +103,7 @@ async function syncMembros(batch, sheetId) {
 
   // ── Secção 2: Distribuição por tier ──────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'MORADORES · DISTRIBUIÇÃO POR TIER', hint: 'topo → base', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
+    title: '🎖️ MORADORES · DISTRIBUIÇÃO POR TIER', hint: 'topo → base', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
   });
   row = kpiStrip(batch, sheetId, row, [
     { label: 'Patrão Di Zona',  value: tierCounts.patrao_di_zona,  numberFormat: NUM_FMT.INT, delta: 'topo da casa', deltaDirection: 'flat' },
@@ -116,7 +116,7 @@ async function syncMembros(batch, sheetId) {
 
   // ── Secção 3: Núcleo oficiais ────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'OFICIAIS · NÚCLEO DA FIRMA', hint: 'performance agregada', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
+    title: '👑 OFICIAIS · NÚCLEO DA FIRMA', hint: 'performance agregada', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
   });
   row = kpiStrip(batch, sheetId, row, [
     { label: 'Oficiais',     value: oficiais.length,  numberFormat: NUM_FMT.INT, delta: `${oficiais.filter(m => m.role === 'chefia').length} chefia`, deltaDirection: 'flat' },
@@ -130,7 +130,7 @@ async function syncMembros(batch, sheetId) {
 
   // ── Secção 4: Roster completo ────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'ROSTER COMPLETO', hint: 'filtros activos — ordena por qualquer coluna', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
+    title: '👥 ROSTER COMPLETO', hint: 'filtros activos — ordena por qualquer coluna', columnCount: COL_COUNT, freezeAt: FREEZE_AT,
   });
   row = tableHeader(batch, sheetId, row, HEADERS);
   const firstDataRow = row;
