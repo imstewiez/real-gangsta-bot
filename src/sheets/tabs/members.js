@@ -1,29 +1,35 @@
 'use strict';
 /**
- * Tab Membros — roster mestre com KPI bar + banding + pills de role.
+ * Tab Membros — roster mestre. KPI strip + tabela premium com pills,
+ * banding, filtro e conditional formatting.
  */
 
-const { COLOR, NUM_FMT, bodyCell, numCell, pillCell, conditionalGradient, conditionalGreaterThan, conditionalLessThan } = require('../theme');
-const { writeHeader, writeKpiBar, writeTableHeader, writeDivider, setWidths, applyRowBanding, writeFooter } = require('./_common');
+const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, numCell, pillCell, badgeCell,
+  conditionalGradient, conditionalGreaterThan, conditionalLessThan } = require('../theme');
+const {
+  headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
+  footerBlock, setWidths,
+} = require('./_common');
 const { getMembersFull } = require('../queries');
 
 const HEADERS = [
   'Nome', 'Discord', 'Role', 'Tier', 'Estado', 'Entrada', 'Última Saída',
   'Entregas', 'Itens Totais', 'Vendas',
-  'Saídas', 'W', 'L', 'K', 'D', 'K/D',
+  'Saídas', 'V', 'D', 'K', 'M', 'K/D',
   'Surv', 'Return', 'Lucro', 'MVPs',
 ];
+const COL_COUNT = HEADERS.length;
 
 function rolePill(role) {
   const map = {
-    chefia:          { label: 'CHEFIA',     bg: COLOR.RED_DEEP },
-    oficial:         { label: 'OFICIAL',    bg: COLOR.RED_BLOOD },
-    chefe_moradores: { label: 'PATRÃO',     bg: COLOR.GOLD },
-    morador:         { label: 'MORADOR',    bg: COLOR.GRAPHITE },
-    inativo:         { label: 'INATIVO',    bg: COLOR.GRAY_DARK },
+    chefia:          { label: 'CHEFIA',   bg: COLOR.RED_DEEP },
+    oficial:         { label: 'OFICIAL',  bg: COLOR.RED_BLOOD },
+    chefe_moradores: { label: 'PATRÃO',   bg: COLOR.GOLD },
+    morador:         { label: 'MORADOR',  bg: COLOR.GRAPHITE },
+    inativo:         { label: 'INACTIVO', bg: COLOR.GRAY_DARK },
   };
   const m = map[role];
-  return m ? pillCell(m.label, m.bg) : bodyCell(role || '—');
+  return m ? badgeCell(m.label, m.bg) : bodyCell(role || '—');
 }
 
 function tierPill(tier) {
@@ -34,12 +40,13 @@ function tierPill(tier) {
     patrao_di_zona:  { label: 'PDZ', bg: COLOR.GOLD },
   };
   const m = map[tier];
-  return m ? pillCell(m.label, m.bg) : bodyCell(tier || '—');
+  return m ? badgeCell(m.label, m.bg) : bodyCell(tier || '—');
 }
 
-function statusPill(st) {
-  if (st === 'ativo' || !st) return pillCell('ACTIVO', COLOR.GREEN_DEEP);
-  if (st === 'inativo') return pillCell('INACTIVO', COLOR.GRAY_DARK);
+function statusBadge(st) {
+  if (st === 'ativo' || !st) return badgeCell('ACTIVO', COLOR.GREEN_DEEP);
+  if (st === 'inativo')      return badgeCell('INACTIVO', COLOR.GRAY_DARK);
+  if (st === 'arquivado')    return badgeCell('ARQUIVADO', COLOR.IRON);
   return bodyCell(st);
 }
 
@@ -47,32 +54,48 @@ function fmtDate(d) { try { return d ? new Date(d).toISOString().split('T')[0] :
 
 async function syncMembers(batch, sheetId) {
   const rows = await getMembersFull();
-  const COL_COUNT = HEADERS.length;
 
   const moradores = rows.filter(m => m.role === 'morador' || m.role === 'chefe_moradores').length;
-  const oficiais = rows.filter(m => m.role === 'oficial' || m.role === 'chefia').length;
-  const totalWeightedEntregas = rows.reduce((a, m) => a + Number(m.weighted_entregas || 0), 0);
-  const totalKills = rows.reduce((a, m) => a + (m.kills || 0), 0);
+  const oficiais  = rows.filter(m => m.role === 'oficial' || m.role === 'chefia').length;
+  const totalEntregas = rows.reduce((a, m) => a + Number(m.weighted_entregas || 0), 0);
+  const totalKills    = rows.reduce((a, m) => a + (m.kills || 0), 0);
+  const totalProfit   = rows.reduce((a, m) => a + Number(m.profit || 0), 0);
+  const avgKD         = rows.length ? rows.reduce((a, m) => a + Number(m.kd || 0), 0) / rows.length : 0;
 
   const FREEZE_AT = 1;
-  let row = writeHeader(batch, sheetId, 'Membros · Ficha da Casa', COL_COUNT, FREEZE_AT);
-  row = writeKpiBar(batch, sheetId, row, [
-    { label: 'Na Casa',         value: rows.length,           fmt: NUM_FMT.INT },
-    { label: 'Moradores',       value: moradores,             fmt: NUM_FMT.INT },
-    { label: 'Oficiais',        value: oficiais,              fmt: NUM_FMT.INT },
-    { label: 'Itens Entregues', value: totalWeightedEntregas, fmt: NUM_FMT.INT },
-    { label: 'Kills Totais',    value: totalKills,            fmt: NUM_FMT.INT },
+  let row = headerBlock(batch, sheetId, {
+    title: 'Membros · Ficha da Casa',
+    subtitle: `${rows.length} registos — roster completo`,
+    columnCount: COL_COUNT,
+    freezeAt: FREEZE_AT,
+  });
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
+
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'RESUMO DA CASA', hint: 'todos os activos', columnCount: COL_COUNT,
+  });
+  row = kpiStrip(batch, sheetId, row, [
+    { label: 'Membros',   value: rows.length,      numberFormat: NUM_FMT.INT, delta: `${moradores} moradores · ${oficiais} oficiais`, deltaDirection: 'flat' },
+    { label: 'Entregues', value: totalEntregas,    numberFormat: NUM_FMT.INT, delta: 'material total', deltaDirection: 'flat' },
+    { label: 'Kills',     value: totalKills,       numberFormat: NUM_FMT.INT, delta: `KD médio ${avgKD.toFixed(2)}`, deltaDirection: 'flat' },
+    { label: 'Lucro',     value: totalProfit,      numberFormat: NUM_FMT.EURO, delta: 'gerado colectivamente', deltaDirection: totalProfit > 0 ? 'up' : 'flat' },
   ], COL_COUNT);
-  row = writeDivider(batch, sheetId, row, COL_COUNT);
-  row = writeTableHeader(batch, sheetId, row, HEADERS);
+
+  row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
+  row = divider(batch, sheetId, row, COL_COUNT, 'accent');
+
+  row = sectionHeader(batch, sheetId, row, {
+    title: 'ROSTER', hint: 'filtros activos — ordenar por qualquer coluna', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, HEADERS);
   const firstDataRow = row;
 
   const dataRows = rows.map(m => [
-    bodyCell(m.display_name || m.username || '—'),
-    bodyCell(m.discord_id || ''),
+    bodyBoldCell(m.display_name || m.username || '—'),
+    captionCell(m.discord_id || ''),
     rolePill(m.role),
     tierPill(m.tier),
-    statusPill(m.status),
+    statusBadge(m.status),
     bodyCell(fmtDate(m.joined_at)),
     bodyCell(fmtDate(m.last_saida)),
     numCell(m.entregas, NUM_FMT.INT),
@@ -83,27 +106,32 @@ async function syncMembers(batch, sheetId) {
     numCell(m.losses, NUM_FMT.INT),
     numCell(m.kills, NUM_FMT.INT),
     numCell(m.deaths, NUM_FMT.INT),
-    numCell(Number(m.kd), NUM_FMT.DEC),
+    numCell(Number(m.kd), NUM_FMT.KD),
     numCell(Number(m.survival_rate) / 100, NUM_FMT.PCT),
     numCell(Number(m.return_rate) / 100, NUM_FMT.PCT),
     numCell(Number(m.profit), NUM_FMT.EURO),
     numCell(m.mvps, NUM_FMT.INT),
   ]);
 
-  if (dataRows.length) batch.updateCells(sheetId, row, 0, applyRowBanding(dataRows));
+  row = tableBody(batch, sheetId, row, dataRows, { basicFilter: true, columnCount: COL_COUNT });
 
-  batch.addRule(conditionalGradient(sheetId, firstDataRow, 15, firstDataRow + dataRows.length, 16, COLOR.RED_SIGNAL_SOFT, COLOR.YELLOW_SOFT, COLOR.GREEN_SOFT));
-  batch.addRule(conditionalGradient(sheetId, firstDataRow, 16, firstDataRow + dataRows.length, 17, COLOR.RED_SIGNAL_SOFT, COLOR.YELLOW_SOFT, COLOR.GREEN_SOFT));
-  batch.addRule(conditionalGradient(sheetId, firstDataRow, 17, firstDataRow + dataRows.length, 18, COLOR.RED_SIGNAL_SOFT, COLOR.YELLOW_SOFT, COLOR.GREEN_SOFT));
-  batch.addRule(conditionalGreaterThan(sheetId, firstDataRow, 18, firstDataRow + dataRows.length, 19, 1000, COLOR.GREEN_SOFT));
-  batch.addRule(conditionalLessThan(sheetId, firstDataRow, 18, firstDataRow + dataRows.length, 19, -500, COLOR.RED_SIGNAL_SOFT));
+  // Conditional formatting: K/D (col 15), Surv (16), Return (17), Lucro (18)
+  if (dataRows.length) {
+    const N = dataRows.length;
+    batch.addRule(conditionalGradient(sheetId, firstDataRow, 15, firstDataRow + N, 16, COLOR.RED_SIGNAL_SOFT, COLOR.YELLOW_SOFT, COLOR.GREEN_SOFT));
+    batch.addRule(conditionalGradient(sheetId, firstDataRow, 16, firstDataRow + N, 17, COLOR.RED_SIGNAL_SOFT, COLOR.YELLOW_SOFT, COLOR.GREEN_SOFT));
+    batch.addRule(conditionalGradient(sheetId, firstDataRow, 17, firstDataRow + N, 18, COLOR.RED_SIGNAL_SOFT, COLOR.YELLOW_SOFT, COLOR.GREEN_SOFT));
+    batch.addRule(conditionalGreaterThan(sheetId, firstDataRow, 18, firstDataRow + N, 19, 1000, COLOR.GREEN_SOFT));
+    batch.addRule(conditionalLessThan(sheetId, firstDataRow, 18, firstDataRow + N, 19, -500, COLOR.RED_SIGNAL_SOFT));
+  }
 
-  batch.setBasicFilter(sheetId, firstDataRow - 1, firstDataRow + dataRows.length, 0, COL_COUNT);
   batch.freezeCols(sheetId, FREEZE_AT);
 
-  writeFooter(batch, sheetId, firstDataRow + dataRows.length + 2, COL_COUNT, FREEZE_AT);
+  row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
+  row = footerBlock(batch, sheetId, row, COL_COUNT, FREEZE_AT, 'Membros');
 
-  setWidths(batch, sheetId, [160, 150, 85, 60, 80, 95, 95, 75, 100, 65, 65, 45, 45, 45, 45, 55, 65, 75, 95, 60]);
+  setWidths(batch, sheetId, [180, 150, 95, 55, 95, 95, 95, 75, 100, 65, 65, 40, 40, 40, 40, 55, 65, 75, 100, 55]);
+  return { lastRow: row, lastCol: COL_COUNT };
 }
 
 module.exports = { syncMembers };
