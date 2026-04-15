@@ -36,7 +36,6 @@ const STOCK_CHANNELS = {
   entradas: { emoji: '📥', slug: 'entradas-stock' },
   saidas:   { emoji: '📤', slug: 'saídas-stock' },
   ajustes:  { emoji: '🧾', slug: 'ajustes-stock' },
-  alertas:  { emoji: '⚠️', slug: 'alertas-stock' },
 };
 
 // Movement type → canal lógico

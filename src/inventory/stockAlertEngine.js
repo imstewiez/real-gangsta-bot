@@ -18,16 +18,19 @@ const { queueMessage } = require('../discordQueue');
 let _client = null;
 function setClient(c) { _client = c; }
 
-// Canal alvo — criado/resolvido pelo stockNotifier via STOCK_CHANNELS.alertas
+// Canal alvo — por default usa o 'resumo-stock' existente (sem criar novo
+// canal). Tries fallbacks: resumo-stock, ajustes-stock, qualquer *-stock.
 async function _resolveAlertChannel() {
   if (!_client) return null;
   const guild = _client.guilds.cache.get(CONFIG.DISCORD_GUILD_ID);
   if (!guild) return null;
-  // Procura canal com slug 'alertas-stock' (case-insensitive).
-  const target = Array.from(guild.channels.cache.values()).find(c =>
-    c.isTextBased?.() && /alertas.?stock/i.test(c.name)
-  );
-  return target || null;
+  const channels = Array.from(guild.channels.cache.values()).filter(c => c.isTextBased?.());
+  // Prioridade: resumo-stock > ajustes-stock > qualquer stock
+  const find = re => channels.find(c => re.test(c.name));
+  return find(/resumo.?stock/i)
+      || find(/ajustes.?stock/i)
+      || find(/stock/i)
+      || null;
 }
 
 // Calcula balance global por item (soma over all locations).
