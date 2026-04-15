@@ -21,6 +21,12 @@ const { computeSaidaScores } = require('./saidaScoring');
 const metrics = require('../lib/metrics');
 const { log, warn } = require('../logger');
 
+// Cliente Discord injectado no boot. Usado apenas para publicar resultados
+// ricos no fecho de saída (fire-and-forget). Se não estiver definido,
+// closeSaida funciona na mesma e o publish é no-op silencioso.
+let _client = null;
+function setClient(client) { _client = client; }
+
 // Movement types ligados a saídas (renomeados pela migration #11)
 const MOVEMENT_TYPE_BY_DIRECTION = {
   fornecido: 'fornecimento_org',
@@ -185,6 +191,12 @@ async function closeSaida(saidaId, resultData, actorId) {
   });
 
   log(`[SAIDA] Saída #${saidaId} fechada. result=${closed.result} net=${net.toFixed(2)}€ unaccounted=${recon.unaccounted}`);
+
+  // Publica resultados ricos (3 embeds) — fire-and-forget, não bloqueia.
+  if (_client) {
+    const { publishResults } = require('./saidaResultsPublisher');
+    publishResults(_client, saidaId).catch(e => warn(`[SAIDA] publishResults: ${e.message}`));
+  }
 
   return {
     ...closed,
@@ -408,6 +420,7 @@ async function settleParticipantCustody(saidaId, discordId, outcome, actorId, gu
 }
 
 module.exports = {
+  setClient,
   createSaida, startSaida, closeSaida, cancelSaida,
   addParticipant, updateParticipantResult,
   registerSaidaMaterial,

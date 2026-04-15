@@ -68,6 +68,7 @@ const {
 } = require('./sticky/stickyEngine');
 const { registerBuiltinRenderers } = require('./sticky/stickyRenderers');
 const { setClient: setStockClient } = require('./inventory/stockNotifier');
+const { setClient: setSaidaClient } = require('./saidas/saidaEngine');
 const {
   handleRandom: radioHandleRandom,
   handleSet: radioHandleSet,
@@ -152,6 +153,8 @@ client.once(Events.ClientReady, async () => {
 
   // Stock notifier precisa do client para auto-discover/criar canais.
   setStockClient(client);
+  // Saída engine usa client para publicar resultados ricos no fecho.
+  setSaidaClient(client);
 
   // Bootstrap panels
   if (CONFIG.PANEL_BOOTSTRAP_ON_READY) {

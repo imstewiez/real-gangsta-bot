@@ -1,7 +1,70 @@
 'use strict';
-const { inventoryRepo, operationRepo, rankingRepo, memberRepo } = require('../repositories');
+/**
+ * Rankings semanais — motor híbrido com 3 eixos:
+ *
+ *   contribuicao   = weighted_value (material entregue/vendido)
+ *   performance    = kills*10 + wins*20 - losses*5 + netProfit/100 + saidas*3
+ *   fiabilidade    = return_rate*0.5 + survival_rate*0.3
+ *   hybrid_score   = contribuicao*0.4 + performance*0.4 + fiabilidade*0.2
+ *
+ * (Pesos intencionalmente explícitos. Afináveis em caso de mudança cultural.)
+ */
+
+const { inventoryRepo, saidaRepo, rankingRepo, memberRepo, killRepo } = require('../repositories');
+const { query } = require('../db');
 const { weekBounds } = require('../util');
 const { log } = require('../logger');
+
+// Pesos dos 3 eixos do hybrid_score
+const WEIGHTS = { contribuicao: 0.4, performance: 0.4, fiabilidade: 0.2 };
+
+function computeHybridScore({ weightedValue, killsCount, winsCount, lossCount, netProfit, saidasCount, returnRate, survivalRate }) {
+  const contribuicao = Number(weightedValue) || 0;
+  const performance = (killsCount || 0) * 10
+    + (winsCount || 0) * 20
+    - (lossCount || 0) * 5
+    + (netProfit || 0) / 100
+    + (saidasCount || 0) * 3;
+  const fiabilidade = (returnRate || 0) * 0.5 + (survivalRate || 0) * 0.3;
+  return contribuicao * WEIGHTS.contribuicao
+    + performance * WEIGHTS.performance
+    + fiabilidade * WEIGHTS.fiabilidade;
+}
+
+async function _memberWeekStats(memberId, weekStart, weekEnd) {
+  // Kills na janela
+  const killsCount = await killRepo.countKillsByMember(memberId, weekStart, weekEnd);
+  // Agregados a partir de operation_participants das saídas fechadas na janela
+  const res = await query(
+    `SELECT
+       COUNT(*) FILTER (WHERE o.result = 'vitoria')::int AS wins,
+       COUNT(*) FILTER (WHERE o.result = 'derrota')::int AS losses,
+       COUNT(*)::int AS saidas,
+       COUNT(*) FILTER (WHERE op.survived = true)::int AS survived_count,
+       COUNT(*) FILTER (WHERE op.died = true)::int AS died_count,
+       COALESCE(SUM(op.net_material_delta), 0)::numeric AS net_profit,
+       COALESCE(AVG(op.discipline_score), 0)::numeric AS avg_discipline
+     FROM operation_participants op
+     JOIN operations o ON o.id = op.operation_id
+     WHERE op.member_id = $1
+       AND o.status = 'concluida'
+       AND o.date >= $2 AND o.date <= $3`,
+    [memberId, weekStart, weekEnd]
+  );
+  const r = res.rows[0] || {};
+  const saidas = Number(r.saidas || 0);
+  const survivalRate = saidas > 0 ? (Number(r.survived_count) / saidas) * 100 : 0;
+  const returnRate = Number(r.avg_discipline || 0); // aproximação — disciplina média
+  return {
+    killsCount,
+    winsCount: Number(r.wins || 0),
+    lossCount: Number(r.losses || 0),
+    saidasCount: saidas,
+    netProfit: Number(r.net_profit || 0),
+    survivalRate,
+    returnRate,
+  };
+}
 
 async function computeWeeklyRankings(weekDate = new Date()) {
   const { start, end } = weekBounds(weekDate);
@@ -19,25 +82,38 @@ async function computeWeeklyRankings(weekDate = new Date()) {
     const sales = parseInt(movData?.sales || 0);
     const weightedValue = parseFloat(movData?.weighted_value || 0);
 
-    const opsCount = await operationRepo.countParticipationsByMember(member.id, weekStart, weekEnd);
+    const stats = await _memberWeekStats(member.id, weekStart, weekEnd);
+    const performanceRaw = (stats.killsCount || 0) * 10
+      + (stats.winsCount || 0) * 20
+      - (stats.lossCount || 0) * 5
+      + (stats.netProfit || 0) / 100
+      + (stats.saidasCount || 0) * 3;
+
+    const hybrid = computeHybridScore({
+      weightedValue, ...stats,
+    });
 
     const saved = await rankingRepo.saveWeeklyRanking({
       memberId: member.id,
-      weekStart,
-      weekEnd,
-      deliveries,
-      sales,
-      operationsCount: opsCount,
-      weightedValue: weightedValue + (opsCount * 5),
-      returnRate: 0,
+      weekStart, weekEnd,
+      deliveries, sales,
+      saidasCount: stats.saidasCount,
+      weightedValue,
+      returnRate: stats.returnRate,
+      killsCount: stats.killsCount,
+      winsCount: stats.winsCount,
+      lossCount: stats.lossCount,
+      netProfitGenerated: stats.netProfit,
+      survivalRate: stats.survivalRate,
+      performanceScore: performanceRaw,
+      hybridScore: hybrid,
     });
 
     rankings.push({ ...saved, discord_id: member.discord_id, display_name: member.display_name, role: member.role });
   }
 
-  rankings.sort((a, b) => b.weighted_value - a.weighted_value);
-  log(`[RANKINGS] Computed ${rankings.length} rankings for week ${weekStart}.`);
-
+  rankings.sort((a, b) => (b.hybrid_score || b.weighted_value) - (a.hybrid_score || a.weighted_value));
+  log(`[RANKINGS] ${rankings.length} rankings computados para semana ${weekStart}.`);
   return rankings;
 }
 
@@ -61,4 +137,11 @@ async function getWeekSummary(weekDate = new Date()) {
   return rankingRepo.getWeekSummary(weekStart);
 }
 
-module.exports = { computeWeeklyRankings, getCurrentWeekRanking, getPreviousWeekRanking, getWeekSummary };
+module.exports = {
+  computeWeeklyRankings,
+  getCurrentWeekRanking,
+  getPreviousWeekRanking,
+  getWeekSummary,
+  computeHybridScore,
+  WEIGHTS,
+};
