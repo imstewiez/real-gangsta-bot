@@ -2,9 +2,22 @@
 const { computeWeeklyRankings, getCurrentWeekRanking, getWeekSummary } = require('./rankingEngine');
 const { rankingEmbed, brandEmbed } = require('../shared/embedBuilders');
 const { weekBounds } = require('../util');
+const { query } = require('../db');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
 const { jobRepo } = require('../repositories');
+
+async function _countDiscordRoleMembers(guild, roleIds) {
+  const ids = (roleIds || []).filter(Boolean);
+  if (!ids.length || !guild) return 0;
+  const seen = new Set();
+  for (const roleId of ids) {
+    const role = guild.roles.cache.get(roleId);
+    if (!role) continue;
+    for (const [userId] of role.members) seen.add(userId);
+  }
+  return seen.size;
+}
 
 async function alreadyPublishedSince(jobName, sinceDate) {
   const recent = await jobRepo.getRecent(jobName, 50);
@@ -72,23 +85,59 @@ async function publishDailySummary(client) {
   }
 
   try {
-    const { operationRepo } = require('../repositories');
+    const { saidaRepo } = require('../repositories');
 
-    const todayOps = await operationRepo.findByDate(today);
-    const { memberRepo } = require('../repositories');
-    const counts = await memberRepo.countByRole();
+    const guild = CONFIG.DISCORD_GUILD_ID
+      ? client.guilds.cache.get(CONFIG.DISCORD_GUILD_ID)
+      : null;
+    if (guild) await guild.members.fetch().catch(() => null);
+
+    const moradorCount = await _countDiscordRoleMembers(guild, [
+      ...CONFIG.MORADOR_TIER_ROLE_IDS,
+      ...CONFIG.CHEFE_MORADORES_ROLE_IDS,
+    ]);
+    const oficialCount = await _countDiscordRoleMembers(guild, [
+      ...CONFIG.OFICIAL_ROLE_IDS,
+      ...CONFIG.CHEFIA_ROLE_IDS,
+    ]);
+
+    const todayOps = await saidaRepo.findByDate(today);
+    const concluidas = todayOps.filter(o => o.status === 'concluida').length;
+    const emCurso = todayOps.filter(o => ['aberta', 'em_preparacao', 'em_curso'].includes(o.status)).length;
+
+    const killsRes = await query(
+      `SELECT COUNT(*)::int AS n FROM kill_logs WHERE date = $1`,
+      [today]
+    );
+    const killsToday = killsRes.rows[0]?.n || 0;
+
+    const matRes = await query(
+      `SELECT
+         COUNT(*) FILTER (WHERE movement_type = 'entrega_morador')::int AS entregas,
+         COUNT(*) FILTER (WHERE movement_type = 'venda_morador')::int AS vendas,
+         COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_morador', 'venda_morador')), 0)::int AS qty
+       FROM inventory_movements
+       WHERE created_at::date = $1`,
+      [today]
+    );
+    const mat = matRes.rows[0] || { entregas: 0, vendas: 0, qty: 0 };
 
     const embed = brandEmbed()
       .setTitle(`Resumo Diário — ${today}`)
       .addFields(
-        { name: 'Moradores Ativos', value: String(counts.morador || 0), inline: true },
-        { name: 'Oficiais Ativos', value: String(counts.oficial || 0), inline: true },
-        { name: 'Operações Hoje', value: String(todayOps.length), inline: true },
+        { name: 'Moradores', value: String(moradorCount), inline: true },
+        { name: 'Oficiais', value: String(oficialCount), inline: true },
+        { name: 'Kills Hoje', value: String(killsToday), inline: true },
+        { name: 'Saídas Hoje', value: `${todayOps.length} (${concluidas} fechadas · ${emCurso} em curso)`, inline: false },
+        { name: 'Material p/ Moradores', value: `${mat.entregas} entregas · ${mat.vendas} vendas · ${mat.qty} unidades`, inline: false },
       );
 
     if (todayOps.length > 0) {
-      const opLines = todayOps.map(op => `#${op.id} — ${op.operation_type} (${op.status})`);
-      embed.addFields({ name: 'Operações', value: opLines.join('\n') });
+      const opLines = todayOps.map(op => {
+        const leader = op.leader_name ? ` · ${op.leader_name}` : '';
+        return `#${op.id} — ${op.operation_type} (${op.status})${leader}`;
+      });
+      embed.addFields({ name: 'Saídas', value: opLines.join('\n').slice(0, 1024) });
     }
 
     const channel = await client.channels.fetch(CONFIG.DAILY_SUMMARY_CHANNEL_ID).catch(() => null);
