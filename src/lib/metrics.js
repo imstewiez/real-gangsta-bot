@@ -89,6 +89,10 @@ const advisoryLockAcquired = counter('rg_advisory_lock_acquired_total', 'Advisor
 const advisoryLockTimeout = counter('rg_advisory_lock_timeout_total', 'Advisory lock timeouts');
 const interactionErrorsTotal = counter('rg_interaction_errors_total', 'Unhandled interaction handler errors');
 const logRotationsTotal = counter('rg_log_rotations_total', 'Log file rotations performed');
+const permDenialsTotal = counter('rg_perm_denials_total', 'Permission checks denied');
+const rateLimitDenialsTotal = counter('rg_rate_limit_denials_total', 'Rate limit denials');
+const sheetsSyncTotal = counter('rg_sheets_sync_total', 'Google Sheets syncs executed');
+const sheetsSyncErrorsTotal = counter('rg_sheets_sync_errors_total', 'Google Sheets sync errors');
 
 const membersActive = gauge('rg_members_active', 'Active members');
 const discordPingMs = gauge('rg_discord_ping_ms', 'Discord WS ping ms');
@@ -104,6 +108,8 @@ module.exports = {
   inventoryMovements, operationsCreated, operationsClosed, membersOnboarded,
   advisoryLockAcquired, advisoryLockTimeout,
   interactionErrorsTotal, logRotationsTotal,
+  permDenialsTotal, rateLimitDenialsTotal,
+  sheetsSyncTotal, sheetsSyncErrorsTotal,
   membersActive, discordPingMs,
   dbPoolTotal, dbPoolIdle, dbPoolWaiting,
 };

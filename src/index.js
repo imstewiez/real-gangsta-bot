@@ -1,4 +1,32 @@
 'use strict';
+/**
+ * ═════════════════════════════════════════════════════════════════════════
+ *  Bot di Zona · Firma RedWood — Entry point + interaction dispatcher
+ * ═════════════════════════════════════════════════════════════════════════
+ *
+ * Layout deste ficheiro:
+ *   1. Imports (Discord.js, repositories, handlers) — até linha ~220
+ *   2. Boot sequence (DB migration + advisory lock + Discord login)
+ *   3. client.on(Events.ClientReady) — panel bootstrap, metrics, schedulers
+ *   4. client.on(Events.InteractionCreate) — envolve em requestContext + rate limit
+ *   5. _dispatchInteraction() — switch gigante com handlers por customId/command
+ *   6. Helpers (getCurrentWeekRanking, etc.) e process signals
+ *
+ * Convenção para adicionar novo comando:
+ *   a) Declara em src/slashCommands.js (SlashCommandBuilder)
+ *   b) Adiciona bloco `if (cmd === 'rg-foo')` em _dispatchInteraction
+ *   c) Se for botão/modal, adiciona no respectivo bloco (customId)
+ *
+ * Request context:
+ *   Toda a interação corre dentro de ctx.run({ actorId, action }).
+ *   Usa ctx.correlationId() / ctx.tag() nos logs para rastreabilidade.
+ *
+ * Rate limiting: middleware global em _dispatchInteraction. Admin 30/10s,
+ * outros 10/10s. Configurável em src/shared/rateLimiter.js.
+ *
+ * TODO (próxima iteração): split em src/routers/{slash,button,modal,select}.js
+ * para reduzir este ficheiro a <300 linhas. Não feito agora por risco.
+ */
 const { Client, GatewayIntentBits, Events, REST, Routes, MessageFlags } = require('discord.js');
 const CONFIG = require('./config');
 const { pool, acquireInstanceLockWithRetry, releaseInstanceLock } = require('./db');
@@ -250,7 +278,53 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
 client.on(Events.InteractionCreate, async (interaction) => {
   metrics.discordEventsTotal.inc();
 
+  const ctx = require('./shared/requestContext');
+  const actionKey = interaction.isChatInputCommand() ? `cmd:${interaction.commandName}`
+    : interaction.isButton()        ? `btn:${interaction.customId}`
+    : interaction.isModalSubmit()   ? `mod:${interaction.customId}`
+    : interaction.isAnySelectMenu() ? `sel:${interaction.customId}`
+    : 'misc';
+
+  // Cada interação ganha correlation ID e scope — logs ficam rastreáveis
+  // via filtro pelo [req_xxx] no texto/jsonl.
+  return ctx.run({
+    actorId: interaction.user.id,
+    actorName: interaction.user.username,
+    action: actionKey,
+    guildId: interaction.guildId,
+  }, async () => {
+    const cid = ctx.correlationId();
+    try {
+      log(`${ctx.tag()} start ${actionKey} · actor=${interaction.user.id}`);
+      await _dispatchInteraction(interaction);
+      log(`${ctx.tag()} done ${actionKey} · ${ctx.elapsed()}ms`);
+    } catch (e) {
+      warn(`${ctx.tag()} failed ${actionKey} · ${e.message} · ${ctx.elapsed()}ms`);
+      try {
+        if (interaction.deferred || interaction.replied) {
+          await interaction.followUp({ content: `⛔ Falha interna. Ref: \`${cid}\``, flags: MessageFlags.Ephemeral }).catch(() => {});
+        } else {
+          await interaction.reply({ content: `⛔ Falha interna. Ref: \`${cid}\``, flags: MessageFlags.Ephemeral }).catch(() => {});
+        }
+      } catch (_) {}
+    }
+  });
+});
+
+async function _dispatchInteraction(interaction) {
   try {
+    // ── Rate limiting global por user (janela deslizante) ────────────────────
+    // Admin commands têm limite mais folgado; consultas básicas são mais restritas.
+    const rl = require('./shared/rateLimiter');
+    const ctx = require('./shared/requestContext');
+    const actionKey = ctx.current()?.action || 'misc';
+    const isAdmin = interaction.memberPermissions?.has?.('Administrator');
+    const rlLimit = isAdmin ? 30 : 10;
+    if (!rl.allow(interaction.user.id, actionKey, { limit: rlLimit, windowMs: 10_000 })) {
+      const wait = rl.retryAfter(interaction.user.id, actionKey);
+      return safeReply(interaction, { content: rl.denyMessage(wait), flags: MessageFlags.Ephemeral }, { dismissible: true });
+    }
+
     // ── Slash commands ──────────────────────────────────────────────────────
     if (interaction.isChatInputCommand()) {
       metrics.commandInvocationsTotal.inc();
@@ -294,6 +368,57 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const weekLabel = `${start.toISOString().split('T')[0]} a ${end.toISOString().split('T')[0]}`;
         const embed = rankingEmbed('Top Semanal', rankings, weekLabel);
         return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+      }
+
+      if (cmd === 'rg-top-month') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const mes = interaction.options.getString('mes') || 'current';
+        const { monthlyRankingRepo } = require('./repositories');
+        const bounds = mes === 'previous' ? monthlyRankingRepo.prevMonthBounds() : monthlyRankingRepo.monthBounds();
+        const rows = await monthlyRankingRepo.getMonthly(bounds.start, 10);
+        if (!rows.length) return safeReply(interaction, { content: `_Sem dados para o mês ${bounds.start}._` }, { dismissible: true });
+        const label = `${bounds.start} a ${bounds.end}`;
+        const embed = rankingEmbed('Top Mensal', rows, label);
+        return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+      }
+
+      if (cmd === 'rg-top-alltime') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const eixo = interaction.options.getString('eixo') || 'hybrid_score';
+        const { monthlyRankingRepo } = require('./repositories');
+        const rows = await monthlyRankingRepo.getAllTimeTop(eixo, 15);
+        if (!rows.length) return safeReply(interaction, { content: '_Sem dados all-time ainda. Corre `/rg-rebuild-rankings` primeiro._' }, { dismissible: true });
+        const { brandEmbed } = require('./shared/embedBuilders');
+        const { EMOJI } = require('./content');
+        const medals = [EMOJI.MEDAL_1, EMOJI.MEDAL_2, EMOJI.MEDAL_3];
+        const fmt = (r, i) => {
+          const place = medals[i] || `**${i + 1}.**`;
+          const main = eixo === 'weighted_value' ? `${Number(r[eixo]).toLocaleString('pt-PT')} itens`
+            : eixo === 'profit_generated' ? `${Number(r[eixo]).toLocaleString('pt-PT')} €`
+            : eixo === 'hybrid_score' ? `${Number(r[eixo]).toFixed(1)} pts`
+            : Number(r[eixo]).toLocaleString('pt-PT');
+          return `${place} <@${r.discord_id}> — **${main}**`;
+        };
+        const labels = {
+          hybrid_score: 'Hybrid Score', kills_total: 'Kills', weighted_value: 'Material',
+          profit_generated: 'Lucro Gerado', mvp_count: 'MVPs', saidas_total: 'Saídas',
+        };
+        const embed = brandEmbed('TOP')
+          .setTitle(`🏆 Top All-Time — ${labels[eixo] || eixo}`)
+          .setDescription(rows.map(fmt).join('\n'));
+        return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+      }
+
+      if (cmd === 'rg-rebuild-rankings') {
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('rebuild rankings'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const { computeMonthlyRankings, recomputeAllTimeStats } = require('./rankings/monthlyRankingEngine');
+        const t0 = Date.now();
+        const m = await computeMonthlyRankings();
+        const a = await recomputeAllTimeStats();
+        return safeReply(interaction, {
+          content: `🔄 Rankings recalculados em ${Date.now() - t0}ms — ${m.count} membros no mês ${m.monthStart}, ${a.count} all-time.`,
+        }, { dismissible: true });
       }
 
       if (cmd === 'rg-close-saida' || cmd === 'rg-close-operation') {
@@ -794,7 +919,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     error(`[INTERACTION] Unhandled error (${ctx}, user=${interaction.user?.id}): ${e.message}`, e);
     await safeReply(interaction, { content: 'Ocorreu um erro interno. A equipa foi notificada.', flags: MessageFlags.Ephemeral }, { dismissible: true }).catch(() => {});
   }
-});
+}
 
 // ── Graceful shutdown ───────────────────────────────────────────────────────
 let _shuttingDown = false;

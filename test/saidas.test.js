@@ -30,6 +30,7 @@ require.cache[resolvedPath('db.js')] = {
 const stubSaidaRepo = {
   getMaterialSummary: async () => repoState.summary,
   getParticipants: async () => repoState.participants,
+  findById: async (id) => ({ id, status: 'em_curso', result: null, spot: null }),
   closeSaida: async (id, data) => ({ id, status: 'concluida', ...data }),
   updateParticipant: async (id, mid, fields) => { repoState.updates.push({ mid, fields }); return { id: mid, ...fields }; },
   addMaterial: async () => ({}),

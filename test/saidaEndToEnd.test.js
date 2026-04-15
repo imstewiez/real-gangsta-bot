@@ -40,6 +40,9 @@ require.cache[resolved('db.js')] = {
 const stubSaidaRepo = {
   getMaterialSummary: async () => state.summary,
   getParticipants: async () => state.participants,
+  // findById — devolve saída em status 'em_curso' por default (permite closeSaida).
+  // Testes podem override state.saidaStatus para testar outros caminhos.
+  findById: async (id) => ({ id, status: state.saidaStatus || 'em_curso', result: null, spot: null }),
   closeSaida: async (id, data) => {
     state.closedPayload = { id, ...data };
     return { id, status: 'concluida', ...data };
@@ -52,7 +55,7 @@ const stubSaidaRepo = {
     return { id: mid, ...fields };
   },
   addMaterial: async () => ({}), addParticipant: async () => ({}),
-  findOpen: async () => [], findRecent: async () => [], findById: async () => null,
+  findOpen: async () => [], findRecent: async () => [],
 };
 
 const stubSpotStatsRepo = {

@@ -69,11 +69,36 @@ async function createSaida({ date, scheduledTime, spot, spotType, saidaType, lea
   return s;
 }
 
+// ── Máquina de estados ─────────────────────────────────────────────────────
+// Transições permitidas. Qualquer outra atira.
+const ALLOWED_TRANSITIONS = {
+  aberta:        new Set(['em_preparacao', 'em_curso', 'cancelada', 'concluida']),
+  em_preparacao: new Set(['em_curso', 'cancelada', 'concluida']),
+  em_curso:      new Set(['concluida', 'cancelada']),
+  concluida:     new Set([]), // terminal — nunca reverter
+  cancelada:     new Set([]), // terminal
+};
+
+async function _assertTransition(saidaId, toStatus) {
+  const saida = await saidaRepo.findById(saidaId);
+  if (!saida) throw new Error(`Saída #${saidaId} não existe.`);
+  const from = saida.status;
+  // Rejeitar quando from == toStatus também — evita re-entrância em cálculos
+  // (ex.: closeSaida duas vezes duplicaria scores/projecções).
+  const allowed = ALLOWED_TRANSITIONS[from];
+  if (!allowed || !allowed.has(toStatus)) {
+    throw new Error(`Transição proibida: saída #${saidaId} está "${from}" e não pode passar a "${toStatus}".`);
+  }
+  return saida;
+}
+
 async function startSaida(saidaId, actorId) {
+  await _assertTransition(saidaId, 'em_curso');
   return saidaRepo.updateStatus(saidaId, 'em_curso', { start_time: new Date() });
 }
 
 async function cancelSaida(saidaId, actorId) {
+  await _assertTransition(saidaId, 'cancelada');
   const s = await saidaRepo.updateStatus(saidaId, 'cancelada');
   await logAudit({
     action: 'saida_cancelled',
@@ -89,6 +114,7 @@ async function cancelSaida(saidaId, actorId) {
  * de projections (spot_stats, member_saida_stats).
  */
 async function closeSaida(saidaId, resultData, actorId) {
+  await _assertTransition(saidaId, 'concluida');
   const summary = await saidaRepo.getMaterialSummary(saidaId);
   const participants = await saidaRepo.getParticipants(saidaId);
 
@@ -319,7 +345,24 @@ async function getSaidaSummary(saidaId) {
 
 async function issueMaterialToParticipant(saidaId, discordId, itemId, quantity, actorId, notes = '', guild = null) {
   if (!quantity || quantity <= 0) throw new Error('Quantidade inválida.');
+
+  // Guard: saída tem de estar aberta/em_curso/preparação. Não se fornece material
+  // a uma saída já fechada ou cancelada.
+  const saida = await saidaRepo.findById(saidaId);
+  if (!saida) throw new Error(`Saída #${saidaId} não existe.`);
+  if (['concluida', 'cancelada'].includes(saida.status)) {
+    throw new Error(`Saída #${saidaId} está ${saida.status} — não aceita mais material.`);
+  }
+
   const member = await _resolveOrCreateMember(discordId, guild);
+
+  // Guard: participante já marcado como morto/liquidado na saída não recebe
+  // mais material. Evita reconciliação falsa em saídas multi-etapa.
+  const participants = await saidaRepo.getParticipants(saidaId);
+  const existing = participants.find(p => p.member_id === member.id);
+  if (existing && (existing.died === true || existing.settled === true)) {
+    throw new Error(`${member.display_name || discordId} já está ${existing.died ? 'marcado como morto' : 'liquidado'} nesta saída.`);
+  }
 
   await saidaRepo.addParticipant(saidaId, member.id, {
     roleInSaida: 'membro', broughtOwn: false, receivedOrg: true, notes,
@@ -427,4 +470,5 @@ module.exports = {
   issueMaterialToParticipant, settleParticipantCustody,
   getSaidaSummary, reconcileSaidaMaterials,
   MOVEMENT_TYPE_BY_DIRECTION,
+  ALLOWED_TRANSITIONS, _assertTransition,
 };

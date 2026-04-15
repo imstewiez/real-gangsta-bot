@@ -38,6 +38,29 @@ const commands = [
       .addChoices({ name: 'Semana Atual', value: 'current' }, { name: 'Semana Anterior', value: 'previous' })),
 
   new SlashCommandBuilder()
+    .setName('rg-top-month')
+    .setDescription('Top mensal')
+    .addStringOption(opt => opt.setName('mes').setDescription('atual/anterior').setRequired(false)
+      .addChoices({ name: 'Mês Atual', value: 'current' }, { name: 'Mês Anterior', value: 'previous' })),
+
+  new SlashCommandBuilder()
+    .setName('rg-top-alltime')
+    .setDescription('Top all-time da firma')
+    .addStringOption(opt => opt.setName('eixo').setDescription('Métrica para ordenar').setRequired(false)
+      .addChoices(
+        { name: 'Hybrid Score', value: 'hybrid_score' },
+        { name: 'Kills',         value: 'kills_total' },
+        { name: 'Material',      value: 'weighted_value' },
+        { name: 'Lucro Gerado',  value: 'profit_generated' },
+        { name: 'MVPs',          value: 'mvp_count' },
+        { name: 'Saídas',        value: 'saidas_total' },
+      )),
+
+  new SlashCommandBuilder()
+    .setName('rg-rebuild-rankings')
+    .setDescription('Recalcula rankings mensais + all-time (chefia only)'),
+
+  new SlashCommandBuilder()
     .setName('rg-audit')
     .setDescription('Logs de auditoria recentes')
     .addIntegerOption(opt => opt.setName('limite').setDescription('Número de registos (default 20)').setRequired(false)),

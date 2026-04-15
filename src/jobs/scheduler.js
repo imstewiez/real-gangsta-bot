@@ -59,6 +59,16 @@ function startAll(client) {
     registerJob('sheets_sync', minutes * 60 * 1000, async () => { await syncAll(); });
   }
 
+  // Rankings mensais + all-time snapshot — corre a cada 6h (idempotente).
+  // No primeiro dia do mês apanha o mês anterior; resto dos dias actualiza
+  // o mês corrente e mantém all_time_stats frescas.
+  registerJob('monthly_rankings', 6 * 60 * 60 * 1000, async () => {
+    const { computeMonthlyRankings, recomputeAllTimeStats } = require('../rankings/monthlyRankingEngine');
+    const m = await computeMonthlyRankings();
+    const a = await recomputeAllTimeStats();
+    log(`[SCHEDULER] monthly_rankings: ${m.count} mês + ${a.count} all-time`);
+  });
+
   // Sticky messages — refresh time-based (modo repost com threshold_minutes)
   registerJob('sticky_time_refresh', 60 * 1000, async (client) => {
     const { runTimeBasedRefresh } = require('../sticky/stickyEngine');

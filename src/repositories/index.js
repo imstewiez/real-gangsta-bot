@@ -14,6 +14,7 @@ module.exports = {
   memberSaidaStatsRepo: require('./memberSaidaStats'),
   memberAnalyticsRepo: require('./memberAnalytics'),
   rankingRepo: require('./ranking'),
+  monthlyRankingRepo: require('./monthlyRanking'),
   auditRepo: require('./audit'),
   jobRepo: require('./job'),
   availabilityRepo: require('./availability'),

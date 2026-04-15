@@ -111,13 +111,24 @@ async function handleTagModal(interaction) {
     return safeReply(interaction, { content: 'Nome e alcunha são obrigatórios.' }, { dismissible: true });
   }
 
-  // Save to DB
-  const res = await query(
-    `INSERT INTO tag_requests (discord_id, username, full_name, nickname)
-     VALUES ($1, $2, $3, $4) RETURNING id`,
-    [interaction.user.id, interaction.user.username, fullName, nickname]
-  );
-  const requestId = res.rows[0].id;
+  // Save to DB. Dedup por UNIQUE INDEX `uq_tag_requests_pending_per_user` —
+  // se já tiver pedido pendente, apanhamos o erro e avisamos.
+  let requestId;
+  try {
+    const res = await query(
+      `INSERT INTO tag_requests (discord_id, username, full_name, nickname)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
+      [interaction.user.id, interaction.user.username, fullName, nickname]
+    );
+    requestId = res.rows[0].id;
+  } catch (e) {
+    if (e.code === '23505') {
+      return safeReply(interaction, {
+        content: `${EMOJI.PENDENTE} Já tens um pedido pendente. Espera que alguém da firma valide.`,
+      }, { dismissible: true });
+    }
+    throw e;
+  }
 
   // Send approval embed to tag request channel
   const tagChannel = await interaction.client.channels.fetch(CONFIG.TAG_REQUEST_CHANNEL_ID).catch(() => null);
