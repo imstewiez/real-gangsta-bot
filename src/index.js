@@ -354,18 +354,32 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const modo = interaction.options.getString('modo') || 'dry-run';
         const apply = modo === 'apply';
         const report = await runPermsOnly(interaction.guild, { apply });
+
+        // Secção especial — nomes históricos recuperados do audit log (dry-run).
+        const history = report.actions.filter(a => a.type === 'ROLE_AUDIT_HISTORY');
+        const rest = report.actions.filter(a => a.type !== 'ROLE_AUDIT_HISTORY');
+
         const lines = [
           `**Modo:** \`${report.mode.toUpperCase()}\``,
           `**Acções:** ${JSON.stringify(report.counts)}`,
         ];
-        const samples = report.actions.slice(0, 25);
+
+        if (history.length) {
+          lines.push('', '**🕰️ Nomes históricos recuperados do audit log:**');
+          for (const h of history.slice(0, 20)) {
+            lines.push(`• <@&${h.detail.roleId}> antes: \`${h.detail.oldName}\``);
+          }
+          if (history.length > 20) lines.push(`_… e mais ${history.length - 20}._`);
+        }
+
+        const samples = rest.slice(0, 20);
         if (samples.length) {
-          lines.push('');
+          lines.push('', '**Acções:**');
           for (const a of samples) {
-            const detail = a.detail.channel || a.detail.category || a.detail.from || a.detail.name || '';
+            const detail = a.detail.channel || a.detail.category || a.detail.from || a.detail.name || a.detail.role || '';
             lines.push(`• \`${a.type}\` — ${detail}`);
           }
-          if (report.actions.length > 25) lines.push(`_… e mais ${report.actions.length - 25} acções._`);
+          if (rest.length > 20) lines.push(`_… e mais ${rest.length - 20}._`);
         }
         if (report.errors.length) {
           lines.push('', `**Erros (${report.errors.length}):**`);

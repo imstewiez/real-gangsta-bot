@@ -117,6 +117,39 @@ async function runPermsOnly(guild, opts = {}) {
   await guild.channels.fetch().catch(() => null);
   await guild.roles.fetch().catch(() => null);
 
+  // ── ROLE 0 (dry-run only): Audit log lookup — mostra nomes históricos
+  //    que o bot renomeou. Ajuda a recuperar emojis que existiam antes do
+  //    rename e que agora não temos. Idempotente, apenas lê.
+  if (!apply) {
+    try {
+      const { AuditLogEvent } = require('discord.js');
+      const ourBotId = guild.members.me?.id || guild.client.user.id;
+      const earliest = new Map(); // roleId → { old, new, ts }
+      let before;
+      for (let page = 0; page < 15; page++) {
+        const r = await guild.fetchAuditLogs({ type: AuditLogEvent.RoleUpdate, limit: 100, before }).catch(() => null);
+        if (!r || !r.entries.size) break;
+        for (const e of r.entries.values()) {
+          if (e.executor?.id !== ourBotId) continue;
+          for (const ch of e.changes || []) {
+            if (ch.key !== 'name') continue;
+            const prev = earliest.get(e.targetId);
+            if (!prev || e.createdTimestamp < prev.ts) {
+              earliest.set(e.targetId, { old: ch.old, new: ch.new, ts: e.createdTimestamp });
+            }
+          }
+        }
+        before = [...r.entries.values()].pop()?.id;
+        if (r.entries.size < 100) break;
+      }
+      for (const [roleId, info] of earliest) {
+        act('ROLE_AUDIT_HISTORY', { roleId, oldName: info.old, currentName: info.new });
+      }
+    } catch (e) {
+      warn(`[PERMS-SYNC] audit lookup falhou: ${e.message}`);
+    }
+  }
+
   // ── ROLE 1: Ensure Pendente exists (cria se faltar) ────────────────────
   if (!CONFIG.PENDENTE_ROLE_ID) {
     // Tenta encontrar role existente por nome (cria se não existir)
