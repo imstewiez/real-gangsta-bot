@@ -1,6 +1,7 @@
 'use strict';
 /**
  * Modal submit router — rotas em array, match por exact ou prefix.
+ * Um customId canónico por modal (`saida::*`) — sem aliases legacy.
  */
 
 const { handleTagModal } = require('../../../onboarding/onboardingHandlers');
@@ -27,8 +28,6 @@ const MODAL_ROUTES = [
   // Inventory
   exact('inv::modal_entrega_bairrista', handleQuantityModal),
   exact('inv::modal_venda_bairrista',   handleQuantityModal),
-  exact('inv::modal_entrega_morador',   handleQuantityModal),
-  exact('inv::modal_venda_morador',     handleQuantityModal),
   exact('inv::modal_ajuste_manual',     handleAdjustModal),
   exact('inv::modal_add_item',          handleAddItemModal),
   exact('inv::modal_edit_price',        handleEditPriceModal),
@@ -36,19 +35,14 @@ const MODAL_ROUTES = [
 
   // Saída
   exact('saida::modal_create',       handleCreateSaidaModal),
-  exact('op::modal_create',          handleCreateSaidaModal),
   exact('saida::modal_close',        handleCloseSaidaModal),
-  exact('op::modal_close',           handleCloseSaidaModal),
   exact('saida::modal_material_qty', handleMaterialQtyModal),
-  exact('op::modal_material_qty',    handleMaterialQtyModal),
   exact('saida::issue_modal_qty',    handleIssueQtyModal),
-  exact('op::issue_modal_qty',       handleIssueQtyModal),
   prefix('saida::wz_modal::',             saidaWizard.handleSettleModal),
   prefix('saida::session_weapon_modal::', saidaSession.handleRegistrationModal),
 
   // Kill
-  exact('kill::modal',           handleKillModal),
-  exact('cemetery::modal_kill',  handleKillModal),
+  exact('kill::modal', handleKillModal),
 
   // Radio
   prefix('radio::modal_set::', radioHandleSetModal),

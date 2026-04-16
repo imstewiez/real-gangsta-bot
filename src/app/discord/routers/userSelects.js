@@ -1,6 +1,7 @@
 'use strict';
 /**
  * User select router — select menus do tipo UserSelect.
+ * CustomId canónico `saida::*` — sem aliases legacy.
  */
 
 const { handleParticipantUsersSelect } = require('../../../saidas/saidaHandlers');
@@ -9,7 +10,6 @@ const prefix = (p, handler) => ({ match: (x) => x.startsWith(p), handler });
 
 const USER_SELECT_ROUTES = [
   prefix('saida::user_select_participants::', handleParticipantUsersSelect),
-  prefix('op::user_select_participants::',    handleParticipantUsersSelect),
 ];
 
 async function handleUserSelect(interaction) {

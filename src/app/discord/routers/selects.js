@@ -1,6 +1,7 @@
 'use strict';
 /**
  * String select router — rotas em array, match por exact ou prefix.
+ * Um customId canónico por acção (`saida::*`) — sem aliases legacy.
  */
 
 const {
@@ -43,33 +44,22 @@ const SELECT_ROUTES = [
   // Bairrista — ranking por período
   exact('bairrista::ranking_period', handleRankingSelect),
 
-  // Saída — predefinidos
-  exact('saida::select_create_type',  handleCreateTypeSelect),
-  exact('saida::select_close_result', handleCloseResultSelect),
-
-  // Saída — fluxos (aliases saida:: e op::)
+  // Saída — predefinidos + fluxos
+  exact('saida::select_create_type',        handleCreateTypeSelect),
+  exact('saida::select_close_result',       handleCloseResultSelect),
   exact('saida::select_close',              handleCloseSaidaSelect),
-  exact('op::select_close',                 handleCloseSaidaSelect),
   exact('saida::select_add_participant',    handleAddParticipantSelect),
-  exact('op::select_add_participant',       handleAddParticipantSelect),
   exact('saida::select_material_op',        handleMaterialOpSelect),
-  exact('op::select_material_op',           handleMaterialOpSelect),
   exact('saida::select_material_direction', handleMaterialDirectionSelect),
-  exact('op::select_material_direction',    handleMaterialDirectionSelect),
   exact('saida::select_material_item',      handleMaterialItemSelect),
-  exact('op::select_material_item',         handleMaterialItemSelect),
 
   // Custódia nominal
   exact('saida::issue_select_saida',       handleIssueSaidaSelect),
-  exact('op::issue_select_op',             handleIssueSaidaSelect),
   exact('saida::issue_select_participant', handleIssueParticipantSelect),
-  exact('op::issue_select_participant',    handleIssueParticipantSelect),
   exact('saida::issue_select_item',        handleIssueItemSelect),
-  exact('op::issue_select_item',           handleIssueItemSelect),
 
   // Mark dead + wizard + stats
   prefix('saida::mark_dead::', handleMarkDeadSelect),
-  prefix('op::mark_dead::',    handleMarkDeadSelect),
   prefix('saida::wz_select::', saidaWizard.handleSelectParticipant),
   exact ('saida::stats_pick',  saidaStats.handleStatsPick),
 ];

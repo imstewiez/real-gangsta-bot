@@ -7,8 +7,7 @@
  *   - `exact` para IDs fixos (ex: 'morador::meu_ponto')
  *   - `prefix` para IDs dinâmicos com payload (ex: 'avail::all::<sessId>')
  *
- * Handlers com IDs de compatibilidade (ex: ambos 'criar_saida' e
- * 'criar_operacao') são listados duas vezes.
+ * Um customId canónico por acção. Sem aliases legacy.
  */
 
 // ── Domain handlers ────────────────────────────────────────────────────────
@@ -107,17 +106,12 @@ const BUTTON_ROUTES = [
 
   // Oficial
   exact('oficial::ver_saidas',     handleViewSaidasButton),
-  exact('oficial::ver_operacoes',  handleViewSaidasButton),
 
   // Chefia — saídas
   exact('chefia::criar_saida',              handleCreateSaidaButton),
-  exact('chefia::criar_operacao',           handleCreateSaidaButton),
   exact('chefia::fechar_saida',             handleCloseSaidaButton),
-  exact('chefia::fechar_operacao',          handleCloseSaidaButton),
   exact('chefia::ver_saidas',               handleViewSaidasButton),
-  exact('chefia::ver_operacoes',            handleViewSaidasButton),
   exact('chefia::registar_material_saida',  handleRegisterMaterialButton),
-  exact('chefia::registar_material_op',     handleRegisterMaterialButton),
   exact('chefia::adicionar_participante',   handleAddParticipantButton),
   exact('chefia::fornecer_participante',    handleIssueToParticipantButton),
   exact('chefia::ver_stock',                handleStockCommand),
