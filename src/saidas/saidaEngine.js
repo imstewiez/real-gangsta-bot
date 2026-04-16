@@ -248,12 +248,19 @@ async function closeSaida(saidaId, resultData, actorId) {
   }
 
   // Event bus — permite projecções Sheets + subscribers não acoplados.
+  // Material em UNIDADES (não €) para notificações user-facing.
   eventBus.emitAsync('saida.closed', {
     saidaId,
     spot: closed.spot,
     saidaType: closed.operation_type,
     result: closed.result,
     participantsCount: scoredParticipants.length,
+    // Unidades (para notificações)
+    suppliedUnits: recon.fornecido,
+    returnedUnits: recon.devolvido,
+    lostUnits: recon.perdido,
+    craftAmount: closed.craft_amount || 0,
+    // Valores em € (para sheets/analytics)
     supplied, returned, lost, consumed, gross, net, was_profitable,
     mvp: scoredParticipants.find(p => p.mvp_flag)?.member_id || null,
     characterized_count, workers_count,

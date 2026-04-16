@@ -61,7 +61,10 @@ function buildResumoEmbed(saida, participants) {
     );
   }
 
-  if (saida.had_craft) fields.push({ name: 'Craft', value: EMOJI.OK, inline: true });
+  if (saida.had_craft) {
+    const craftUnits = saida.craft_amount || 0;
+    fields.push({ name: `${EMOJI.CRAFT} Craftado`, value: `**${craftUnits}** unidades`, inline: true });
+  }
   if (saida.had_domination) fields.push({ name: 'Domínio', value: EMOJI.OK, inline: true });
 
   fields.push(

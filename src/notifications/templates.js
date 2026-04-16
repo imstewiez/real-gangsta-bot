@@ -208,12 +208,12 @@ function saidaLifecycleEmbed(p) {
     if (p.toMemberId) fields.push({ name: 'Para', value: mention(p.toMemberId), inline: true });
   }
 
-  // Closed stats
+  // Closed stats — material em UNIDADES (não €)
   if (p.event === 'closed') {
-    if (p.gross != null) fields.push({ name: 'Bruto',   value: fmtVal(p.gross), inline: true });
-    if (p.net   != null) fields.push({ name: 'Líquido', value: fmtVal(p.net),   inline: true });
-    if (p.lost  != null) fields.push({ name: 'Perdido', value: fmtVal(p.lost),  inline: true });
-    if (p.consumed != null) fields.push({ name: 'Consumido', value: fmtVal(p.consumed), inline: true });
+    if (p.suppliedUnits != null) fields.push({ name: `${EMOJI.MATERIAL} Fornecido`, value: `**${fmt(p.suppliedUnits)}** un.`, inline: true });
+    if (p.returnedUnits != null) fields.push({ name: `${EMOJI.DEVOLVER} Devolvido`, value: `**${fmt(p.returnedUnits)}** un.`, inline: true });
+    if (p.lostUnits != null) fields.push({ name: `${EMOJI.PERDIDO} Perdido`, value: `**${fmt(p.lostUnits)}** un.`, inline: true });
+    if (p.craftAmount > 0) fields.push({ name: `${EMOJI.CRAFT} Craftado`, value: `**${fmt(p.craftAmount)}** un.`, inline: true });
     if (p.unaccounted > 0) {
       fields.push({ name: `${EMOJI.WARN} Não contabilizado`, value: `**${fmt(p.unaccounted)}** un.`, inline: false });
     }

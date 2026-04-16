@@ -147,7 +147,7 @@ const SAIDAS = {
     NOTES_LABEL: 'Notas',
     RESULT_LABEL: 'Resultado (win/loss/draw/sem_conflito)',
     ENEMY_LABEL: 'Inimigo · facção',
-    CRAFT_LABEL: 'Valor craftado (€)',
+    CRAFT_LABEL: 'Material craftado (unidades)',
     FLAGS_LABEL: 'Flags (fight,craft,dom)',
   },
 };

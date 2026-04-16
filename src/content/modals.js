@@ -173,8 +173,8 @@ const MODALS = {
         required:    false,
       },
       crafted: {
-        label:       'Valor craftado (€)',
-        placeholder: 'Ex: 150000',
+        label:       'Material craftado (unidades)',
+        placeholder: 'Ex: 50',
         maxLength:   12,
         required:    false,
       },
