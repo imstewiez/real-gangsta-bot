@@ -116,7 +116,7 @@ async function render(interaction, filter) {
 
   return safeReply(interaction, {
     embeds: [embed], components: [filterRow, navRow],
-  }, { dismissible: true });
+  }, { messageClass: 'COCKPIT' });
 }
 
 module.exports = { handle, handleFilterSelect };

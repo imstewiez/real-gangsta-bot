@@ -36,7 +36,7 @@ async function handleMovimento(interaction) {
     return safeReply(interaction, {
       embeds: [brandEmbed().setTitle(`${EMOJI.FIRMA} Movimento no Bairro`)
         .setDescription(BAIRRISTAS.MOVIMENTO.NO_DATA)],
-    }, { dismissible: true });
+    }, { messageClass: 'WARN' });
   }
 
   const { member, material, ranking, evolution, streak, saida } = profile;
@@ -164,7 +164,7 @@ async function handleMovimento(interaction) {
     button({ customId: 'perfil::progressao',  label: 'Progressão',  style: 'Secondary', emoji: EMOJI.PROGRESSO }),
   );
 
-  return safeReply(interaction, { embeds: [embed], components: [row1] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed], components: [row1] }, { messageClass: 'COCKPIT' });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -258,7 +258,7 @@ async function _showRanking(interaction, period) {
       ])
   );
 
-  return safeReply(interaction, { embeds: [embed], components: [row] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed], components: [row] }, { messageClass: 'COCKPIT' });
 }
 
 module.exports = {

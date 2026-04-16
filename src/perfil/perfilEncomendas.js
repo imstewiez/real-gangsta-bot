@@ -105,7 +105,7 @@ async function handle(interaction) {
     button({ customId: 'perfil::voltar',      label: 'Voltar ao Perfil', style: 'Secondary', emoji: EMOJI.VOLTAR }),
   );
 
-  return safeReply(interaction, { embeds: [embed], components: [navRow] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed], components: [navRow] }, { messageClass: 'COCKPIT' });
 }
 
 function ageLabel(ts) {

@@ -90,7 +90,7 @@ async function render(interaction, period) {
 
   return safeReply(interaction, {
     embeds: [embed], components: [periodSelect, navRow],
-  }, { dismissible: true });
+  }, { messageClass: 'COCKPIT' });
 }
 
 async function getStats(discordId, period, offsetPeriods) {

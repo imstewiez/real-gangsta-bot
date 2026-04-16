@@ -3,8 +3,13 @@ const { MessageFlags, ActionRowBuilder, ButtonBuilder, StringSelectMenuBuilder,
   UserSelectMenuBuilder, RoleSelectMenuBuilder, ChannelSelectMenuBuilder } = require('discord.js');
 const { warn } = require('../logger');
 const { processedInteractionIds } = require('./sharedState');
+const {
+  MessageClass, ttlForClass, autoDeletes, classFromLegacyOpts,
+} = require('./messagePolicy');
 
-const EPHEMERAL_AUTO_DELETE_MS = 10000;
+// Fallback TTL para respostas sem classe explícita (legacy). A mensagem
+// dura 20s — equivalente a BANAL. Handlers novos devem passar messageClass.
+const EPHEMERAL_AUTO_DELETE_MS = 20_000;
 
 function isEphemeralPayload(interaction, payload) {
   if (payload?.flags === 64 || payload?.flags === MessageFlags.Ephemeral) return true;
@@ -41,18 +46,22 @@ function scheduleDeleteMessage(message, ms = EPHEMERAL_AUTO_DELETE_MS) {
  * safeReply — a única forma de responder a interactions.
  *
  * opts:
- *   dismissible (default: auto)
- *     true  → auto-delete ao fim de 10s
- *     false → mensagem persiste (necessária para próximo passo)
- *     undefined (default) → auto se ephemeral E sem componentes interactivos
+ *   messageClass: 'BANAL' | 'WARN' | 'ERROR' | 'RESULT' | 'COCKPIT' | 'FLOW' | 'PERSISTENT'
+ *     Determina TTL + política de auto-delete (ver src/shared/messagePolicy.js).
+ *
+ *   dismissible (legacy): mantido por retrocompat. Se messageClass ausente,
+ *     `true` → BANAL, `false` → FLOW. Inferência a partir do payload caso
+ *     nada esteja definido.
+ *
+ *   ttlMs: override explícito em ms (usar apenas em casos especiais).
  */
 async function safeReply(interaction, payload, opts = {}) {
-  const ephemeral = isEphemeralPayload(interaction, payload);
-  const interactive = hasInteractiveComponents(payload);
-  const dismissible = opts.dismissible === undefined
-    ? ephemeral && !interactive
-    : Boolean(opts.dismissible);
-  const ttl = opts.ttlMs || EPHEMERAL_AUTO_DELETE_MS;
+  const cls = opts.messageClass || classFromLegacyOpts({
+    dismissible: opts.dismissible,
+    payload,
+  });
+  const shouldDelete = autoDeletes(cls);
+  const ttl = opts.ttlMs ?? ttlForClass(cls);
 
   const result = interaction.replied
     ? await interaction.followUp(payload).catch(() => null)
@@ -60,7 +69,9 @@ async function safeReply(interaction, payload, opts = {}) {
       ? await interaction.editReply(payload).catch(() => null)
       : await interaction.reply(payload).catch(() => null);
 
-  if (dismissible && result) scheduleDeleteInteractionReply(interaction, ttl);
+  if (shouldDelete && ttl && result) {
+    scheduleDeleteInteractionReply(interaction, ttl);
+  }
   return result;
 }
 
@@ -84,15 +95,15 @@ async function safeUpdate(interaction, payload, opts = {}) {
     }
     throw e;
   }
-  // safeUpdate replaces the message; auto-delete only if explicitly dismissible
-  // (intermediate-flow updates need to persist for next user action)
-  const ephemeral = isEphemeralPayload(interaction, payload);
-  const interactive = hasInteractiveComponents(payload);
-  const dismissible = opts.dismissible === undefined
-    ? ephemeral && !interactive
-    : Boolean(opts.dismissible);
-  const ttl = opts.ttlMs || EPHEMERAL_AUTO_DELETE_MS;
-  if (dismissible) scheduleDeleteInteractionReply(interaction, ttl);
+  // safeUpdate replaces the message; auto-delete respeita messageClass.
+  // Default para updates intermédios de fluxo é FLOW (persistente).
+  const cls = opts.messageClass || classFromLegacyOpts({
+    dismissible: opts.dismissible,
+    payload,
+  });
+  const shouldDelete = autoDeletes(cls);
+  const ttl = opts.ttlMs ?? ttlForClass(cls);
+  if (shouldDelete && ttl) scheduleDeleteInteractionReply(interaction, ttl);
   return interaction;
 }
 
@@ -213,6 +224,7 @@ async function safePanelRefresh(message, payload, label = 'PANEL') {
 
 module.exports = {
   EPHEMERAL_AUTO_DELETE_MS,
+  MessageClass,
   scheduleDeleteInteractionReply,
   scheduleDeleteEphemeralMessage,
   scheduleDeleteMessage,
