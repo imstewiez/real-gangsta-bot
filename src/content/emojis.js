@@ -99,6 +99,8 @@ const EMOJI = {
   ENTRADA:      '🚪',
   BEMVINDO:     '👋',
   TAG:          '🏷️',
+  SANGUE:       '🩸',
+  LEIS:         '📖',
 
   // ── Negativos / bloqueios ──────────────────────────────────────────────
   NO_PERMISSION:'🚫',

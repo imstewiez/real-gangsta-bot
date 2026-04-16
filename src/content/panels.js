@@ -2,79 +2,81 @@
 /**
  * Copy dos painéis — títulos, descrições e labels.
  *
- * Tom: firme, bairro, com peso. Sem cringe, sem ERP, sem corporate.
- * Cada painel tem personalidade distinta mas coerente com a firma.
+ * Tom: temático, rua, firma. Linguagem aforística e directa. Cada painel
+ * fala pelo seu papel — portão avalia, casa mede, secretaria controla,
+ * comando decide, mando aperta a zona.
  *
  * Regras:
- *   - 1 emoji por título (máximo)
- *   - descrição ≤ 6 linhas úteis
- *   - linguagem concreta ("puxas a rua") > genérica ("gerir operações")
- *   - emojis distintos por secção (ver emojis.js)
- *
- * Ver docs/UX_STYLE_GUIDE.md.
+ *   - Título uppercase com pipe (ex.: `🩸 O PORTÃO | FIRMA REDWOOD`).
+ *   - Abertura aforística: frase dupla, contraste "a rua X, a Firma Y".
+ *   - 3-4 bullets, cada um com emoji + bold key + em-dash + acção.
+ *   - Fecho em itálico, imperativo curto, corta o ar.
+ *   - Assinatura `— Firma RedWood`.
  */
 
 const E = require('./emojis');
-const { inlineSign } = require('./footers');
 
 const PANELS = {
   // ═══════════════════════════════════════════════════════════════════════
-  // ENTRADA — quem acabou de chegar
+  // ENTRADA — O PORTÃO
   // ═══════════════════════════════════════════════════════════════════════
   ENTRADA: {
-    TITLE: `${E.FIRMA} Firma RedWood — o guetto`,
+    TITLE: `${E.SANGUE} O PORTÃO | FIRMA REDWOOD`,
     DESCRIPTION:
-      'Aqui é **bairro**. É **firma**. É **irmandade**.\n' +
-      'Quem anda com os bairristas sabe o peso do nome.\n' +
+      'A rua ensina, mas a Firma cobra. Se estás aqui, é porque queres fazer o teu nome. O nosso sangue não se mistura com qualquer um — **prova o que vales**.\n' +
       '\n' +
-      `${E.TAG} **Pede a tag** — a chefia decide quem entra\n` +
-      `${E.BEMVINDO} Aprovado → entras como **YB** (Young Blood)\n` +
-      `${E.CASA} Ganhas **spot próprio** no guetto\n` +
-      `${E.MATERIAL} Material que trazes pesa — entregas, vendas, kills\n` +
-      `${E.PROGRESSO} Sobes pela **bandidagem**, não pela conversa\n` +
+      `${E.LEIS} **Lê as Leis da Casa** — o código fala antes de ti.\n` +
+      `${E.TAG} **Dar a Cara** — pede a tua tag. Diz ao que vens, a chefia decide.\n` +
+      '🍼 **Sangue Novo** — aprovado, entras como YB. O suor é que dita o resto.\n' +
       '\n' +
-      `${inlineSign('SHORT')}`,
+      '_Ajoelha perante o código. Levanta-te com o Bairro._\n' +
+      '\n' +
+      '— Firma RedWood',
     BUTTON: {
-      REGISTRAR: 'Pedir Tag',
+      REGISTRAR: 'Dar a Cara',
     },
   },
 
   // ═══════════════════════════════════════════════════════════════════════
-  // BAIRRISTA — a casa, o movimento
+  // BAIRRISTA — A CASA
   // ═══════════════════════════════════════════════════════════════════════
   BAIRRISTA: {
-    TITLE: `${E.CASA} Casa — Bairrista`,
+    TITLE: `${E.CASA} A CASA | FIRMA REDWOOD`,
     DESCRIPTION:
-      'Aqui conta o que **trazes**. Não as palavras.\n' +
+      'A Firma não paga conversa. Paga **peso**. Aqui mede-se o que trazes, o que vendes, o que entregas — e quem mete respeito à volta.\n' +
       '\n' +
-      `${E.ENTREGA} **Registar** — entrega ou vende material\n` +
-      `${E.FIRMA} **Movimento no Bairro** — o teu peso em tempo real\n` +
-      `${E.MEDAL_1} **Ranking** — quem rende mais na semana\n` +
-      `${E.ENCOMENDA} **Encomendas** — o que pediste à firma\n` +
+      `${E.ENTREGA} **Registar Material** — cada quilo conta. Sem registo, não existe.\n` +
+      `${E.FIRMA} **Movimento no Bairro** — o teu peso ao vivo. Sem máscaras.\n` +
+      `${E.MEDAL_1} **Ranking** — quem rende mais, sobe mais.\n` +
+      `${E.ENCOMENDA} **Encomendas** — o que pediste à firma.\n` +
       '\n' +
-      `${inlineSign('HOUSE')}`,
+      '_Trás pedra ao bairro. O bairro devolve-te nome._\n' +
+      '\n' +
+      '— Firma RedWood',
     BUTTONS: {
-      ENTREGA:   'Registar Material',
-      MOVIMENTO: 'Movimento no Bairro',
-      RANKING:   'Ranking',
-      ENCOMENDAS:'Encomendas',
+      ENTREGA:    'Registar Material',
+      MOVIMENTO:  'Movimento no Bairro',
+      RANKING:    'Ranking',
+      ENCOMENDAS: 'Encomendas',
     },
   },
 
   // ═══════════════════════════════════════════════════════════════════════
-  // OFICIAL — secretaria + saídas
+  // OFICIAL — A SECRETARIA
   // ═══════════════════════════════════════════════════════════════════════
   OFICIAL: {
-    TITLE: `${E.AUDIT} Secretaria — Oficial`,
+    TITLE: `${E.VITORIA} A SECRETARIA | FIRMA REDWOOD`,
     DESCRIPTION:
-      'Controlo da rua. Saídas abrem-se, material regista-se, nomes acompanham-se.\n' +
+      'Aqui abre-se a rua, aqui fecha-se a conta. Oficial é quem põe o nome em cima — saídas, registos, linha do bairro. **Se decides, responsabilizas-te.**\n' +
       '\n' +
-      `${E.SAIDA} **Nova Sessão** — só OG para cima abre\n` +
-      `${E.VER} **Ver Saídas** — abertas e recentes\n` +
-      `${E.ENTREGA} **Registar Material** — entrega ou venda\n` +
-      `${E.HISTORICO} **Histórico** — rasto de quem mexeu\n` +
+      `${E.SAIDA} **Nova Sessão** — OG+ abre. Leva quem leva.\n` +
+      `${E.VER} **Ver Saídas** — abertas, em curso, fechadas.\n` +
+      `${E.ENTREGA} **Registar Material** — entrega ou venda do bairro.\n` +
+      `${E.HISTORICO} **Lista de Nomes** — quem está activo, quem sumiu.\n` +
       '\n' +
-      `${inlineSign('MOVEMENT')}`,
+      '_Puxar a rua é peso. Leva-o com mão firme._\n' +
+      '\n' +
+      '— Firma RedWood',
     BUTTONS: {
       VALIDAR:        'Validar Entrega',
       MEMBROS:        'Lista de Nomes',
@@ -83,19 +85,21 @@ const PANELS = {
   },
 
   // ═══════════════════════════════════════════════════════════════════════
-  // CHEFIA — centro de comando
+  // CHEFIA — O COMANDO
   // ═══════════════════════════════════════════════════════════════════════
   CHEFIA: {
-    TITLE: `${E.LIDER} Centro de Comando`,
+    TITLE: `${E.LIDER} O COMANDO | FIRMA REDWOOD`,
     DESCRIPTION:
-      'Daqui puxa-se a rua. Daqui fecha-se a rua.\n' +
+      'Aqui não se pergunta — **decide-se**. Daqui abre-se a rua, fecha-se a rua, aperta-se a casa. Chefia vê tudo. Chefia cobra tudo.\n' +
       '\n' +
-      `${E.SAIDA} **Sessões** — abrir novas, ver activas\n` +
-      `${E.STOCK} **Stock** — ver, ajustar, gerir materiais\n` +
-      `${E.RADIO} **Gestão** — rádio, stickys\n` +
-      `${E.TOPO} **Dados** — topo semanal, logs de auditoria\n` +
+      `${E.SAIDA} **Sessões** — abrir, acompanhar, fechar.\n` +
+      `${E.STOCK} **Stock** — ver, ajustar, governar o material.\n` +
+      `${E.RADIO} **Gestão** — rádio, stickys, canais da firma.\n` +
+      `${E.TOPO} **Dados** — topos, logs, auditoria.\n` +
       '\n' +
-      '_Tudo fica em audit log. Nada se perde._',
+      '_Tudo fica registado. Nada se esquece._\n' +
+      '\n' +
+      '— Firma RedWood',
     BUTTONS: {
       CRIAR_SAIDA:     'Nova Sessão',
       VER_SAIDAS:      'Sessões Activas',
@@ -110,17 +114,21 @@ const PANELS = {
   },
 
   // ═══════════════════════════════════════════════════════════════════════
-  // PATRÃO DI ZONA — mando do bairro
+  // PATRÃO DI ZONA — MANDO DA ZONA
   // ═══════════════════════════════════════════════════════════════════════
   PATRAO_DI_ZONA: {
-    TITLE: `${E.BAIRRO} Patrão di Zona`,
+    TITLE: `${E.BAIRRO} MANDO DA ZONA | FIRMA REDWOOD`,
     DESCRIPTION:
-      'A zona é tua. Vês quem rende. Vês quem some. Vês quem precisa de puxão.\n' +
+      'A zona é tua. Vês quem puxa, vês quem some, vês quem pede puxão. Patrão conhece o bairro pelo cheiro — sabe quando dar **colher**, quando dar **tapa**.\n' +
       '\n' +
-      `${E.PARTICIPANTE} **Listar** — bairristas activos\n` +
-      `${E.ENTREGA} **Entregas** — quem traz mais material\n` +
-      `${E.VENDA} **Vendas** — quem roda mais\n` +
-      `${E.TOPO} **Topo** — os que puxam a zona`,
+      `${E.PARTICIPANTE} **Listar Bairristas** — quem anda activo.\n` +
+      `${E.ENTREGA} **Entregas** — quem trás mais pedra.\n` +
+      `${E.VENDA} **Vendas** — quem roda mais na rua.\n` +
+      `${E.TOPO} **Topo da Zona** — os que fazem nome contigo.\n` +
+      '\n' +
+      '_O bairro é teu. Fá-lo pesar._\n' +
+      '\n' +
+      '— Firma RedWood',
     BUTTONS: {
       LISTAR:   'Listar Bairristas',
       ENTREGAS: 'Entregas da Zona',
@@ -133,13 +141,15 @@ const PANELS = {
   // Canal individual do bairrista (welcome após onboarding)
   // ═══════════════════════════════════════════════════════════════════════
   BAIRRISTA_CHANNEL: {
-    WELCOME_TITLE: `${E.BEMVINDO} Bem-vindo à casa`,
+    WELCOME_TITLE: `${E.SANGUE} ESTA ZONA É TUA`,
     WELCOME_DESCRIPTION: (name) =>
-      `**${name}** — esta zona é tua.\n` +
+      `A Firma leu-te, **${name}**. Agora começa.\n` +
+      'Este canal é teu — aqui produzes, aqui o bairro vê-te trabalhar.\n' +
       '\n' +
-      'Regista o que trazes. Consulta o teu movimento. Sobe na hierarquia.\n' +
-      'O bairro vê tudo — faz valer.\n' +
-      `${inlineSign('HOUSE')}`,
+      '**Regista o que trazes. Consulta o teu peso. Sobe.**\n' +
+      'Quem não mexe, desaparece.\n' +
+      '\n' +
+      '— Firma RedWood',
   },
 };
 
