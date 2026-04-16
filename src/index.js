@@ -384,52 +384,7 @@ async function _dispatchInteraction(interaction) {
         return handleMemberCommand(interaction);
       }
 
-      if (cmd === 'rg-top-week') {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const semana = interaction.options.getString('semana') || 'current';
-        const rankings = semana === 'previous' ? await getPreviousWeekRanking(10) : await getCurrentWeekRanking(10);
-        const { start, end } = weekBounds(semana === 'previous' ? new Date(Date.now() - 7 * 86400000) : new Date());
-        const weekLabel = `${start.toISOString().split('T')[0]} a ${end.toISOString().split('T')[0]}`;
-        const embed = rankingEmbed('Top Semanal', rankings, weekLabel);
-        return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
-      }
-
-      if (cmd === 'rg-top-month') {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const mes = interaction.options.getString('mes') || 'current';
-        const { monthlyRankingRepo } = require('./repositories');
-        const bounds = mes === 'previous' ? monthlyRankingRepo.prevMonthBounds() : monthlyRankingRepo.monthBounds();
-        const rows = await monthlyRankingRepo.getMonthly(bounds.start, 10);
-        if (!rows.length) return safeReply(interaction, { content: `_Sem dados para o mês ${bounds.start}._` }, { dismissible: true });
-        const label = `${bounds.start} a ${bounds.end}`;
-        const embed = rankingEmbed('Top Mensal', rows, label);
-        return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
-      }
-
-      if (cmd === 'rg-top-alltime') {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const eixo = interaction.options.getString('eixo') || 'hybrid_score';
-        const { monthlyRankingRepo } = require('./repositories');
-        const rows = await monthlyRankingRepo.getAllTimeTop(eixo, 15);
-        if (!rows.length) return safeReply(interaction, { content: '_Sem dados all-time ainda. Corre `/rg-rebuild-rankings` primeiro._' }, { dismissible: true });
-        const medals = [EMOJI.MEDAL_1, EMOJI.MEDAL_2, EMOJI.MEDAL_3];
-        const fmt = (r, i) => {
-          const place = medals[i] || `**${i + 1}.**`;
-          const main = eixo === 'weighted_value' ? `${Number(r[eixo]).toLocaleString('pt-PT')} itens`
-            : eixo === 'profit_generated' ? `${Number(r[eixo]).toLocaleString('pt-PT')} €`
-            : eixo === 'hybrid_score' ? `${Number(r[eixo]).toFixed(1)} pts`
-            : Number(r[eixo]).toLocaleString('pt-PT');
-          return `${place} <@${r.discord_id}> — **${main}**`;
-        };
-        const labels = {
-          hybrid_score: 'Hybrid Score', kills_total: 'Kills', weighted_value: 'Material',
-          profit_generated: 'Lucro Gerado', mvp_count: 'MVPs', saidas_total: 'Saídas',
-        };
-        const embed = brandEmbed('TOP')
-          .setTitle(`${EMOJI.TOPO} Top All-Time — ${labels[eixo] || eixo}`)
-          .setDescription(rows.map(fmt).join('\n'));
-        return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
-      }
+      // rg-top-week/month/alltime removidos — /rg-ranking cobre tudo
 
       if (cmd === 'rg-rebuild-rankings') {
         if (!isChefia(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('rebuild rankings'), flags: MessageFlags.Ephemeral }, { dismissible: true });
@@ -443,21 +398,7 @@ async function _dispatchInteraction(interaction) {
         }, { dismissible: true });
       }
 
-      if (cmd === 'rg-close-saida' || cmd === 'rg-close-operation') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('fechar saída'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const opId = interaction.options.getInteger('id');
-        const { closeSaida } = require('./saidas/saidaEngine');
-        const op = await closeSaida(opId, {}, interaction.user.id);
-        if (!op) return safeReply(interaction, { content: ERRORS.SAIDA_NOT_FOUND() }, { dismissible: true });
-        const r = op.reconciliation || {};
-        const lines = [`${EMOJI.OK} Saída #${opId} concluída.`];
-        lines.push(`${EMOJI.MATERIAL} Material — fornecido: ${r.fornecido || 0}, devolvido: ${r.devolvido || 0}, perdido: ${r.perdido || 0}, consumido: ${r.consumido || 0}.`);
-        if (r.unaccounted > 0) {
-          lines.push(`${EMOJI.WARN} **${r.unaccounted}** unidades por contabilizar — usa os botões de custody para acertar.`);
-        }
-        return safeReply(interaction, { content: lines.join('\n') }, { dismissible: true });
-      }
+      // rg-close-saida removido — painel chefia fechar_saida
 
       if (cmd === 'rg-audit') {
         if (!isChefia(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('ver logs'), flags: MessageFlags.Ephemeral }, { dismissible: true });
@@ -490,32 +431,7 @@ async function _dispatchInteraction(interaction) {
         return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
       }
 
-      if (cmd === 'rg-add-item') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('adicionar itens'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const nome = interaction.options.getString('nome');
-        const categoria = interaction.options.getString('categoria');
-        const unidade = interaction.options.getString('unidade') || 'unidade';
-        const valor = interaction.options.getNumber('valor') || null;
-        const existing = await inventoryRepo.getItemByName(nome);
-        if (existing) return safeReply(interaction, { content: `Item "${nome}" já existe.` }, { dismissible: true });
-        await inventoryRepo.createItem({ name: nome, category: categoria, unit: unidade, estimatedValue: valor });
-        return safeReply(interaction, { content: `Item **${nome}** adicionado ao catálogo.` }, { dismissible: true });
-      }
-
-      if (cmd === 'rg-item-set-price') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('editar itens'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const nome = interaction.options.getString('nome');
-        const preco = interaction.options.getNumber('preco');
-        const item = await inventoryRepo.getItemByName(nome);
-        if (!item) return safeReply(interaction, { content: `Item "${nome}" não existe no catálogo.` }, { dismissible: true });
-        const oldPrice = item.estimated_value;
-        await inventoryRepo.updateItem(item.id, { estimated_value: preco });
-        return safeReply(interaction, {
-          content: `${EMOJI.LUCRO} **${item.name}**: ${oldPrice || 0}€ → **${preco}€**`
-        }, { dismissible: true });
-      }
+      // rg-add-item e rg-item-set-price removidos — painel gerir_materiais cobre
 
       if (cmd === 'rg-catalog-sync-prices') {
         if (!isChefia(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('sync catálogo'), flags: MessageFlags.Ephemeral }, { dismissible: true });
@@ -548,27 +464,7 @@ async function _dispatchInteraction(interaction) {
         }
       }
 
-      if (cmd === 'rg-items-sem-preco') {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const { query: dbq } = require('./db');
-        const r = await dbq(`
-          SELECT name, category, unit FROM items
-           WHERE is_active = true AND (estimated_value IS NULL OR estimated_value = 0)
-           ORDER BY category, name
-        `);
-        if (!r.rows.length) {
-          return safeReply(interaction, { content: `${EMOJI.OK} Todos os itens activos têm preço definido.` }, { dismissible: true });
-        }
-        const lines = [`${EMOJI.WARN} **${r.rows.length}** itens sem preço (afecta cálculos de saídas):`, ''];
-        const grouped = {};
-        for (const it of r.rows) (grouped[it.category] ||= []).push(it);
-        for (const [cat, items] of Object.entries(grouped)) {
-          lines.push(`**${cat}**`);
-          for (const it of items) lines.push(`  • ${it.name} (${it.unit})`);
-        }
-        lines.push('', '_Usa \`/rg-item-set-price nome:<nome> preco:<€>\` para corrigir._');
-        return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
-      }
+      // rg-items-sem-preco removido — usa gerir_materiais no painel
 
       if (cmd === 'rg-sync-perms') {
         if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('sync perms'), flags: MessageFlags.Ephemeral }, { dismissible: true });
@@ -677,22 +573,14 @@ async function _dispatchInteraction(interaction) {
       }
 
       // ── Stock manual ──────────────────────────────────────────────────────
-      if (cmd === 'rg-stock-add' || cmd === 'rg-stock-remove' || cmd === 'rg-stock-transfer' || cmd === 'rg-stock-adjust' || cmd === 'rg-stock-check') {
+      // stock-add/remove/adjust removidos — painéis cobrem (Registar Material + Ajustar Stock)
+      if (cmd === 'rg-stock-check' || cmd === 'rg-stock-transfer') {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const sm = require('./inventory/stockManager');
         const itemName = interaction.options.getString('item');
         const item = await sm.findItemByName(itemName);
         if (!item) return safeReply(interaction, { content: `${EMOJI.ERRO} Item não encontrado: \`${itemName}\``}, { dismissible: true });
-
         const actor = `discord:${interaction.user.id}`;
-        const memberDiscordId = interaction.options.getUser?.('membro')?.id;
-        let memberDbId = null;
-        if (memberDiscordId) {
-          const { memberRepo } = require('./repositories');
-          const m = await memberRepo.findByDiscordId(memberDiscordId);
-          memberDbId = m?.id || null;
-        }
-
         try {
           if (cmd === 'rg-stock-check') {
             const ar = await sm.getCurrentStock(item.id, 'armazem');
@@ -700,33 +588,12 @@ async function _dispatchInteraction(interaction) {
             const total = ar + gr;
             const value = (Number(item.estimated_value) || 0) * total;
             return safeReply(interaction, { content:
-              `📦 **${item.name}**  _${item.category}_\n` +
-              `🏠 Armazém: \`${ar}\` un.\n` +
-              `🏠 Grupo: \`${gr}\` un.\n` +
+              `${EMOJI.MATERIAL} **${item.name}**  _${item.category}_\n` +
+              `${EMOJI.CASA} Armazém: \`${ar}\` un.\n` +
+              `${EMOJI.CASA} Grupo: \`${gr}\` un.\n` +
               `▸ Total: **${total}** un.  (≈ ${value.toLocaleString('pt-PT')} €)`
             }, { dismissible: true });
           }
-
-          if (cmd === 'rg-stock-add') {
-            const qty = interaction.options.getInteger('quantidade');
-            const casa = interaction.options.getString('casa');
-            const tipo = interaction.options.getString('tipo') || 'apreendido';
-            const nota = interaction.options.getString('nota') || '';
-            await sm.addStock({ itemId: item.id, quantity: qty, location: casa, type: tipo, actor, memberId: memberDbId, notes: nota });
-            const newBalance = await sm.getCurrentStock(item.id, casa);
-            return safeReply(interaction, { content: `${EMOJI.OK} +${qty} **${item.name}** em **${casa}** (${tipo}). Novo total: \`${newBalance}\`` }, { dismissible: true });
-          }
-
-          if (cmd === 'rg-stock-remove') {
-            const qty = interaction.options.getInteger('quantidade');
-            const casa = interaction.options.getString('casa');
-            const tipo = interaction.options.getString('tipo');
-            const nota = interaction.options.getString('nota') || '';
-            await sm.removeStock({ itemId: item.id, quantity: qty, location: casa, type: tipo, actor, memberId: memberDbId, notes: nota });
-            const newBalance = await sm.getCurrentStock(item.id, casa);
-            return safeReply(interaction, { content: `${EMOJI.OK} −${qty} **${item.name}** em **${casa}** (${tipo}). Novo total: \`${newBalance}\`` }, { dismissible: true });
-          }
-
           if (cmd === 'rg-stock-transfer') {
             const qty = interaction.options.getInteger('quantidade');
             const de   = interaction.options.getString('de');
@@ -736,18 +603,6 @@ async function _dispatchInteraction(interaction) {
             const ar = await sm.getCurrentStock(item.id, 'armazem');
             const gr = await sm.getCurrentStock(item.id, 'grupo');
             return safeReply(interaction, { content: `${EMOJI.REFRESH} Transferido **${qty}× ${item.name}**: ${de} → ${para}\nArmazém: \`${ar}\` · Grupo: \`${gr}\`` }, { dismissible: true });
-          }
-
-          if (cmd === 'rg-stock-adjust') {
-            const novo = interaction.options.getInteger('novo_total');
-            const casa = interaction.options.getString('casa');
-            const razao = interaction.options.getString('razao') || 'contagem manual';
-            const r = await sm.adjustStock({ itemId: item.id, newTotal: novo, location: casa, actor, reason: razao });
-            const sign = r.delta > 0 ? '+' : '';
-            return safeReply(interaction, { content: r.delta === 0
-              ? `ℹ️ **${item.name}** em ${casa} já estava em ${novo}, nenhum movimento criado.`
-              : `${EMOJI.OK} Ajustado **${item.name}** em **${casa}**: ${sign}${r.delta} → \`${novo}\` (${razao})`
-            }, { dismissible: true });
           }
         } catch (e) {
           return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
@@ -803,61 +658,13 @@ async function _dispatchInteraction(interaction) {
         return safeReply(interaction, { content: `${EMOJI.REFRESH} Rebuild${purgedTag} em ${r.ms}ms — ${r.results.length} tabs OK, ${r.errors.length} erros.` }, { dismissible: true });
       }
 
-      if (cmd === 'rg-sticky-set') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('gerir sticky'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const channel = interaction.options.getChannel('canal');
-        const source = interaction.options.getString('source');
-        const modo = interaction.options.getString('modo');
-        const tMsgs = interaction.options.getInteger('threshold_msgs') || 0;
-        const tMin = interaction.options.getInteger('threshold_minutes') || 0;
-        try {
-          // Source dinâmico (availability:daily) precisa de payload.channelId — guardamos sempre o canal alvo no payload.
-          const sticky = await setSticky({
-            channelId: channel.id, sourceKey: source, mode: modo,
-            payload: { channelId: channel.id }, thresholdMsgs: tMsgs, thresholdMinutes: tMin,
-            createdBy: interaction.user.id,
-          });
-          // Refresh imediato — torna a sticky visível já.
-          await stickyRefresh(client, sticky);
-          return safeReply(interaction, { content: `📌 Sticky \`${source}\` activa em <#${channel.id}> (modo ${modo}).` }, { dismissible: true });
-        } catch (e) {
-          return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
-        }
-      }
-
-      if (cmd === 'rg-sticky-remove') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('gerir sticky'), flags: MessageFlags.Ephemeral }, { dismissible: true });
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const channel = interaction.options.getChannel('canal');
-        const source = interaction.options.getString('source');
-        const removed = await removeSticky({ channelId: channel.id, sourceKey: source, actorId: interaction.user.id });
-        if (!removed) return safeReply(interaction, { content: 'Não encontrei essa sticky.' }, { dismissible: true });
-        return safeReply(interaction, { content: `🗑️ Sticky \`${source}\` removida de <#${channel.id}>.` }, { dismissible: true });
-      }
-
-      if (cmd === 'rg-sticky-list') {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const all = await stickyRepo.listActive();
-        if (!all.length) return safeReply(interaction, { content: 'Sem stickys activas.' }, { dismissible: true });
-        const lines = all.map(s => {
-          const t = [];
-          if (s.threshold_msgs) t.push(`${s.threshold_msgs} msgs`);
-          if (s.threshold_minutes) t.push(`${s.threshold_minutes} min`);
-          return `• <#${s.channel_id}> — \`${s.source_key}\` (${s.mode}${t.length ? ', ' + t.join('+') : ''})`;
-        });
-        const renderers = stickyListRenderers();
-        const txt = lines.join('\n') + '\n\n_Renderers registados:_ ' + (renderers.map(r => `\`${r}\``).join(', ') || 'nenhum');
-        return safeReply(interaction, { content: txt.slice(0, 1900) }, { dismissible: true });
-      }
+      // rg-sticky-set/remove/list removidos — painel chefia stickys
 
       if (cmd === 'rg-kill') {
         return handleRegisterKillButton(interaction);
       }
 
-      if (cmd === 'rg-cemetery') {
-        return handleLeaderboardButton(interaction);
-      }
+      // rg-cemetery removido — kills visíveis via rankings e minha-saida
 
       // ── Bairrista commands ──────────────────────────────────────────────
       if (cmd === 'rg-meu-ponto') return handleMeuPonto(interaction);
@@ -922,8 +729,7 @@ async function _dispatchInteraction(interaction) {
           .setDescription(lines.join('\n'));
         return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
       }
-      if (cmd === 'rg-progresso') return handleProgressoTier(interaction);
-      if (cmd === 'rg-top-bairristas') return handleRanking(interaction);
+      // rg-progresso e rg-top-bairristas removidos (painéis cobrem)
       if (cmd === 'rg-ranking') {
         // Override period from slash command option
         const periodo = interaction.options.getString('periodo') || 'week';
