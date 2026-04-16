@@ -146,6 +146,16 @@ async function getDashboardKPIs() {
     WHERE o.date >= $1::date AND o.status = 'concluida'`,
     [w.start]);
 
+  // Participant type breakdown desta semana
+  const partTypes = await query(`
+    SELECT
+      COUNT(*) FILTER (WHERE op.participant_type = 'caracterizado')::int AS characterized,
+      COUNT(*) FILTER (WHERE op.participant_type = 'trabalhador')::int AS workers
+    FROM operation_participants op
+    JOIN operations o ON o.id = op.operation_id
+    WHERE o.date >= $1::date AND o.status = 'concluida'`,
+    [w.start]);
+
   const prevSaidas = await query(`
     SELECT
       COUNT(*)::int AS total,
@@ -232,6 +242,9 @@ async function getDashboardKPIs() {
     topKiller:       topKiller.rows[0] || null,
     topSpotProfit:   spotNet.rows[0] || null,
     topSpotDanger:   spotDanger.rows[0] || null,
+    // Participant type breakdown (week)
+    weekCharacterized: Number(partTypes.rows[0]?.characterized) || 0,
+    weekWorkers:       Number(partTypes.rows[0]?.workers) || 0,
     weekBounds:      w,
     prevWeekBounds:  pw,
   };

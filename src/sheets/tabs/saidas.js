@@ -21,13 +21,13 @@ const { growSheet } = require('../cleanup');
 
 const SAIDAS_HEADERS = [
   'ID', 'Data', 'Hora', 'Spot', 'Tipo', 'Líder', 'Estado', 'Resultado',
-  'Inimigo', 'Facção', 'Ppl', 'K', 'M', 'Viv.', 'Vol.',
+  'Inimigo', 'Facção', 'Ppl', 'Caract.', 'Trab.', 'K', 'M', 'Viv.', 'Vol.',
   'Forn.(un)', 'Dev.(un)', 'Perd.(un)', 'Cons.(un)',
   'Bruto (€)', 'Líquido (€)', 'Δ', 'Notas',
 ];
 const PART_HEADERS = [
-  'Saída', 'Data', 'Spot', 'Nome', 'Role',
-  'Próprio?', 'Org?',
+  'Saída', 'Data', 'Spot', 'Nome', 'Tipo', 'Arma', 'Role',
+  'Org?',
   'Forn.(un)', 'Dev.(un)', 'Perd.(un)', 'Cons.(un)',
   'K', 'M', 'Vivo?', 'Veio?', 'MVP', 'Perf', 'Disc', 'Notas',
 ];
@@ -76,6 +76,14 @@ function boolBadge(v) {
 }
 function mvpBadgeCell(v) {
   return v ? badgeCell('MVP', COLOR.GOLD) : mutedCell('—', { align: 'CENTER' });
+}
+function participantTypeBadge(t) {
+  if (t === 'trabalhador') return badgeCell('TRAB.', COLOR.YELLOW_DEEP);
+  return badgeCell('CARACT.', COLOR.RED_DEEP);
+}
+function weaponBadge(ownWeapon) {
+  if (ownWeapon === true) return badgeCell('PRÓPRIA', COLOR.GREEN_DEEP);
+  return badgeCell('ORG', COLOR.GRAPHITE);
 }
 function fmtDate(d) { try { return d ? new Date(d).toISOString().split('T')[0] : '—'; } catch { return '—'; } }
 function fmtDT(d) {
@@ -156,6 +164,8 @@ async function syncSaidas(batch, sheetId) {
     bodyCell(s.enemy_name || '—'),
     captionCell(s.enemy_faction || '—'),
     numCell(s.participantes, NUM_FMT.INT),
+    numCell(s.caracterizados || 0, NUM_FMT.INT),
+    numCell(s.trabalhadores || 0, NUM_FMT.INT),
     numCell(s.kills, NUM_FMT.INT),
     numCell(s.deaths, NUM_FMT.INT),
     numCell(s.survivors, NUM_FMT.INT),
@@ -180,10 +190,11 @@ async function syncSaidas(batch, sheetId) {
   row = tableBody(batch, sheetId, row, saidasRows, { basicFilter: true, columnCount: COL_COUNT });
   if (saidasRows.length) {
     const N = saidasRows.length;
-    batch.addRule(conditionalGreaterThan(sheetId, saidasFirstRow, 11, saidasFirstRow + N, 12, 3, COLOR.GREEN_SOFT));
-    batch.addRule(conditionalGreaterThan(sheetId, saidasFirstRow, 12, saidasFirstRow + N, 13, 2, COLOR.RED_SIGNAL_SOFT));
-    batch.addRule(conditionalLessThan(sheetId, saidasFirstRow, 20, saidasFirstRow + N, 21, 0, COLOR.RED_SIGNAL_SOFT));
-    batch.addRule(conditionalGreaterThan(sheetId, saidasFirstRow, 20, saidasFirstRow + N, 21, 500, COLOR.GREEN_SOFT));
+    // K col=13, M col=14, Líquido col=22 (shifted +2 from Caract./Trab. columns)
+    batch.addRule(conditionalGreaterThan(sheetId, saidasFirstRow, 13, saidasFirstRow + N, 14, 3, COLOR.GREEN_SOFT));
+    batch.addRule(conditionalGreaterThan(sheetId, saidasFirstRow, 14, saidasFirstRow + N, 15, 2, COLOR.RED_SIGNAL_SOFT));
+    batch.addRule(conditionalLessThan(sheetId, saidasFirstRow, 22, saidasFirstRow + N, 23, 0, COLOR.RED_SIGNAL_SOFT));
+    batch.addRule(conditionalGreaterThan(sheetId, saidasFirstRow, 22, saidasFirstRow + N, 23, 500, COLOR.GREEN_SOFT));
   }
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
@@ -200,8 +211,9 @@ async function syncSaidas(batch, sheetId) {
       bodyCell(fmtDate(p.date)),
       bodyCell(p.spot || '—'),
       bodyCell(p.display_name || '—'),
+      participantTypeBadge(p.participant_type),
+      weaponBadge(p.own_weapon),
       captionCell(p.role || 'membro'),
-      boolBadge(p.brought_own_material),
       boolBadge(p.received_org_material),
       numCell(p.issued_units, NUM_FMT.INT),
       numCell(p.returned_units, NUM_FMT.INT),
@@ -222,9 +234,10 @@ async function syncSaidas(batch, sheetId) {
   row = tableBody(batch, sheetId, row, partsRows);
   if (partsRows.length) {
     const N = partsRows.length;
-    batch.addRule(conditionalGreaterThan(sheetId, partsFirstRow, 11, partsFirstRow + N, 12, 2, COLOR.GREEN_SOFT));
-    batch.addRule(conditionalGradient(sheetId, partsFirstRow, 16, partsFirstRow + N, 17, COLOR.RED_SIGNAL_SOFT, COLOR.YELLOW_SOFT, COLOR.GREEN_SOFT));
+    // K col=12, Perf col=17, Disc col=18 (Tipo+Arma replaced Próprio?)
+    batch.addRule(conditionalGreaterThan(sheetId, partsFirstRow, 12, partsFirstRow + N, 13, 2, COLOR.GREEN_SOFT));
     batch.addRule(conditionalGradient(sheetId, partsFirstRow, 17, partsFirstRow + N, 18, COLOR.RED_SIGNAL_SOFT, COLOR.YELLOW_SOFT, COLOR.GREEN_SOFT));
+    batch.addRule(conditionalGradient(sheetId, partsFirstRow, 18, partsFirstRow + N, 19, COLOR.RED_SIGNAL_SOFT, COLOR.YELLOW_SOFT, COLOR.GREEN_SOFT));
   }
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');

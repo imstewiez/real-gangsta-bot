@@ -60,7 +60,7 @@ async function syncDashboard(batch, sheetId) {
 
   row = kpiStrip(batch, sheetId, row, [
     { label: 'Saídas',     value: k.saidasTotal, numberFormat: NUM_FMT.INT,
-      delta: `${k.saidasWins}V · ${k.saidasLosses}D`, deltaDirection: 'flat' },
+      delta: `${k.saidasWins}V · ${k.saidasLosses}D · ${k.weekCharacterized || 0} caract. · ${k.weekWorkers || 0} trab.`, deltaDirection: 'flat' },
     { label: 'Win Rate',   value: winRate, numberFormat: NUM_FMT.PCT,
       delta: winRate >= 0.5 ? 'saldo positivo' : 'abaixo do par', deltaDirection: winRate >= 0.5 ? 'up' : 'down' },
     { label: 'Lucro Líq.', value: Number(k.netWeek) || 0, numberFormat: NUM_FMT.EURO,
