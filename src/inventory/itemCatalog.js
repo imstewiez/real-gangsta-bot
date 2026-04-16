@@ -11,21 +11,16 @@ async function seedFromFullInventory() {
     return 0;
   }
 
-  // Check if already seeded
-  const existing = await query('SELECT COUNT(*) as count FROM items');
-  if (parseInt(existing.rows[0].count) > 0) {
-    log(`[CATALOG] Catálogo já tem ${existing.rows[0].count} itens. Seed ignorado.`);
-    return 0;
-  }
-
+  // Idempotente: INSERT ... ON CONFLICT (name) DO NOTHING por item.
+  // Antes havia guard "se items.count > 0 → skip" — impedia backfill de
+  // items novos no catálogo (ex.: armas_fogo adicionado depois da 1ª seed).
   const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
   let itemsCreated = 0;
   let stockLoaded = 0;
 
-  log(`[CATALOG] A carregar ${catalog.items.length} itens do inventário completo...`);
+  log(`[CATALOG] A validar ${catalog.items.length} itens do catálogo (insere novos, ignora existentes)...`);
 
   for (const item of catalog.items) {
-    // Insert item
     const res = await query(
       `INSERT INTO items (name, category, unit, estimated_value, notes)
        VALUES ($1, $2, $3, $4, $5)
@@ -38,7 +33,8 @@ async function seedFromFullInventory() {
       itemsCreated++;
       const itemId = res.rows[0].id;
 
-      // Load initial stock as ajuste_manual
+      // Stock inicial só para items NOVOS (o ON CONFLICT acima não devolve
+      // id quando já existia, logo não duplicamos saldo).
       if (item.stock && item.stock > 0) {
         await query(
           `INSERT INTO inventory_movements
@@ -52,7 +48,11 @@ async function seedFromFullInventory() {
     }
   }
 
-  log(`[CATALOG] Seed completo: ${itemsCreated} itens criados, ${stockLoaded} com stock inicial.`);
+  if (itemsCreated === 0) {
+    log('[CATALOG] Sem items novos — catálogo alinhado com DB.');
+  } else {
+    log(`[CATALOG] Backfill: ${itemsCreated} itens novos criados, ${stockLoaded} com stock inicial.`);
+  }
   return itemsCreated;
 }
 
