@@ -153,6 +153,7 @@ const DISCOVERED = {
   CH_REUNIAO_VOZ:      '1490397953595146392',
   CH_REGRAS:           '1490397806106513478',
   CH_WOOD_COMUN:       '1491194611543183430',
+  CH_ARQUIVOS:         '1493849342161719317',
   CH_INFO_GERAL:       '1490397836490309693',
   CH_COR_ORG:          '1490397834048966890',
   CH_META_SEMANAL:     '1490397816030236883',
@@ -408,6 +409,15 @@ function _applyPatraoDiZonaPrivateOverrides() {
   CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_BAU_CASA] = PERMS_PATRAO_DI_ZONA_PRIVATE;
   CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_REG_ENCOMENDAS] = PERMS_PATRAO_DI_ZONA_PRIVATE;
   CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_MATERIAL_ENTREG] = PERMS_PATRAO_DI_ZONA_PRIVATE;
+  CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_ARQUIVOS] = PERMS_PATRAO_DI_ZONA_PRIVATE;
+}
+
+// Canais staff-only (command + supervisor + patrão di zona vêem).
+// CH_CHEFIA_COMUN ("comunicados oficial") já está na categoria COMANDO que
+// nega everyone, mas a categoria só permite command ver — oficiais/patrão
+// também precisam. Pin explícito resolve.
+function _applyStaffOnlyOverrides() {
+  CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_CHEFIA_COMUN] = PERMS_STAFF_ONLY;
 }
 
 // Canais informativos pinados por ID (imunes a mismatches de nome):
@@ -583,6 +593,7 @@ for (const n of _READONLY_CONSULT_NAMES) {
 
 // Aplicar overrides pinados por ID (forward-reference: PERMS_* declarados acima)
 _applyPatraoDiZonaPrivateOverrides();
+_applyStaffOnlyOverrides();
 _applyReadonlyConsultOverrides();
 
 // ── Categoria → perm config aplicado a TODOS os children (aggressive sweep) ─

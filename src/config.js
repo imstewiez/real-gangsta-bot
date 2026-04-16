@@ -100,7 +100,10 @@ const CONFIG = {
   AUDIT_LOG_CHANNEL_ID: optId('AUDIT_LOG_CHANNEL_ID'),
   PANEL_ENTRADA_CHANNEL_ID: optId('PANEL_ENTRADA_CHANNEL_ID', '1494323241207201793'),
   WEEKLY_TOP_CHANNEL_ID: optId('WEEKLY_TOP_CHANNEL_ID'),
-  DAILY_SUMMARY_CHANNEL_ID: optId('DAILY_SUMMARY_CHANNEL_ID'),
+  // Resumo diário — default aponta ao canal de logs (staff only). O canal
+  // não deve ser público (dados operacionais, não user-facing). Para forçar
+  // outro, definir DAILY_SUMMARY_CHANNEL_ID no env.
+  DAILY_SUMMARY_CHANNEL_ID: optId('DAILY_SUMMARY_CHANNEL_ID', '1492739363463758027'),
   CEMETERY_CHANNEL_ID: optId('CEMETERY_CHANNEL_ID'),
   // Canal dedicado para resultados ricos de saídas (3 embeds no fecho).
   // Se vazio, faz fallback para AUDIT_LOG_CHANNEL_ID.
