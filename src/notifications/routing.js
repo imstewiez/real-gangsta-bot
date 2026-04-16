@@ -81,10 +81,12 @@ function _onMemberNicknameChanged(evt) {
   return _publish('ORG_LIFECYCLE', { embeds: [embed] });
 }
 
-function _onSaidaOpened(evt) {
-  const embed = templates.saidaLifecycleEmbed({ ...evt, event: 'opened' });
-  return _publish('SAIDAS_EVENTS', { embeds: [embed] });
-}
+// saida.opened: o session panel publicado em publishSessionEmbed já é a
+// "notificação" pública + interactiva. Evita embed duplicado no mesmo canal.
+// saida.participant_added: session panel refresca-se em tempo real com a
+// lista de participantes — log de cada inscrição é spam.
+// Ambos suprimidos por design (eventos ainda chegam aos sheet projections).
+
 function _onSaidaStarted(evt) {
   const embed = templates.saidaLifecycleEmbed({ ...evt, event: 'started' });
   return _publish('SAIDAS_EVENTS', { embeds: [embed] });
@@ -97,10 +99,6 @@ function _onSaidaClosed(evt) {
 }
 function _onSaidaMaterialIssued(evt) {
   const embed = templates.saidaLifecycleEmbed({ ...evt, event: 'material_issued' });
-  return _publish('SAIDAS_EVENTS', { embeds: [embed] });
-}
-function _onSaidaParticipantAdded(evt) {
-  const embed = templates.saidaLifecycleEmbed({ ...evt, event: 'participant_added' });
   return _publish('SAIDAS_EVENTS', { embeds: [embed] });
 }
 
@@ -142,12 +140,11 @@ function registerNotificationRouting() {
   eventBus.on('member.promoted',          _onMemberPromoted);
   eventBus.on('member.tier_changed',      _onMemberTierChanged);
   eventBus.on('member.nickname_changed',  _onMemberNicknameChanged);
-  // Saídas
-  eventBus.on('saida.opened',             _onSaidaOpened);
+  // Saídas — opened + participant_added suprimidos (redundantes com session
+  // panel que é o painel vivo interactivo da saída).
   eventBus.on('saida.started',            _onSaidaStarted);
   eventBus.on('saida.closed',             _onSaidaClosed);
   eventBus.on('saida.material_issued',    _onSaidaMaterialIssued);
-  eventBus.on('saida.participant_added',  _onSaidaParticipantAdded);
   // Kills (delegado)
   eventBus.on('kill.registered', _onKillRegistered);
 

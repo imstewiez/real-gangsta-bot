@@ -288,11 +288,12 @@ async function handleCaracterizadoSource(interaction) {
   let weapons = items.filter(i => weaponCats.has(i.category));
 
   // Para "org", só mostra armas com stock > 0.
+  // getStockForItem devolve um número (não objecto). Tratava-o como
+  // `.balance` → sempre 0 → "não há armas".
   if (source === 'org') {
     const weaponsWithStock = [];
     for (const w of weapons) {
-      const stock = await inventoryRepo.getStockForItem(w.id).catch(() => null);
-      const balance = Number(stock?.balance ?? 0);
+      const balance = Number(await inventoryRepo.getStockForItem(w.id).catch(() => 0)) || 0;
       if (balance > 0) weaponsWithStock.push({ ...w, _balance: balance });
     }
     weapons = weaponsWithStock;
