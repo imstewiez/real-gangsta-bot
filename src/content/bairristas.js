@@ -13,11 +13,11 @@ const BAIRRISTAS = {
   PANEL: {
     TITLE: `${E.CASA} Casa — Bairrista`,
     DESCRIPTION:
-      'O que mexes aqui conta — para a semana, para a subida, para o topo.\n' +
+      'Aqui conta o que **trazes**. Não as palavras.\n' +
       '\n' +
-      `${E.MATERIAL} **Registar** — entrega ou vende material\n` +
-      `${E.FIRMA} **Movimento no Bairro** — o teu peso na casa\n` +
-      `${E.MEDAL_1} **Ranking** — quem rende mais\n` +
+      `${E.ENTREGA} **Registar** — entrega ou vende material\n` +
+      `${E.FIRMA} **Movimento no Bairro** — o teu peso em tempo real\n` +
+      `${E.MEDAL_1} **Ranking** — quem rende mais na semana\n` +
       `${E.ENCOMENDA} **Encomendas** — o que pediste à firma\n` +
       '\n' +
       `${inlineSign('HOUSE')}`,

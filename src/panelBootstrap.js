@@ -138,8 +138,28 @@ async function upsertPanelSticky(panelDef, channelId, actorId = 'system:panel-bo
   }
 }
 
+// Versão do schema dos painéis. Bumpar isto força rebuild integral de
+// todos os painéis no próximo boot (apaga mensagens antigas, publica
+// frescas). Usar quando:
+//   - nomes de canais mudam
+//   - copy ou emojis são reformulados significativamente
+//   - botões são renomeados/reorganizados
+// O estado anterior (panelMessages) é limpo e todos os painéis voltam
+// a seguir o caminho "sem mensagem existente" → delete old + create new.
+const PANELS_SCHEMA_VERSION = 3;
+
+async function _maybeForceRebuild() {
+  const stored = await getStateKey('panelsSchemaVersion', 0);
+  if (stored < PANELS_SCHEMA_VERSION) {
+    log(`[PANELS] Schema bump detectado (${stored} → ${PANELS_SCHEMA_VERSION}) — force rebuild.`);
+    await setStateKey('panelMessages', {});
+    await setStateKey('panelsSchemaVersion', PANELS_SCHEMA_VERSION);
+  }
+}
+
 async function bootstrapAll(client) {
   log('[PANELS] A inicializar painéis...');
+  await _maybeForceRebuild();
   const results = [];
   for (const panel of PANELS) {
     const r = await bootstrapPanel(client, panel);
