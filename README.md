@@ -7,6 +7,9 @@ Bot de gestão do bairro/grupo RP **Bot di Zona**. Gere onboarding, hierarquia, 
 - Node.js ≥ 18 · discord.js v14 · PostgreSQL
 - Deploy: Railway (`railway.toml`)
 
+Arquitectura descrita em [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+(composition root, routers declarativos, event bus, session store).
+
 ## Arranque
 
 ```bash
