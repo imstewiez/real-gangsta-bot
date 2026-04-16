@@ -91,6 +91,16 @@ function isAnyMember(member) {
 
 function canManageInventory(member) { return isCommand(member) || isSupervisor(member); }
 function canManageOperations(member) { return isCommand(member) || isSupervisor(member); }
+
+/**
+ * Abrir uma sessão de saída (criar + publicar painel vivo) requer
+ * OG ou acima — exclui Real Gangster, que participa mas não abre.
+ * Ordem: Manda-Chuva (1) > Kingpin (2) > OG (3) > Real Gangster (4).
+ */
+function canOpenSession(member) {
+  return isCommand(member)
+    || memberRoleIds(member).has(CONFIG.OG_ROLE_ID);
+}
 function canManageBairro(member) {
   return isCommand(member) || isSupervisor(member)
     || hasAny(memberRoleIds(member), CONFIG.PATRAO_DI_ZONA_ROLE_IDS);
@@ -114,6 +124,7 @@ module.exports = {
   isAnyMember,
   canManageInventory,
   canManageOperations,
+  canOpenSession,
   canManageBairro,
   canViewAllMembers,
   canRegisterMaterial,

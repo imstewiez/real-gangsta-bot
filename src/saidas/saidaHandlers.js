@@ -9,7 +9,7 @@ const {
 } = require('../shared/interactionHelpers');
 const { successEmbed, brandEmbed } = require('../shared/embedBuilders');
 const { buildItemSelectMenu } = require('../inventory/inventoryMenus');
-const { isChefia, isOficial } = require('../permissions/permissionEngine');
+const { isChefia, isOficial, canOpenSession } = require('../permissions/permissionEngine');
 const { saidaRepo } = require('../repositories');
 const saidaEngine = require('./saidaEngine');
 const { publishSessionEmbed } = require('./saidaSession');
@@ -57,8 +57,14 @@ function buildSaidaSelectOptions(saidas) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleCreateSaidaButton(interaction) {
-  if (!isChefia(interaction.member)) {
-    return safeReply(interaction, { content: ERRORS.NO_PERMISSION('criar saídas'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+  // Apenas OG para cima (OG, Kingpin, Manda-Chuva) pode abrir sessão.
+  // Real Gangster vê o botão no painel Oficiais mas não pode abrir —
+  // participa, não abre.
+  if (!canOpenSession(interaction.member)) {
+    return safeReply(interaction, {
+      content: ERRORS.NO_PERMISSION('abrir sessão de saída'),
+      flags: MessageFlags.Ephemeral,
+    }, { messageClass: 'WARN' });
   }
   // Step 1: select tipo de saída (predefinido — zero erros humanos)
   const options = SAIDA_TYPES.map(t => ({
