@@ -356,6 +356,16 @@ async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
     actorId,
     afterState: { memberId: member.id, displayName: member.display_name, participantType },
   });
+
+  // Event bus — dispara projection para sheet 'saidas' (debounce 5s).
+  eventBus.emitAsync('saida.participant_added', {
+    saidaId,
+    memberId: member.id,
+    discordId,
+    participantType,
+    at: new Date(),
+  }).catch(e => warn(`[EVENT] saida.participant_added: ${e.message}`));
+
   return participant;
 }
 
@@ -469,6 +479,18 @@ async function issueMaterialToParticipant(saidaId, discordId, itemId, quantity, 
   });
 
   _notifyMovement({ movementType: 'fornecimento_org', itemId, quantity, memberId: member.id, saidaId, actorId, notes });
+
+  // Event bus — dispara projection para sheets 'saidas' + 'stock'.
+  eventBus.emitAsync('saida.material_issued', {
+    saidaId,
+    memberId: member.id,
+    discordId,
+    itemId,
+    quantity,
+    actorId,
+    at: new Date(),
+  }).catch(e => warn(`[EVENT] saida.material_issued: ${e.message}`));
+
   return { saidaId, member: discordId, itemId, quantity };
 }
 

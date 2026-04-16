@@ -12,7 +12,7 @@
  */
 
 const CONFIG = require('../config');
-const { log } = require('../logger');
+const { log, warn } = require('../logger');
 const { getSheetsClient } = require('./googleAuth');
 const { BatchWriter } = require('./batchWriter');
 const { ensureTabs } = require('./workbook');
@@ -42,9 +42,15 @@ async function syncOne(key) {
   if (!syncer) throw new Error(`Tab desconhecida: ${key}`);
 
   const sheets = getSheetsClient();
-  if (!sheets) return { skipped: 'no_sheets_client' };
+  if (!sheets) {
+    warn(`[SHEETS] sync '${key}' saltado — Google Service Account não configurado.`);
+    return { skipped: 'no_sheets_client' };
+  }
   const spreadsheetId = getSpreadsheetId();
-  if (!spreadsheetId) return { skipped: 'no_spreadsheet_id' };
+  if (!spreadsheetId) {
+    warn(`[SHEETS] sync '${key}' saltado — SPREADSHEET_ID não configurado.`);
+    return { skipped: 'no_spreadsheet_id' };
+  }
 
   const t0 = Date.now();
   const tabs = await ensureTabs(sheets, spreadsheetId);
@@ -85,7 +91,9 @@ async function syncOne(key) {
       ops, ms,
       error: syncErr ? syncErr.message.slice(0, 500) : null,
     });
-  } catch (_) { /* silent */ }
+  } catch (e) {
+    warn(`[SHEETS] recordSheetSync falhou: ${e.message}`);
+  }
 
   if (syncErr) throw syncErr;
   log(`[SHEETS] sync ${key}: ${ops} ops em ${ms}ms`);

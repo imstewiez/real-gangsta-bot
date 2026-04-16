@@ -68,7 +68,13 @@ async function bootstrap() {
 
   // Subscribers do event bus — sheets projections + notification routing.
   // Registados antes do client para apanhar qualquer emit precoce (ex: seed).
-  registerSheetProjections();
+  if (CONFIG.isSheetsEnabled && CONFIG.isSheetsEnabled()) {
+    registerSheetProjections();
+    log('[SHEETS] Projections registadas (sync event-driven com debounce 5s).');
+  } else {
+    warn('[SHEETS] ⚠️ DESACTIVADO — GOOGLE_SERVICE_ACCOUNT_JSON ou SPREADSHEET_ID em falta. ' +
+         'Tabs nunca sincronizam até o env estar configurado no Railway.');
+  }
   registerNotificationRouting();
 
   // Client + listeners.
