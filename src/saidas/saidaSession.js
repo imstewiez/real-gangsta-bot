@@ -292,11 +292,11 @@ async function handleCaracterizadoSource(interaction) {
   const saidaId = parseInt(parts[2]);
   const source = parts[3]; // 'own' ou 'org'
 
-  // Armas — filtra pela whitelist ORG_ISSUED_WEAPONS (9 armas curadas)
-  // para AMBOS os tipos (própria e org). Matching normalizado.
+  // Armas — filtra pela whitelist ORG_ISSUED_WEAPONS (9 armas curadas).
+  // Sem filtro de categoria: a whitelist é a autoridade. Items na DB
+  // podem ter categorias legacy ('armas' em vez de 'armas_fogo') se foram
+  // seeded com versão antiga do catálogo.
   const items = await inventoryRepo.getItems(true);
-  const weaponCats = new Set(['armas_fogo', 'armas_brancas']);
-  const allWeapons = items.filter(i => weaponCats.has(i.category));
 
   const { SAIDAS: S } = require('../content');
   const norm = (s) => (s || '').trim().toLowerCase()
@@ -304,7 +304,7 @@ async function handleCaracterizadoSource(interaction) {
     .replace(/\s+/g, ' ');
   const allowed = new Set((S.ORG_ISSUED_WEAPONS || []).map(norm));
   const byNorm = new Map();
-  for (const w of allWeapons) byNorm.set(norm(w.name), w);
+  for (const w of items) byNorm.set(norm(w.name), w);
 
   let weapons = [];
   const missing = [];
@@ -314,7 +314,7 @@ async function handleCaracterizadoSource(interaction) {
     else missing.push(target);
   }
   if (missing.length) {
-    warn(`[SAIDA] Armas no whitelist sem match na DB: ${missing.join(', ')}`);
+    warn(`[SAIDA] Armas no whitelist sem match na DB: ${missing.join(', ')}. Items total na DB: ${items.length}. Sample names: ${items.slice(0, 5).map(i => i.name).join(', ')}`);
   }
 
   if (source === 'org') {

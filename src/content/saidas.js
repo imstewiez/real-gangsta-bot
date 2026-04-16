@@ -18,6 +18,7 @@ const ORG_ISSUED_WEAPONS = [
   'Compact Rifle',
   'Espingarda de Assalto',
   'Gusenberg',
+  'Gusenberg Sweeper',   // nome alternativo (catálogo antigo)
   'Machine Pistol',
   'Micro SMG',
 ];
