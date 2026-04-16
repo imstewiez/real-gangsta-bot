@@ -2,10 +2,11 @@
 const { SlashCommandBuilder } = require('discord.js');
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Slash commands — 17 comandos, todos de 1 palavra, sem prefixo.
+// Slash commands — 10 comandos, todos de 1 palavra, sem prefixo.
 //
-// Painéis são a via principal. Slash commands existem como atalhos rápidos,
-// acções de staff e manutenção técnica.
+// Painéis são a via principal. Slash commands existem como atalhos rápidos
+// e acções operacionais. Toda a manutenção técnica (sync, reconcile, perms,
+// precario, backfill) corre em jobs automáticos — fora da UX do utilizador.
 // ══════════════════════════════════════════════════════════════════════════════
 
 const commands = [
@@ -67,62 +68,6 @@ const commands = [
     .addStringOption(opt => opt.setName('para').setDescription('Destino').setRequired(true)
       .addChoices({ name: 'Armazém', value: 'armazem' }, { name: 'Grupo', value: 'grupo' }))
     .addStringOption(opt => opt.setName('nota').setDescription('Nota').setRequired(false)),
-
-  // ── Admin técnico ──────────────────────────────────────────────────────────
-  new SlashCommandBuilder()
-    .setName('rebuild')
-    .setDescription('Recalcular rankings mensais + all-time'),
-
-  new SlashCommandBuilder()
-    .setName('precario')
-    .setDescription('Carregar preços do precário oficial')
-    .addStringOption(opt => opt.setName('modo').setDescription('Modo').setRequired(false)
-      .addChoices({ name: 'Preços', value: 'prices' }, { name: 'Full', value: 'full' })),
-
-  new SlashCommandBuilder()
-    .setName('backfill')
-    .setDescription('Importar membros Discord para a DB')
-    .addStringOption(opt => opt.setName('modo').setDescription('Modo')
-      .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
-
-  // ── Manutenção ─────────────────────────────────────────────────────────────
-  new SlashCommandBuilder()
-    .setName('perms')
-    .setDescription('Sincronizar permissões Discord')
-    .addStringOption(opt => opt.setName('modo').setDescription('Modo').setRequired(false)
-      .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
-
-  new SlashCommandBuilder()
-    .setName('reconcile')
-    .setDescription('Detectar drift DB↔Discord')
-    .addStringOption(opt => opt.setName('dominio').setDescription('Área').setRequired(true)
-      .addChoices(
-        { name: 'Todos', value: 'all' },
-        { name: 'Membros', value: 'members' },
-        { name: 'Channels', value: 'channels' },
-        { name: 'Sheet', value: 'sheet' },
-      ))
-    .addStringOption(opt => opt.setName('modo').setDescription('Modo').setRequired(true)
-      .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
-
-  new SlashCommandBuilder()
-    .setName('syncsheet')
-    .setDescription('Sincronizar Google Sheet')
-    .addStringOption(opt => opt.setName('tab').setDescription('Tab específica (todas se vazio)').setRequired(false)
-      .addChoices(
-        { name: 'Dashboard', value: 'dashboard' },
-        { name: 'Resumo & Rankings', value: 'resumo' },
-        { name: 'Membros', value: 'membros' },
-        { name: 'Saídas & Combate', value: 'saidas' },
-        { name: 'Stock', value: 'stock' },
-        { name: 'Config', value: 'config' },
-      )),
-
-  new SlashCommandBuilder()
-    .setName('rebuildsheet')
-    .setDescription('Reconstruir Google Sheet (apaga e recria)')
-    .addBooleanOption(opt => opt.setName('purge')
-      .setDescription('Também apagar tabs não-canónicas')),
 ];
 
 module.exports = { commands };
