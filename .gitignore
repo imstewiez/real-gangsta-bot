@@ -9,5 +9,7 @@ logs/
 *-credentials*.json
 juri-*.json
 google-sa-base64.txt
+state.json
+debug-logs/
 .claude/
 .DS_Store

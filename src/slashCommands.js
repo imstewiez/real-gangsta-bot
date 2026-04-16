@@ -154,8 +154,8 @@ const commands = [
       .addChoices(
         { name: 'Venda Bairrista', value: 'venda_bairrista' },
         { name: 'Fornecimento Org (saída)', value: 'fornecimento_org' },
-        { name: 'Consumo em Operação', value: 'consumo_operacao' },
-        { name: 'Perda em Operação', value: 'perda_operacao' },
+        { name: 'Consumo em Saída', value: 'consumo_operacao' },
+        { name: 'Perda em Saída', value: 'perda_operacao' },
       ))
     .addUserOption(opt => opt.setName('membro').setDescription('Membro associado').setRequired(false))
     .addStringOption(opt => opt.setName('nota').setDescription('Nota livre').setRequired(false)),

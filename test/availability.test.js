@@ -94,7 +94,7 @@ describe('availabilityEngine — UI builders', () => {
     ];
     const embed = buildEmbed(fakeSession, tallies, 4);
     const json = embed.toJSON();
-    assert.ok(json.title.includes('Disponibilidade'));
+    assert.ok(json.title.includes('Presença'));
     assert.equal(json.fields.length, 2);
     assert.ok(json.fields[0].name.includes('20:30'));
     assert.ok(json.footer.text.includes('4 pessoas votaram'));

@@ -36,7 +36,7 @@ require.cache[resolvedPath('audit/auditEngine.js')] = {
 
 // CONFIG — garantir IDs coerentes para o teste
 const CONFIG = require('../src/config');
-CONFIG.MORADORES_BASE_ROLE_ID = 'R_MOR_BASE';
+CONFIG.BAIRRISTAS_BASE_ROLE_ID = 'R_MOR_BASE';
 CONFIG.YOUNG_BLOOD_ROLE_ID = 'R_YB';
 CONFIG.O_GUNAO_ROLE_ID = 'R_GUN';
 CONFIG.GANGSTER_FODIDO_ROLE_ID = 'R_GF';
@@ -65,12 +65,12 @@ function fakeGuildMember({ id = '123', roleIds = [] } = {}) {
 }
 
 describe('roleInvariants', () => {
-  it('adiciona base Moradores quando falta e há tier', async () => {
+  it('adiciona base Bairristas quando falta e há tier', async () => {
     const gm = fakeGuildMember({ roleIds: ['R_YB'] });
     const result = await ensureInvariants(gm, { actor: 'test' });
     assert.equal(result.needsFix, true);
-    assert.deepEqual(result.violations, ['tier_without_base_moradores']);
-    assert.deepEqual(result.fixes, ['added_base_moradores']);
+    assert.deepEqual(result.violations, ['tier_without_bairristas_base']);
+    assert.deepEqual(result.fixes, ['added_bairristas_base']);
     assert.equal(gm._calls.add[0].roleId, 'R_MOR_BASE');
   });
 

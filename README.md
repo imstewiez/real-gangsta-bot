@@ -110,8 +110,11 @@ Stock é sempre calculado a partir do ledger — nunca sobreposto.
 | `/rg-stock` | Todos | Ver stock |
 | `/rg-member` | Todos | Ficha de membro |
 | `/rg-top-week` | Todos | Top semanal |
-| `/rg-create-operation` | Comando | Criar saída |
-| `/rg-close-operation` | Comando | Fechar saída |
+| `/rg-close-saida` | Comando | Fechar saída (fallback ao painel) |
+| `/rg-meu-ponto` | Todos | O teu ponto na casa |
+| `/rg-ranking` | Todos | Ranking dos Bairristas |
+| `/rg-progresso` | Todos | Progresso para próximo tier |
+| `/rg-minha-saida` | Todos | As tuas últimas saídas |
 | `/rg-audit` | Comando | Logs de auditoria |
 | `/rg-items` | Todos | Catálogo |
 | `/rg-add-item` | Comando | Adicionar item |
@@ -136,9 +139,10 @@ Stock é sempre calculado a partir do ledger — nunca sobreposto.
 npm run stock:bootstrap              # dry-run (default)
 npm run stock:bootstrap:apply        # aplica (inclui --confirm)
 
-# Sync de estrutura Discord
-npm run structure:sync               # dry-run
-npm run structure:sync:apply         # aplica
+# Sync de estrutura Discord (via slash command)
+# /rg-sync-perms modo:dry-run       — verifica permissões
+# /rg-sync-perms modo:apply         — aplica permissões
+# /rg-sync-panels                   — republica painéis
 ```
 
 ## Painéis
