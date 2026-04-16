@@ -303,11 +303,28 @@ async function handleCaracterizadoSource(interaction) {
 
   if (source === 'org') {
     // Só armas que a firma emite (lista curada em content/saidas.js).
-    // Comparação case-insensitive + trim para tolerar diferenças leves
-    // no naming do catálogo DB.
+    // Matching normalizado: lowercase + remove acentos + colapsa múltiplos
+    // espaços. Tolera diferenças leves entre lista curada e nomes no DB.
     const { SAIDAS: S } = require('../content');
-    const allowed = new Set((S.ORG_ISSUED_WEAPONS || []).map(n => n.trim().toLowerCase()));
-    weapons = weapons.filter(w => allowed.has((w.name || '').trim().toLowerCase()));
+    const norm = (s) => (s || '')
+      .trim().toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ');
+    const allowed = new Set((S.ORG_ISSUED_WEAPONS || []).map(norm));
+    const byNorm = new Map();
+    for (const w of weapons) byNorm.set(norm(w.name), w);
+
+    const matched = [];
+    const missing = [];
+    for (const target of allowed) {
+      const hit = byNorm.get(target);
+      if (hit) matched.push(hit);
+      else missing.push(target);
+    }
+    if (missing.length) {
+      warn(`[SAIDA] "Pedir à Org" — armas no whitelist sem match na DB: ${missing.join(', ')}`);
+    }
+    weapons = matched;
 
     for (const w of weapons) {
       w._balance = Number(await inventoryRepo.getStockForItem(w.id).catch(() => 0)) || 0;
