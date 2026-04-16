@@ -13,6 +13,7 @@
     "db:migrate": "node -e \"require('./src/dbMigrate').runMigrations().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); })\"",
     "stock:bootstrap": "node scripts/bootstrapStock.js",
     "stock:bootstrap:apply": "node scripts/bootstrapStock.js --apply --confirm",
+    "snapshot": "node scripts/discordSnapshot.js",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {

@@ -11,5 +11,6 @@ juri-*.json
 google-sa-base64.txt
 state.json
 debug-logs/
+snapshots/
 .claude/
 .DS_Store
