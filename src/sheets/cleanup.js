@@ -12,7 +12,9 @@
  * para que o trim faça parte do mesmo flush da sync (economiza calls).
  */
 
-const DEFAULT_PADDING_ROWS = 3;
+// Zero padding — o grow/trim corre atomicamente no batch, não há risco de
+// "write beyond bounds" entre syncs. Tabs ficam tight sem rows vazias.
+const DEFAULT_PADDING_ROWS = 0;
 const DEFAULT_PADDING_COLS = 0;
 const MIN_ROWS = 10;
 const MIN_COLS = 1;
