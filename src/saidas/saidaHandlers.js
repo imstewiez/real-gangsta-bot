@@ -223,7 +223,9 @@ async function handleCloseSaidaSelect(interaction) {
   });
 }
 
-// Step 3: resultado seleccionado → abre modal para detalhes (sem campo resultado)
+// Step 3: resultado seleccionado. Se houve conflito (vitoria/derrota/empate),
+// vai para step 3b (dropdown de facção). Caso contrário (sem_conflito/abortada),
+// salta directo para o modal de detalhes.
 async function handleCloseResultSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const result = interaction.values[0];
@@ -232,23 +234,61 @@ async function handleCloseResultSelect(interaction) {
   _setContext(interaction.user.id, ctx);
 
   const saidaId = ctx.saidaId;
+  const needsFaction = result === 'vitoria' || result === 'derrota' || result === 'empate';
+
+  if (needsFaction) {
+    // Step 3b: dropdown de facções conhecidas.
+    const factionOpts = SAIDAS.FACTIONS.slice(0, 25).map(f => ({
+      label: f.label,
+      value: f.value,
+      emoji: f.emoji,
+    }));
+    const row = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('saida::select_close_faction')
+        .setPlaceholder('Contra quem foi?')
+        .setMinValues(1).setMaxValues(1)
+        .addOptions(factionOpts)
+    );
+    return safeUpdate(interaction, {
+      content: `${EMOJI.FECHAR} Saída **#${saidaId}** — contra quem foi?`,
+      components: [row],
+    });
+  }
+
+  // Sem conflito / abortada — faction fica vazio, vai direto ao modal.
+  ctx.faction = '';
+  _setContext(interaction.user.id, ctx);
+  return _openCloseDetailsModal(interaction, saidaId, result);
+}
+
+// Step 3b: escolheu facção → abre modal de detalhes.
+async function handleCloseFactionSelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const faction = interaction.values[0];
+  const ctx = pendingSaidaContext.get(interaction.user.id) || {};
+  ctx.faction = faction;
+  _setContext(interaction.user.id, ctx);
+
+  return _openCloseDetailsModal(interaction, ctx.saidaId, ctx.result);
+}
+
+async function _openCloseDetailsModal(interaction, saidaId, result) {
   const SF = MODALS.SAIDA_SETTLE.FIELDS;
-  // Resultado já foi seleccionado no step anterior — modal só tem detalhes complementares
   const resultLabel = { vitoria: 'Vitória', derrota: 'Derrota', empate: 'Empate', sem_conflito: 'Sem conflito', abortada: 'Abortada' }[result] || result;
+
   const modal = new ModalBuilder()
     .setCustomId('saida::modal_close')
     .setTitle(`${EMOJI.FECHAR} Fechar #${saidaId} — ${resultLabel}`.slice(0, 45))
     .addComponents(
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('enemy').setLabel(SF.enemy.label)
-          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(SF.enemy.maxLength || 80)
-          .setPlaceholder(SF.enemy.placeholder)),
-      new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('craft_amount').setLabel(SF.crafted.label)
-          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(SF.crafted.maxLength || 12).setPlaceholder(SF.crafted.placeholder)),
+          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(SF.crafted.maxLength || 12)
+          .setPlaceholder(SF.crafted.placeholder).setValue('0')),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('kills').setLabel(SF.kills.label)
-          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(SF.kills.maxLength || 5).setPlaceholder(SF.kills.placeholder)),
+          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(SF.kills.maxLength || 5)
+          .setPlaceholder(SF.kills.placeholder).setValue('0')),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('result_notes').setLabel(SF.notes.label)
           .setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(SF.notes.maxLength || 500)
@@ -263,18 +303,20 @@ async function handleCloseSaidaModal(interaction) {
   const ctx = pendingSaidaContext.get(interaction.user.id);
   if (!ctx) return safeReply(interaction, { content: `${EMOJI.PENDENTE} Sessão expirada — começa de novo.` }, { dismissible: true });
 
-  // Resultado vem do select predefinido (step anterior)
+  // Resultado + facção vêm dos selects predefinidos (steps 3 e 3b).
+  // Facção é value da FACTIONS (ex.: 'los_vagos'); converter para label legível.
   const result = ctx.result || 'sem_conflito';
-  const enemyRaw = getModalField(interaction, 'enemy');
-  let enemy_name = enemyRaw, enemy_faction = '';
-  const sepMatch = enemyRaw.match(/^(.+?)\s*[·\-—]\s*(.+)$/);
-  if (sepMatch) { enemy_name = sepMatch[1].trim(); enemy_faction = sepMatch[2].trim(); }
+  const factionKey = ctx.faction || '';
+  const factionEntry = SAIDAS.FACTIONS.find(f => f.value === factionKey);
+  const enemy_faction = factionEntry ? factionEntry.label : '';
+  const enemy_name = ''; // nome específico não é mais capturado — vai em notas se útil
+
   const craft_amount = Math.max(0, Math.min(parseInt(getModalField(interaction, 'craft_amount')) || 0, 999999));
   const our_kills = Math.max(0, Math.min(parseInt(getModalField(interaction, 'kills')) || 0, 500));
   const result_notes = getModalField(interaction, 'result_notes') || '';
   const had_craft = craft_amount > 0;
   const had_fight = result === 'vitoria' || result === 'derrota';
-  const had_domination = false; // definido pela chefia no wizard se necessário
+  const had_domination = false;
 
   try {
     await saidaRepo.updateStatus(ctx.saidaId, 'em_curso', {
@@ -613,7 +655,8 @@ async function handleIssueQtyModal(interaction) {
 
 module.exports = {
   handleCreateSaidaButton, handleCreateTypeSelect, handleCreateSaidaModal,
-  handleCloseSaidaButton, handleCloseSaidaSelect, handleCloseResultSelect, handleCloseSaidaModal,
+  handleCloseSaidaButton, handleCloseSaidaSelect, handleCloseResultSelect,
+  handleCloseFactionSelect, handleCloseSaidaModal,
   handleMarkDeadSelect,
   handleViewSaidasButton,
   handleAddParticipantButton, handleAddParticipantSelect, handleParticipantUsersSelect,

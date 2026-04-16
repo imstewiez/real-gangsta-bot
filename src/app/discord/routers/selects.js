@@ -11,7 +11,8 @@ const {
   handleDeactivateItemSelect, handleReactivateItemSelect,
 } = require('../../../inventory/inventoryHandlers');
 const {
-  handleCloseSaidaSelect, handleCloseResultSelect, handleCreateTypeSelect,
+  handleCloseSaidaSelect, handleCloseResultSelect, handleCloseFactionSelect,
+  handleCreateTypeSelect,
   handleAddParticipantSelect, handleMaterialOpSelect, handleMaterialDirectionSelect,
   handleMaterialItemSelect, handleIssueSaidaSelect, handleIssueParticipantSelect,
   handleIssueItemSelect, handleMarkDeadSelect,
@@ -55,6 +56,7 @@ const SELECT_ROUTES = [
   // Saída — predefinidos + fluxos
   exact('saida::select_create_type',        handleCreateTypeSelect),
   exact('saida::select_close_result',       handleCloseResultSelect),
+  exact('saida::select_close_faction',      handleCloseFactionSelect),
   exact('saida::select_close',              handleCloseSaidaSelect),
   exact('saida::select_add_participant',    handleAddParticipantSelect),
   exact('saida::select_material_op',        handleMaterialOpSelect),

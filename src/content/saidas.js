@@ -7,10 +7,29 @@
 
 const E = require('./emojis');
 
+// Facções conhecidas — dropdown de inimigo no fecho de saída.
+// Se for facção nova / pontual, escolhe "Outra" e regista-se em notas.
+// Limite Discord StringSelect: 25 opções. Deixar espaço para "Outra".
+const FACTIONS = [
+  { value: 'los_vagos',    label: 'Los Vagos',     emoji: '🟡' },
+  { value: 'ballas',       label: 'Ballas',        emoji: '🟣' },
+  { value: 'families',     label: 'Families',      emoji: '🟢' },
+  { value: 'aztecas',      label: 'Aztecas',       emoji: '🔵' },
+  { value: 'marabunta',    label: 'Marabunta',     emoji: '🟤' },
+  { value: 'triads',       label: 'Triads',        emoji: '🔴' },
+  { value: 'lost_mc',      label: 'Lost MC',       emoji: '⚫' },
+  { value: 'bloods',       label: 'Bloods',        emoji: '🩸' },
+  { value: 'angels',       label: 'Angels of Death', emoji: '💀' },
+  { value: 'policia',      label: 'Polícia',       emoji: '🚓' },
+  { value: 'outra',        label: 'Outra facção',  emoji: '❓' },
+  { value: 'desconhecido', label: 'Desconhecido',  emoji: '❔' },
+];
+
 const SAIDAS = {
   // Criação
   CREATE_TITLE: `${E.SAIDA} Nova Saída`,
   CREATE_PROMPT: 'Escolhe o tipo de movimento e o spot. O resto acerta-se na rua.',
+  FACTIONS,
 
   WIZARD_TITLE: `${E.FECHAR} Liquidação de Saída`,
   WIZARD_DESC: (id) => `**Saída #${id}** — fecha nome a nome.`,
