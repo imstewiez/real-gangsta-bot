@@ -76,8 +76,8 @@ const SAIDAS = {
   // Select prompts e placeholders
   SELECTS: {
     QUAL_SAIDA_FECHAR: 'Qual saída vais fechar?',
-    QUAL_SAIDA_MATERIAL: 'Escolhe a saída',
-    QUAL_SAIDA_PARTICIPANTE: 'Escolhe a saída',
+    QUAL_SAIDA_MATERIAL: 'Escolhe a saída para material',
+    QUAL_SAIDA_PARTICIPANTE: 'Escolhe a saída para inscrever',
     TIPO_SAIDA: 'Escolhe o tipo de saída',
     RESULTADO_SAIDA: 'Qual foi o resultado?',
     DIRECAO_MATERIAL: 'Que tipo de movimento?',

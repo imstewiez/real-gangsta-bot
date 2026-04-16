@@ -24,14 +24,14 @@ const pendingItemSelections = new Map();
 // Step 1: Morador clica "Registar Material" → escolhe Entrega ou Venda
 async function handleRegistarMaterialButton(interaction) {
   const options = [
-    { label: 'Entrega (dar material ao grupo)', description: 'Material entregue sem pagamento', value: 'entrega' },
-    { label: 'Venda (vender material ao grupo)', description: 'Material vendido — valor calculado automaticamente', value: 'venda' },
+    { label: 'Entrega (dar material)', description: 'Material entregue à casa sem pagamento', value: 'entrega', emoji: '📥' },
+    { label: 'Venda (vender material)', description: 'Material vendido — valor calculado automaticamente', value: 'venda', emoji: '💰' },
   ];
 
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId('inv::select_tipo_registo')
-      .setPlaceholder('Entrega ou Venda?')
+      .setPlaceholder(INVENTORY.SELECTS.TIPO_REGISTO)
       .setMinValues(1).setMaxValues(1)
       .addOptions(options)
   );
@@ -267,22 +267,22 @@ async function handleGerirMateriaisButton(interaction) {
   }
 
   const options = [
-    { label: 'Adicionar Material', description: 'Criar novo item no catálogo', value: 'add' },
-    { label: 'Editar Preço', description: 'Alterar preço de um material existente', value: 'edit_price' },
-    { label: 'Desativar Material', description: 'Remover material do catálogo', value: 'deactivate' },
-    { label: 'Reativar Material', description: 'Reativar material desativado', value: 'reactivate' },
-    { label: 'Ver Catálogo Completo', description: 'Lista todos os materiais com preços', value: 'list' },
+    { label: 'Adicionar Material', description: 'Criar novo item no catálogo', value: 'add', emoji: '➕' },
+    { label: 'Editar Preço', description: 'Alterar preço de um material existente', value: 'edit_price', emoji: '✏️' },
+    { label: 'Desativar Material', description: 'Remover material do catálogo', value: 'deactivate', emoji: '🗑️' },
+    { label: 'Reativar Material', description: 'Reativar material desativado', value: 'reactivate', emoji: '🔄' },
+    { label: 'Ver Catálogo Completo', description: 'Lista todos os materiais com preços', value: 'list', emoji: '📋' },
   ];
 
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId('inv::select_gerir_action')
-      .setPlaceholder('O que queres fazer?')
+      .setPlaceholder(INVENTORY.SELECTS.GERIR_ACTION)
       .setMinValues(1).setMaxValues(1)
       .addOptions(options)
   );
 
-  await safeReply(interaction, { content: 'Gestão de Materiais — escolhe uma ação:', components: [row], flags: MessageFlags.Ephemeral });
+  await safeReply(interaction, { content: `${EMOJI.EDITAR} Gestão de Materiais — escolhe uma ação:`, components: [row], flags: MessageFlags.Ephemeral });
 }
 
 async function handleGerirActionSelect(interaction) {

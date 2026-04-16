@@ -223,12 +223,12 @@ async function _showRanking(interaction, period) {
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId('bairrista::ranking_period')
-      .setPlaceholder('Escolhe período')
+      .setPlaceholder('Escolhe o período')
       .setMinValues(1).setMaxValues(1)
       .addOptions([
-        { label: 'Semanal', value: 'week', default: period === 'week' },
-        { label: 'Mensal', value: 'month', default: period === 'month' },
-        { label: 'Histórico', value: 'alltime', default: period === 'alltime' },
+        { label: 'Semanal', description: 'Rankings desta semana', value: 'week', emoji: '📅', default: period === 'week' },
+        { label: 'Mensal', description: 'Rankings deste mês', value: 'month', emoji: '📊', default: period === 'month' },
+        { label: 'Histórico', description: 'Rankings de sempre', value: 'alltime', emoji: '🏆', default: period === 'alltime' },
       ])
   );
 

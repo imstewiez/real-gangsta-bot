@@ -6,14 +6,22 @@ const {
 const { inventoryRepo } = require('../repositories');
 const { MODALS, INVENTORY } = require('../content');
 
+// Emoji por categoria de material — consistente em todo o bot
+const CATEGORY_EMOJI = {
+  armas: '🔫', acessorios: '🎒', municoes: '🔹', metais: '⛏️',
+  reciclagem: '♻️', componentes: '🔧', madeiras: '🪵', quimicos: '🧪',
+  electronica: '💻', droga: '💊', comida: '🍖', pesca: '🐟',
+  texteis: '🧵', utilidade: '🔦', outros: '📦',
+};
+
 /**
- * Select menu de materiais — agrupado por categoria, com preço e stock na descrição.
- * Máximo 25 opções (limite Discord). Se houver mais, trunca com aviso.
+ * Select menu de materiais — agrupado por categoria, com emoji + preço + stock.
+ * Máximo 25 opções (limite Discord). Ordenado por categoria, depois por nome.
  */
 async function buildItemSelectMenu(customIdPrefix, placeholder) {
   const items = await inventoryRepo.getItems(true);
 
-  // Agrupar por categoria
+  // Agrupar por categoria (ordem: armas primeiro, depois alfabética)
   const grouped = {};
   for (const item of items) {
     if (!grouped[item.category]) grouped[item.category] = [];
@@ -22,6 +30,7 @@ async function buildItemSelectMenu(customIdPrefix, placeholder) {
 
   const options = [];
   for (const [category, catItems] of Object.entries(grouped)) {
+    const emoji = CATEGORY_EMOJI[category] || '📦';
     for (const item of catItems) {
       if (options.length >= 25) break;
       const price = parseFloat(item.estimated_value) || 0;
@@ -30,6 +39,7 @@ async function buildItemSelectMenu(customIdPrefix, placeholder) {
         label: item.name.slice(0, 100),
         description: `${category} · ${priceStr} · ${item.unit}`.slice(0, 100),
         value: String(item.id),
+        emoji,
       });
     }
     if (options.length >= 25) break;

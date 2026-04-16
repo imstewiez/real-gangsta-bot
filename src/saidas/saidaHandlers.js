@@ -24,6 +24,29 @@ const pendingOpContext = pendingSaidaContext; // alias
 const SAIDA_TYPES = ['craft', 'dominio', 'ataque', 'defesa', 'recolha', 'outra'];
 const VALID_RESULTS = ['vitoria', 'derrota', 'empate', 'sem_conflito', 'abortada'];
 
+const SAIDA_TYPE_EMOJI = { craft: '🛠️', dominio: '🏴', ataque: '⚔️', defesa: '🛡️', recolha: '📦', outra: '📋' };
+const SAIDA_TYPE_LABEL = { craft: 'Craft', dominio: 'Domínio', ataque: 'Ataque', defesa: 'Defesa', recolha: 'Recolha', outra: 'Outra' };
+
+/**
+ * Helper: monta opções ricas para selects de saídas abertas.
+ * Mostra: tipo (emoji) + spot + data + participantes + líder
+ */
+function buildSaidaSelectOptions(saidas) {
+  return saidas.slice(0, 25).map(s => {
+    const emoji = SAIDA_TYPE_EMOJI[s.operation_type] || '📋';
+    const typeLabel = SAIDA_TYPE_LABEL[s.operation_type] || s.operation_type;
+    const date = String(s.date).split('T')[0];
+    const spot = s.spot ? ` · ${s.spot}` : '';
+    const leader = s.leader_name ? ` · ${s.leader_name}` : '';
+    return {
+      label: `#${s.id} — ${typeLabel} (${date})`.slice(0, 100),
+      description: `${s.status}${spot}${leader}`.slice(0, 100) || 'Sem detalhes',
+      value: String(s.id),
+      emoji,
+    };
+  });
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // CRIAR SAÍDA
 // ═══════════════════════════════════════════════════════════════════════════
@@ -143,15 +166,11 @@ async function handleCloseSaidaButton(interaction) {
   if (!open.length) {
     return safeReply(interaction, { content: `${EMOJI.INFO} Sem saídas abertas.`, flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
-  const options = open.map(s => ({
-    label: `#${s.id} — ${s.operation_type} (${s.date})`.slice(0, 100),
-    description: s.spot || 'Sem spot',
-    value: String(s.id),
-  }));
+  const options = buildSaidaSelectOptions(open);
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder().setCustomId('saida::select_close')
       .setPlaceholder(SAIDAS.SELECTS.QUAL_SAIDA_FECHAR).setMinValues(1).setMaxValues(1)
-      .addOptions(options.slice(0, 25)));
+      .addOptions(options));
   await safeReply(interaction, { content: `${EMOJI.FECHAR} Escolhe a saída a fechar:`, components: [row], flags: MessageFlags.Ephemeral });
 }
 
@@ -318,15 +337,11 @@ async function handleAddParticipantButton(interaction) {
   }
   const open = await saidaRepo.findOpen();
   if (!open.length) return safeReply(interaction, { content: `${EMOJI.INFO} Sem saídas abertas.`, flags: MessageFlags.Ephemeral }, { dismissible: true });
-  const options = open.map(s => ({
-    label: `#${s.id} — ${s.operation_type} (${s.date})`.slice(0, 100),
-    description: s.spot || 'Sem spot',
-    value: String(s.id),
-  }));
+  const options = buildSaidaSelectOptions(open);
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder().setCustomId('saida::select_add_participant')
-      .setPlaceholder('Qual saída?').setMinValues(1).setMaxValues(1)
-      .addOptions(options.slice(0, 25)));
+      .setPlaceholder(SAIDAS.SELECTS.QUAL_SAIDA_PARTICIPANTE).setMinValues(1).setMaxValues(1)
+      .addOptions(options));
   await safeReply(interaction, { content: `${EMOJI.PARTICIPANTE} Em que saída entram os nomes?`, components: [row], flags: MessageFlags.Ephemeral });
 }
 
@@ -380,15 +395,11 @@ async function handleRegisterMaterialButton(interaction) {
   }
   const open = await saidaRepo.findOpen();
   if (!open.length) return safeReply(interaction, { content: `${EMOJI.INFO} Sem saídas abertas.`, flags: MessageFlags.Ephemeral }, { dismissible: true });
-  const options = open.map(s => ({
-    label: `#${s.id} — ${s.operation_type}`.slice(0, 100),
-    description: s.spot || 'Sem spot',
-    value: String(s.id),
-  }));
+  const options = buildSaidaSelectOptions(open);
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder().setCustomId('saida::select_material_op')
-      .setPlaceholder('Qual saída?').setMinValues(1).setMaxValues(1)
-      .addOptions(options.slice(0, 25)));
+      .setPlaceholder(SAIDAS.SELECTS.QUAL_SAIDA_MATERIAL).setMinValues(1).setMaxValues(1)
+      .addOptions(options));
   await safeReply(interaction, { content: `${EMOJI.MATERIAL} Material em que saída?`, components: [row], flags: MessageFlags.Ephemeral });
 }
 
@@ -397,16 +408,16 @@ async function handleMaterialOpSelect(interaction) {
   const saidaId = parseInt(interaction.values[0]);
   pendingSaidaContext.set(interaction.user.id, { saidaId, action: 'material_op' });
   const directionOptions = [
-    { label: 'Fornecido', description: 'Material que saiu da firma', value: 'fornecido' },
-    { label: 'Devolvido', description: 'Material que voltou à casa', value: 'devolvido' },
-    { label: 'Perdido', description: 'Material perdido na rua', value: 'perdido' },
-    { label: 'Consumido', description: 'Material gasto durante a saída', value: 'consumido' },
+    { label: 'Fornecido', description: 'Material que saiu da firma → participante', value: 'fornecido', emoji: '📤' },
+    { label: 'Devolvido', description: 'Material que voltou à casa', value: 'devolvido', emoji: '↩️' },
+    { label: 'Perdido', description: 'Material perdido na rua', value: 'perdido', emoji: '💀' },
+    { label: 'Consumido', description: 'Material gasto durante a saída', value: 'consumido', emoji: '🔥' },
   ];
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder().setCustomId('saida::select_material_direction')
-      .setPlaceholder('Direcção do material').setMinValues(1).setMaxValues(1)
+      .setPlaceholder(SAIDAS.SELECTS.DIRECAO_MATERIAL).setMinValues(1).setMaxValues(1)
       .addOptions(directionOptions));
-  await safeUpdate(interaction, { content: `Saída **#${saidaId}** — direcção:`, components: [row] });
+  await safeUpdate(interaction, { content: `Saída **#${saidaId}** — que tipo de movimento?`, components: [row] });
 }
 
 async function handleMaterialDirectionSelect(interaction) {
@@ -481,15 +492,11 @@ async function handleIssueToParticipantButton(interaction) {
   }
   const open = await saidaRepo.findOpen();
   if (!open.length) return safeReply(interaction, { content: `${EMOJI.INFO} Sem saídas abertas.`, flags: MessageFlags.Ephemeral }, { dismissible: true });
-  const options = open.map(s => ({
-    label: `#${s.id} — ${s.operation_type} (${s.date})`.slice(0, 100),
-    description: s.spot || 'Sem spot',
-    value: String(s.id),
-  }));
+  const options = buildSaidaSelectOptions(open);
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder().setCustomId('saida::issue_select_saida')
-      .setPlaceholder('Qual saída?').setMinValues(1).setMaxValues(1)
-      .addOptions(options.slice(0, 25)));
+      .setPlaceholder(SAIDAS.SELECTS.QUAL_SAIDA_MATERIAL).setMinValues(1).setMaxValues(1)
+      .addOptions(options));
   await safeReply(interaction, { content: `${EMOJI.FORNECER} Fornecer material nominal — qual saída?`, components: [row], flags: MessageFlags.Ephemeral });
 }
 
@@ -502,16 +509,21 @@ async function handleIssueSaidaSelect(interaction) {
     pendingSaidaContext.delete(interaction.user.id);
     return safeUpdate(interaction, { content: `${EMOJI.WARN} Saída **#${saidaId}** sem nomes. Adiciona primeiro em "Participantes".`, components: [] });
   }
-  const options = participants.slice(0, 25).map(p => ({
-    label: `${p.display_name || p.discord_id}`.slice(0, 100),
-    description: p.role_in_op || 'membro',
-    value: p.discord_id,
-  }));
+  const options = participants.slice(0, 25).map(p => {
+    const typeTag = p.participant_type === 'trabalhador' ? '🛠️ Trabalhador' : '🏴 Caracterizado';
+    const weapon = p.own_weapon ? ' · arma própria' : '';
+    return {
+      label: `${p.display_name || p.discord_id}`.slice(0, 100),
+      description: `${typeTag}${weapon}`.slice(0, 100),
+      value: p.discord_id,
+      emoji: p.participant_type === 'trabalhador' ? '🛠️' : '🏴',
+    };
+  });
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder().setCustomId('saida::issue_select_participant')
-      .setPlaceholder('Para quem vai?').setMinValues(1).setMaxValues(1)
+      .setPlaceholder('Para quem vai o material?').setMinValues(1).setMaxValues(1)
       .addOptions(options));
-  await safeUpdate(interaction, { content: `Saída **#${saidaId}** — para quem?`, components: [row] });
+  await safeUpdate(interaction, { content: `${EMOJI.FORNECER} Saída **#${saidaId}** — para quem?`, components: [row] });
 }
 
 async function handleIssueParticipantSelect(interaction) {
