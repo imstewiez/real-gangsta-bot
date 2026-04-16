@@ -17,18 +17,12 @@ const { EMOJI, ERRORS, SUCCESS, SAIDAS, MODALS } = require('../content');
 
 // Context efémero por user durante fluxos multi-step.
 // TTL de 15 minutos — limpa entradas abandonadas automaticamente.
-const pendingSaidaContext = new Map();
-const CONTEXT_TTL_MS = 15 * 60 * 1000;
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, ctx] of pendingSaidaContext) {
-    if (ctx._ts && now - ctx._ts > CONTEXT_TTL_MS) pendingSaidaContext.delete(key);
-  }
-}, 60 * 1000).unref();
+const { createSessionStore } = require('../shared/sessionStore');
+const pendingSaidaContext = createSessionStore('saida', { ttlMs: 15 * 60 * 1000 });
 
 // Wrapper que adiciona timestamp ao guardar contexto
 function _setContext(userId, ctx) {
-  pendingSaidaContext.set(userId, { ...ctx, _ts: Date.now() });
+  pendingSaidaContext.set(userId, ctx);
 }
 
 const SAIDA_TYPES = ['craft', 'dominio', 'ataque', 'defesa', 'recolha', 'outra'];

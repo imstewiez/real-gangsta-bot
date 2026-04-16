@@ -1,11 +1,11 @@
 'use strict';
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { brandEmbed, applyLogo } = require('../shared/embedBuilders');
 const { BAIRRISTAS, BUTTONS } = require('../content');
+const { buttonFromDef, buttonRow } = require('../shared/ui/buttons');
 
 // Painel Casa — Bairrista.
 // Publicado em canais de bairristas (partilhado ou individual).
-// 3 rows: acções principais, consulta, stats avançadas.
+// 2 rows: acções principais, consulta e progresso.
 function buildBairristaPanel() {
   const embed = applyLogo(brandEmbed('HOUSE')
     .setTitle(BAIRRISTAS.PANEL.TITLE)
@@ -13,18 +13,16 @@ function buildBairristaPanel() {
 
   const B = BUTTONS.BAIRRISTA;
 
-  // Row 1: Acções principais
-  const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('morador::registar_material').setLabel(B.ENTREGA.label).setStyle(ButtonStyle[B.ENTREGA.style]).setEmoji(B.ENTREGA.emoji),
-    new ButtonBuilder().setCustomId('morador::meu_ponto').setLabel(B.MEU_PONTO.label).setStyle(ButtonStyle[B.MEU_PONTO.style]).setEmoji(B.MEU_PONTO.emoji),
-    new ButtonBuilder().setCustomId('morador::ranking').setLabel(B.RANKING.label).setStyle(ButtonStyle[B.RANKING.style]).setEmoji(B.RANKING.emoji),
+  const row1 = buttonRow(
+    buttonFromDef('morador::registar_material', B.ENTREGA),
+    buttonFromDef('morador::meu_ponto',         B.MEU_PONTO),
+    buttonFromDef('morador::ranking',           B.RANKING),
   );
 
-  // Row 2: Consulta e progresso
-  const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('morador::my_performance').setLabel(B.PERFORMANCE.label).setStyle(ButtonStyle[B.PERFORMANCE.style]).setEmoji(B.PERFORMANCE.emoji),
-    new ButtonBuilder().setCustomId('morador::historico').setLabel(B.HISTORICO.label).setStyle(ButtonStyle[B.HISTORICO.style]).setEmoji(B.HISTORICO.emoji),
-    new ButtonBuilder().setCustomId('morador::progresso_tier').setLabel(B.PROGRESSO.label).setStyle(ButtonStyle[B.PROGRESSO.style]).setEmoji(B.PROGRESSO.emoji),
+  const row2 = buttonRow(
+    buttonFromDef('morador::my_performance',    B.PERFORMANCE),
+    buttonFromDef('morador::historico',         B.HISTORICO),
+    buttonFromDef('morador::progresso_tier',    B.PROGRESSO),
   );
 
   return { embeds: [embed], components: [row1, row2] };

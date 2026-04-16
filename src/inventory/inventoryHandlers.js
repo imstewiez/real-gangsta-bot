@@ -16,17 +16,11 @@ const { EMOJI, ERRORS, MODALS, INVENTORY } = require('../content');
 
 // Context efémero por user para fluxos multi-step de inventário.
 // TTL de 15 minutos — limpa entradas abandonadas automaticamente.
-const pendingItemSelections = new Map();
-const ITEM_CTX_TTL_MS = 15 * 60 * 1000;
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, ctx] of pendingItemSelections) {
-    if (ctx._ts && now - ctx._ts > ITEM_CTX_TTL_MS) pendingItemSelections.delete(key);
-  }
-}, 60 * 1000).unref();
+const { createSessionStore } = require('../shared/sessionStore');
+const pendingItemSelections = createSessionStore('inventory', { ttlMs: 15 * 60 * 1000 });
 
 function _setItemCtx(userId, ctx) {
-  pendingItemSelections.set(userId, { ...ctx, _ts: Date.now() });
+  pendingItemSelections.set(userId, ctx);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

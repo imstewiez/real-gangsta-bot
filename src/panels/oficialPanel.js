@@ -1,7 +1,7 @@
 'use strict';
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { brandEmbed, applyLogo } = require('../shared/embedBuilders');
 const { PANELS, BUTTONS } = require('../content');
+const { buttonFromDef, button, buttonRow } = require('../shared/ui/buttons');
 
 // Painel do Oficial — secretaria.
 function buildOficialPanel() {
@@ -11,11 +11,11 @@ function buildOficialPanel() {
 
   const B = BUTTONS.OFICIAL;
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('morador::registar_material').setLabel(B.REGISTAR.label).setStyle(ButtonStyle[B.REGISTAR.style]).setEmoji(B.REGISTAR.emoji),
-    new ButtonBuilder().setCustomId('oficial::ver_saidas').setLabel('Ver Saídas').setStyle(ButtonStyle.Primary).setEmoji('🏴'),
-    new ButtonBuilder().setCustomId('morador::historico').setLabel(B.MEMBROS.label).setStyle(ButtonStyle[B.MEMBROS.style]).setEmoji(B.MEMBROS.emoji),
-    new ButtonBuilder().setCustomId('morador::totais').setLabel('Resumo').setStyle(ButtonStyle.Secondary).setEmoji('🏆'),
+  const row = buttonRow(
+    buttonFromDef('morador::registar_material', B.REGISTAR),
+    button({ customId: 'oficial::ver_saidas', label: 'Ver Saídas', style: 'Primary',   emoji: '🏴' }),
+    buttonFromDef('morador::historico',         B.MEMBROS),
+    button({ customId: 'morador::totais',       label: 'Resumo',   style: 'Secondary', emoji: '🏆' }),
   );
 
   return { embeds: [embed], components: [row] };

@@ -1,7 +1,7 @@
 'use strict';
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { brandEmbed, applyLogo } = require('../shared/embedBuilders');
 const { PANELS, BUTTONS } = require('../content');
+const { buttonFromDef, buttonRow } = require('../shared/ui/buttons');
 
 // Painel do Patrão di Zona.
 // Publicado em canal dedicado ao patrão; gere bairristas: listar, entregas,
@@ -13,11 +13,11 @@ function buildPatraoDiZonaPanel() {
 
   const B = BUTTONS.PATRAO;
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('chefe_mor::listar_moradores').setLabel(B.LISTAR.label).setStyle(ButtonStyle[B.LISTAR.style]).setEmoji(B.LISTAR.emoji),
-    new ButtonBuilder().setCustomId('chefe_mor::ver_entregas').setLabel(B.ENTREGAS.label).setStyle(ButtonStyle[B.ENTREGAS.style]).setEmoji(B.ENTREGAS.emoji),
-    new ButtonBuilder().setCustomId('chefe_mor::ver_vendas').setLabel(B.VENDAS.label).setStyle(ButtonStyle[B.VENDAS.style]).setEmoji(B.VENDAS.emoji),
-    new ButtonBuilder().setCustomId('chefe_mor::ver_tops').setLabel(B.TOPOS.label).setStyle(ButtonStyle[B.TOPOS.style]).setEmoji(B.TOPOS.emoji),
+  const row = buttonRow(
+    buttonFromDef('chefe_mor::listar_moradores', B.LISTAR),
+    buttonFromDef('chefe_mor::ver_entregas',     B.ENTREGAS),
+    buttonFromDef('chefe_mor::ver_vendas',       B.VENDAS),
+    buttonFromDef('chefe_mor::ver_tops',         B.TOPOS),
   );
 
   return { embeds: [embed], components: [row] };
