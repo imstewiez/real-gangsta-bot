@@ -14,6 +14,7 @@ const { saidaRepo } = require('../repositories');
 const saidaEngine = require('./saidaEngine');
 const { publishSessionEmbed } = require('./saidaSession');
 const { EMOJI, ERRORS, SUCCESS, SAIDAS, MODALS } = require('../content');
+const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
 
 // Context efémero por user durante fluxos multi-step.
 // TTL de 15 minutos — limpa entradas abandonadas automaticamente.
@@ -39,7 +40,7 @@ function buildSaidaSelectOptions(saidas) {
   return saidas.slice(0, 25).map(s => {
     const emoji = SAIDA_TYPE_EMOJI[s.operation_type] || '📋';
     const typeLabel = SAIDA_TYPE_LABEL[s.operation_type] || s.operation_type;
-    const date = String(s.date).split('T')[0];
+    const date = formatPtDateOnly(s.date);
     const spot = s.spot ? ` · ${s.spot}` : '';
     const leader = s.leader_name ? ` · ${s.leader_name}` : '';
     return {
@@ -128,11 +129,14 @@ async function handleCreateSaidaModal(interaction) {
       notes, createdBy: interaction.user.id,
     });
     const { SAIDA_TYPE } = require('../content');
+    // Data no formato canónico dd/mm/yyyy; só adiciona hora se não for 00:00.
+    const dateDisplay = formatPtDateOnly(date);
+    const timeDisplay = (time && time !== '00:00') ? ` · ${time}` : '';
     const embed = brandEmbed('MOVEMENT')
       .setTitle(`${EMOJI.SAIDA} Saída #${s.id} aberta`)
       .addFields(
         { name: 'Tipo',  value: `**${SAIDA_TYPE[type] || type}**`, inline: true },
-        { name: 'Data',  value: `**${date}**${time ? ` · ${time}` : ''}`, inline: true },
+        { name: 'Data',  value: `**${dateDisplay}**${timeDisplay}`, inline: true },
         { name: 'Spot',  value: spot ? `**${spot}**` : '—', inline: true },
       );
     if (notes) embed.addFields({ name: 'Notas', value: notes, inline: false });
@@ -325,7 +329,13 @@ async function handleViewSaidasButton(interaction) {
   const lines = list.map(s => {
     const em = statusEmoji[s.status] || '⬜';
     const re = s.status === 'concluida' && s.result ? ` ${resultEmoji[s.result] || ''}` : '';
-    return `${em}${re} **#${s.id}** — ${s.operation_type} | ${s.date} | ${s.spot || '-'} | Líder: ${s.leader_name || '-'}`;
+    // Data no formato dd/mm/yyyy. Se houver hora marcada, inclui.
+    let when = formatPtDateOnly(s.date);
+    if (s.scheduled_time) {
+      const t = String(s.scheduled_time).slice(0, 5);
+      if (t && t !== '00:00') when += ` · ${t}`;
+    }
+    return `${em}${re} **#${s.id}** — ${s.operation_type} · ${when} · ${s.spot || '—'} · Líder: ${s.leader_name || '—'}`;
   });
   const embed = brandEmbed('MOVEMENT').setTitle(`${EMOJI.SAIDA} Saídas recentes`).setDescription(lines.join('\n'));
   return safeReply(interaction, { embeds: [embed] }, { dismissible: true });

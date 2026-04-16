@@ -38,7 +38,7 @@ async function handle(interaction) {
       .setTitle(`${EMOJI.SAIDA} Saída #${specificId} — O teu resultado`)
       .addFields(
         { name: 'Spot', value: p.spot || '—', inline: true },
-        { name: 'Data', value: formatPtDate(p.date), inline: true },
+        { name: 'Data', value: formatPtDateOnly(p.date), inline: true },
         { name: 'Tipo', value: typeTag, inline: true },
         { name: `${EMOJI.KILL} Kills`, value: String(p.kills || 0), inline: true },
         { name: p.died ? `${EMOJI.MORTE} Morto` : `${EMOJI.OK} Vivo`, value: '\u200b', inline: true },

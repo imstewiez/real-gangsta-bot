@@ -28,7 +28,7 @@ const { brandEmbed, applyLogo, rankBadge } = require('../shared/embedBuilders');
 const { EMOJI, SAIDA_TYPE } = require('../content');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
-const { formatPtDate } = require('../shared/formatPtDate');
+const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BUILD SESSION EMBED + COMPONENTS
@@ -45,15 +45,13 @@ async function buildSessionEmbed(saidaId) {
   const slotsLeft = Math.max(0, maxChar - characterized.length);
 
   const type = SAIDA_TYPE[saida.operation_type] || saida.operation_type;
-  // Data + hora no formato canónico do bot (dd/mm/yyyy - hh:mm).
-  // Se houver scheduled_time, constrói ISO completo para formatar;
-  // senão, só a data.
-  let dateLine;
+  // Data no formato canónico dd/mm/yyyy. Só mostra hora se foi marcada
+  // (scheduled_time !== null && !== '00:00'); evita mostrar "00:00" à toa
+  // para saídas onde a hora não é relevante.
+  let dateLine = formatPtDateOnly(saida.date);
   if (saida.scheduled_time) {
-    const iso = `${String(saida.date).split('T')[0]}T${String(saida.scheduled_time).slice(0, 5)}:00`;
-    dateLine = formatPtDate(iso);
-  } else {
-    dateLine = formatPtDate(saida.date);
+    const t = String(saida.scheduled_time).slice(0, 5);
+    if (t && t !== '00:00') dateLine += ` · ${t}`;
   }
   const leader = saida.leader_name ? `<@${saida.leader_discord_id}>` : '—';
 
@@ -65,7 +63,7 @@ async function buildSessionEmbed(saidaId) {
     `${EMOJI.SAIDA} **Saída #${saida.id}** — ${type}`,
     '',
     `${EMOJI.ZONA} **Spot:** ${saida.spot || '—'}`,
-    `📅 **Data/Hora:** ${dateLine}`,
+    `📅 **Data:** ${dateLine}`,
     `${EMOJI.LIDER} **Líder:** ${leader}`,
     '',
     `${EMOJI.PARTICIPANTE} **Caracterizados:** ${characterized.length}/${maxChar} ${slotsLeft === 0 ? '(cheio)' : `(${slotsLeft} vagas)`}`,

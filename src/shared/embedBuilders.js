@@ -154,10 +154,17 @@ function stockEmbed(items) {
 }
 
 function operationEmbed(op) {
+  // Data no formato dd/mm/yyyy; só adiciona hora se scheduled_time foi
+  // marcada explicitamente (!= 00:00).
+  let dateValue = formatPtDateOnly(op.date);
+  if (op.scheduled_time) {
+    const t = String(op.scheduled_time).slice(0, 5);
+    if (t && t !== '00:00') dateValue += ` · ${t}`;
+  }
   return brandEmbed()
     .setTitle(`${EMOJI.SAIDA} Saída #${op.id} — ${SAIDA_TYPE[op.operation_type] || op.operation_type}`)
     .addFields(
-      { name: 'Data', value: formatPtDate(op.date), inline: true },
+      { name: 'Data', value: dateValue, inline: true },
       { name: 'Estado', value: STATUS[op.status] || op.status, inline: true },
       { name: 'Spot', value: op.spot || '—', inline: true },
       { name: 'Grupo', value: `#${op.group_number} (máx ${op.max_participants})`, inline: true },
