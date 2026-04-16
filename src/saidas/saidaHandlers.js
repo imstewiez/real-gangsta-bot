@@ -13,7 +13,6 @@ const { isChefia, isOficial } = require('../permissions/permissionEngine');
 const { saidaRepo } = require('../repositories');
 const saidaEngine = require('./saidaEngine');
 const { publishSessionEmbed } = require('./saidaSession');
-const MESSAGES = require('../shared/errorMessages');
 const { EMOJI, ERRORS, SUCCESS, SAIDAS, MODALS } = require('../content');
 
 // Context efémero por user durante fluxos multi-step (manteve nome legado
@@ -444,16 +443,17 @@ async function handleMaterialItemSelect(interaction) {
   pendingSaidaContext.set(interaction.user.id, ctx);
   const { inventoryRepo } = require('../repositories');
   const item = await inventoryRepo.getItemById(itemId);
+  const MF = MODALS.SAIDA_MATERIAL.FIELDS;
   const modal = new ModalBuilder()
     .setCustomId('saida::modal_material_qty')
     .setTitle(`${ctx.direction} — ${item?.name || 'Item'}`)
     .addComponents(
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('quantity').setLabel('Quantidade')
-          .setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(10).setPlaceholder('Ex: 10')),
+        new TextInputBuilder().setCustomId('quantity').setLabel(MF.qty.label)
+          .setStyle(TextInputStyle.Short).setRequired(MF.qty.required).setMaxLength(MF.qty.maxLength).setPlaceholder(MF.qty.placeholder)),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('notes').setLabel('Notas')
-          .setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(300)));
+        new TextInputBuilder().setCustomId('notes').setLabel(MF.notes.label)
+          .setStyle(TextInputStyle.Paragraph).setRequired(MF.notes.required).setMaxLength(MF.notes.maxLength)));
   await safeShowModal(interaction, modal);
 }
 
@@ -546,14 +546,15 @@ async function handleIssueItemSelect(interaction) {
   pendingSaidaContext.set(interaction.user.id, ctx);
   const { inventoryRepo } = require('../repositories');
   const item = await inventoryRepo.getItemById(itemId);
+  const IF = MODALS.SAIDA_MATERIAL.FIELDS;
   const modal = new ModalBuilder()
     .setCustomId('saida::issue_modal_qty')
-    .setTitle(`Fornecer — ${item?.name || 'Item'}`)
+    .setTitle(`${EMOJI.FORNECER} Fornecer — ${item?.name || 'Item'}`)
     .addComponents(
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('quantity').setLabel('Quantidade').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(10).setPlaceholder('Ex: 1')),
+        new TextInputBuilder().setCustomId('quantity').setLabel(IF.qty.label).setStyle(TextInputStyle.Short).setRequired(IF.qty.required).setMaxLength(IF.qty.maxLength).setPlaceholder(IF.qty.placeholder)),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('notes').setLabel('Notas').setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(200)));
+        new TextInputBuilder().setCustomId('notes').setLabel(IF.notes.label).setStyle(TextInputStyle.Paragraph).setRequired(IF.notes.required).setMaxLength(IF.notes.maxLength)));
   await safeShowModal(interaction, modal);
 }
 

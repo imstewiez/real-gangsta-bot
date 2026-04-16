@@ -13,7 +13,6 @@ const { buildItemSelectMenu, buildStockAdjustmentModal } = require('./inventoryM
 const { inventoryRepo, memberRepo } = require('../repositories');
 const { isChefia } = require('../permissions/permissionEngine');
 const { EMOJI, ERRORS, MODALS, INVENTORY } = require('../content');
-const MESSAGES = require('../shared/errorMessages'); // legacy shim
 
 const pendingItemSelections = new Map();
 
@@ -70,7 +69,7 @@ async function handleItemSelect(interaction) {
 
   const item = await inventoryRepo.getItemById(parseInt(itemId));
   if (!item) {
-    return safeReply(interaction, { content: MESSAGES.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const customId = interaction.customId;
@@ -124,7 +123,7 @@ async function handleQuantityModal(interaction) {
   const quantity = parseInt(quantityStr);
 
   if (isNaN(quantity) || quantity <= 0) {
-    return safeReply(interaction, { content: MESSAGES.INVALID_QUANTITY() }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.INVALID_QUANTITY() }, { dismissible: true });
   }
 
   try {
@@ -221,7 +220,7 @@ async function handleStockCommand(interaction) {
 
 async function handleAdjustStockButton(interaction) {
   if (!isChefia(interaction.member)) {
-    return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ajustar stock'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.NO_PERMISSION('ajustar stock'), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
   const menu = await buildItemSelectMenu('inv::select_ajuste', 'Seleciona o item para ajustar');
   await safeReply(interaction, { content: 'Que item queres ajustar?', components: [menu], flags: MessageFlags.Ephemeral });
@@ -263,7 +262,7 @@ async function handleAdjustModal(interaction) {
 
 async function handleGerirMateriaisButton(interaction) {
   if (!isChefia(interaction.member)) {
-    return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('gerir materiais'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.NO_PERMISSION('gerir materiais'), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const options = [
@@ -406,7 +405,7 @@ async function handleEditItemSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const itemId = parseInt(interaction.values[0]);
   const item = await inventoryRepo.getItemById(itemId);
-  if (!item) return safeReply(interaction, { content: MESSAGES.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
+  if (!item) return safeReply(interaction, { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
 
   pendingItemSelections.set(interaction.user.id, { action: 'edit_price', itemId, itemName: item.name });
 
@@ -457,7 +456,7 @@ async function handleDeactivateItemSelect(interaction) {
 
   const itemId = parseInt(interaction.values[0]);
   const item = await inventoryRepo.getItemById(itemId);
-  if (!item) return safeReply(interaction, { content: MESSAGES.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
+  if (!item) return safeReply(interaction, { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
 
   await inventoryRepo.updateItem(itemId, { active: false });
 
@@ -477,7 +476,7 @@ async function handleReactivateItemSelect(interaction) {
 
   const itemId = parseInt(interaction.values[0]);
   const item = await inventoryRepo.getItemById(itemId);
-  if (!item) return safeReply(interaction, { content: MESSAGES.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
+  if (!item) return safeReply(interaction, { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
 
   await inventoryRepo.updateItem(itemId, { active: true });
 
@@ -500,7 +499,7 @@ async function handleEncomendaSelect(interaction) {
   if (!itemId || itemId === 'none') return;
 
   const item = await inventoryRepo.getItemById(itemId);
-  if (!item) return safeReply(interaction, { content: MESSAGES.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
+  if (!item) return safeReply(interaction, { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
 
   pendingItemSelections.set(interaction.user.id, { itemId, itemName: item.name, action: 'order' });
 
@@ -532,7 +531,7 @@ async function handleEncomendaModal(interaction) {
   const notes = getModalField(interaction, 'notes');
   const quantity = parseInt(quantityStr);
 
-  if (isNaN(quantity) || quantity <= 0) return safeReply(interaction, { content: MESSAGES.INVALID_QUANTITY() }, { dismissible: true });
+  if (isNaN(quantity) || quantity <= 0) return safeReply(interaction, { content: ERRORS.INVALID_QUANTITY() }, { dismissible: true });
 
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) return safeReply(interaction, { content: 'Não estás registado no sistema.' }, { dismissible: true });

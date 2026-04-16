@@ -85,6 +85,7 @@ const saidaStats = require('./saidas/saidaStatsHandlers');
 const saidaSession = require('./saidas/saidaSession');
 const { getCurrentWeekRanking, getPreviousWeekRanking } = require('./rankings/rankingEngine');
 const { rankingEmbed, brandEmbed, stockEmbed } = require('./shared/embedBuilders');
+const { ERRORS, EMOJI } = require('./content');
 const { inventoryRepo } = require('./repositories');
 const { getRecentLogs, sendAuditToChannel } = require('./audit/auditEngine');
 const {
@@ -99,6 +100,7 @@ const {
   handleSummary: availHandleSummary,
   handleRefresh: availHandleRefresh,
 } = require('./availability/availabilityHandlers');
+const { createSession: availCreateSession } = require('./availability/availabilityEngine');
 const {
   setSticky, removeSticky, refresh: stickyRefresh,
   onMessageCreate: stickyOnMessage, listRenderers: stickyListRenderers,
@@ -115,12 +117,13 @@ const {
   handleHistory: radioHandleHistory,
   handleRefresh: radioHandleRefresh,
 } = require('./radio/radioHandlers');
+const { buildEmbed: radioEmbed, buildComponents: radioComponents } = require('./radio/radioEngine');
 const {
   handleRegisterKillButton, handleKillModal, handleLeaderboardButton,
 } = require('./kills/killHandlers');
 const { isDuplicate } = require('./shared/interactionHelpers');
 const { safeReply } = require('./shared/interactionHelpers');
-const MESSAGES = require('./shared/errorMessages');
+// ERRORS importado do content layer (canonical — sem shim legacy).
 const { weekBounds } = require('./util');
 const { memberRepo } = require('./repositories');
 
@@ -352,7 +355,7 @@ async function _dispatchInteraction(interaction) {
       const cmd = interaction.commandName;
 
       if (cmd === 'rg-sync-panels') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync panels'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('sync panels'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const results = await bootstrapAll(client);
         const icon = { created: '✅', edited: '✏️', skipped: '⚪', failed: '❌' };
@@ -409,8 +412,6 @@ async function _dispatchInteraction(interaction) {
         const { monthlyRankingRepo } = require('./repositories');
         const rows = await monthlyRankingRepo.getAllTimeTop(eixo, 15);
         if (!rows.length) return safeReply(interaction, { content: '_Sem dados all-time ainda. Corre `/rg-rebuild-rankings` primeiro._' }, { dismissible: true });
-        const { brandEmbed } = require('./shared/embedBuilders');
-        const { EMOJI } = require('./content');
         const medals = [EMOJI.MEDAL_1, EMOJI.MEDAL_2, EMOJI.MEDAL_3];
         const fmt = (r, i) => {
           const place = medals[i] || `**${i + 1}.**`;
@@ -431,7 +432,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-rebuild-rankings') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('rebuild rankings'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('rebuild rankings'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const { computeMonthlyRankings, recomputeAllTimeStats } = require('./rankings/monthlyRankingEngine');
         const t0 = Date.now();
@@ -443,12 +444,12 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-close-saida' || cmd === 'rg-close-operation') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('fechar saída'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('fechar saída'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const opId = interaction.options.getInteger('id');
         const { closeSaida } = require('./saidas/saidaEngine');
         const op = await closeSaida(opId, {}, interaction.user.id);
-        if (!op) return safeReply(interaction, { content: MESSAGES.OPERATION_NOT_FOUND() }, { dismissible: true });
+        if (!op) return safeReply(interaction, { content: ERRORS.SAIDA_NOT_FOUND() }, { dismissible: true });
         const r = op.reconciliation || {};
         const lines = [`✅ Operação #${opId} concluída.`];
         lines.push(`📦 Material — fornecido: ${r.fornecido || 0}, devolvido: ${r.devolvido || 0}, perdido: ${r.perdido || 0}, consumido: ${r.consumido || 0}.`);
@@ -459,7 +460,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-audit') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver logs'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('ver logs'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const limit = interaction.options.getInteger('limite') || 20;
         const logs = await getRecentLogs(limit);
@@ -490,7 +491,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-add-item') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('adicionar itens'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('adicionar itens'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const nome = interaction.options.getString('nome');
         const categoria = interaction.options.getString('categoria');
@@ -503,7 +504,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-item-set-price') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('editar itens'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('editar itens'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const nome = interaction.options.getString('nome');
         const preco = interaction.options.getNumber('preco');
@@ -517,7 +518,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-catalog-sync-prices') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync catálogo'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('sync catálogo'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const modo = interaction.options.getString('modo') || 'prices';
         const { syncPrices } = require('./inventory/catalogPricesSync');
@@ -570,7 +571,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-sync-perms') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync perms'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('sync perms'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const modo = interaction.options.getString('modo') || 'dry-run';
         const apply = modo === 'apply';
@@ -588,7 +589,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-layout-check') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('verificar layout'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('verificar layout'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const { checkLayout, summarize: summarizeLayout } = require('./discord/layoutCheck');
         const result = await checkLayout(interaction.guild);
@@ -596,7 +597,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-backfill-members') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('backfill membros'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('backfill membros'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const modo = interaction.options.getString('modo') || 'dry-run';
         const dryRun = modo === 'dry-run';
@@ -613,7 +614,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-data-health') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('data health'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('data health'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const { collect, formatDiscord } = require('./lib/dataHealth');
         const report = await collect({ guild: interaction.guild });
@@ -621,7 +622,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-reconcile') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('reconcile'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('reconcile'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const dominio = interaction.options.getString('dominio');
         const modo    = interaction.options.getString('modo');
@@ -650,7 +651,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-retention-run') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('retention'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('retention'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const modo = interaction.options.getString('modo');
         const dryRun = modo === 'dry-run';
@@ -754,7 +755,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-sync-sheets') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync sheets'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('sync sheets'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const { syncAll } = require('./sheets/syncEngine');
         const r = await syncAll();
@@ -778,7 +779,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-sync-sheets-tab') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('sync sheets'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('sync sheets'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const tab = interaction.options.getString('tab');
         const { syncOne } = require('./sheets/syncEngine');
@@ -792,7 +793,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-sync-sheets-rebuild') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('rebuild sheets'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('rebuild sheets'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const purge = interaction.options.getBoolean('purge') || false;
         const { rebuildWorkbook } = require('./sheets/syncEngine');
@@ -803,7 +804,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-sticky-set') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('gerir sticky'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('gerir sticky'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const channel = interaction.options.getChannel('canal');
         const source = interaction.options.getString('source');
@@ -826,7 +827,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (cmd === 'rg-sticky-remove') {
-        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('gerir sticky'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!canManageStructure(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('gerir sticky'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const channel = interaction.options.getChannel('canal');
         const source = interaction.options.getString('source');
@@ -1037,7 +1038,7 @@ async function _dispatchInteraction(interaction) {
       // Chefia — novos sistemas (disponibilidade / rádio / stickys)
       if (id === 'chefia::abrir_disponibilidade') {
         if (!isChefia(interaction.member) && !isPatraoDiZona(interaction.member))
-          return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('disponibilidade'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+          return safeReply(interaction, { content: ERRORS.NO_PERMISSION('disponibilidade'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const channelId = CONFIG.AVAILABILITY_CHANNEL_ID;
         if (!channelId) return safeReply(interaction, { content: 'Define `AVAILABILITY_CHANNEL_ID` no .env primeiro.' }, { dismissible: true });
@@ -1079,7 +1080,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (id === 'chefia::ver_logs') {
-        if (!isChefia(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver logs'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!isChefia(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('ver logs'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const logs = await getRecentLogs(15);
         if (!logs.length) return safeReply(interaction, { content: 'Sem logs.' }, { dismissible: true });
@@ -1090,7 +1091,7 @@ async function _dispatchInteraction(interaction) {
 
       // Patrão di Zona buttons
       if (id === 'chefe_mor::listar_moradores') {
-        if (!isPatraoDiZona(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('listar bairristas'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!isPatraoDiZona(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('listar bairristas'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const { query } = require('./db');
         const resBair = await query(
@@ -1104,7 +1105,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (id === 'chefe_mor::ver_entregas' || id === 'chefe_mor::ver_vendas') {
-        if (!isPatraoDiZona(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver dados'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!isPatraoDiZona(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('ver dados'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const types = id.includes('entregas')
           ? ['entrega_bairrista', 'entrega_morador']
@@ -1126,7 +1127,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (id === 'chefe_mor::ver_tops') {
-        if (!isPatraoDiZona(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver tops'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!isPatraoDiZona(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('ver tops'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const { rankingRepo } = require('./repositories');
         const { start, end } = weekBounds();
