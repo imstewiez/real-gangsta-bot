@@ -87,21 +87,43 @@ async function handleCreateSaidaButton(interaction) {
   });
 }
 
-// Step 2: tipo seleccionado → abre modal com os campos restantes (sem campo tipo)
+// Step 2: tipo seleccionado → dropdown de spots (em vez de ir já ao modal).
 async function handleCreateTypeSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const saidaType = interaction.values[0];
   _setContext(interaction.user.id, { saidaType });
 
-  // Pré-preencher data + hora com o momento actual (user pode editar).
-  // Timezone local do processo — Railway corre UTC; para Portugal (UTC+1/WEST),
-  // o user vê hora UTC no placeholder e edita se quiser. Boa opção é usar
-  // Intl.DateTimeFormat com pt-PT.
+  const spotOpts = SAIDAS.SPOTS.slice(0, 25).map(s => ({
+    label: s.label, value: s.value, emoji: s.emoji,
+  }));
+  const row = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('saida::select_create_spot')
+      .setPlaceholder('Qual é o spot?')
+      .setMinValues(1).setMaxValues(1)
+      .addOptions(spotOpts)
+  );
+
+  return safeUpdate(interaction, {
+    content: `${EMOJI.SAIDA} Escolhe o spot da saída:`,
+    components: [row],
+  });
+}
+
+// Step 3: spot seleccionado → abre modal final com data/hora/notas
+// (data e hora pré-preenchidas com o momento actual — Europe/Lisbon).
+async function handleCreateSpotSelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const spotKey = interaction.values[0];
+  const ctx = pendingSaidaContext.get(interaction.user.id) || {};
+  ctx.spotKey = spotKey;
+  _setContext(interaction.user.id, ctx);
+
   const now = new Date();
-  const fmtDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Lisbon' }).format(now); // YYYY-MM-DD
+  const fmtDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Lisbon' }).format(now);
   const fmtTime = new Intl.DateTimeFormat('pt-PT', {
     timeZone: 'Europe/Lisbon', hour: '2-digit', minute: '2-digit', hour12: false,
-  }).format(now); // HH:MM
+  }).format(now);
 
   const F = MODALS.SAIDA_CREATE.FIELDS;
   const modal = new ModalBuilder()
@@ -115,9 +137,6 @@ async function handleCreateTypeSelect(interaction) {
         new TextInputBuilder().setCustomId('time').setLabel(F.time.label).setStyle(TextInputStyle.Short)
           .setValue(fmtTime).setPlaceholder(fmtTime).setRequired(false).setMaxLength(F.time.maxLength)),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('spot').setLabel(F.spot.label).setStyle(TextInputStyle.Short)
-          .setPlaceholder(F.spot.placeholder).setRequired(false).setMaxLength(F.spot.maxLength)),
-      new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('notes').setLabel(F.notes.label).setStyle(TextInputStyle.Paragraph)
           .setPlaceholder(F.notes.placeholder).setRequired(F.notes.required).setMaxLength(F.notes.maxLength)),
     );
@@ -129,11 +148,13 @@ async function handleCreateSaidaModal(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const date = getModalField(interaction, 'date');
   const time = getModalField(interaction, 'time');
-  const spot = getModalField(interaction, 'spot');
   const notes = getModalField(interaction, 'notes');
-  // Tipo vem do select predefinido (step anterior), não do modal
+  // Tipo + spot vêm dos selects (steps anteriores), não do modal.
   const ctx = pendingSaidaContext.get(interaction.user.id) || {};
-  const type = ctx.saidaType || getModalField(interaction, 'type')?.toLowerCase() || 'outra';
+  const type = ctx.saidaType || 'outra';
+  const spotKey = ctx.spotKey || '';
+  const spotEntry = SAIDAS.SPOTS.find(s => s.value === spotKey);
+  const spot = spotEntry ? spotEntry.label : '';
   pendingSaidaContext.delete(interaction.user.id);
   if (!SAIDA_TYPES.includes(type)) {
     return safeReply(interaction, { content: `${EMOJI.WARN} Tipo inválido.` }, { dismissible: true });
@@ -654,7 +675,7 @@ async function handleIssueQtyModal(interaction) {
 }
 
 module.exports = {
-  handleCreateSaidaButton, handleCreateTypeSelect, handleCreateSaidaModal,
+  handleCreateSaidaButton, handleCreateTypeSelect, handleCreateSpotSelect, handleCreateSaidaModal,
   handleCloseSaidaButton, handleCloseSaidaSelect, handleCloseResultSelect,
   handleCloseFactionSelect, handleCloseSaidaModal,
   handleMarkDeadSelect,

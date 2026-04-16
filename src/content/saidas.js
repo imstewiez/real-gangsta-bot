@@ -7,6 +7,23 @@
 
 const E = require('./emojis');
 
+// Spots conhecidos — dropdown na criação de saída. Substitui texto livre
+// para garantir naming consistente (fundamental para stats por spot).
+// Se for spot pontual / raid único → escolher "Outro" e detalhar em notas.
+const SPOTS = [
+  { value: 'haxixe',      label: 'Haxixe',       emoji: '🌿' },
+  { value: 'meta',        label: 'Meta',         emoji: '💎' },
+  { value: 'coca',        label: 'Coca',         emoji: '🤍' },
+  { value: 'erva',        label: 'Erva',         emoji: '🍃' },
+  { value: 'pecas',       label: 'Peças',        emoji: '🔩' },
+  { value: 'mina_ilegal', label: 'Mina Ilegal',  emoji: '⛏️' },
+  { value: 'stab_city',   label: 'Stab City',    emoji: '🔪' },
+  { value: 'cacadores',   label: 'Caçadores',    emoji: '🏹' },
+  { value: 'aviao',       label: 'Avião',        emoji: '✈️' },
+  { value: 'eletrica',    label: 'Elétrica',     emoji: '⚡' },
+  { value: 'outro',       label: 'Outro spot',   emoji: '❓' },
+];
+
 // Facções conhecidas — dropdown de inimigo no fecho de saída.
 // Se for facção nova / pontual, escolhe "Outra" e regista-se em notas.
 // Limite Discord StringSelect: 25 opções. Deixar espaço para "Outra".
@@ -30,6 +47,7 @@ const SAIDAS = {
   CREATE_TITLE: `${E.SAIDA} Nova Saída`,
   CREATE_PROMPT: 'Escolhe o tipo de movimento e o spot. O resto acerta-se na rua.',
   FACTIONS,
+  SPOTS,
 
   WIZARD_TITLE: `${E.FECHAR} Liquidação de Saída`,
   WIZARD_DESC: (id) => `**Saída #${id}** — fecha nome a nome.`,
