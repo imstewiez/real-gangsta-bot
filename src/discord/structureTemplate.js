@@ -112,10 +112,16 @@ const TIER_LABEL = {
 // Labels legacy — usados APENAS para extractNicknameFromFormatted conseguir
 // ler nomes de canais antigos (pré-encurtamento) quando há promoções ou
 // renames. Sem isto, canais antigos ficam unparseable no reconcile.
-const _TIER_LABELS_LEGACY = [
-  'Young Blood', 'O Gunão', 'Gangster Fodido',
-  'Patrão di Zona', 'Real Gangster', 'Kingpin', 'Manda-Chuva',
-];
+const _TIER_LABEL_LEGACY_BY_KEY = {
+  young_blood:     'Young Blood',
+  o_gunao:         'O Gunão',
+  gangster_fodido: 'Gangster Fodido',
+  patrao_di_zona:  'Patrão di Zona',
+  real_gangster:   'Real Gangster',
+  kingpin:         'Kingpin',
+  manda_chuva:     'Manda-Chuva',
+};
+const _TIER_LABELS_LEGACY = Object.values(_TIER_LABEL_LEGACY_BY_KEY);
 const _TIER_LABELS_FOR_EXTRACT = [...Object.values(TIER_LABEL), ..._TIER_LABELS_LEGACY]
   .map(l => bold(l).replace(/ /g, '-') + '-')
   .sort((a, b) => b.length - a.length);
@@ -127,6 +133,29 @@ function formatResidentChannelName(tier, nickname) {
   const maxNickChars = 30;
   const truncatedNick = safeNick.length > maxNickChars ? `${safeNick.slice(0, maxNickChars)}…` : safeNick;
   return `${emoji}・${bold(label)} - ${bold(truncatedNick)}`;
+}
+
+/**
+ * Rewrite de um channel name com label legacy para o formato curto,
+ * substituindo bold(legacy) por bold(short). Database-independent —
+ * depende apenas do nome actual do canal.
+ *
+ * @param {string} oldName
+ * @returns {string|null} novo nome se precisa rewrite; null se já está curto.
+ */
+function normalizeChannelNameToShort(oldName) {
+  if (!oldName || typeof oldName !== 'string') return null;
+  let newName = oldName;
+  for (const [tierKey, shortLabel] of Object.entries(TIER_LABEL)) {
+    const legacyLabel = _TIER_LABEL_LEGACY_BY_KEY[tierKey];
+    if (!legacyLabel || legacyLabel === shortLabel) continue;
+    const legacyBold = bold(legacyLabel);
+    const shortBold = bold(shortLabel);
+    if (newName.includes(legacyBold)) {
+      newName = newName.split(legacyBold).join(shortBold);
+    }
+  }
+  return newName !== oldName ? newName : null;
 }
 
 // ── IDs descobertos do servidor actual ───────────────────────────────────────
@@ -681,6 +710,7 @@ module.exports = {
   TIER_EMOJI,
   TIER_LABEL,
   formatResidentChannelName,
+  normalizeChannelNameToShort,
   DISCOVERED,
   CATEGORIES,
   CATEGORY_BY_KEY,

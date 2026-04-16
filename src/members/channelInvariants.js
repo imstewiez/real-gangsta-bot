@@ -23,7 +23,7 @@ const CONFIG = require('../config');
 const { query } = require('../db');
 const { queueChannelOp } = require('../discordQueue');
 const { log, warn } = require('../logger');
-const { formatResidentChannelName } = require('../discord/structureTemplate');
+const { normalizeChannelNameToShort } = require('../discord/structureTemplate');
 
 /**
  * Constrói o array de permissionOverwrites para um canal individual de
@@ -101,14 +101,15 @@ async function reconcileBairristaChannels(guild, opts = {}) {
   const botId = guild.members.me.id;
 
   const res = await query(`
-    SELECT m.id, m.discord_id, m.channel_id, m.display_name, m.nickname, m.tier
+    SELECT m.id, m.discord_id, m.channel_id, m.display_name
       FROM members m
      WHERE m.channel_id IS NOT NULL
        AND m.status = 'ativo'
        AND m.role IN ('bairrista', 'morador', 'patrao_di_zona', 'chefe_moradores')
   `);
 
-  const report = { scanned: 0, fixed: 0, renamed: 0, skipped: 0, missing: 0, errors: [] };
+  const report = { scanned: 0, fixed: 0, renamed: 0, drift_renamed: 0, skipped: 0, missing: 0, errors: [] };
+  const processedChannelIds = new Set();
 
   for (const row of res.rows) {
     report.scanned++;
@@ -117,14 +118,16 @@ async function reconcileBairristaChannels(guild, opts = {}) {
       report.missing++;
       continue;
     }
+    processedChannelIds.add(channel.id);
 
     const overwrites = buildBairristaChannelOverwrites(guild, row.discord_id, botId);
 
-    // Rename: se o nome actual não bater com o formato canónico (novo
-    // labels curtos), renomear. Idempotente — só setName se diferente.
-    const nick = row.nickname || row.display_name;
-    const expectedName = row.tier && nick ? formatResidentChannelName(row.tier, nick) : null;
-    const needsRename = expectedName && channel.name !== expectedName;
+    // Rename: pattern-based (database-independent). Lê o nome actual do canal
+    // e substitui bold(legacy label) por bold(short label) se encontrar.
+    // Não depende de m.tier / m.nickname (que podem estar null em members
+    // antigos — antes dependíamos disso e só 1 canal era renomeado).
+    const newName = normalizeChannelNameToShort(channel.name);
+    const needsRename = newName && newName !== channel.name;
 
     if (dryRun) {
       report.fixed++;
@@ -134,17 +137,49 @@ async function reconcileBairristaChannels(guild, opts = {}) {
     try {
       await queueChannelOp(() => channel.permissionOverwrites.set(overwrites, 'reconcileBairristaChannels — deny bairrista peers'));
       report.fixed++;
-      if (needsRename) {
-        await queueChannelOp(() => channel.setName(expectedName, 'reconcileBairristaChannels — tier label encurtado'));
-        report.renamed++;
-      }
     } catch (e) {
-      warn(`[CHANNEL-INV] Falha em ${row.display_name} (${row.channel_id}): ${e.message}`);
-      report.errors.push({ discordId: row.discord_id, channelId: row.channel_id, message: e.message });
+      warn(`[CHANNEL-INV] Perms falha em ${row.display_name} (${row.channel_id}): ${e.message}`);
+      report.errors.push({ op: 'perms', discordId: row.discord_id, channelId: row.channel_id, message: e.message });
+    }
+
+    if (needsRename) {
+      try {
+        const oldName = channel.name;
+        await queueChannelOp(() => channel.setName(newName, 'reconcileBairristaChannels — tier label encurtado'));
+        log(`[CHANNEL-INV] Renamed: "${oldName}" → "${newName}"`);
+        report.renamed++;
+      } catch (e) {
+        warn(`[CHANNEL-INV] Rename falha em ${channel.name} (${row.channel_id}): ${e.message}`);
+        report.errors.push({ op: 'rename', discordId: row.discord_id, channelId: row.channel_id, message: e.message });
+      }
     }
   }
 
-  log(`[CHANNEL-INV] scanned=${report.scanned} fixed=${report.fixed} renamed=${report.renamed} missing=${report.missing} errors=${report.errors.length} dry=${dryRun}`);
+  // Drift sweep — varre a categoria dos tópicos dos bairristas à procura de
+  // canais com label legacy cujo ID não esteja no members (DB drift — canal
+  // orphan ou member desincronizado). Rename-only, sem perms (não temos
+  // discord_id do owner para perms personalizadas).
+  const topicosCatId = CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID;
+  if (topicosCatId) {
+    for (const [chId, ch] of guild.channels.cache) {
+      if (ch.parentId !== topicosCatId) continue;
+      if (processedChannelIds.has(chId)) continue;
+      const newName = normalizeChannelNameToShort(ch.name);
+      if (!newName) continue;
+      if (dryRun) { report.drift_renamed++; continue; }
+      try {
+        const oldName = ch.name;
+        await queueChannelOp(() => ch.setName(newName, 'reconcileBairristaChannels — drift rename'));
+        log(`[CHANNEL-INV] Drift renamed: "${oldName}" → "${newName}"`);
+        report.drift_renamed++;
+      } catch (e) {
+        warn(`[CHANNEL-INV] Drift rename falha em ${ch.name}: ${e.message}`);
+        report.errors.push({ op: 'drift_rename', channelId: chId, message: e.message });
+      }
+    }
+  }
+
+  log(`[CHANNEL-INV] scanned=${report.scanned} fixed=${report.fixed} renamed=${report.renamed} drift=${report.drift_renamed} missing=${report.missing} errors=${report.errors.length} dry=${dryRun}`);
   return report;
 }
 
