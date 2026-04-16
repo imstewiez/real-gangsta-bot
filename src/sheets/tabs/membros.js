@@ -72,8 +72,9 @@ const OFICIAL_ROLES   = new Set(['oficial', 'chefia']);
 async function syncMembros(batch, sheetId) {
   const rows = await getMembersFull();
 
-  // Diagnóstico: breakdown por role para identificar members "invisíveis"
-  // (ex.: role nulo, role fora das tabelas, status inactivo).
+  // Diagnóstico: breakdown por role + dump de TODOS os discord_ids
+  // encontrados. Permite ao user verificar se um ID específico está na
+  // query (e em que role) ou se está em falta.
   const byRole = rows.reduce((acc, m) => {
     const k = m.role || '(null)';
     acc[k] = (acc[k] || 0) + 1;
@@ -81,6 +82,22 @@ async function syncMembros(batch, sheetId) {
   }, {});
   const { log } = require('../../logger');
   log(`[SHEETS:membros] ${rows.length} members: ${Object.entries(byRole).map(([k, n]) => `${k}=${n}`).join(' · ')}`);
+  const ids = rows.map(m => `${m.discord_id}:${m.role || '?'}:${m.status || '?'}`).join(', ');
+  log(`[SHEETS:membros] IDs: ${ids}`);
+
+  // Full dump sem filter — inclui status != 'ativo' para ver members "escondidos".
+  try {
+    const { query } = require('../../db');
+    const full = await query(`SELECT discord_id, display_name, role, status FROM members ORDER BY id`);
+    const excluded = full.rows.filter(r =>
+      !rows.some(sync => String(sync.discord_id) === String(r.discord_id))
+    );
+    if (excluded.length) {
+      log(`[SHEETS:membros] ⚠️ ${excluded.length} members na DB mas EXCLUÍDOS da sync (status não ativo / NULL): ${excluded.map(e => `${e.discord_id}:${e.role || '?'}:${e.status || '?'}:"${e.display_name || ''}"`).join(' · ')}`);
+    }
+  } catch (e) {
+    log(`[SHEETS:membros] dump diagnóstico falhou: ${e.message}`);
+  }
 
   const chefia      = rows.filter(m => m.role === 'chefia');
   const oficial     = rows.filter(m => m.role === 'oficial');
