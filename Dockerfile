@@ -35,8 +35,8 @@ COPY --from=deps /app/package-lock.json ./package-lock.json
 COPY src/ ./src/
 COPY config/ ./config/
 
-# Ficheiros opcionais que podem existir
-COPY scripts/ ./scripts/ 2>/dev/null || true
+# Scripts utilitários
+COPY scripts/ ./scripts/
 
 # Usar non-root user
 USER botuser
