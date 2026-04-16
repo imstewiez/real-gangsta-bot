@@ -17,7 +17,7 @@ const ORG_ISSUED_WEAPONS = [
   'Pistola .50',
   'Compact Rifle',
   'Espingarda de Assalto',
-  'Gusenberg Sweeper',
+  'Gusenberg',
   'Machine Pistol',
   'Micro SMG',
 ];

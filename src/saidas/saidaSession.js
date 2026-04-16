@@ -71,18 +71,20 @@ async function buildSessionEmbed(saidaId) {
   const isConcluded = saida.status === 'concluida';
   const isOpen = !isClosed && !isConcluded;
 
+  const statusEmoji = isClosed ? '⛔' : isConcluded ? '🏁' : slotsLeft === 0 ? '🔴' : '🟢';
+  const statusLabel = isClosed ? 'Cancelada' : isConcluded ? 'Concluída' : slotsLeft === 0 ? 'Cheio' : 'Inscrições abertas';
+
   const lines = [
-    `${EMOJI.SAIDA} **Saída #${saida.id}** — ${type}`,
+    `# ${EMOJI.SAIDA} Saída #${saida.id} — ${type}`,
     '',
-    `${EMOJI.ZONA} **Spot:** ${saida.spot || '—'}`,
-    `📅 **Data:** ${dateLine}`,
-    `${EMOJI.LIDER} **Líder:** ${leader}`,
+    `> ${statusEmoji} **${statusLabel}**`,
     '',
-    `${EMOJI.PARTICIPANTE} **Caracterizados:** ${characterized.length}/${maxChar} ${slotsLeft === 0 ? '(cheio)' : `(${slotsLeft} vagas)`}`,
-    `${EMOJI.CRAFT} **Trabalhadores:** ${workers.length} (sem limite)`,
+    `📍 **${saida.spot || '—'}** · 📅 ${dateLine} · 👑 ${leader}`,
+    '',
+    `🔫 **Caracterizados** ${characterized.length}/${maxChar} · 🔧 **Trabalhadores** ${workers.length}`,
   ];
 
-  if (saida.notes) lines.push(`\n${EMOJI.AUDIT} **Notas:** ${saida.notes}`);
+  if (saida.notes) lines.push(`> 📝 _${saida.notes}_`);
 
   // Lista de inscritos com status da arma + nome específico se escolheu
   const weaponIds = characterized.map(p => p.weapon_item_id).filter(Boolean);
@@ -133,36 +135,30 @@ async function buildSessionEmbed(saidaId) {
   const components = [];
 
   if (isOpen) {
-    // Row 1 — inscrição self-service
+    // Row 1 — inscrição self-service (participante escolhe arma no dropdown)
     components.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`saida::session_caracterizado::${saidaId}`)
-        .setLabel(`Caracterizado (${characterized.length}/${maxChar})`)
+        .setLabel(`🔫 Caracterizado (${characterized.length}/${maxChar})`)
         .setStyle(slotsLeft > 0 ? ButtonStyle.Success : ButtonStyle.Secondary)
-        .setEmoji(EMOJI.SAIDA)
         .setDisabled(slotsLeft === 0),
       new ButtonBuilder()
         .setCustomId(`saida::session_trabalhador::${saidaId}`)
-        .setLabel(`Trabalhador (${workers.length})`)
-        .setStyle(ButtonStyle.Primary)
-        .setEmoji(EMOJI.CRAFT),
+        .setLabel(`🔧 Trabalhador (${workers.length})`)
+        .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId(`saida::session_cancel::${saidaId}`)
-        .setLabel('Cancelar Registo')
+        .setLabel('Sair')
         .setStyle(ButtonStyle.Danger)
         .setEmoji(EMOJI.APAGAR),
     ));
 
-    // Row 2 — staff (permissão verificada no handler)
+    // Row 2 — staff: só fechar (fornecer arma foi removido: participante
+    // escolhe arma no registo de self-serve). Permissão verificada no handler.
     components.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId(`session::issue_material::${saidaId}`)
-        .setLabel('Staff: Fornecer Arma/Material')
-        .setStyle(ButtonStyle.Secondary)
-        .setEmoji(EMOJI.FORNECER),
-      new ButtonBuilder()
         .setCustomId(`session::close::${saidaId}`)
-        .setLabel('Staff: Fechar Sessão')
+        .setLabel('Fechar Sessão')
         .setStyle(ButtonStyle.Danger)
         .setEmoji(EMOJI.FECHAR),
     ));
@@ -296,41 +292,38 @@ async function handleCaracterizadoSource(interaction) {
   const saidaId = parseInt(parts[2]);
   const source = parts[3]; // 'own' ou 'org'
 
-  // Armas da catálogo — filtrar categorias de armamento.
+  // Armas — filtra pela whitelist ORG_ISSUED_WEAPONS (9 armas curadas)
+  // para AMBOS os tipos (própria e org). Matching normalizado.
   const items = await inventoryRepo.getItems(true);
   const weaponCats = new Set(['armas_fogo', 'armas_brancas']);
-  let weapons = items.filter(i => weaponCats.has(i.category));
+  const allWeapons = items.filter(i => weaponCats.has(i.category));
+
+  const { SAIDAS: S } = require('../content');
+  const norm = (s) => (s || '').trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+  const allowed = new Set((S.ORG_ISSUED_WEAPONS || []).map(norm));
+  const byNorm = new Map();
+  for (const w of allWeapons) byNorm.set(norm(w.name), w);
+
+  let weapons = [];
+  const missing = [];
+  for (const target of allowed) {
+    const hit = byNorm.get(target);
+    if (hit) weapons.push(hit);
+    else missing.push(target);
+  }
+  if (missing.length) {
+    warn(`[SAIDA] Armas no whitelist sem match na DB: ${missing.join(', ')}`);
+  }
 
   if (source === 'org') {
-    // Só armas que a firma emite (lista curada em content/saidas.js).
-    // Matching normalizado: lowercase + remove acentos + colapsa múltiplos
-    // espaços. Tolera diferenças leves entre lista curada e nomes no DB.
-    const { SAIDAS: S } = require('../content');
-    const norm = (s) => (s || '')
-      .trim().toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/\s+/g, ' ');
-    const allowed = new Set((S.ORG_ISSUED_WEAPONS || []).map(norm));
-    const byNorm = new Map();
-    for (const w of weapons) byNorm.set(norm(w.name), w);
-
-    const matched = [];
-    const missing = [];
-    for (const target of allowed) {
-      const hit = byNorm.get(target);
-      if (hit) matched.push(hit);
-      else missing.push(target);
-    }
-    if (missing.length) {
-      warn(`[SAIDA] "Pedir à Org" — armas no whitelist sem match na DB: ${missing.join(', ')}`);
-    }
-    weapons = matched;
-
     for (const w of weapons) {
       w._balance = Number(await inventoryRepo.getStockForItem(w.id).catch(() => 0)) || 0;
     }
-    // Ordena: stock > 0 primeiro, depois alfabético.
     weapons.sort((a, b) => (b._balance - a._balance) || a.name.localeCompare(b.name));
+  } else {
+    weapons.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   if (weapons.length === 0) {
