@@ -100,4 +100,23 @@ async function syncOne(key) {
   return { tab: key, ops, ms };
 }
 
-module.exports = { syncOne, TAB_SYNCERS };
+/**
+ * Sync de todas as tabs, sequencial. Usado no boot para trazer o estado
+ * actual da DB para o Sheet de uma vez (event-driven sync acaba por
+ * eventualmente fazer o mesmo, mas só quando eventos disparam).
+ */
+async function syncAll() {
+  const results = [];
+  for (const key of Object.keys(TAB_SYNCERS)) {
+    try {
+      const r = await syncOne(key);
+      results.push(r);
+    } catch (e) {
+      warn(`[SHEETS] syncAll: tab '${key}' falhou — ${e.message}`);
+      results.push({ tab: key, error: e.message });
+    }
+  }
+  return results;
+}
+
+module.exports = { syncOne, syncAll, TAB_SYNCERS };

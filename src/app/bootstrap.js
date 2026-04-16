@@ -118,6 +118,14 @@ async function readyHook(c) {
   // populada; fire-and-forget (não bloqueia o ready).
   setTimeout(() => { _applyPermsOnBoot(c).catch(() => {}); }, 15_000).unref?.();
 
+  // Sync inicial de todas as sheets tabs — traz o estado actual da DB
+  // para o workbook sem esperar por eventos. Só corre se credenciais OK.
+  // Fire-and-forget, não bloqueia o ready; delay 20s para dar espaço ao
+  // perms-on-boot e evitar rate limit no Google.
+  if (CONFIG.isSheetsEnabled && CONFIG.isSheetsEnabled()) {
+    setTimeout(() => { _syncSheetsOnBoot().catch(() => {}); }, 20_000).unref?.();
+  }
+
   startHeartbeat((reason) => {
     log(`[INSTANCE] Detectada instância mais recente — shutdown controlado (${reason}).`);
     shutdown(reason).catch((e) => {
@@ -141,6 +149,20 @@ async function _applyPermsOnBoot(c) {
     log(`[BOOT:PERMS] Perms: ${r1.actions?.length || 0} acções · ${r1.errors?.length || 0} erros · canais individuais: ${r2.fixed} fixed / ${r2.missing} missing.`);
   } catch (e) {
     warn(`[BOOT:PERMS] Falhou: ${e.message}`);
+  }
+}
+
+async function _syncSheetsOnBoot() {
+  try {
+    log('[BOOT:SHEETS] Sync inicial de todas as tabs...');
+    const { syncAll } = require('../sheets/syncEngine');
+    const results = await syncAll();
+    const ok = results.filter(r => !r.error && !r.skipped).length;
+    const skipped = results.filter(r => r.skipped).length;
+    const errored = results.filter(r => r.error).length;
+    log(`[BOOT:SHEETS] Sync inicial: ${ok} OK · ${skipped} skipped · ${errored} erros.`);
+  } catch (e) {
+    warn(`[BOOT:SHEETS] Falhou: ${e.message}`);
   }
 }
 
