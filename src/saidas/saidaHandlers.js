@@ -15,10 +15,21 @@ const saidaEngine = require('./saidaEngine');
 const { publishSessionEmbed } = require('./saidaSession');
 const { EMOJI, ERRORS, SUCCESS, SAIDAS, MODALS } = require('../content');
 
-// Context efémero por user durante fluxos multi-step (manteve nome legado
-// `pendingOpContext` só para não partir imports de código que ainda referencia).
+// Context efémero por user durante fluxos multi-step.
+// TTL de 15 minutos — limpa entradas abandonadas automaticamente.
 const pendingSaidaContext = new Map();
-const pendingOpContext = pendingSaidaContext; // alias
+const CONTEXT_TTL_MS = 15 * 60 * 1000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, ctx] of pendingSaidaContext) {
+    if (ctx._ts && now - ctx._ts > CONTEXT_TTL_MS) pendingSaidaContext.delete(key);
+  }
+}, 60 * 1000).unref();
+
+// Wrapper que adiciona timestamp ao guardar contexto
+function _setContext(userId, ctx) {
+  pendingSaidaContext.set(userId, { ...ctx, _ts: Date.now() });
+}
 
 const SAIDA_TYPES = ['craft', 'dominio', 'ataque', 'defesa', 'recolha', 'outra'];
 const VALID_RESULTS = ['vitoria', 'derrota', 'empate', 'sem_conflito', 'abortada'];
@@ -79,7 +90,7 @@ async function handleCreateSaidaButton(interaction) {
 async function handleCreateTypeSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const saidaType = interaction.values[0];
-  pendingSaidaContext.set(interaction.user.id, { saidaType });
+  _setContext(interaction.user.id, { saidaType });
 
   const F = MODALS.SAIDA_CREATE.FIELDS;
   const modal = new ModalBuilder()
@@ -176,7 +187,7 @@ async function handleCloseSaidaButton(interaction) {
 async function handleCloseSaidaSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const saidaId = parseInt(interaction.values[0]);
-  pendingSaidaContext.set(interaction.user.id, { saidaId });
+  _setContext(interaction.user.id, { saidaId });
 
   // Step 2: resultado predefinido (select, não texto livre)
   const resultOptions = VALID_RESULTS.map(r => ({
@@ -204,7 +215,7 @@ async function handleCloseResultSelect(interaction) {
   const result = interaction.values[0];
   const ctx = pendingSaidaContext.get(interaction.user.id) || {};
   ctx.result = result;
-  pendingSaidaContext.set(interaction.user.id, ctx);
+  _setContext(interaction.user.id, ctx);
 
   const saidaId = ctx.saidaId;
   const SF = MODALS.SAIDA_SETTLE.FIELDS;
@@ -244,8 +255,8 @@ async function handleCloseSaidaModal(interaction) {
   let enemy_name = enemyRaw, enemy_faction = '';
   const sepMatch = enemyRaw.match(/^(.+?)\s*[·\-—]\s*(.+)$/);
   if (sepMatch) { enemy_name = sepMatch[1].trim(); enemy_faction = sepMatch[2].trim(); }
-  const craft_amount = parseInt(getModalField(interaction, 'craft_amount')) || 0;
-  const our_kills = parseInt(getModalField(interaction, 'kills')) || 0;
+  const craft_amount = Math.max(0, Math.min(parseInt(getModalField(interaction, 'craft_amount')) || 0, 999999));
+  const our_kills = Math.max(0, Math.min(parseInt(getModalField(interaction, 'kills')) || 0, 500));
   const result_notes = getModalField(interaction, 'result_notes') || '';
   const had_craft = craft_amount > 0;
   const had_fight = result === 'vitoria' || result === 'derrota';
@@ -347,7 +358,7 @@ async function handleAddParticipantButton(interaction) {
 async function handleAddParticipantSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const saidaId = parseInt(interaction.values[0]);
-  pendingSaidaContext.set(interaction.user.id, { saidaId, action: 'add_participant' });
+  _setContext(interaction.user.id, { saidaId, action: 'add_participant' });
   const userMenu = new ActionRowBuilder().addComponents(
     new UserSelectMenuBuilder()
       .setCustomId(`saida::user_select_participants::${saidaId}`)
@@ -405,7 +416,7 @@ async function handleRegisterMaterialButton(interaction) {
 async function handleMaterialOpSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const saidaId = parseInt(interaction.values[0]);
-  pendingSaidaContext.set(interaction.user.id, { saidaId, action: 'material_op' });
+  _setContext(interaction.user.id, { saidaId, action: 'material_op' });
   const directionOptions = [
     { label: 'Fornecido', description: 'Material que saiu da firma → participante', value: 'fornecido', emoji: '📤' },
     { label: 'Devolvido', description: 'Material que voltou à casa', value: 'devolvido', emoji: '↩️' },
@@ -427,7 +438,7 @@ async function handleMaterialDirectionSelect(interaction) {
     return safeReply(interaction, { content: `${EMOJI.PENDENTE} Sessão expirada — começa de novo.`, flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
   ctx.direction = direction;
-  pendingSaidaContext.set(interaction.user.id, ctx);
+  _setContext(interaction.user.id, ctx);
   const menu = await buildItemSelectMenu('saida::select_material_item', 'Escolhe o material');
   await safeUpdate(interaction, { content: `Que material foi **${direction}**?`, components: [menu] });
 }
@@ -440,7 +451,7 @@ async function handleMaterialItemSelect(interaction) {
     return safeReply(interaction, { content: `${EMOJI.PENDENTE} Sessão expirada.`, flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
   ctx.itemId = itemId;
-  pendingSaidaContext.set(interaction.user.id, ctx);
+  _setContext(interaction.user.id, ctx);
   const { inventoryRepo } = require('../repositories');
   const item = await inventoryRepo.getItemById(itemId);
   const MF = MODALS.SAIDA_MATERIAL.FIELDS;
@@ -503,7 +514,7 @@ async function handleIssueToParticipantButton(interaction) {
 async function handleIssueSaidaSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const saidaId = parseInt(interaction.values[0]);
-  pendingSaidaContext.set(interaction.user.id, { saidaId, action: 'issue_to_participant' });
+  _setContext(interaction.user.id, { saidaId, action: 'issue_to_participant' });
   const participants = await saidaRepo.getParticipants(saidaId);
   if (!participants.length) {
     pendingSaidaContext.delete(interaction.user.id);
@@ -532,7 +543,7 @@ async function handleIssueParticipantSelect(interaction) {
   const ctx = pendingSaidaContext.get(interaction.user.id);
   if (!ctx || ctx.action !== 'issue_to_participant') return safeReply(interaction, { content: `${EMOJI.PENDENTE} Sessão expirada.`, flags: MessageFlags.Ephemeral }, { dismissible: true });
   ctx.participantDiscordId = discordId;
-  pendingSaidaContext.set(interaction.user.id, ctx);
+  _setContext(interaction.user.id, ctx);
   const menu = await buildItemSelectMenu('saida::issue_select_item', 'Que material?');
   await safeUpdate(interaction, { content: `Saída **#${ctx.saidaId}** → <@${discordId}> — item:`, components: [menu] });
 }
@@ -543,7 +554,7 @@ async function handleIssueItemSelect(interaction) {
   const ctx = pendingSaidaContext.get(interaction.user.id);
   if (!ctx || ctx.action !== 'issue_to_participant') return safeReply(interaction, { content: `${EMOJI.PENDENTE} Sessão expirada.`, flags: MessageFlags.Ephemeral }, { dismissible: true });
   ctx.itemId = itemId;
-  pendingSaidaContext.set(interaction.user.id, ctx);
+  _setContext(interaction.user.id, ctx);
   const { inventoryRepo } = require('../repositories');
   const item = await inventoryRepo.getItemById(itemId);
   const IF = MODALS.SAIDA_MATERIAL.FIELDS;

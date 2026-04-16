@@ -148,8 +148,8 @@ async function handleSettleModal(interaction) {
   const saidaId = parseInt(parts[2]);
   const discordId = parts[3];
 
-  const kills = parseInt(getModalField(interaction, 'kills')) || 0;
-  const downs = parseInt(getModalField(interaction, 'downs')) || 0;
+  const kills = Math.max(0, Math.min(parseInt(getModalField(interaction, 'kills')) || 0, 100));
+  const downs = Math.max(0, Math.min(parseInt(getModalField(interaction, 'downs')) || 0, 100));
   const diedRaw = getModalField(interaction, 'died').toLowerCase().trim();
   const died = diedRaw.startsWith('s') || diedRaw.startsWith('y') || diedRaw === '1';
   const diedWithRaw = getModalField(interaction, 'died_with_mat').toLowerCase().trim();

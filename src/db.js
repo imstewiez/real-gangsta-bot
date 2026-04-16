@@ -62,7 +62,9 @@ async function query(text, params) {
     if (duration >= SLOW_QUERY_MS) {
       if (_slowQueryCounter) _slowQueryCounter.inc();
       const preview = String(text).replace(/\s+/g, ' ').slice(0, 120);
-      console.warn(`[DB:SLOW] ${duration}ms · ${preview}${params?.length ? ` · params: ${params.length}` : ''}`);
+      // Lazy require — logger pode não estar carregado durante boot
+      try { require('./logger').warn(`[DB:SLOW] ${duration}ms · ${preview}${params?.length ? ` · params: ${params.length}` : ''}`); }
+      catch { console.warn(`[DB:SLOW] ${duration}ms · ${preview}`); }
     }
     return result;
   } finally {

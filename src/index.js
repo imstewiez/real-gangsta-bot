@@ -358,7 +358,7 @@ async function _dispatchInteraction(interaction) {
         if (!isChefia(interaction.member)) return safeReply(interaction, { content: ERRORS.NO_PERMISSION('sync panels'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const results = await bootstrapAll(client);
-        const icon = { created: '✅', edited: '✏️', skipped: '⚪', failed: '❌' };
+        const icon = { created: EMOJI.OK, edited: EMOJI.EDITAR, skipped: '⚪', failed: EMOJI.ERRO };
         const lines = ['**Bootstrap painéis** — relatório:'];
         for (const r of results) {
           const i = icon[r.status] || '❔';
@@ -426,7 +426,7 @@ async function _dispatchInteraction(interaction) {
           profit_generated: 'Lucro Gerado', mvp_count: 'MVPs', saidas_total: 'Saídas',
         };
         const embed = brandEmbed('TOP')
-          .setTitle(`🏆 Top All-Time — ${labels[eixo] || eixo}`)
+          .setTitle(`${EMOJI.TOPO} Top All-Time — ${labels[eixo] || eixo}`)
           .setDescription(rows.map(fmt).join('\n'));
         return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
       }
@@ -439,7 +439,7 @@ async function _dispatchInteraction(interaction) {
         const m = await computeMonthlyRankings();
         const a = await recomputeAllTimeStats();
         return safeReply(interaction, {
-          content: `🔄 Rankings recalculados em ${Date.now() - t0}ms — ${m.count} membros no mês ${m.monthStart}, ${a.count} all-time.`,
+          content: `${EMOJI.REFRESH} Rankings recalculados em ${Date.now() - t0}ms — ${m.count} membros no mês ${m.monthStart}, ${a.count} all-time.`,
         }, { dismissible: true });
       }
 
@@ -451,10 +451,10 @@ async function _dispatchInteraction(interaction) {
         const op = await closeSaida(opId, {}, interaction.user.id);
         if (!op) return safeReply(interaction, { content: ERRORS.SAIDA_NOT_FOUND() }, { dismissible: true });
         const r = op.reconciliation || {};
-        const lines = [`✅ Operação #${opId} concluída.`];
-        lines.push(`📦 Material — fornecido: ${r.fornecido || 0}, devolvido: ${r.devolvido || 0}, perdido: ${r.perdido || 0}, consumido: ${r.consumido || 0}.`);
+        const lines = [`${EMOJI.OK} Saída #${opId} concluída.`];
+        lines.push(`${EMOJI.MATERIAL} Material — fornecido: ${r.fornecido || 0}, devolvido: ${r.devolvido || 0}, perdido: ${r.perdido || 0}, consumido: ${r.consumido || 0}.`);
         if (r.unaccounted > 0) {
-          lines.push(`⚠️ **${r.unaccounted}** unidades por contabilizar — usa \`/rg-create-operation\` ou os botões de custody para acertar.`);
+          lines.push(`${EMOJI.WARN} **${r.unaccounted}** unidades por contabilizar — usa os botões de custody para acertar.`);
         }
         return safeReply(interaction, { content: lines.join('\n') }, { dismissible: true });
       }
@@ -513,7 +513,7 @@ async function _dispatchInteraction(interaction) {
         const oldPrice = item.estimated_value;
         await inventoryRepo.updateItem(item.id, { estimated_value: preco });
         return safeReply(interaction, {
-          content: `💰 **${item.name}**: ${oldPrice || 0}€ → **${preco}€**`
+          content: `${EMOJI.LUCRO} **${item.name}**: ${oldPrice || 0}€ → **${preco}€**`
         }, { dismissible: true });
       }
 
@@ -526,7 +526,7 @@ async function _dispatchInteraction(interaction) {
           const r = await syncPrices({ full: modo === 'full' });
           const lines = [
             `📋 **Precário sincronizado** (modo \`${modo}\`)`,
-            `✅ ${r.created.length} criados · ♻️ ${r.updated.length} actualizados · ⚪ ${r.unchanged.length} iguais · ⚠️ ${r.errors.length} erros`,
+            `${EMOJI.OK} ${r.created.length} criados · ${EMOJI.REFRESH} ${r.updated.length} actualizados · ⚪ ${r.unchanged.length} iguais · ${EMOJI.WARN} ${r.errors.length} erros`,
           ];
           if (r.updated.length) {
             lines.push('', '**Preços alterados:**');
@@ -540,11 +540,11 @@ async function _dispatchInteraction(interaction) {
           }
           if (r.errors.length) {
             lines.push('', '**Erros:**');
-            for (const e of r.errors.slice(0, 5)) lines.push(`⚠️ ${e.name}: ${e.message}`);
+            for (const e of r.errors.slice(0, 5)) lines.push(`${EMOJI.WARN} ${e.name}: ${e.message}`);
           }
           return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
         } catch (e) {
-          return safeReply(interaction, { content: `❌ ${e.message}` }, { dismissible: true });
+          return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
         }
       }
 
@@ -557,9 +557,9 @@ async function _dispatchInteraction(interaction) {
            ORDER BY category, name
         `);
         if (!r.rows.length) {
-          return safeReply(interaction, { content: '✅ Todos os itens activos têm preço definido.' }, { dismissible: true });
+          return safeReply(interaction, { content: `${EMOJI.OK} Todos os itens activos têm preço definido.` }, { dismissible: true });
         }
-        const lines = [`⚠️ **${r.rows.length}** itens sem preço (afecta cálculos de saídas):`, ''];
+        const lines = [`${EMOJI.WARN} **${r.rows.length}** itens sem preço (afecta cálculos de saídas):`, ''];
         const grouped = {};
         for (const it of r.rows) (grouped[it.category] ||= []).push(it);
         for (const [cat, items] of Object.entries(grouped)) {
@@ -608,7 +608,7 @@ async function _dispatchInteraction(interaction) {
           `${tag} · Backfill de membros concluído`,
           `• Scanned: ${r.scanned}  ·  Bots: ${r.skippedBot}  ·  Sem role RP: ${r.skippedNoRole}`,
           `• Criados: ${r.created}  ·  Actualizados: ${r.updated}  ·  Sem mudança: ${r.unchanged}`,
-          r.errors.length ? `⚠️ Erros: ${r.errors.length} (ver logs)` : '',
+          r.errors.length ? `${EMOJI.WARN} Erros: ${r.errors.length} (ver logs)` : '',
         ].filter(Boolean);
         return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
       }
@@ -632,7 +632,7 @@ async function _dispatchInteraction(interaction) {
         const tag = dryRun ? '**DRY-RUN**' : '**APLICADO**';
         const lines = [`${tag} · Reconcile \`${dominio}\` em ${r.ms}ms`, ''];
         for (const [d, entry] of Object.entries(r.per_domain)) {
-          if (entry.error) { lines.push(`❌ **${d}**: ${entry.error}`); continue; }
+          if (entry.error) { lines.push(`${EMOJI.ERRO} **${d}**: ${entry.error}`); continue; }
           const c = entry.check;
           const driftBits = [];
           if (c.role_mismatch?.length) driftBits.push(`${c.role_mismatch.length} role mismatch`);
@@ -644,7 +644,7 @@ async function _dispatchInteraction(interaction) {
           if (c.never_synced?.length) driftBits.push(`${c.never_synced.length} never synced`);
           if (c.channels_missing?.length) driftBits.push(`${c.channels_missing.length} missing channels`);
           const summary = c.has_drift ? driftBits.join(' · ') : `${c.ok} ok, sem drift`;
-          const apply = entry.apply ? ` → ✅ ${entry.apply.corrected} corrigidos` : '';
+          const apply = entry.apply ? ` → ${EMOJI.OK} ${entry.apply.corrected} corrigidos` : '';
           lines.push(`🔍 **${d}**: ${c.total_checked} verificados · ${summary}${apply}`);
         }
         return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
@@ -666,8 +666,8 @@ async function _dispatchInteraction(interaction) {
           '',
           '**Detalhe:**',
           ...r.actions.map(a => {
-            const status = a.error ? `❌ ${a.error.slice(0, 60)}`
-                         : a.applied ? `✅ ${a.count} rows`
+            const status = a.error ? `${EMOJI.ERRO} ${a.error.slice(0, 60)}`
+                         : a.applied ? `${EMOJI.OK} ${a.count} rows`
                          : a.count === 0 ? `⚪ nada a fazer`
                          : `🔸 ${a.count} rows (não aplicado)`;
             return `  • \`${a.key}\` → ${status}`;
@@ -682,7 +682,7 @@ async function _dispatchInteraction(interaction) {
         const sm = require('./inventory/stockManager');
         const itemName = interaction.options.getString('item');
         const item = await sm.findItemByName(itemName);
-        if (!item) return safeReply(interaction, { content: `❌ Item não encontrado: \`${itemName}\``}, { dismissible: true });
+        if (!item) return safeReply(interaction, { content: `${EMOJI.ERRO} Item não encontrado: \`${itemName}\``}, { dismissible: true });
 
         const actor = `discord:${interaction.user.id}`;
         const memberDiscordId = interaction.options.getUser?.('membro')?.id;
@@ -714,7 +714,7 @@ async function _dispatchInteraction(interaction) {
             const nota = interaction.options.getString('nota') || '';
             await sm.addStock({ itemId: item.id, quantity: qty, location: casa, type: tipo, actor, memberId: memberDbId, notes: nota });
             const newBalance = await sm.getCurrentStock(item.id, casa);
-            return safeReply(interaction, { content: `✅ +${qty} **${item.name}** em **${casa}** (${tipo}). Novo total: \`${newBalance}\`` }, { dismissible: true });
+            return safeReply(interaction, { content: `${EMOJI.OK} +${qty} **${item.name}** em **${casa}** (${tipo}). Novo total: \`${newBalance}\`` }, { dismissible: true });
           }
 
           if (cmd === 'rg-stock-remove') {
@@ -724,7 +724,7 @@ async function _dispatchInteraction(interaction) {
             const nota = interaction.options.getString('nota') || '';
             await sm.removeStock({ itemId: item.id, quantity: qty, location: casa, type: tipo, actor, memberId: memberDbId, notes: nota });
             const newBalance = await sm.getCurrentStock(item.id, casa);
-            return safeReply(interaction, { content: `✅ −${qty} **${item.name}** em **${casa}** (${tipo}). Novo total: \`${newBalance}\`` }, { dismissible: true });
+            return safeReply(interaction, { content: `${EMOJI.OK} −${qty} **${item.name}** em **${casa}** (${tipo}). Novo total: \`${newBalance}\`` }, { dismissible: true });
           }
 
           if (cmd === 'rg-stock-transfer') {
@@ -735,7 +735,7 @@ async function _dispatchInteraction(interaction) {
             await sm.transferStock({ itemId: item.id, quantity: qty, fromLocation: de, toLocation: para, actor, notes: nota });
             const ar = await sm.getCurrentStock(item.id, 'armazem');
             const gr = await sm.getCurrentStock(item.id, 'grupo');
-            return safeReply(interaction, { content: `🔄 Transferido **${qty}× ${item.name}**: ${de} → ${para}\nArmazém: \`${ar}\` · Grupo: \`${gr}\`` }, { dismissible: true });
+            return safeReply(interaction, { content: `${EMOJI.REFRESH} Transferido **${qty}× ${item.name}**: ${de} → ${para}\nArmazém: \`${ar}\` · Grupo: \`${gr}\`` }, { dismissible: true });
           }
 
           if (cmd === 'rg-stock-adjust') {
@@ -746,11 +746,11 @@ async function _dispatchInteraction(interaction) {
             const sign = r.delta > 0 ? '+' : '';
             return safeReply(interaction, { content: r.delta === 0
               ? `ℹ️ **${item.name}** em ${casa} já estava em ${novo}, nenhum movimento criado.`
-              : `✅ Ajustado **${item.name}** em **${casa}**: ${sign}${r.delta} → \`${novo}\` (${razao})`
+              : `${EMOJI.OK} Ajustado **${item.name}** em **${casa}**: ${sign}${r.delta} → \`${novo}\` (${razao})`
             }, { dismissible: true });
           }
         } catch (e) {
-          return safeReply(interaction, { content: `❌ ${e.message}` }, { dismissible: true });
+          return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
         }
       }
 
@@ -759,13 +759,13 @@ async function _dispatchInteraction(interaction) {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const { syncAll } = require('./sheets/syncEngine');
         const r = await syncAll();
-        if (r.skipped) return safeReply(interaction, { content: `⚠️ Skipped: ${r.skipped}` }, { dismissible: true });
+        if (r.skipped) return safeReply(interaction, { content: `${EMOJI.WARN} Skipped: ${r.skipped}` }, { dismissible: true });
         const okTabs = r.results.map(x => x.tab);
         const errTabs = r.errors.map(e => e.tab);
         const summary = `**Sync completo** em ${r.ms}ms — ${r.results.length} tabs OK, ${r.errors.length} erros`;
-        const okLine = okTabs.length ? `✅ OK (${okTabs.length}): ${okTabs.join(', ')}` : '';
+        const okLine = okTabs.length ? `${EMOJI.OK} OK (${okTabs.length}): ${okTabs.join(', ')}` : '';
         const errLines = r.errors.length
-          ? ['', `❌ Erros (${r.errors.length}):`, ...r.errors.map(e => `• **${e.tab}**: ${e.message}`)]
+          ? ['', `${EMOJI.ERRO} Erros (${r.errors.length}):`, ...r.errors.map(e => `• **${e.tab}**: ${e.message}`)]
           : [];
         const msg = [summary, okLine, ...errLines].filter(Boolean).join('\n');
         // Se exceder 1900 chars, anexa como ficheiro para ver tudo.
@@ -785,10 +785,10 @@ async function _dispatchInteraction(interaction) {
         const { syncOne } = require('./sheets/syncEngine');
         try {
           const r = await syncOne(tab);
-          if (r.skipped) return safeReply(interaction, { content: `⚠️ Skipped: ${r.skipped}` }, { dismissible: true });
-          return safeReply(interaction, { content: `✅ Tab **${tab}**: ${r.ops} ops em ${r.ms}ms.` }, { dismissible: true });
+          if (r.skipped) return safeReply(interaction, { content: `${EMOJI.WARN} Skipped: ${r.skipped}` }, { dismissible: true });
+          return safeReply(interaction, { content: `${EMOJI.OK} Tab **${tab}**: ${r.ops} ops em ${r.ms}ms.` }, { dismissible: true });
         } catch (e) {
-          return safeReply(interaction, { content: `❌ ${tab}: ${e.message}` }, { dismissible: true });
+          return safeReply(interaction, { content: `${EMOJI.ERRO} ${tab}: ${e.message}` }, { dismissible: true });
         }
       }
 
@@ -798,9 +798,9 @@ async function _dispatchInteraction(interaction) {
         const purge = interaction.options.getBoolean('purge') || false;
         const { rebuildWorkbook } = require('./sheets/syncEngine');
         const r = await rebuildWorkbook(null, { purgeOthers: purge });
-        if (r.skipped) return safeReply(interaction, { content: `⚠️ Skipped: ${r.skipped}` }, { dismissible: true });
+        if (r.skipped) return safeReply(interaction, { content: `${EMOJI.WARN} Skipped: ${r.skipped}` }, { dismissible: true });
         const purgedTag = r.purged ? ' (lixo apagado)' : '';
-        return safeReply(interaction, { content: `🔄 Rebuild${purgedTag} em ${r.ms}ms — ${r.results.length} tabs OK, ${r.errors.length} erros.` }, { dismissible: true });
+        return safeReply(interaction, { content: `${EMOJI.REFRESH} Rebuild${purgedTag} em ${r.ms}ms — ${r.results.length} tabs OK, ${r.errors.length} erros.` }, { dismissible: true });
       }
 
       if (cmd === 'rg-sticky-set') {
@@ -1047,7 +1047,7 @@ async function _dispatchInteraction(interaction) {
             client, channelId, createdBy: interaction.user.id,
           });
           if (alreadyOpen) return safeReply(interaction, { content: `Já existe sessão #${session.id} aberta hoje.` }, { dismissible: true });
-          return safeReply(interaction, { content: `✅ Sessão #${session.id} publicada em <#${channelId}>.` }, { dismissible: true });
+          return safeReply(interaction, { content: `${EMOJI.OK} Sessão #${session.id} publicada em <#${channelId}>.` }, { dismissible: true });
         } catch (e) { return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true }); }
       }
 

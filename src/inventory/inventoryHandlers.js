@@ -14,7 +14,20 @@ const { inventoryRepo, memberRepo } = require('../repositories');
 const { isChefia } = require('../permissions/permissionEngine');
 const { EMOJI, ERRORS, MODALS, INVENTORY } = require('../content');
 
+// Context efémero por user para fluxos multi-step de inventário.
+// TTL de 15 minutos — limpa entradas abandonadas automaticamente.
 const pendingItemSelections = new Map();
+const ITEM_CTX_TTL_MS = 15 * 60 * 1000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, ctx] of pendingItemSelections) {
+    if (ctx._ts && now - ctx._ts > ITEM_CTX_TTL_MS) pendingItemSelections.delete(key);
+  }
+}, 60 * 1000).unref();
+
+function _setItemCtx(userId, ctx) {
+  pendingItemSelections.set(userId, { ...ctx, _ts: Date.now() });
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // REGISTAR MATERIAL — fluxo unificado: Entrega ou Venda
@@ -46,7 +59,7 @@ async function handleRegistarMaterialButton(interaction) {
 async function handleTipoRegistoSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const tipo = interaction.values[0]; // 'entrega' ou 'venda'
-  pendingItemSelections.set(interaction.user.id, { tipo });
+  _setItemCtx(interaction.user.id, { tipo });
 
   const prefix = tipo === 'venda' ? 'inv::select_item_venda' : 'inv::select_item_entrega';
   const menu = await buildItemSelectMenu(prefix, 'Seleciona o material');
@@ -79,7 +92,7 @@ async function handleItemSelect(interaction) {
   pending.itemName = item.name;
   pending.itemPrice = parseFloat(item.estimated_value) || 0;
   pending.movementType = isVenda ? 'venda_bairrista' : 'entrega_bairrista';
-  pendingItemSelections.set(interaction.user.id, pending);
+  _setItemCtx(interaction.user.id, pending);
 
   const modal = new ModalBuilder()
     .setCustomId(isVenda ? 'inv::modal_venda_bairrista' : 'inv::modal_entrega_bairrista')
@@ -229,7 +242,7 @@ async function handleAdjustStockButton(interaction) {
 async function handleAdjustSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const itemId = interaction.values[0];
-  pendingItemSelections.set(interaction.user.id, { itemId: parseInt(itemId), movementType: 'ajuste_manual' });
+  _setItemCtx(interaction.user.id, { itemId: parseInt(itemId), movementType: 'ajuste_manual' });
   const modal = buildStockAdjustmentModal('inv::modal_ajuste_manual');
   await safeShowModal(interaction, modal);
 }
@@ -338,13 +351,13 @@ async function handleGerirActionSelect(interaction) {
   }
 
   if (action === 'edit_price') {
-    pendingItemSelections.set(interaction.user.id, { action: 'edit_price' });
+    _setItemCtx(interaction.user.id, { action: 'edit_price' });
     const menu = await buildItemSelectMenu('inv::select_edit_item', 'Seleciona o material');
     return safeUpdate(interaction, { content: 'Que material queres editar?', components: [menu] });
   }
 
   if (action === 'deactivate') {
-    pendingItemSelections.set(interaction.user.id, { action: 'deactivate' });
+    _setItemCtx(interaction.user.id, { action: 'deactivate' });
     const menu = await buildItemSelectMenu('inv::select_deactivate_item', 'Seleciona o material a desativar');
     return safeUpdate(interaction, { content: 'Que material queres desativar?', components: [menu] });
   }
@@ -407,7 +420,7 @@ async function handleEditItemSelect(interaction) {
   const item = await inventoryRepo.getItemById(itemId);
   if (!item) return safeReply(interaction, { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
 
-  pendingItemSelections.set(interaction.user.id, { action: 'edit_price', itemId, itemName: item.name });
+  _setItemCtx(interaction.user.id, { action: 'edit_price', itemId, itemName: item.name });
 
   const modal = new ModalBuilder()
     .setCustomId('inv::modal_edit_price')
@@ -501,7 +514,7 @@ async function handleEncomendaSelect(interaction) {
   const item = await inventoryRepo.getItemById(itemId);
   if (!item) return safeReply(interaction, { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
 
-  pendingItemSelections.set(interaction.user.id, { itemId, itemName: item.name, action: 'order' });
+  _setItemCtx(interaction.user.id, { itemId, itemName: item.name, action: 'order' });
 
   const modal = new ModalBuilder()
     .setCustomId('inv::modal_encomenda')
