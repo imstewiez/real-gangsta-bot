@@ -62,7 +62,7 @@ async function handleMeuPonto(interaction) {
   if (saida && saida.total > 0) {
     kpiParts.push(`${EMOJI.KILL} ${saida.kills}k · ${saida.kdRatio.toFixed(1)} K/D`);
   }
-  if (streak?.currentStreak > 0) kpiParts.push(`🔥 ${streak.currentStreak}w`);
+  if (streak?.currentStreak > 0) kpiParts.push(`${EMOJI.STREAK} ${streak.currentStreak}w`);
   if (kpiParts.length) {
     embed.setDescription(kpiParts.join(' · '));
   }
@@ -159,11 +159,11 @@ async function handleMeuPonto(interaction) {
 
   // ── Drill-down navegacional — abre vistas detalhadas ephemeras ───────
   const row1 = buttonRow(
-    button({ customId: 'perfil::material',    label: 'Material',    style: 'Secondary', emoji: '📦' }),
-    button({ customId: 'perfil::pvp',         label: 'PvP & Saídas', style: 'Secondary', emoji: '⚔️' }),
-    button({ customId: 'perfil::encomendas',  label: 'Encomendas',  style: 'Secondary', emoji: '📋' }),
-    button({ customId: 'perfil::historico',   label: 'Histórico',   style: 'Secondary', emoji: '📜' }),
-    button({ customId: 'perfil::progressao',  label: 'Progressão',  style: 'Secondary', emoji: '🏆' }),
+    button({ customId: 'perfil::material',    label: 'Material',    style: 'Secondary', emoji: EMOJI.MATERIAL }),
+    button({ customId: 'perfil::pvp',         label: 'PvP & Saídas', style: 'Secondary', emoji: EMOJI.COMBATE }),
+    button({ customId: 'perfil::encomendas',  label: 'Encomendas',  style: 'Secondary', emoji: EMOJI.ENCOMENDA }),
+    button({ customId: 'perfil::historico',   label: 'Histórico',   style: 'Secondary', emoji: EMOJI.HISTORICO }),
+    button({ customId: 'perfil::progressao',  label: 'Progressão',  style: 'Secondary', emoji: EMOJI.PROGRESSO }),
   );
 
   return safeReply(interaction, { embeds: [embed], components: [row1] }, { dismissible: true });

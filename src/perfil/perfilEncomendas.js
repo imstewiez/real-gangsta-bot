@@ -101,8 +101,8 @@ async function handle(interaction) {
   }
 
   const navRow = buttonRow(
-    button({ customId: 'morador::encomendar', label: 'Nova Encomenda',     style: 'Success',   emoji: '➕' }),
-    button({ customId: 'perfil::voltar',     label: 'Voltar ao Perfil',    style: 'Secondary', emoji: '↩️' }),
+    button({ customId: 'morador::encomendar', label: 'Nova Encomenda',  style: 'Success',   emoji: EMOJI.NOVO }),
+    button({ customId: 'perfil::voltar',      label: 'Voltar ao Perfil', style: 'Secondary', emoji: EMOJI.VOLTAR }),
   );
 
   return safeReply(interaction, { embeds: [embed], components: [navRow] }, { dismissible: true });

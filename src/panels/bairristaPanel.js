@@ -1,6 +1,6 @@
 'use strict';
 const { brandEmbed, applyLogo } = require('../shared/embedBuilders');
-const { BAIRRISTAS, BUTTONS } = require('../content');
+const { BAIRRISTAS, BUTTONS, EMOJI } = require('../content');
 const { buttonFromDef, button, buttonRow } = require('../shared/ui/buttons');
 
 // Painel Casa — Bairrista.
@@ -18,7 +18,7 @@ function buildBairristaPanel() {
     buttonFromDef('morador::registar_material', B.ENTREGA),
     buttonFromDef('morador::meu_ponto',         B.MEU_PONTO),
     buttonFromDef('morador::ranking',           B.RANKING),
-    button({ customId: 'perfil::encomendas', label: 'Encomendas', style: 'Secondary', emoji: '📋' }),
+    button({ customId: 'perfil::encomendas', label: 'Encomendas', style: 'Secondary', emoji: EMOJI.ENCOMENDA }),
   );
 
   return { embeds: [embed], components: [row1] };

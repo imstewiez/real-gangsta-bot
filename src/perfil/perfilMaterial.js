@@ -59,9 +59,9 @@ async function render(interaction, period) {
     );
 
     embed.addFields(
-      { name: '📥 Entregas', value: `**${fmt(cur.deliveries)}**` + (period !== 'alltime' ? deltaLine(cur.deliveries, prev?.deliveries) : ''), inline: true },
-      { name: '💰 Vendas',   value: `**${fmt(cur.sales)}**`      + (period !== 'alltime' ? deltaLine(cur.sales,      prev?.sales)      : ''), inline: true },
-      { name: '📅 Dias activos', value: `**${fmt(cur.activeDays)}**`, inline: true },
+      { name: `${EMOJI.ENTREGA} Entregas`, value: `**${fmt(cur.deliveries)}**` + (period !== 'alltime' ? deltaLine(cur.deliveries, prev?.deliveries) : ''), inline: true },
+      { name: `${EMOJI.VENDA} Vendas`,     value: `**${fmt(cur.sales)}**`      + (period !== 'alltime' ? deltaLine(cur.sales,      prev?.sales)      : ''), inline: true },
+      { name: `📅 Dias activos`,           value: `**${fmt(cur.activeDays)}**`, inline: true },
     );
   }
 
@@ -70,7 +70,7 @@ async function render(interaction, period) {
     const top = profile.breakdown.slice(0, 5)
       .map(b => `• **${b.item_name}** — ${fmt(b.quantity)} un.${b.value ? ` · ${fmtVal(b.value)}` : ''}`)
       .join('\n');
-    if (top) embed.addFields({ name: '🏆 Top items (histórico)', value: top, inline: false });
+    if (top) embed.addFields({ name: `${EMOJI.TOPO} Top items (histórico)`, value: top, inline: false });
   }
 
   const periodSelect = new ActionRowBuilder().addComponents(
@@ -85,7 +85,7 @@ async function render(interaction, period) {
   );
 
   const navRow = buttonRow(
-    button({ customId: 'perfil::voltar', label: 'Voltar ao Perfil', style: 'Secondary', emoji: '↩️' }),
+    button({ customId: 'perfil::voltar', label: 'Voltar ao Perfil', style: 'Secondary', emoji: EMOJI.VOLTAR }),
   );
 
   return safeReply(interaction, {

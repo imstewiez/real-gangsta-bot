@@ -54,11 +54,22 @@ const EMOJI = {
   TALVEZ: '❔',
   PRESENCA: '📍',
 
-  // Rankings
+  // Rankings / progressão
   TOPO: '🏆',
+  PROGRESSO: '📈',
+  STREAK: '🔥',
   MEDAL_1: '🥇',
   MEDAL_2: '🥈',
   MEDAL_3: '🥉',
+
+  // Perfil operacional — drill-downs
+  COMBATE: '⚔️',
+  ENCOMENDA: '📋',
+  HISTORICO: '📜',
+  VOLTAR: '↩️',
+  ENTREGA: '📥',
+  VENDA: '💰',
+  SPOT: '🎯',
 
   // Estados gerais
   OK: '✅',

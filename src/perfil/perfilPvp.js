@@ -75,7 +75,7 @@ async function handle(interaction) {
       const netStr = net >= 0 ? `+${fmt(Math.round(net))}` : fmt(Math.round(net));
       return `• **${s.spot}** — ${s.saidas}s · ${winRate}% W · ${s.kills}k · Δ${netStr}`;
     });
-    embed.addFields({ name: '🎯 Melhores spots', value: lines.join('\n'), inline: false });
+    embed.addFields({ name: `${EMOJI.SPOT} Melhores spots`, value: lines.join('\n'), inline: false });
   }
 
   // Últimas saídas
@@ -91,7 +91,7 @@ async function handle(interaction) {
   }
 
   const navRow = buttonRow(
-    button({ customId: 'perfil::voltar', label: 'Voltar ao Perfil', style: 'Secondary', emoji: '↩️' }),
+    button({ customId: 'perfil::voltar', label: 'Voltar ao Perfil', style: 'Secondary', emoji: EMOJI.VOLTAR }),
   );
 
   return safeReply(interaction, { embeds: [embed], components: [navRow] }, { dismissible: true });
