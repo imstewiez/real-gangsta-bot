@@ -92,7 +92,9 @@ async function getStockForItem(itemId) {
     SELECT COALESCE(SUM(
       CASE
         WHEN movement_type IN (
-          'saldo_inicial', 'entrega_morador', 'venda_morador', 'entrega_oficial',
+          'saldo_inicial',
+          'entrega_bairrista', 'venda_bairrista', 'entrega_oficial',
+          'entrega_morador', 'venda_morador',  -- legacy
           'devolucao_operacao', 'apreendido', 'craftado'
         ) THEN quantity
         WHEN movement_type IN ('fornecimento_org', 'consumo_operacao', 'perda_operacao')

@@ -28,9 +28,13 @@ const BUTTONS = {
 
   BAIRRISTA: {
     ENTREGA:       { label: 'Registar Material', emoji: E.MATERIAL,  style: STYLE.SUCCESS },
+    MEU_PONTO:     { label: 'Meu Ponto',         emoji: E.TOPO,      style: STYLE.PRIMARY },
+    RANKING:       { label: 'Ranking',            emoji: E.MEDAL_1,   style: STYLE.PRIMARY },
+    PERFORMANCE:   { label: 'Performance',       emoji: E.KILL,      style: STYLE.SECONDARY },
     HISTORICO:     { label: 'Histórico',         emoji: E.AUDIT,     style: STYLE.SECONDARY },
+    PROGRESSO:     { label: 'Progresso',         emoji: E.TOPO,      style: STYLE.SECONDARY },
+    // Legacy aliases
     TOTAIS:        { label: 'Progresso',         emoji: E.TOPO,      style: STYLE.SECONDARY },
-    PERFORMANCE:   { label: 'Performance',       emoji: E.KILL,      style: STYLE.PRIMARY },
     MATERIAL:      { label: 'Meu Material',      emoji: E.MATERIAL,  style: STYLE.PRIMARY },
     LUCRO:         { label: 'Meu Lucro',         emoji: E.LUCRO,     style: STYLE.PRIMARY },
   },

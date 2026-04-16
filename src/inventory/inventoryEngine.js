@@ -1,8 +1,10 @@
 'use strict';
-const { inventoryRepo, memberRepo } = require('../repositories');
+const { inventoryRepo, memberRepo, bairristaStatsRepo } = require('../repositories');
 const { logAudit } = require('../audit/auditEngine');
 const { notifyMovement } = require('./stockNotifier');
+const { notifyBairristaMovement } = require('./bairristaNotifier');
 const metrics = require('../lib/metrics');
+const { weekBounds } = require('../util');
 const { warn } = require('../logger');
 
 async function recordDelivery({ discordId, itemId, quantity, movementType, notes = '', operationId = null, createdBy }) {
@@ -49,6 +51,25 @@ async function recordDelivery({ discordId, itemId, quantity, movementType, notes
     memberName: member.display_name, memberDiscordId: member.discord_id,
     actorId: createdBy, operationId, balanceAfter, context: notes,
   }).catch(() => {});
+
+  // Fire-and-forget: log dedicado dos Bairristas (entregas + vendas)
+  const isBairristaMovement = /entrega_bairrista|venda_bairrista|entrega_morador|venda_morador/.test(movementType);
+  if (isBairristaMovement) {
+    (async () => {
+      const { start } = weekBounds();
+      const weekStartStr = start.toISOString().split('T')[0];
+      const [weekStats, rankPosition] = await Promise.all([
+        bairristaStatsRepo.getWeeklyMaterialStats(member.discord_id).catch(() => null),
+        bairristaStatsRepo.getRankingPosition(member.discord_id, weekStartStr).catch(() => null),
+      ]);
+      notifyBairristaMovement({
+        movementType, itemName: item.name, quantity,
+        itemPrice: parseFloat(item.estimated_value) || 0,
+        memberName: member.display_name, memberDiscordId: member.discord_id,
+        notes, weekStats, rankPosition,
+      });
+    })().catch(() => {});
+  }
 
   return { movement, member, item };
 }

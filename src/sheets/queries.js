@@ -828,6 +828,88 @@ async function getMemberStreaks(limit = 5) {
   return r.rows;
 }
 
+// ── Bairristas Analytics (para tab Resumo — secção Bairristas) ──────────
+async function getBairristaRankings() {
+  const w = weekBounds();
+  const d = new Date();
+  const monthStart = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1))
+    .toISOString().split('T')[0];
+  const monthEnd = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0))
+    .toISOString().split('T')[0];
+
+  // Top 10 Bairristas semanal
+  const weekly = await query(`
+    SELECT wr.*, ${DISPLAY_NAME_EXPR('m')} AS display_name, m.tier,
+           ROW_NUMBER() OVER (ORDER BY GREATEST(wr.hybrid_score, wr.weighted_value) DESC) AS pos
+    FROM weekly_rankings wr
+    JOIN members m ON m.id = wr.member_id
+    WHERE wr.week_start = $1 AND m.role = 'bairrista'
+    ORDER BY GREATEST(wr.hybrid_score, wr.weighted_value) DESC
+    LIMIT 10
+  `, [w.start]);
+
+  // Top 10 Bairristas mensal
+  const monthly = await query(`
+    SELECT mr.*, ${DISPLAY_NAME_EXPR('m')} AS display_name, m.tier,
+           ROW_NUMBER() OVER (ORDER BY GREATEST(mr.hybrid_score, mr.weighted_value) DESC) AS pos
+    FROM monthly_rankings mr
+    JOIN members m ON m.id = mr.member_id
+    WHERE mr.month_start = $1 AND m.role = 'bairrista'
+    ORDER BY GREATEST(mr.hybrid_score, mr.weighted_value) DESC
+    LIMIT 10
+  `, [monthStart]);
+
+  // Top 10 Bairristas all-time
+  const allTime = await query(`
+    SELECT ats.*, ${DISPLAY_NAME_EXPR('m')} AS display_name, m.tier,
+           ROW_NUMBER() OVER (ORDER BY GREATEST(ats.hybrid_score, ats.weighted_value) DESC) AS pos
+    FROM all_time_stats ats
+    JOIN members m ON m.id = ats.member_id
+    WHERE m.role = 'bairrista'
+    ORDER BY GREATEST(ats.hybrid_score, ats.weighted_value) DESC
+    LIMIT 10
+  `);
+
+  // Streaks (semanas consecutivas com material) — top 5
+  const streaks = await query(`
+    WITH active_weeks AS (
+      SELECT member_id, week_start
+      FROM weekly_rankings
+      WHERE deliveries > 0 OR sales > 0
+      ORDER BY member_id, week_start DESC
+    ),
+    streaks AS (
+      SELECT member_id, COUNT(*) AS streak_len
+      FROM (
+        SELECT member_id, week_start,
+               ROW_NUMBER() OVER (PARTITION BY member_id ORDER BY week_start DESC) AS rn,
+               week_start - (ROW_NUMBER() OVER (PARTITION BY member_id ORDER BY week_start DESC) * INTERVAL '7 days') AS grp
+        FROM active_weeks
+      ) sub
+      WHERE grp = (
+        SELECT week_start - (ROW_NUMBER() OVER (PARTITION BY member_id ORDER BY week_start DESC) * INTERVAL '7 days')
+        FROM active_weeks aw WHERE aw.member_id = sub.member_id
+        ORDER BY week_start DESC LIMIT 1
+      )
+      GROUP BY member_id
+    )
+    SELECT s.member_id, s.streak_len, ${DISPLAY_NAME_EXPR('m')} AS display_name
+    FROM streaks s
+    JOIN members m ON m.id = s.member_id
+    ORDER BY s.streak_len DESC
+    LIMIT 5
+  `);
+
+  return {
+    weekly: weekly.rows,
+    monthly: monthly.rows,
+    allTime: allTime.rows,
+    streaks: streaks.rows,
+    weekBounds: w,
+    monthBounds: { start: monthStart, end: monthEnd },
+  };
+}
+
 module.exports = {
   weekBounds, prevWeekBounds, daysAgoISO,
   getDashboardKPIs,
@@ -850,4 +932,6 @@ module.exports = {
   getMemberStreaks,
   // Stock per-casa
   getActiveItemsList,
+  // Bairristas analytics
+  getBairristaRankings,
 };

@@ -56,6 +56,9 @@ const {
   handleMyPerformance, handleMyMaterial, handleMyProfit,
 } = require('./members/memberStatsHandlers');
 const {
+  handleMeuPonto, handleRanking, handleRankingSelect, handleProgressoTier,
+} = require('./members/bairristaHandlers');
+const {
   handleRegistarMaterialButton, handleTipoRegistoSelect,
   handleItemSelect, handleQuantityModal,
   handleStockCommand, handleAdjustStockButton,
@@ -101,6 +104,7 @@ const {
 } = require('./sticky/stickyEngine');
 const { registerBuiltinRenderers } = require('./sticky/stickyRenderers');
 const { setClient: setStockClient } = require('./inventory/stockNotifier');
+const { setClient: setBairristaLogClient } = require('./inventory/bairristaNotifier');
 const { setClient: setSaidaClient } = require('./saidas/saidaEngine');
 const {
   handleRandom: radioHandleRandom,
@@ -186,6 +190,8 @@ client.once(Events.ClientReady, async () => {
 
   // Stock notifier precisa do client para auto-discover/criar canais.
   setStockClient(client);
+  // Log dedicado de entregas/vendas dos Bairristas.
+  setBairristaLogClient(client);
   // Saída engine usa client para publicar resultados ricos no fecho.
   setSaidaClient(client);
 
@@ -851,6 +857,42 @@ async function _dispatchInteraction(interaction) {
         return handleLeaderboardButton(interaction);
       }
 
+      // ── Bairrista commands ──────────────────────────────────────────────
+      if (cmd === 'rg-meu-ponto') return handleMeuPonto(interaction);
+      if (cmd === 'rg-progresso') return handleProgressoTier(interaction);
+      if (cmd === 'rg-top-bairristas') return handleRanking(interaction);
+      if (cmd === 'rg-ranking') {
+        // Override period from slash command option
+        const periodo = interaction.options.getString('periodo') || 'week';
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const { bairristaStatsRepo } = require('./repositories');
+        const { start, end } = weekBounds();
+        const weekStartStr = start.toISOString().split('T')[0];
+        const now = new Date();
+        const monthStartStr = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().split('T')[0];
+        let rankings, title;
+        if (periodo === 'month') {
+          rankings = await bairristaStatsRepo.getTopBairristasMonthly(monthStartStr, 15);
+          title = `🏆 Ranking Mensal — ${now.toLocaleString('pt-PT', { month: 'long', year: 'numeric' })}`;
+        } else if (periodo === 'alltime') {
+          rankings = await bairristaStatsRepo.getTopBairristasAllTime(15);
+          title = '🏆 Ranking Histórico — Bairristas';
+        } else {
+          rankings = await bairristaStatsRepo.getTopBairristas(weekStartStr, 15);
+          title = `🏆 Ranking Semanal — ${weekStartStr} → ${end.toISOString().split('T')[0]}`;
+        }
+        if (!rankings.length) return safeReply(interaction, { content: 'Sem dados para este período.' }, { dismissible: true });
+        const lines = rankings.map((r, i) => {
+          const pos = Number(r.pos || i + 1);
+          const prefix = pos <= 3 ? ['🥇', '🥈', '🥉'][pos - 1] : `**${pos}.**`;
+          const score = Math.round(Number(r.hybrid_score || r.weighted_value || 0));
+          const isMe = r.discord_id === interaction.user.id ? ' ← **tu**' : '';
+          return `${prefix} <@${r.discord_id}> — **${score.toLocaleString('pt-PT')}** · ${r.deliveries || 0}e · ${r.sales || 0}v${isMe}`;
+        });
+        const embed = brandEmbed('TOP').setTitle(title).setDescription(lines.join('\n'));
+        return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+      }
+
       if (cmd === 'rg-version') {
         const inst = getCurrentInstance();
         if (!inst) {
@@ -896,7 +938,7 @@ async function _dispatchInteraction(interaction) {
       if (id.startsWith('onboard::approve::')) return handleApproveButton(interaction, parseInt(id.split('::')[2]));
       if (id.startsWith('onboard::deny::')) return handleDenyButton(interaction, parseInt(id.split('::')[2]));
 
-      // Morador / Oficial — registar material (entrega ou venda)
+      // Bairrista / Oficial — registar material (entrega ou venda)
       if (id === 'morador::registar_material') return handleRegistarMaterialButton(interaction);
       if (id === 'morador::encomendar') return handleEncomendasButton(interaction);
       if (id === 'morador::historico') return handleMemberHistoryButton(interaction);
@@ -906,6 +948,10 @@ async function _dispatchInteraction(interaction) {
       if (id === 'morador::my_performance') return handleMyPerformance(interaction);
       if (id === 'morador::my_material') return handleMyMaterial(interaction);
       if (id === 'morador::my_profit') return handleMyProfit(interaction);
+      // Novos handlers Bairrista
+      if (id === 'morador::meu_ponto') return handleMeuPonto(interaction);
+      if (id === 'morador::ranking') return handleRanking(interaction);
+      if (id === 'morador::progresso_tier') return handleProgressoTier(interaction);
 
       // Oficial buttons
       if (id === 'oficial::ver_saidas' || id === 'oficial::ver_operacoes') return handleViewSaidasButton(interaction);
@@ -1041,6 +1087,9 @@ async function _dispatchInteraction(interaction) {
       if (id === 'inv::select_item_entrega' || id === 'inv::select_item_venda') return handleItemSelect(interaction);
       if (id === 'inv::select_ajuste') return handleAdjustSelect(interaction);
       if (id === 'inv::select_encomenda') return handleEncomendaSelect(interaction);
+
+      // Bairrista — ranking por período
+      if (id === 'bairrista::ranking_period') return handleRankingSelect(interaction);
 
       // Inventory — gestão de materiais (chefia)
       if (id === 'inv::select_gerir_action') return handleGerirActionSelect(interaction);

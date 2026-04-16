@@ -253,21 +253,17 @@ async function handleDenyButton(interaction, requestId) {
 
 function buildBairristaChannelPanel() {
   const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('morador::registar_material').setLabel('Registar Material').setStyle(ButtonStyle.Success).setEmoji('\uD83D\uDCE6'),
-    new ButtonBuilder().setCustomId('morador::encomendar').setLabel('Encomendar').setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDED2'),
-    new ButtonBuilder().setCustomId('morador::historico').setLabel('Histórico').setStyle(ButtonStyle.Secondary).setEmoji('\uD83D\uDCCB'),
+    new ButtonBuilder().setCustomId('morador::registar_material').setLabel('Registar Material').setStyle(ButtonStyle.Success).setEmoji('📦'),
+    new ButtonBuilder().setCustomId('morador::meu_ponto').setLabel('Meu Ponto').setStyle(ButtonStyle.Primary).setEmoji('🏆'),
+    new ButtonBuilder().setCustomId('morador::ranking').setLabel('Ranking').setStyle(ButtonStyle.Primary).setEmoji('🥇'),
   );
   const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('morador::progresso').setLabel('Progresso').setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDCCA'),
-    new ButtonBuilder().setCustomId('morador::top_semanal').setLabel('Top Semanal').setStyle(ButtonStyle.Secondary).setEmoji('\uD83C\uDFC6'),
-  );
-  const row3 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('morador::my_performance').setLabel('Performance').setStyle(ButtonStyle.Primary).setEmoji('\uD83C\uDFAF'),
-    new ButtonBuilder().setCustomId('morador::my_material').setLabel('Meu Material').setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDCE6'),
-    new ButtonBuilder().setCustomId('morador::my_profit').setLabel('Meu Lucro').setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDCB0'),
+    new ButtonBuilder().setCustomId('morador::my_performance').setLabel('Performance').setStyle(ButtonStyle.Secondary).setEmoji('🎯'),
+    new ButtonBuilder().setCustomId('morador::historico').setLabel('Histórico').setStyle(ButtonStyle.Secondary).setEmoji('📝'),
+    new ButtonBuilder().setCustomId('morador::progresso_tier').setLabel('Progresso').setStyle(ButtonStyle.Secondary).setEmoji('🏆'),
   );
 
-  return [row1, row2, row3];
+  return [row1, row2];
 }
 
 module.exports = {

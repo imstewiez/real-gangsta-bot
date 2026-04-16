@@ -42,6 +42,7 @@ const INVENTORY    = require('./inventory');
 const RANKINGS     = require('./rankings');
 const STICKY       = require('./sticky');
 const MEMBER_STATS = require('./memberStats');
+const BAIRRISTAS   = require('./bairristas');
 
 module.exports = {
   ...voice,
@@ -65,4 +66,5 @@ module.exports = {
   RANKINGS,
   STICKY,
   MEMBER_STATS,
+  BAIRRISTAS,
 };

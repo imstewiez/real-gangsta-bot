@@ -17,6 +17,7 @@ const {
 } = require('./_common');
 const {
   getWeeklySummary, getDailyBreakdown, getTrending, getRankings, getSpotsFull,
+  getBairristaRankings,
 } = require('../queries');
 
 const COL_COUNT = 9;
@@ -52,8 +53,9 @@ function rankingBlockTop(batch, sheetId, row, { title, hint, items, columns }) {
 }
 
 async function syncResumo(batch, sheetId) {
-  const [{ current, previous, bounds }, daily14, trend, rk, spots] = await Promise.all([
+  const [{ current, previous, bounds }, daily14, trend, rk, spots, bairristaRk] = await Promise.all([
     getWeeklySummary(), getDailyBreakdown(14), getTrending(), getRankings(), getSpotsFull(),
+    getBairristaRankings(),
   ]);
 
   let row = headerBlock(batch, sheetId, {
@@ -283,6 +285,80 @@ async function syncResumo(batch, sheetId) {
       ],
     })),
   });
+
+  // ── F. Bairristas — Rankings ──────────────────────────────────────────────
+  row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
+  row = divider(batch, sheetId, row, COL_COUNT, 'accent');
+  row = sectionHeader(batch, sheetId, row, {
+    title: '🏠 BAIRRISTAS · RANKINGS', hint: 'semanal, mensal, histórico + streaks', columnCount: COL_COUNT,
+  });
+  row = spacer(batch, sheetId, row, COL_COUNT, 'XS');
+
+  // Semanal
+  row = rankingBlockTop(batch, sheetId, row, {
+    title: `📦 TOP BAIRRISTAS SEMANAL · ${bairristaRk.weekBounds.start}`,
+    hint: 'hybrid score',
+    columns: ['#', 'Nome', 'Tier', 'Entregas', 'Vendas', 'Saídas', 'Score', '', ''],
+    items: bairristaRk.weekly.map(x => ({
+      render: [
+        bodyBoldCell(x.display_name || '—'),
+        captionCell(x.tier || '—'),
+        numCell(x.deliveries || 0, NUM_FMT.INT),
+        numCell(x.sales || 0, NUM_FMT.INT),
+        numCell(x.operations_count || 0, NUM_FMT.INT),
+        numCell(Math.round(Number(x.hybrid_score || x.weighted_value || 0)), NUM_FMT.INT),
+      ],
+    })),
+  });
+
+  // Mensal
+  row = rankingBlockTop(batch, sheetId, row, {
+    title: `📊 TOP BAIRRISTAS MENSAL · ${bairristaRk.monthBounds.start}`,
+    hint: 'hybrid score',
+    columns: ['#', 'Nome', 'Tier', 'Entregas', 'Vendas', 'Kills', 'Score', '', ''],
+    items: bairristaRk.monthly.map(x => ({
+      render: [
+        bodyBoldCell(x.display_name || '—'),
+        captionCell(x.tier || '—'),
+        numCell(x.deliveries || 0, NUM_FMT.INT),
+        numCell(x.sales || 0, NUM_FMT.INT),
+        numCell(x.kills_count || 0, NUM_FMT.INT),
+        numCell(Math.round(Number(x.hybrid_score || x.weighted_value || 0)), NUM_FMT.INT),
+      ],
+    })),
+  });
+
+  // All-time
+  row = rankingBlockTop(batch, sheetId, row, {
+    title: '🏆 TOP BAIRRISTAS ALL-TIME',
+    hint: 'acumulado desde sempre',
+    columns: ['#', 'Nome', 'Tier', 'Entregas', 'Vendas', 'Kills', 'Score', '', ''],
+    items: bairristaRk.allTime.map(x => ({
+      render: [
+        bodyBoldCell(x.display_name || '—'),
+        captionCell(x.tier || '—'),
+        numCell(x.deliveries || 0, NUM_FMT.INT),
+        numCell(x.sales || 0, NUM_FMT.INT),
+        numCell(x.kills_total || 0, NUM_FMT.INT),
+        numCell(Math.round(Number(x.hybrid_score || x.weighted_value || 0)), NUM_FMT.INT),
+      ],
+    })),
+  });
+
+  // Streaks
+  if (bairristaRk.streaks.length) {
+    row = rankingBlockTop(batch, sheetId, row, {
+      title: '🔥 TOP STREAKS',
+      hint: 'semanas consecutivas com material',
+      columns: ['#', 'Nome', 'Streak', '', '', '', '', '', ''],
+      items: bairristaRk.streaks.map(x => ({
+        render: [
+          bodyBoldCell(x.display_name || '—'),
+          numCell(x.streak_len || 0, NUM_FMT.INT),
+        ],
+      })),
+    });
+  }
 
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Resumo & Rankings');
   autoResizeAll(batch, sheetId, row, COL_COUNT);

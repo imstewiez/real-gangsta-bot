@@ -20,4 +20,5 @@ module.exports = {
   availabilityRepo: require('./availability'),
   radioRepo: require('./radio'),
   stickyRepo: require('./sticky'),
+  bairristaStatsRepo: require('./bairristaStats'),
 };

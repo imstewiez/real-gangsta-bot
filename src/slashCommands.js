@@ -253,6 +253,29 @@ const commands = [
   new SlashCommandBuilder()
     .setName('rg-sticky-list')
     .setDescription('Lista sticky messages activas'),
+
+  // ── Bairristas ──────────────────────────────────────────────────────────────
+  new SlashCommandBuilder()
+    .setName('rg-meu-ponto')
+    .setDescription('O teu ponto na casa — material, ranking, combate, progresso'),
+
+  new SlashCommandBuilder()
+    .setName('rg-ranking')
+    .setDescription('Ranking dos Bairristas')
+    .addStringOption(opt => opt.setName('periodo').setDescription('Semanal / Mensal / Histórico').setRequired(false)
+      .addChoices(
+        { name: 'Semanal', value: 'week' },
+        { name: 'Mensal', value: 'month' },
+        { name: 'Histórico', value: 'alltime' },
+      )),
+
+  new SlashCommandBuilder()
+    .setName('rg-progresso')
+    .setDescription('Progresso para o próximo tier'),
+
+  new SlashCommandBuilder()
+    .setName('rg-top-bairristas')
+    .setDescription('Top Bairristas da semana'),
 ];
 
 module.exports = { commands };

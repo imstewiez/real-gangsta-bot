@@ -1,5 +1,8 @@
 'use strict';
 const { publishWeeklyTop, publishDailySummary } = require('../rankings/rankingJobs');
+const {
+  publishBairristaDailySummary, publishBairristaWeeklySummary, publishBairristaMonthlySummary,
+} = require('../rankings/bairristaSummaryJobs');
 const { jobRepo } = require('../repositories');
 const { log, warn } = require('../logger');
 const metrics = require('../lib/metrics');
@@ -140,6 +143,29 @@ function startAll(client) {
       return { sessionId: session.id };
     });
   }
+
+  // ── Bairrista summary jobs ────────────────────────────────────────────
+  // Resumo diário: corre de 30 em 30 min, publica 1x por dia no canal
+  // log-bairristas (idempotente — se totalQty=0 faz skip).
+  registerJob('bairrista_daily_summary', 30 * 60 * 1000, async () => {
+    const now = new Date();
+    if (now.getHours() !== (CONFIG.BAIRRISTA_DAILY_SUMMARY_HOUR || 23)) return { skipped: 'wrong_hour' };
+    return await publishBairristaDailySummary();
+  });
+
+  // Resumo semanal: corre de 6 em 6h, publica na sexta (dia 5).
+  registerJob('bairrista_weekly_summary', 6 * 60 * 60 * 1000, async () => {
+    const now = new Date();
+    if (now.getDay() !== (CONFIG.BAIRRISTA_WEEKLY_SUMMARY_DAY || 5)) return { skipped: 'wrong_day' };
+    return await publishBairristaWeeklySummary();
+  });
+
+  // Resumo mensal: corre de 12 em 12h, publica no dia 1 de cada mês.
+  registerJob('bairrista_monthly_summary', 12 * 60 * 60 * 1000, async () => {
+    const now = new Date();
+    if (now.getDate() !== 1) return { skipped: 'not_first_day' };
+    return await publishBairristaMonthlySummary();
+  });
 
   for (const job of jobs) {
     job.timer = setInterval(() => runJob(job), job.intervalMs);
