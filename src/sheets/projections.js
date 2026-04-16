@@ -38,6 +38,7 @@ const EVENT_TO_TABS = {
 
   // ── Vida da org ────────────────────────────────────────────────────────
   'member.joined':          ['membros', 'dashboard'],
+  'member.onboarded':       ['membros', 'dashboard'],  // tag aprovada → bairrista na DB
   'member.left':            ['membros', 'resumo', 'dashboard'],
   'member.promoted':        ['membros', 'dashboard'],
   'member.tier_changed':    ['membros', 'resumo', 'dashboard'],

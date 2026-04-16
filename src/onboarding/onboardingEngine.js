@@ -160,6 +160,19 @@ async function processApproval(tagRequest, approverMember, client) {
     color: 0x2ECC71,
   });
 
+  // ── 8. Event — member onboarded (tag aprovada, entrou como bairrista) ──
+  // Dispara a projecção para a sheet 'membros' + dashboard. Sem isto, a
+  // sheet não sabe que um novo bairrista existe (o member.joined do
+  // GuildMemberAdd fire quando ainda é só Pendente, sem record na DB).
+  eventBus.emitAsync('member.onboarded', {
+    discordId,
+    memberId: dbMember.id,
+    displayName: fullName,
+    nickname,
+    tier: entryTier,
+    at: new Date(),
+  }).catch(() => {});
+
   return result;
 }
 

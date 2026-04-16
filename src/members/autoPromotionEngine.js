@@ -4,6 +4,7 @@ const { memberRepo, inventoryRepo } = require('../repositories');
 const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
 const { queueMemberOp, queueChannelOp } = require('../discordQueue');
 const { log, warn } = require('../logger');
+const eventBus = require('../core/eventBus');
 
 // ── Thresholds (entrega/venda acumulada — UNIDADES de material) ─────────────
 // Young Blood (entry) → O Gunão:        25.000 itens
@@ -151,6 +152,17 @@ async function checkAndPromote(discordId, guild, client) {
     });
 
     log(`[AUTO-PROMO] ${dbMember.display_name}: ${promotion.from} → ${promotion.to} (${totalQty} itens)`);
+
+    // Event — dispara projecção sheets (membros + dashboard + resumo).
+    eventBus.emitAsync('member.tier_changed', {
+      discordId,
+      memberId: dbMember.id,
+      displayName: dbMember.display_name,
+      from: promotion.from,
+      to: promotion.to,
+      qty: totalQty,
+      at: new Date(),
+    }).catch(() => {});
 
     return { promoted: true, from: promotion.from, to: promotion.to, qty: totalQty };
   } catch (e) {
