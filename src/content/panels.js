@@ -2,9 +2,10 @@
 /**
  * Copy dos painéis — títulos, descrições e labels de botões.
  *
- * Um painel por chave. Cada um com título curto, descrição firme,
- * e labels de botão de ≤20 caracteres. Mantém consistência com a
- * voz da casa (ver voice.js).
+ * Cada painel: título curto (≤40 chars), descrição com blocos curtos,
+ * labels de botão consistentes com `buttons.js`.
+ *
+ * Ver docs/UX_STYLE_GUIDE.md para regras de tom.
  */
 
 const E = require('./emojis');
@@ -12,76 +13,106 @@ const { inlineSign } = require('./footers');
 
 const PANELS = {
   ENTRADA: {
-    TITLE: `${E.ENTRADA} Entrada`,
+    TITLE: `${E.ENTRADA} Entrada — Firma RedWood`,
     DESCRIPTION:
-      'Novo na rua? Regista-te aqui. A firma vai ler o teu nome antes de abrir porta.\n' +
+      'Pede a tua tag aqui. A chefia vê o pedido e aprova se fores da casa.\n' +
+      '\n' +
+      '**O que acontece depois**\n' +
+      `${E.TAG} tag aprovada → entras como Bairrista\n` +
+      `${E.CASA} canal individual criado\n` +
+      `${E.MATERIAL} registas material, kills, saídas\n` +
+      `${E.TOPO} subes na hierarquia com movimento\n` +
       '\n' +
       `${inlineSign('SHORT')}`,
     BUTTON: {
-      REGISTRAR: 'Registar-me',
+      REGISTRAR: 'Pedir Tag',
     },
   },
 
   BAIRRISTA: {
     TITLE: `${E.CASA} Casa — Bairrista`,
     DESCRIPTION:
-      'Esta é a tua casa. Cada entrega, cada venda, cada movimento — fica aqui.\n' +
+      'O que mexes aqui conta — para a semana, para a subida, para o topo.\n' +
       '\n' +
-      '📦 Entregas · 💰 Vendas · 📋 Histórico · 📊 Totais',
+      `${E.MATERIAL} material que trazes · ${E.LUCRO} vendas · ${E.KILL} kills · ${E.TOPO} progresso`,
     BUTTONS: {
-      ENTREGA: 'Registar Entrega',
-      VENDA: 'Registar Venda',
+      ENTREGA:   'Registar Material',
       HISTORICO: 'Histórico',
-      TOTAIS: 'Ver Totais',
+      TOTAIS:    'Progresso',
+      PERFORMANCE: 'Performance',
+      MATERIAL:  'Meu Material',
+      LUCRO:     'Meu Lucro',
+      // Legacy aliases
+      VENDA:     'Registar Material',
     },
   },
-  // Legacy alias — código antigo ainda importa PANELS.MORADOR
-  get MORADOR() { return this.BAIRRISTA; },
+  get MORADOR() { return this.BAIRRISTA; }, // legacy alias
 
   OFICIAL: {
-    TITLE: `${E.TAG} Oficial — Secretaria`,
+    TITLE: `${E.TAG} Secretaria — Oficial`,
     DESCRIPTION:
-      'Controlo de entregas, vendas e membros. Só o que é preciso — nem mais.',
+      'Registas, validas, consultas. Sem ruído.',
     BUTTONS: {
-      VALIDAR: 'Validar Entrega',
-      MEMBROS: 'Lista Membros',
-      REGISTAR_VENDA: 'Registar Venda',
+      VALIDAR:        'Validar Entrega',
+      MEMBROS:        'Lista de Nomes',
+      REGISTAR_VENDA: 'Registar Material',
     },
   },
 
   CHEFIA: {
     TITLE: `${E.LIDER} Centro de Comando`,
     DESCRIPTION:
-      'Daqui manda-se a rua. Saídas, material, rádio, presença — tudo à mão.\n' +
+      'Daqui puxa-se a rua. Saídas, stock, presença, rádio — tudo à mão.\n' +
       '\n' +
-      `${E.SAIDA} Saídas · ${E.MATERIAL} Material · ${E.RADIO} Rádio · ${E.PRESENCA} Presença · ${E.STICKY} Stickys\n` +
+      `${E.SAIDA} **Saídas** — criar, fechar, participantes, material\n` +
+      `${E.STOCK} **Stock** — ver, ajustar, fornecer, gerir materiais\n` +
+      `${E.PRESENCA} **Gestão** — presença, rádio, stickys\n` +
+      `${E.TOPO} **Dados** — topo, stats, logs\n` +
       '\n' +
-      '_Tudo fica no audit log. Sem surpresas._',
+      '_Tudo fica no audit log._',
     BUTTONS: {
-      CRIAR_SAIDA: 'Criar Saída',
-      FECHAR_SAIDA: 'Fechar Saída',
-      VER_SAIDAS: 'Ver Saídas',
-      PARTICIPANTES: 'Participantes',
-      MATERIAL_SAIDA: 'Material Saída',
-      FORNECER: 'Fornecer a Nome',
-      VER_STOCK: 'Ver Stock',
-      AJUSTAR_STOCK: 'Ajustar Stock',
+      CRIAR_SAIDA:     'Saída Nova',
+      FECHAR_SAIDA:    'Fechar Saída',
+      VER_SAIDAS:      'Ver Saídas',
+      PARTICIPANTES:   'Participantes',
+      MATERIAL_SAIDA:  'Material da Saída',
+      FORNECER:        'Fornecer a Nome',
+      VER_STOCK:       'Ver Stock',
+      AJUSTAR_STOCK:   'Ajustar Stock',
       GERIR_MATERIAIS: 'Gerir Materiais',
       DISPONIBILIDADE: 'Presença Hoje',
-      RADIO: 'Painel Rádio',
-      STICKYS: 'Stickys',
-      TOPS: 'Ver Topo',
-      STATS: 'Estatísticas',
-      LOGS: 'Ver Logs',
+      RADIO:           'Painel Rádio',
+      STICKYS:         'Stickys',
+      TOPS:            'Topo',
+      STATS:           'Estatísticas',
+      LOGS:            'Logs',
     },
   },
 
   PATRAO_DI_ZONA: {
     TITLE: `${E.LIDER} Patrão di Zona`,
     DESCRIPTION:
-      'Tu és o elo entre os bairristas e a chefia. Aqui vês quem rende, quem some, e quem precisa de puxão.',
+      'Vês quem rende, quem some, quem precisa de puxão. A zona é tua.\n' +
+      '\n' +
+      `${E.PARTICIPANTE} lista · ${E.MATERIAL} entregas · ${E.LUCRO} vendas · ${E.TOPO} topo`,
+    BUTTONS: {
+      LISTAR:   'Listar Bairristas',
+      ENTREGAS: 'Entregas da Zona',
+      VENDAS:   'Vendas da Zona',
+      TOPOS:    'Topo da Zona',
+    },
   },
   get CHEFE_MORADORES() { return this.PATRAO_DI_ZONA; }, // legacy alias
+
+  // Canal individual do bairrista (após onboarding) — painel premium
+  BAIRRISTA_CHANNEL: {
+    WELCOME_TITLE: `${E.BEMVINDO} Bem-vindo à casa`,
+    WELCOME_DESCRIPTION: (name) =>
+      `**${name}** — esta zona é tua.\n` +
+      '\n' +
+      'Regista o que trazes, consulta o teu peso, sobe na hierarquia.\n' +
+      `${inlineSign('HOUSE')}`,
+  },
 };
 
 module.exports = PANELS;
