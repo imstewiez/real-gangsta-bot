@@ -3,12 +3,11 @@
  * Handlers do ecossistema Bairristas — Meu Ponto, Ranking, Progresso.
  *
  * CustomIds:
- *   morador::meu_ponto       → ficha completa (material + ranking + combate + tier)
- *   morador::ranking         → ranking semanal/mensal com dropdown de período
- *   morador::progresso_tier  → progresso para próximo tier
+ *   morador::meu_ponto  → cockpit Perfil Operacional (KPIs + drill-downs)
+ *   morador::ranking    → ranking semanal/mensal com dropdown de período
  *
- * Os antigos morador::totais, morador::my_performance, morador::my_material,
- * morador::my_profit continuam a funcionar via handlers existentes.
+ * Detalhes (Material, PvP, Encomendas, Histórico, Progressão) vivem em
+ * src/perfil/* e são acedidos via botões drill-down de "Meu Ponto".
  */
 
 const { MessageFlags, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');

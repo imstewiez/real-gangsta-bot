@@ -19,10 +19,7 @@ const {
   handleProgressButton, handleTopSemanalButton,
 } = require('../../../members/memberHandlers');
 const {
-  handleMyPerformance, handleMyMaterial, handleMyProfit,
-} = require('../../../members/memberStatsHandlers');
-const {
-  handleMeuPonto, handleRanking, handleProgressoTier,
+  handleMeuPonto, handleRanking,
 } = require('../../../members/bairristaHandlers');
 const {
   handleRegistarMaterialButton, handleEncomendasButton,
@@ -100,16 +97,13 @@ const BUTTON_ROUTES = [
   // Bairrista / Oficial — painel bairrista
   exact('morador::registar_material', handleRegistarMaterialButton),
   exact('morador::encomendar',        handleEncomendasButton),
-  exact('morador::historico',         handleMemberHistoryButton),
+  exact('morador::historico',         perfilHistorico.handle),
   exact('morador::totais',            handleMemberTotalsButton),
   exact('morador::progresso',         handleProgressButton),
   exact('morador::top_semanal',       handleTopSemanalButton),
-  exact('morador::my_performance',    handleMyPerformance),
-  exact('morador::my_material',       handleMyMaterial),
-  exact('morador::my_profit',         handleMyProfit),
   exact('morador::meu_ponto',         handleMeuPonto),
   exact('morador::ranking',           handleRanking),
-  exact('morador::progresso_tier',    handleProgressoTier),
+  exact('morador::progresso_tier',    perfilProgressao.handle),
 
   // Perfil Operacional — drill-downs do cockpit "Meu Ponto"
   exact('perfil::material',    perfilMaterial.handle),

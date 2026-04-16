@@ -248,7 +248,9 @@ async function handleDenyButton(interaction, requestId) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PAINEL DO CANAL INDIVIDUAL (enhanced — 5 botões)
+// PAINEL DO CANAL INDIVIDUAL
+// Mesmas acções do painel bairrista — tudo o que é detalhe vive no Perfil
+// Operacional (clicar "Meu Ponto" abre cockpit com drill-downs).
 // ═══════════════════════════════════════════════════════════════════════════
 
 function buildBairristaChannelPanel() {
@@ -256,14 +258,10 @@ function buildBairristaChannelPanel() {
     new ButtonBuilder().setCustomId('morador::registar_material').setLabel('Registar Material').setStyle(ButtonStyle.Success).setEmoji('📦'),
     new ButtonBuilder().setCustomId('morador::meu_ponto').setLabel('Meu Ponto').setStyle(ButtonStyle.Primary).setEmoji('🏆'),
     new ButtonBuilder().setCustomId('morador::ranking').setLabel('Ranking').setStyle(ButtonStyle.Primary).setEmoji('🥇'),
-  );
-  const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('morador::my_performance').setLabel('Performance').setStyle(ButtonStyle.Secondary).setEmoji('🎯'),
-    new ButtonBuilder().setCustomId('morador::historico').setLabel('Histórico').setStyle(ButtonStyle.Secondary).setEmoji('📝'),
-    new ButtonBuilder().setCustomId('morador::progresso_tier').setLabel('Progresso').setStyle(ButtonStyle.Secondary).setEmoji('🏆'),
+    new ButtonBuilder().setCustomId('perfil::encomendas').setLabel('Encomendas').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
   );
 
-  return [row1, row2];
+  return [row1];
 }
 
 module.exports = {
