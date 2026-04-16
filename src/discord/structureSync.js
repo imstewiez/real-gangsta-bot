@@ -32,6 +32,7 @@ const {
   CHANNEL_PERM_OVERRIDES,
   CHANNEL_PERM_OVERRIDES_BY_NAME,
   PANEL_PERM_BY_KEY,
+  CATEGORY_CHILD_FORCE_PERMS,
   ROLE_GUILD_PERMS,
   ROLE_KEY_TO_ID_KEYS,
   rolesFor,
@@ -232,10 +233,36 @@ async function runPermsOnly(guild, opts = {}) {
     errored('PANEL_PERMS_SECTION', e);
   }
 
+  // ── 4d. Aggressive sweep de categorias críticas ────────────────────────
+  // Força perms em TODOS os children da categoria, mesmo quando têm
+  // member-overwrites (lockPermissions de section 5 salta esses casos).
+  // Reservado para categorias onde não deve haver canais com overwrites
+  // user-specific (ex.: OPERACOES = spots/mapas, INVENTARIO = bau/material).
+  const forceSweptIds = new Set();
+  for (const [catKey, permCfg] of Object.entries(CATEGORY_CHILD_FORCE_PERMS || {})) {
+    const tpl = CATEGORY_BY_KEY[catKey];
+    if (!tpl || !tpl.id) continue;
+    for (const [chId, ch] of guild.channels.cache) {
+      if (ch.parentId !== tpl.id) continue;
+      if (CHANNEL_PERM_OVERRIDES[chId]) continue;           // já tem override por ID
+      if (CHANNEL_PERM_OVERRIDES_BY_NAME[ch.name]) continue; // já tem override por nome
+      if (panelChannelIdsHandled.has(chId)) continue;
+
+      forceSweptIds.add(chId);
+      const overwrites = buildOverwrites(guild, permCfg);
+      act('PERM_FORCE_CHILD', { category: catKey, channel: ch.name, reason: permCfg.reason });
+      if (apply) {
+        try { await ch.permissionOverwrites.set(overwrites); }
+        catch (e) { errored(`PERM_FORCE_CHILD:${ch.name}`, e); }
+      }
+    }
+  }
+
   // ── 5. Child channels sync com categoria (idempotente) ─────────────────
   const explicitIds = new Set([
     ...Object.keys(CHANNEL_PERM_OVERRIDES || {}),
     ...panelChannelIdsHandled,
+    ...forceSweptIds,
   ]);
   const explicitNames = new Set(Object.keys(CHANNEL_PERM_OVERRIDES_BY_NAME || {}));
   for (const [key] of Object.entries(CATEGORY_PERMS)) {

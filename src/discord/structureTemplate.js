@@ -390,14 +390,43 @@ const CHANNEL_PERM_OVERRIDES = {
   },
   [DISCOVERED.CH_CEMITERIO]: {
     denyEveryone: ['ViewChannel', 'SendMessages'],
+    deny: [
+      { roleSources: ['bairrista_tiers', 'bairristas_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
+    ],
     allow: [
       { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages'] },
-      { roleSources: ['bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
-    reason: 'Cemitério — bairristas só vêem; staff e bot postam kills',
+    reason: 'Cemitério — staff only, bairristas não vêem',
   },
 };
+
+// Canais de gestão privada do patrão di zona (bau, encomendas, material) —
+// definidos abaixo dos PERMS_* (forward-referenced via função diferida).
+// Usar IIFE para evitar TDZ (PERMS_PATRAO_DI_ZONA_PRIVATE é declarado mais abaixo).
+function _applyPatraoDiZonaPrivateOverrides() {
+  CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_BAU_CASA] = PERMS_PATRAO_DI_ZONA_PRIVATE;
+  CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_REG_ENCOMENDAS] = PERMS_PATRAO_DI_ZONA_PRIVATE;
+  CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_MATERIAL_ENTREG] = PERMS_PATRAO_DI_ZONA_PRIVATE;
+}
+
+// Canais informativos pinados por ID (imunes a mismatches de nome):
+// readonly_consult — bairristas vêem mas não escrevem.
+function _applyReadonlyConsultOverrides() {
+  const ids = [
+    DISCOVERED.CH_INFO_GERAL,
+    DISCOVERED.CH_REGRAS,
+    DISCOVERED.CH_META_SEMANAL,
+    DISCOVERED.CH_OFERTAS_ORG,
+    DISCOVERED.CH_PREMIOS_SEMANAIS,
+    DISCOVERED.CH_COR_ORG,
+    DISCOVERED.CH_DIVULGACAO,
+    DISCOVERED.CH_WOOD_COMUN,
+  ];
+  for (const id of ids) {
+    if (id) CHANNEL_PERM_OVERRIDES[id] = PERMS_READONLY_BAIRRISTAS_VIEW;
+  }
+}
 
 // ── Channel-specific overrides (por nome) ────────────────────────────────────
 // Usado para os painéis do bot — protege que apenas o bot pode escrever.
@@ -419,22 +448,78 @@ const PERMS_BOAS_VINDAS = {
   reason: 'boas-vindas — só Pendentes + staff',
 };
 
+// Painel público (painel-bairristas) — todos vêem, só bot escreve
 const PERMS_PAINEL_READ_ONLY = {
   denyEveryone: _PANEL_WRITE_DENIES,
   allow: [{ roleSources: ['bot'], perms: _BOT_PANEL_PERMS }],
   reason: 'painel — read-only, só bot publica',
 };
 
-const PERMS_PAINEL_PATRAO_DI_ZONA = {
-  denyEveryone: _PANEL_WRITE_DENIES,
+// Painel chefia — só comando vê, read-only excepto bot
+const PERMS_PAINEL_CHEFIA = {
+  denyEveryone: ['ViewChannel', ..._PANEL_WRITE_DENIES],
   deny: [
-    { roleSources: ['bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel'] },
+    { roleSources: ['supervisor', 'patrao_di_zona', 'bairrista_tiers', 'bairristas_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
   ],
-  allow: [{ roleSources: ['bot'], perms: _BOT_PANEL_PERMS }],
-  reason: 'painel-patrao-di-zona — staff only',
+  allow: [
+    { roleSources: ['command'], perms: ['ViewChannel', 'ReadMessageHistory'] },
+    { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
+  ],
+  reason: 'painel-chefia — só comando vê',
+};
+
+// Painel oficiais — command + supervisor vêem, read-only excepto bot
+const PERMS_PAINEL_OFICIAIS = {
+  denyEveryone: ['ViewChannel', ..._PANEL_WRITE_DENIES],
+  deny: [
+    { roleSources: ['patrao_di_zona', 'bairrista_tiers', 'bairristas_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
+  ],
+  allow: [
+    { roleSources: ['command', 'supervisor'], perms: ['ViewChannel', 'ReadMessageHistory'] },
+    { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
+  ],
+  reason: 'painel-oficiais — staff senior (command + supervisor)',
+};
+
+const PERMS_PAINEL_PATRAO_DI_ZONA = {
+  denyEveryone: ['ViewChannel', ..._PANEL_WRITE_DENIES],
+  deny: [
+    { roleSources: ['bairrista_tiers', 'bairristas_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
+  ],
+  allow: [
+    { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'ReadMessageHistory'] },
+    { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
+  ],
+  reason: 'painel-patrao-di-zona — staff + patrão di zona vêem',
 };
 // Legacy alias — ainda referenciado acima
 const PERMS_PAINEL_CHEFE_MORADORES = PERMS_PAINEL_PATRAO_DI_ZONA;
+
+// Staff-only (command + supervisor + patrao_di_zona) — bairristas não vêem
+const PERMS_STAFF_ONLY = {
+  denyEveryone: ['ViewChannel', 'Connect'],
+  deny: [
+    { roleSources: ['bairrista_tiers', 'bairristas_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
+  ],
+  allow: [
+    { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'EmbedLinks', 'AttachFiles'] },
+    { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'EmbedLinks', 'AttachFiles'] },
+  ],
+  reason: 'staff only — bairristas não vêem',
+};
+
+// Privado patrão di zona — gestão de material/encomendas/bau. Staff + patrão di zona apenas.
+const PERMS_PATRAO_DI_ZONA_PRIVATE = {
+  denyEveryone: ['ViewChannel', 'Connect'],
+  deny: [
+    { roleSources: ['bairrista_tiers', 'bairristas_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
+  ],
+  allow: [
+    { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'EmbedLinks', 'AttachFiles', 'ManageMessages'] },
+    { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'EmbedLinks', 'AttachFiles'] },
+  ],
+  reason: 'privado patrão di zona — gestão de material/encomendas',
+};
 
 // ── Read-only para bairristas + staff publica ───────────────────────────────
 // Usado em canais de consulta (spots, mapas, precários, rankings, info).
@@ -467,8 +552,8 @@ const _PAINEL_PATRAO_DI_ZONA_NAMES = [ch('📋', 'painel-patrao-di-zona'), '📋
 const CHANNEL_PERM_OVERRIDES_BY_NAME = {};
 for (const n of _BOAS_VINDAS_NAMES)            CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_BOAS_VINDAS;
 for (const n of _PAINEL_BAIRRISTAS_NAMES)      CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_READ_ONLY;
-for (const n of _PAINEL_OFICIAIS_NAMES)        CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_READ_ONLY;
-for (const n of _PAINEL_CHEFIA_NAMES)          CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_READ_ONLY;
+for (const n of _PAINEL_OFICIAIS_NAMES)        CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_OFICIAIS;
+for (const n of _PAINEL_CHEFIA_NAMES)          CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_CHEFIA;
 for (const n of _PAINEL_PATRAO_DI_ZONA_NAMES)  CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_CHEFE_MORADORES;
 
 // ── Canais de consulta read-only (bairristas vêem, staff/bot escrevem) ──
@@ -496,6 +581,21 @@ for (const n of _READONLY_CONSULT_NAMES) {
   CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_READONLY_BAIRRISTAS_VIEW;
 }
 
+// Aplicar overrides pinados por ID (forward-reference: PERMS_* declarados acima)
+_applyPatraoDiZonaPrivateOverrides();
+_applyReadonlyConsultOverrides();
+
+// ── Categoria → perm config aplicado a TODOS os children (aggressive sweep) ─
+// Usado pelo structureSync.runPermsOnly para forçar perms em todos os canais
+// de categorias críticas, bypassando o lockPermissions de section 5 que salta
+// canais com member-overwrites. Reserve para categorias onde NÃO deve existir
+// qualquer canal com overwrites user-specific (OPERACOES = spots/mapas: só
+// staff + bot publicam; INVENTARIO = bau/encomendas/material: staff + patrão).
+const CATEGORY_CHILD_FORCE_PERMS = {
+  OPERACOES: PERMS_READONLY_BAIRRISTAS_VIEW,    // spots/mapas — bairristas vêem, staff escreve
+  INVENTARIO: PERMS_PATRAO_DI_ZONA_PRIVATE,      // bau/encomendas/material — staff + patrão di zona
+};
+
 // ── Map panel key → permission config ────────────────────────────────────────
 // Consumido pelo `runPermsOnly` (structureSync) — faz auto-discovery dos
 // canais de painel (env var OU nome+categoria, espelha panelBootstrap) e
@@ -504,10 +604,10 @@ for (const n of _READONLY_CONSULT_NAMES) {
 // não batem com os matchers em `CHANNEL_PERM_OVERRIDES_BY_NAME`.
 const PANEL_PERM_BY_KEY = {
   panel_entrada:        PERMS_BOAS_VINDAS,
-  panel_bairristas:     PERMS_PAINEL_READ_ONLY,
-  panel_oficiais:       PERMS_PAINEL_READ_ONLY,
-  panel_chefia:         PERMS_PAINEL_READ_ONLY,
-  panel_patrao_di_zona: PERMS_PAINEL_PATRAO_DI_ZONA,
+  panel_bairristas:     PERMS_PAINEL_READ_ONLY,       // público no GUETTO, read-only
+  panel_oficiais:       PERMS_PAINEL_OFICIAIS,        // command + supervisor, read-only
+  panel_chefia:         PERMS_PAINEL_CHEFIA,          // só command, read-only
+  panel_patrao_di_zona: PERMS_PAINEL_PATRAO_DI_ZONA,  // staff + patrão, read-only
 };
 
 module.exports = {
@@ -524,6 +624,7 @@ module.exports = {
   CHANNEL_PERM_OVERRIDES,
   CHANNEL_PERM_OVERRIDES_BY_NAME,
   PANEL_PERM_BY_KEY,
+  CATEGORY_CHILD_FORCE_PERMS,
   ROLE_GUILD_PERMS,
   ROLE_KEY_TO_ID_KEYS,
   rolesFor,
