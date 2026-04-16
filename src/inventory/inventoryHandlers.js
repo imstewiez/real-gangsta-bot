@@ -7,12 +7,13 @@ const {
   safeReply, safeUpdate, safeShowModal,
   getModalField, isDuplicate,
 } = require('../shared/interactionHelpers');
-const { successEmbed, stockEmbed, brandEmbed } = require('../shared/embedBuilders');
+const { successEmbed, stockEmbed, brandEmbed, progressBar } = require('../shared/embedBuilders');
 const { recordDelivery, adjustStock, getCurrentStock } = require('./inventoryEngine');
 const { buildItemSelectMenu, buildStockAdjustmentModal } = require('./inventoryMenus');
 const { inventoryRepo, memberRepo } = require('../repositories');
 const { isChefia } = require('../permissions/permissionEngine');
-const MESSAGES = require('../shared/errorMessages');
+const { EMOJI, ERRORS, MODALS } = require('../content');
+const MESSAGES = require('../shared/errorMessages'); // legacy shim
 
 const pendingItemSelections = new Map();
 
@@ -147,45 +148,60 @@ async function handleQuantityModal(interaction) {
     const isVenda = movementType === 'venda_bairrista' || movementType === 'venda_morador';
     const movValue = quantity * (pending.itemPrice || 0);
 
-    let description = `**${quantity}x** ${pending.itemName}`;
+    // ── Auto-promoção ──────────────────────────────────────────────────────
+    const { checkAndPromote, getPromotionProgress, formatTierName } =
+      require('../members/autoPromotionEngine');
+    const promoResult = await checkAndPromote(
+      interaction.user.id, interaction.guild, interaction.client,
+    ).catch(() => null);
+
+    const title = isVenda
+      ? `${EMOJI.LUCRO} Venda guardada`
+      : `${EMOJI.MATERIAL} Entrega guardada`;
+
+    const embed = brandEmbed('MOVEMENT').setTitle(title);
+    const fields = [
+      { name: 'Item',       value: `**${pending.itemName}**`, inline: true },
+      { name: 'Quantidade', value: `**${quantity}**`,         inline: true },
+    ];
     if (movValue > 0) {
-      description += `\nPreço unitário: **${pending.itemPrice}\u20AC**`;
-      description += `\nValor: **${movValue.toLocaleString('pt-PT')}\u20AC**`;
+      fields.push({
+        name: 'Valor',
+        value: `**${movValue.toLocaleString('pt-PT')} €**\n*${pending.itemPrice}€/un.*`,
+        inline: true,
+      });
     }
-    description += `\nRegistado por <@${interaction.user.id}>`;
-    if (notes) description += `\nNotas: ${notes}`;
+    if (notes) {
+      fields.push({ name: 'Notas', value: notes, inline: false });
+    }
+    embed.addFields(fields);
 
-    const typeLabel = isVenda ? 'Venda Registada' : 'Entrega Registada';
-    const embed = successEmbed(typeLabel, description);
-
-    // ── Auto-promoção: verificar se atingiu meta ──────────────────────────
-    const { checkAndPromote, getPromotionProgress, formatTierName } = require('../members/autoPromotionEngine');
-    const guild = interaction.guild;
-    const client = interaction.client;
-    const promoResult = await checkAndPromote(interaction.user.id, guild, client).catch(() => null);
-
+    // Progresso / promoção
     if (promoResult?.promoted) {
-      description += `\n\n\uD83C\uDF1F **PROMOÇÃO AUTOMÁTICA!**\nSubiste para **${formatTierName(promoResult.to)}**!`;
-      embed.setDescription(description);
+      embed.addFields({
+        name: `${EMOJI.LIDER} Subida automática`,
+        value: `Parabéns — subiste para **${formatTierName(promoResult.to)}**.`,
+        inline: false,
+      });
     } else {
       const progress = await getPromotionProgress(interaction.user.id).catch(() => null);
       if (progress && !progress.maxedOut && progress.threshold) {
-        const bar = buildProgressBar(parseFloat(progress.progress));
-        description += `\n\n${bar} **${progress.progress}%** para ${progress.nextTierName}\n(${progress.totalValue.toLocaleString('pt-PT')}\u20AC / ${progress.threshold.toLocaleString('pt-PT')}\u20AC)`;
-        embed.setDescription(description);
+        const bar = progressBar(parseFloat(progress.progress), 100, { width: 12 });
+        embed.addFields({
+          name: `${EMOJI.TOPO} Progresso → ${progress.nextTierName}`,
+          value:
+            `${bar} **${progress.progress}%**\n` +
+            `**${(progress.totalQty || 0).toLocaleString('pt-PT')}** / ${progress.threshold.toLocaleString('pt-PT')}` +
+            ` · falta **${progress.remaining.toLocaleString('pt-PT')}**`,
+          inline: false,
+        });
       }
     }
 
     return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
-    return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
   }
-}
-
-function buildProgressBar(percent) {
-  const filled = Math.round(percent / 10);
-  const empty = 10 - filled;
-  return '\u2588'.repeat(filled) + '\u2591'.repeat(empty);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

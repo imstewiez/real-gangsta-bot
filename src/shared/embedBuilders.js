@@ -164,17 +164,28 @@ function operationEmbed(op) {
     );
 }
 
-function rankingEmbed(title, rankings, weekLabel) {
+function rankingEmbed(title, rankings, weekLabel, opts = {}) {
+  const { previousMap = null } = opts; // Map<discordId, previousPosition> para deltas
   const embed = brandEmbed('TOP').setTitle(RANKINGS.TITLE(title, weekLabel));
   if (!rankings.length) {
     embed.setDescription(RANKINGS.EMPTY_WEEK);
     return embed;
   }
-  const medals = [EMOJI.MEDAL_1, EMOJI.MEDAL_2, EMOJI.MEDAL_3];
   const lines = rankings.map((r, i) => {
-    const prefix = medals[i] || `**${i + 1}.**`;
+    const prefix = rankBadge(i + 1);
     const qty = Number(r.weighted_value || 0).toLocaleString('pt-PT');
-    return `${prefix} <@${r.discord_id}> — **${qty} itens** (${r.deliveries} ${RANKINGS.LABELS.ENTREGAS}, ${r.sales} ${RANKINGS.LABELS.VENDAS}, ${r.operations_count} ${RANKINGS.LABELS.SAIDAS})`;
+
+    // Delta vs semana anterior (se fornecido).
+    let deltaMark = '';
+    if (previousMap) {
+      const prev = previousMap.get(r.discord_id);
+      if (prev === undefined) deltaMark = ' ⚡ *novo*';
+      else if (prev > i + 1)  deltaMark = ` ↑ **${prev - (i + 1)}**`;
+      else if (prev < i + 1)  deltaMark = ` ↓ **${(i + 1) - prev}**`;
+    }
+
+    return `${prefix} <@${r.discord_id}> — **${qty}**` +
+      `  ·  ${r.deliveries}e · ${r.sales}v · ${r.operations_count}s${deltaMark}`;
   });
   embed.setDescription(lines.join('\n'));
   return embed;

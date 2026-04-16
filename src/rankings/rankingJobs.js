@@ -43,16 +43,27 @@ async function publishWeeklyTop(client) {
     await computeWeeklyRankings();
 
     const rankings = await getCurrentWeekRanking(10);
-    const weekLabel = `${start.toISOString().split('T')[0]} a ${end.toISOString().split('T')[0]}`;
+    const weekLabel = `${start.toISOString().split('T')[0]} → ${end.toISOString().split('T')[0]}`;
 
-    const embed = rankingEmbed('Top Semanal', rankings, weekLabel);
+    // Delta vs semana anterior — mapa discordId → posição na semana anterior.
+    let previousMap = null;
+    try {
+      const prevStart = new Date(start);
+      prevStart.setUTCDate(prevStart.getUTCDate() - 7);
+      const prevWeekStart = prevStart.toISOString().split('T')[0];
+      const { rankingRepo } = require('../repositories');
+      const prevRankings = await rankingRepo.getWeekRanking(prevWeekStart, 50);
+      previousMap = new Map(prevRankings.map((r, i) => [r.discord_id, i + 1]));
+    } catch (_) { /* sem delta */ }
+
+    const embed = rankingEmbed('Topo da Semana', rankings, weekLabel, { previousMap });
 
     const summary = await getWeekSummary();
     if (summary) {
       embed.addFields(
-        { name: 'Total Entregas', value: String(summary.total_deliveries || 0), inline: true },
-        { name: 'Total Vendas', value: String(summary.total_sales || 0), inline: true },
-        { name: 'Total Operações', value: String(summary.total_operations || 0), inline: true },
+        { name: 'Entregas', value: `**${summary.total_deliveries || 0}**`, inline: true },
+        { name: 'Vendas',   value: `**${summary.total_sales || 0}**`,      inline: true },
+        { name: 'Saídas',   value: `**${summary.total_operations || 0}**`, inline: true },
       );
     }
 

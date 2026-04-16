@@ -72,7 +72,20 @@ async function handleCreateSaidaModal(interaction) {
       leaderDiscordId: null, groupNumber: 1, maxParticipants: 12,
       notes, createdBy: interaction.user.id,
     });
-    const embed = successEmbed('Saída aberta', `**#${s.id}** — ${type}\nData: ${date}${spot ? `\nSpot: ${spot}` : ''}`);
+    const { SAIDA_TYPE } = require('../content');
+    const embed = brandEmbed('MOVEMENT')
+      .setTitle(`${EMOJI.SAIDA} Saída #${s.id} aberta`)
+      .addFields(
+        { name: 'Tipo',  value: `**${SAIDA_TYPE[type] || type}**`, inline: true },
+        { name: 'Data',  value: `**${date}**${time ? ` · ${time}` : ''}`, inline: true },
+        { name: 'Spot',  value: spot ? `**${spot}**` : '—', inline: true },
+      );
+    if (notes) embed.addFields({ name: 'Notas', value: notes, inline: false });
+    embed.addFields({
+      name: '→ próximo passo',
+      value: `Adiciona **participantes** e, quando fechares, regista material + resultado.`,
+      inline: false,
+    });
     return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
     return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
