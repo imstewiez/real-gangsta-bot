@@ -2,47 +2,39 @@
 const { SlashCommandBuilder } = require('discord.js');
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Slash commands — conjunto mínimo e profissional.
+// Slash commands — 17 comandos, todos de 1 palavra, sem prefixo.
 //
-// Filosofia: painéis são a via principal de interacção. Slash commands existem
-// apenas para (1) consultas rápidas que não têm painel, (2) acções raras de
-// staff/admin, (3) manutenção técnica.
-//
-// Comandos eliminados por terem equivalente em painel:
-//   top-week, top-month, top-alltime, top-bairristas → /rg-ranking cobre tudo
-//   close-saida, add-item, item-set-price, items-sem-preco → painéis de chefia
-//   progresso → painel bairrista
-//   cemetery → minha-saida + rankings
-//   sticky-set/remove/list → painel chefia stickys
-//   stock-add/remove/adjust → painéis de inventário
+// Painéis são a via principal. Slash commands existem como atalhos rápidos,
+// acções de staff e manutenção técnica.
 // ══════════════════════════════════════════════════════════════════════════════
 
 const commands = [
-  // ── CAMADA 1: User-facing (consultas rápidas) ──────────────────────────────
+  // ── User-facing ────────────────────────────────────────────────────────────
   new SlashCommandBuilder()
-    .setName('rg-version')
-    .setDescription('Versão e estado do bot'),
+    .setName('versao')
+    .setDescription('Estado do bot, versão e saúde dos dados'),
 
   new SlashCommandBuilder()
-    .setName('rg-stock')
-    .setDescription('Stock actual de materiais'),
+    .setName('stock')
+    .setDescription('Stock actual (geral ou de um item)')
+    .addStringOption(opt => opt.setName('item').setDescription('Item específico (por casa)').setRequired(false).setAutocomplete(true)),
 
   new SlashCommandBuilder()
-    .setName('rg-items')
+    .setName('catalogo')
     .setDescription('Catálogo de materiais com preços'),
 
   new SlashCommandBuilder()
-    .setName('rg-member')
+    .setName('ficha')
     .setDescription('Ficha de um membro')
     .addUserOption(opt => opt.setName('membro').setDescription('Quem consultar').setRequired(false)),
 
   new SlashCommandBuilder()
-    .setName('rg-meu-ponto')
+    .setName('ponto')
     .setDescription('O teu ponto na casa — material, ranking, combate, progresso'),
 
   new SlashCommandBuilder()
-    .setName('rg-ranking')
-    .setDescription('Rankings (semanal, mensal, histórico)')
+    .setName('ranking')
+    .setDescription('Rankings da firma')
     .addStringOption(opt => opt.setName('periodo').setDescription('Período').setRequired(false)
       .addChoices(
         { name: 'Semanal', value: 'week' },
@@ -51,71 +43,58 @@ const commands = [
       )),
 
   new SlashCommandBuilder()
-    .setName('rg-minha-saida')
-    .setDescription('As tuas últimas saídas — kills, performance, disciplina')
+    .setName('saidas')
+    .setDescription('As tuas últimas saídas')
     .addIntegerOption(opt => opt.setName('id').setDescription('ID de uma saída específica').setRequired(false)),
 
-  // ── CAMADA 2: Staff operacional ────────────────────────────────────────────
   new SlashCommandBuilder()
-    .setName('rg-kill')
+    .setName('kill')
     .setDescription('Registar uma kill'),
 
+  // ── Staff operacional ──────────────────────────────────────────────────────
   new SlashCommandBuilder()
-    .setName('rg-audit')
-    .setDescription('Logs de auditoria recentes')
+    .setName('audit')
+    .setDescription('Logs de auditoria')
     .addIntegerOption(opt => opt.setName('limite').setDescription('Registos (default 20)').setRequired(false)),
 
   new SlashCommandBuilder()
-    .setName('rg-stock-check')
-    .setDescription('Stock actual de um item (por casa)')
-    .addStringOption(opt => opt.setName('item').setDescription('Nome do item').setRequired(true).setAutocomplete(true)),
-
-  new SlashCommandBuilder()
-    .setName('rg-stock-transfer')
+    .setName('transfer')
     .setDescription('Mover material entre casas')
-    .addStringOption(opt => opt.setName('item').setDescription('Nome do item').setRequired(true).setAutocomplete(true))
+    .addStringOption(opt => opt.setName('item').setDescription('Item').setRequired(true).setAutocomplete(true))
     .addIntegerOption(opt => opt.setName('quantidade').setDescription('Unidades').setRequired(true).setMinValue(1))
-    .addStringOption(opt => opt.setName('de').setDescription('Casa origem').setRequired(true)
+    .addStringOption(opt => opt.setName('de').setDescription('Origem').setRequired(true)
       .addChoices({ name: 'Armazém', value: 'armazem' }, { name: 'Grupo', value: 'grupo' }))
-    .addStringOption(opt => opt.setName('para').setDescription('Casa destino').setRequired(true)
+    .addStringOption(opt => opt.setName('para').setDescription('Destino').setRequired(true)
       .addChoices({ name: 'Armazém', value: 'armazem' }, { name: 'Grupo', value: 'grupo' }))
-    .addStringOption(opt => opt.setName('nota').setDescription('Nota livre').setRequired(false)),
+    .addStringOption(opt => opt.setName('nota').setDescription('Nota').setRequired(false)),
 
-  // ── CAMADA 3: Admin técnico ────────────────────────────────────────────────
+  // ── Admin técnico ──────────────────────────────────────────────────────────
   new SlashCommandBuilder()
-    .setName('rg-rebuild-rankings')
+    .setName('rebuild')
     .setDescription('Recalcular rankings mensais + all-time'),
 
   new SlashCommandBuilder()
-    .setName('rg-catalog-sync-prices')
+    .setName('precario')
     .setDescription('Carregar preços do precário oficial')
-    .addStringOption(opt => opt.setName('modo').setDescription('Preços ou full').setRequired(false)
+    .addStringOption(opt => opt.setName('modo').setDescription('Modo').setRequired(false)
       .addChoices({ name: 'Preços', value: 'prices' }, { name: 'Full', value: 'full' })),
 
   new SlashCommandBuilder()
-    .setName('rg-backfill-members')
-    .setDescription('Importar membros Discord com role RP para a DB')
+    .setName('backfill')
+    .setDescription('Importar membros Discord para a DB')
     .addStringOption(opt => opt.setName('modo').setDescription('Modo')
       .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
 
-  // ── CAMADA 4: Manutenção / emergência ──────────────────────────────────────
+  // ── Manutenção ─────────────────────────────────────────────────────────────
   new SlashCommandBuilder()
-    .setName('rg-sync-panels')
-    .setDescription('Republicar painéis do bot'),
-
-  new SlashCommandBuilder()
-    .setName('rg-sync-perms')
+    .setName('perms')
     .setDescription('Sincronizar permissões Discord')
     .addStringOption(opt => opt.setName('modo').setDescription('Modo').setRequired(false)
       .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
 
   new SlashCommandBuilder()
-    .setName('rg-layout-check')
-    .setDescription('Verificar layout Discord contra lock file'),
-
-  new SlashCommandBuilder()
-    .setName('rg-reconcile')
-    .setDescription('Detectar e corrigir drift DB↔Discord')
+    .setName('reconcile')
+    .setDescription('Detectar drift DB↔Discord')
     .addStringOption(opt => opt.setName('dominio').setDescription('Área').setRequired(true)
       .addChoices(
         { name: 'Todos', value: 'all' },
@@ -127,23 +106,9 @@ const commands = [
       .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
 
   new SlashCommandBuilder()
-    .setName('rg-retention-run')
-    .setDescription('Executar políticas de retenção')
-    .addStringOption(opt => opt.setName('modo').setDescription('Modo').setRequired(true)
-      .addChoices({ name: 'Dry-run', value: 'dry-run' }, { name: 'Aplicar', value: 'apply' })),
-
-  new SlashCommandBuilder()
-    .setName('rg-data-health')
-    .setDescription('Snapshot da saúde dos dados'),
-
-  new SlashCommandBuilder()
-    .setName('rg-sync-sheets')
-    .setDescription('Sincronizar Google Sheet'),
-
-  new SlashCommandBuilder()
-    .setName('rg-sync-sheets-tab')
-    .setDescription('Sincronizar uma tab do Google Sheet')
-    .addStringOption(opt => opt.setName('tab').setDescription('Tab').setRequired(true)
+    .setName('syncsheet')
+    .setDescription('Sincronizar Google Sheet')
+    .addStringOption(opt => opt.setName('tab').setDescription('Tab específica (todas se vazio)').setRequired(false)
       .addChoices(
         { name: 'Dashboard', value: 'dashboard' },
         { name: 'Resumo & Rankings', value: 'resumo' },
@@ -154,7 +119,7 @@ const commands = [
       )),
 
   new SlashCommandBuilder()
-    .setName('rg-sync-sheets-rebuild')
+    .setName('rebuildsheet')
     .setDescription('Reconstruir Google Sheet (apaga e recria)')
     .addBooleanOption(opt => opt.setName('purge')
       .setDescription('Também apagar tabs não-canónicas')),

@@ -97,46 +97,49 @@ Stock é sempre calculado a partir do ledger — nunca sobreposto.
 - Stickys configuráveis via painel da chefia (botão Stickys).
 - `availability:daily` e `radio:current` são source_keys built-in com renderers automáticos.
 
-## Slash commands (23 — organizado por camada)
+## Slash commands (17 — todos de 1 palavra, sem prefixo)
+
+Filosofia: **painéis são a via principal**. Slash commands são atalhos rápidos
+e ferramentas de manutenção. Tudo o que é uso diário está em painel.
 
 ### User-facing (qualquer membro)
 | Comando | Descrição |
 |---|---|
-| `/rg-version` | Versão e estado do bot |
-| `/rg-stock` | Stock actual de materiais |
-| `/rg-items` | Catálogo de materiais com preços |
-| `/rg-member` | Ficha de um membro |
-| `/rg-meu-ponto` | O teu ponto na casa (material, ranking, combate, progresso) |
-| `/rg-ranking` | Rankings (semanal, mensal, histórico) |
-| `/rg-minha-saida` | As tuas últimas saídas |
+| `/versao` | Estado do bot (+ saúde dos dados se staff) |
+| `/stock` | Stock actual (geral ou de um item específico) |
+| `/catalogo` | Catálogo de materiais com preços |
+| `/ficha` | Ficha de um membro |
+| `/ponto` | O teu ponto na casa (material, ranking, combate, progresso) |
+| `/ranking` | Rankings (semanal, mensal, histórico) |
+| `/saidas` | As tuas últimas saídas |
+| `/kill` | Registar uma kill |
 
 ### Staff operacional
 | Comando | Descrição |
 |---|---|
-| `/rg-kill` | Registar uma kill |
-| `/rg-audit` | Logs de auditoria recentes |
-| `/rg-stock-check` | Stock actual de um item (por casa) |
-| `/rg-stock-transfer` | Mover material entre casas |
+| `/audit` | Logs de auditoria recentes |
+| `/transfer` | Mover material entre casas |
 
 ### Admin técnico
 | Comando | Descrição |
 |---|---|
-| `/rg-rebuild-rankings` | Recalcular rankings mensais + all-time |
-| `/rg-catalog-sync-prices` | Carregar preços do precário oficial |
-| `/rg-backfill-members` | Importar membros Discord com role RP |
+| `/rebuild` | Recalcular rankings mensais + all-time |
+| `/precario` | Carregar preços do precário oficial |
+| `/backfill` | Importar membros Discord com role RP |
 
 ### Manutenção / emergência
 | Comando | Descrição |
 |---|---|
-| `/rg-sync-panels` | Republicar painéis do bot |
-| `/rg-sync-perms` | Sincronizar permissões Discord |
-| `/rg-layout-check` | Verificar layout contra lock file |
-| `/rg-reconcile` | Detectar drift DB↔Discord |
-| `/rg-retention-run` | Executar políticas de retenção |
-| `/rg-data-health` | Snapshot da saúde dos dados |
-| `/rg-sync-sheets` | Sincronizar Google Sheet (todas as tabs) |
-| `/rg-sync-sheets-tab` | Sincronizar uma tab específica |
-| `/rg-sync-sheets-rebuild` | Reconstruir Google Sheet (apaga e recria) |
+| `/perms` | Sincronizar permissões Discord |
+| `/reconcile` | Detectar drift DB↔Discord |
+| `/syncsheet` | Sincronizar Google Sheet (tab opcional) |
+| `/rebuildsheet` | Reconstruir Google Sheet (apaga e recria) |
+
+### Eliminados (agora automáticos)
+- ~~`/rg-sync-panels`~~ → painéis auto-publicam no boot + sticky auto-repost
+- ~~`/rg-layout-check`~~ → `/reconcile` cobre detecção de drift
+- ~~`/rg-retention-run`~~ → scheduler corre retenção diariamente
+- ~~`/rg-data-health`~~ → fundido em `/versao` (staff vê saúde)
 
 ## CLI scripts
 
@@ -146,9 +149,9 @@ npm run stock:bootstrap              # dry-run (default)
 npm run stock:bootstrap:apply        # aplica (inclui --confirm)
 
 # Sync de estrutura Discord (via slash command)
-# /rg-sync-perms modo:dry-run       — verifica permissões
-# /rg-sync-perms modo:apply         — aplica permissões
-# /rg-sync-panels                   — republica painéis
+# /perms modo:dry-run              — verifica permissões
+# /perms modo:apply                — aplica permissões
+# Painéis: republicam-se automaticamente no boot (PANEL_BOOTSTRAP_ON_READY)
 ```
 
 ## Painéis
