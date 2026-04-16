@@ -107,6 +107,11 @@ async function readyHook(c) {
   startScheduler(c);
   setWebClient(c);
 
+  // Aplicar permissões uma vez ao arranque — propaga template changes
+  // sem esperar pelo job de 6h. Delay curto para a guild cache estar
+  // populada; fire-and-forget (não bloqueia o ready).
+  setTimeout(() => { _applyPermsOnBoot(c).catch(() => {}); }, 15_000).unref?.();
+
   startHeartbeat((reason) => {
     log(`[INSTANCE] Detectada instância mais recente — shutdown controlado (${reason}).`);
     shutdown(reason).catch((e) => {
@@ -116,6 +121,21 @@ async function readyHook(c) {
   });
 
   log(`[READY] ${CONFIG.BOT_INTERNAL_NAME} operacional.`);
+}
+
+async function _applyPermsOnBoot(c) {
+  try {
+    const guild = c.guilds.cache.get(CONFIG.DISCORD_GUILD_ID);
+    if (!guild) { warn('[BOOT:PERMS] guild não encontrada — skip'); return; }
+    log('[BOOT:PERMS] A aplicar permissões do template...');
+    const { runPermsOnly } = require('../discord/structureSync');
+    const { reconcileBairristaChannels } = require('../members/channelInvariants');
+    const r1 = await runPermsOnly(guild, { apply: true });
+    const r2 = await reconcileBairristaChannels(guild, { dryRun: false });
+    log(`[BOOT:PERMS] Perms: ${r1.actions?.length || 0} acções · ${r1.errors?.length || 0} erros · canais individuais: ${r2.fixed} fixed / ${r2.missing} missing.`);
+  } catch (e) {
+    warn(`[BOOT:PERMS] Falhou: ${e.message}`);
+  }
 }
 
 // ── Graceful shutdown ───────────────────────────────────────────────────────
