@@ -375,23 +375,30 @@ const CATEGORY_PERMS = {
   ARSENAL: {
     denyEveryone: ['ViewChannel'],
     allow: [
-      { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages'] },
+      // Admins (command + supervisor) escrevem — arsenal é catálogo admin
+      { roleSources: ['command', 'supervisor'], perms: ['ViewChannel', 'SendMessages'] },
+      // Patrão + bairristas consultam (precisam de ver catálogo de armas/material)
+      { roleSources: ['patrao_di_zona', 'bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'ReadMessageHistory'] },
       { roleSources: ['bot'], perms: ['ViewChannel'] },
     ],
   },
   OPERACOES: {
     denyEveryone: ['ViewChannel'],
     allow: [
-      { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages'] },
-      // Bairristas consultam spots/mapas — read-only (staff planeia, malta vê)
-      { roleSources: ['bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'ReadMessageHistory'] },
+      // Admins (command + supervisor) planeiam spots/mapas
+      { roleSources: ['command', 'supervisor'], perms: ['ViewChannel', 'SendMessages'] },
+      // Patrão + bairristas consultam — read-only
+      { roleSources: ['patrao_di_zona', 'bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'ReadMessageHistory'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
   },
   ECONOMIA: {
     denyEveryone: ['ViewChannel'],
     allow: [
-      { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages'] },
+      // Só chefia escreve em comunicados/ofertas/prémios/etc.
+      { roleSources: ['command'], perms: ['ViewChannel', 'SendMessages'] },
+      // Supervisor/patrão/bairristas consultam
+      { roleSources: ['supervisor', 'patrao_di_zona', 'bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'ReadMessageHistory'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
   },
@@ -433,11 +440,15 @@ const CHANNEL_PERM_OVERRIDES = {
   },
   [DISCOVERED.CH_TAGS]: {
     denyEveryone: ['ViewChannel'],
+    deny: [
+      { roleSources: ['patrao_di_zona', 'bairrista_tiers', 'bairristas_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
+    ],
     allow: [
-      { roleSources: ['command', 'supervisor'], perms: ['ViewChannel', 'SendMessages'] },
+      { roleSources: ['command'], perms: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'ManageMessages'] },
+      { roleSources: ['supervisor'], perms: ['ViewChannel', 'ReadMessageHistory'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
-    reason: 'tags — staff only para aprovações de onboarding',
+    reason: 'tags — só chefia (command) aprova; oficiais consultam (audit)',
   },
   [DISCOVERED.CH_ENTRADAS]: {
     denyEveryone: ['ViewChannel'],
@@ -576,17 +587,20 @@ const PERMS_PAINEL_PATRAO_DI_ZONA = {
 // Legacy alias — ainda referenciado acima
 const PERMS_PAINEL_CHEFE_MORADORES = PERMS_PAINEL_PATRAO_DI_ZONA;
 
-// Staff-only (command + supervisor + patrao_di_zona) — bairristas não vêem
+// Staff-only (command + supervisor) — patrão e bairristas não vêem.
+// Usado em canais de comunicação oficial entre chefia e oficiais (ex.:
+// comunicados oficial). Patrão di zona gere bairristas, não é oficial —
+// fora desse canal.
 const PERMS_STAFF_ONLY = {
   denyEveryone: ['ViewChannel', 'Connect'],
   deny: [
-    { roleSources: ['bairrista_tiers', 'bairristas_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
+    { roleSources: ['patrao_di_zona', 'bairrista_tiers', 'bairristas_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
   ],
   allow: [
-    { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'EmbedLinks', 'AttachFiles'] },
+    { roleSources: ['command', 'supervisor'], perms: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'EmbedLinks', 'AttachFiles'] },
     { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'EmbedLinks', 'AttachFiles'] },
   ],
-  reason: 'staff only — bairristas não vêem',
+  reason: 'staff only — command + supervisor; patrão/bairristas fora',
 };
 
 // Privado patrão di zona — gestão de material/encomendas/bau/arquivos.
@@ -617,17 +631,20 @@ const PERMS_READONLY_OG_PLUS_WRITE = {
   reason: 'consulta — só OG+ (command + supervisor) escreve; todos consultam',
 };
 
-// ── Read-only para bairristas + staff publica ───────────────────────────────
-// Usado em canais de consulta (spots, mapas, precários, rankings, info).
-// Bairristas vêem mas não escrevem; staff+bot publicam.
+// ── Info institucional: SÓ chefia (command) escreve, todos consultam ──────
+// Aplica-se a canais informativos/institucionais: regras, info-geral,
+// divulgação, comunicados gerais, cor-org, meta-semanal, ofertas, prémios,
+// rankings, tops. Nem oficiais nem patrão escrevem — esses são role-guards
+// que lêem. "Os únicos que escrevem em todo o lado são kingpin e manda-chuva"
+// — user.
 const PERMS_READONLY_BAIRRISTAS_VIEW = {
   denyEveryone: ['ViewChannel', ..._PANEL_WRITE_DENIES],
   allow: [
-    { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
-    { roleSources: ['bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'ReadMessageHistory'] },
+    { roleSources: ['command'], perms: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'EmbedLinks', 'AttachFiles'] },
+    { roleSources: ['supervisor', 'patrao_di_zona', 'bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'ReadMessageHistory'] },
     { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
   ],
-  reason: 'read-only para bairristas — staff+bot publicam, bairristas consultam',
+  reason: 'institucional — só chefia (command) escreve; supervisor/patrão/bairristas consultam',
 };
 
 // Aceita tanto o nome formatado (`emoji・𝗻𝗼𝗺𝗲`) como nomes legacy
@@ -700,8 +717,8 @@ _applyReadonlyConsultOverrides();
 // qualquer canal com overwrites user-specific (OPERACOES = spots/mapas: só
 // staff + bot publicam; INVENTARIO = bau/encomendas/material: staff + patrão).
 const CATEGORY_CHILD_FORCE_PERMS = {
-  OPERACOES: PERMS_READONLY_BAIRRISTAS_VIEW,    // spots/mapas — bairristas vêem, staff escreve
-  INVENTARIO: PERMS_PATRAO_DI_ZONA_PRIVATE,      // bau/encomendas/material — staff + patrão di zona
+  OPERACOES: PERMS_READONLY_OG_PLUS_WRITE,      // spots/mapas — só admins (OG+) escrevem, patrão/bairristas vêem
+  INVENTARIO: PERMS_PATRAO_DI_ZONA_PRIVATE,     // bau/encomendas/material — chefia + patrão di zona
 };
 
 // ── Map panel key → permission config ────────────────────────────────────────
