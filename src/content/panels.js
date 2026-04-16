@@ -41,7 +41,7 @@ const PANELS = {
   // BAIRRISTA — A CASA
   // ═══════════════════════════════════════════════════════════════════════
   BAIRRISTA: {
-    TITLE: `${E.CASA} A CASA | FIRMA REDWOOD`,
+    TITLE: `${E.CASA} Painel do Bairro | Firma RedWood`,
     DESCRIPTION:
       'A Firma não paga conversa. Paga **peso**. Aqui mede-se o que trazes, o que vendes, o que entregas — e quem mete respeito à volta.\n' +
       '\n' +
@@ -117,7 +117,7 @@ const PANELS = {
   // PATRÃO DI ZONA — MANDO DA ZONA
   // ═══════════════════════════════════════════════════════════════════════
   PATRAO_DI_ZONA: {
-    TITLE: `${E.BAIRRO} MANDO DA ZONA | FIRMA REDWOOD`,
+    TITLE: `${E.LIDER} Painel do Patrão di Zona | Firma RedWood`,
     DESCRIPTION:
       'A zona é tua. Vês quem puxa, vês quem some, vês quem pede puxão. Patrão conhece o bairro pelo cheiro — sabe quando dar **colher**, quando dar **tapa**.\n' +
       '\n' +
