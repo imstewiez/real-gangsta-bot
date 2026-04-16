@@ -37,10 +37,12 @@ function buildEntradaPanel() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handlePedirTagButton(interaction) {
-  // Check if user already has a pending request
+  const discordId = interaction.user.id;
+
+  // Guard 1: pedido pendente
   const existing = await query(
     `SELECT id FROM tag_requests WHERE discord_id = $1 AND status = 'pending'`,
-    [interaction.user.id]
+    [discordId]
   );
   if (existing.rows.length > 0) {
     return safeReply(interaction, {
@@ -49,12 +51,50 @@ async function handlePedirTagButton(interaction) {
     }, { dismissible: true });
   }
 
-  // Check if already a bairrista
+  // Guard 2: já é bairrista via role Discord
   const bairristaRoleIds = CONFIG.BAIRRISTA_TIER_ROLE_IDS;
-  const hasRole = bairristaRoleIds.some(id => interaction.member.roles.cache.has(id));
-  if (hasRole) {
+  const staffRoleIds = [
+    ...CONFIG.COMMAND_ROLE_IDS,
+    ...CONFIG.SUPERVISOR_ROLE_IDS,
+    ...CONFIG.PATRAO_DI_ZONA_ROLE_IDS,
+  ];
+  const hasAnyMemberRole = [...bairristaRoleIds, CONFIG.BAIRRISTAS_BASE_ROLE_ID, ...staffRoleIds]
+    .filter(Boolean)
+    .some(id => interaction.member.roles.cache.has(id));
+  if (hasAnyMemberRole) {
     return safeReply(interaction, {
       content: ONBOARDING.ALREADY_IN_HOUSE,
+      flags: MessageFlags.Ephemeral,
+    }, { dismissible: true });
+  }
+
+  // Guard 3: já existe record de member activo na DB (role Discord pode ter
+  // sido removido manualmente mas DB mantém estado — dessync não é pretexto
+  // para re-onboarding). Só reactiva via staff, não via self-service.
+  const memberRecord = await query(
+    `SELECT id, role, status FROM members WHERE discord_id = $1 AND status = 'ativo' LIMIT 1`,
+    [discordId]
+  );
+  if (memberRecord.rows.length > 0) {
+    const m = memberRecord.rows[0];
+    return safeReply(interaction, {
+      content: `${EMOJI.WARN} Já tens registo activo como **${m.role}**. Se saíste e voltaste, fala com a chefia para reactivar.`,
+      flags: MessageFlags.Ephemeral,
+    }, { dismissible: true });
+  }
+
+  // Guard 4: já teve tag aprovada alguma vez (approved, não cancelada).
+  // Evita ciclo pedir→aprovar→pedir de novo quando registo antigo ainda
+  // está `approved` mesmo se member saiu do servidor entretanto.
+  const priorApproved = await query(
+    `SELECT id, resolved_at FROM tag_requests
+      WHERE discord_id = $1 AND status = 'approved'
+      ORDER BY resolved_at DESC LIMIT 1`,
+    [discordId]
+  );
+  if (priorApproved.rows.length > 0) {
+    return safeReply(interaction, {
+      content: `${EMOJI.WARN} Já tiveste tag aprovada antes. Fala com a chefia — só eles reabrem onboarding.`,
       flags: MessageFlags.Ephemeral,
     }, { dismissible: true });
   }
@@ -178,13 +218,38 @@ async function handleApproveButton(interaction, requestId) {
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const reqRes = await query('SELECT * FROM tag_requests WHERE id = $1', [requestId]);
-  const tagReq = reqRes.rows[0];
-  if (!tagReq) return safeReply(interaction, { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.` }, { dismissible: true });
-  if (tagReq.status !== 'pending') return safeReply(interaction, { content: `${EMOJI.BLOQUEADO} Este pedido já foi tratado.` }, { dismissible: true });
+  // Claim atómico via `approved_by` (token de bloqueio). Se duas staff
+  // clicam ao mesmo tempo, só uma ganha o UPDATE (approved_by era NULL).
+  // A outra fica com 0 rows e vê "já foi tratado". Evita double-approval
+  // (2 roles add, 2 canais, 2 audits). Status continua 'pending' até o
+  // engine completar e finalizar para 'approved'.
+  const claim = await query(
+    `UPDATE tag_requests SET approved_by = $1
+      WHERE id = $2 AND status = 'pending' AND approved_by IS NULL
+      RETURNING *`,
+    [interaction.user.id, requestId]
+  );
+  const tagReq = claim.rows[0];
+  if (!tagReq) {
+    const check = await query('SELECT status, approved_by FROM tag_requests WHERE id = $1', [requestId]);
+    if (check.rows.length === 0) {
+      return safeReply(interaction, { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.` }, { dismissible: true });
+    }
+    return safeReply(interaction, { content: `${EMOJI.BLOQUEADO} Este pedido já foi tratado por outro oficial.` }, { dismissible: true });
+  }
 
   const { processApproval } = require('./onboardingEngine');
-  const result = await processApproval(tagReq, interaction.member, interaction.client);
+  let result;
+  try {
+    result = await processApproval(tagReq, interaction.member, interaction.client);
+  } catch (e) {
+    // Engine falhou — libertar o claim para a chefia tentar de novo.
+    await query(
+      `UPDATE tag_requests SET approved_by = NULL WHERE id = $1 AND status = 'pending'`,
+      [requestId]
+    ).catch(() => {});
+    throw e;
+  }
 
   // Update the original message to show approved + lock buttons
   if (tagReq.message_id) {

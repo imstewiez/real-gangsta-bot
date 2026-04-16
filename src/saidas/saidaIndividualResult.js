@@ -41,7 +41,7 @@ const { saidaRepo, memberRepo } = require('../repositories');
 const {
   safeReply, safeShowModal, getModalField, isDuplicate,
 } = require('../shared/interactionHelpers');
-const { brandEmbed } = require('../shared/embedBuilders');
+const { brandEmbed, errorEmbed } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { formatPtDate } = require('../shared/formatPtDate');
 const { isChefia, isOficial } = require('../permissions/permissionEngine');
@@ -177,8 +177,10 @@ async function handleSubmitResultModal(interaction) {
     weaponReturnStatus = 'confirmed_not_returned';
   }
 
-  // Persiste
-  await query(`
+  // Persiste — UPDATE idempotente: só aceita se `individual_result_submitted`
+  // ainda é FALSE. Duplo-clique / race condition não sobrepõe o resultado
+  // já submetido.
+  const upd = await query(`
     UPDATE operation_participants
        SET kills = $3,
            died  = $4,
@@ -188,7 +190,16 @@ async function handleSubmitResultModal(interaction) {
            individual_result_at = NOW(),
            weapon_return_status = $7
      WHERE operation_id = $1 AND member_id = $2
+       AND individual_result_submitted = FALSE
+     RETURNING id
   `, [saidaId, member.id, kills, died, survived, notes, weaponReturnStatus]);
+
+  if (upd.rowCount === 0) {
+    return safeReply(interaction, {
+      embeds: [errorEmbed('Já submetido', 'O teu resultado já foi registado. Não pode ser alterado.')],
+      flags: MessageFlags.Ephemeral,
+    }, { messageClass: 'WARN' });
+  }
 
   await logAudit({
     action: 'saida_individual_result',
@@ -366,13 +377,44 @@ async function handleWeaponDecide(interaction) {
     return safeReply(interaction, { content: 'Decisão inválida.' }, { messageClass: 'ERROR' });
   }
 
-  await query(`
+  // Guard: só podemos confirmar/rejeitar/inconclusivo se houve, de facto,
+  // arma emitida pela org. Se o participante foi com arma própria
+  // (own_weapon=true) ou se não recebeu material, não há arma a devolver.
+  const partRow = await query(
+    `SELECT own_weapon, received_org_material, weapon_return_status
+       FROM operation_participants WHERE operation_id = $1 AND member_id = $2`,
+    [saidaId, memberId]
+  );
+  const part = partRow.rows[0];
+  if (!part) {
+    return safeReply(interaction, {
+      embeds: [errorEmbed('Participante não encontrado', 'Esta pessoa já não está inscrita na saída.')],
+      flags: MessageFlags.Ephemeral,
+    }, { messageClass: 'WARN' });
+  }
+  if (part.own_weapon || !part.received_org_material) {
+    return safeReply(interaction, {
+      embeds: [errorEmbed('Sem arma a devolver', 'Este participante foi com arma própria ou não recebeu material da org — nada a confirmar.')],
+      flags: MessageFlags.Ephemeral,
+    }, { messageClass: 'WARN' });
+  }
+
+  const upd = await query(`
     UPDATE operation_participants
        SET weapon_return_status = $3,
            weapon_return_confirmed_by = $4,
            weapon_return_confirmed_at = NOW()
      WHERE operation_id = $1 AND member_id = $2
+       AND weapon_return_status NOT IN ('confirmed_returned','confirmed_not_returned','inconclusive')
+     RETURNING id
   `, [saidaId, memberId, newStatus, `discord:${interaction.user.id}`]);
+
+  if (upd.rowCount === 0) {
+    return safeReply(interaction, {
+      embeds: [errorEmbed('Já resolvido', 'A devolução deste participante já foi confirmada por outro oficial.')],
+      flags: MessageFlags.Ephemeral,
+    }, { messageClass: 'WARN' });
+  }
 
   await logAudit({
     action: 'weapon_return_decided',

@@ -5,18 +5,41 @@
  * standalone (ex.: registo defensivo no bairro).
  */
 
-const { memberRepo, killRepo } = require('../repositories');
+const { memberRepo, killRepo, saidaRepo } = require('../repositories');
 const { logAudit } = require('../audit/auditEngine');
 const CONFIG = require('../config');
 const { EmbedBuilder } = require('discord.js');
 const eventBus = require('../core/eventBus');
 const { warn } = require('../logger');
 
+// Estados de saída em que é coerente registar kills.
+const KILL_ALLOWED_SAIDA_STATUSES = new Set(['em_preparacao', 'em_curso', 'concluida']);
+
 async function recordKill({ killerDiscordId, victimName, victimDiscordId = null, victimFaction = '', spot = '', context = '', saidaId = null, date = null, notes = '', confirmedBy = null, createdBy }) {
   if (!victimName?.trim()) throw new Error('Nome da vítima obrigatório.');
 
   const killer = await memberRepo.findByDiscordId(killerDiscordId);
   if (!killer) throw new Error('Killer não encontrado na base de membros.');
+
+  // Guards para kill com saidaId — standalone (saidaId=null) continua livre.
+  if (saidaId != null) {
+    const saida = await saidaRepo.findById(saidaId);
+    if (!saida) throw new Error(`Saída #${saidaId} não existe.`);
+
+    // Guard 1: saída tem de estar iniciada ou concluída (kills em saída
+    // 'aberta' ainda não arrancada são nonsense).
+    if (!KILL_ALLOWED_SAIDA_STATUSES.has(saida.status)) {
+      throw new Error(`Saída #${saidaId} está "${saida.status}" — não podem registar-se kills.`);
+    }
+
+    // Guard 2: killer tem de ser participante desta saída (atribuição
+    // cruzada de kills entre saídas é data integrity violation).
+    const participants = await saidaRepo.getParticipants(saidaId);
+    const isParticipant = participants.some(p => p.member_id === killer.id);
+    if (!isParticipant) {
+      throw new Error(`${killer.display_name || 'Membro'} não é participante da saída #${saidaId}. Inscreve-te primeiro ou regista o kill sem saída.`);
+    }
+  }
 
   const kill = await killRepo.recordKill({
     killerId: killer.id,

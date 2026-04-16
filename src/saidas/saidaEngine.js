@@ -303,21 +303,41 @@ async function _resolveOrCreateMember(discordId, guild = null) {
   return member;
 }
 
+// Estados em que inscrição é permitida — só enquanto a saída está aberta
+// ou em preparação. Em curso/concluída/cancelada = rejeita.
+const PARTICIPATION_ALLOWED_STATUSES = new Set(['aberta', 'em_preparacao']);
+
 async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
   const member = await _resolveOrCreateMember(discordId, guild);
 
-  // Enforce 12 characterized limit
+  const saida = await saidaRepo.findById(saidaId);
+  if (!saida) throw new Error(`Saída #${saidaId} não existe.`);
+
+  // Guard 1: status da saída
+  if (!PARTICIPATION_ALLOWED_STATUSES.has(saida.status)) {
+    throw new Error(`Saída #${saidaId} já está "${saida.status}" — inscrições fechadas.`);
+  }
+
   const participantType = data.participantType || 'caracterizado';
-  if (participantType === 'caracterizado') {
-    const saida = await saidaRepo.findById(saidaId);
-    const maxCharacterized = saida?.max_participants || 12;
-    // Verificar se já é participante (update, não nova adição)
-    const existing = (await saidaRepo.getParticipants(saidaId)).find(p => p.member_id === member.id);
-    if (!existing) {
-      const currentCount = await saidaRepo.countCharacterized(saidaId);
-      if (currentCount >= maxCharacterized) {
-        throw new Error(`Limite de ${maxCharacterized} caracterizados atingido. Regista-te como trabalhador.`);
-      }
+
+  // Guard 2: type-flip silencioso. Se o user já está inscrito com outro
+  // tipo, rejeita — tem de sair explicitamente e voltar a inscrever-se.
+  // Antes, ON CONFLICT DO UPDATE no repo fazia merge silencioso e a
+  // pessoa ficava como ambos (caracterizado ↔ trabalhador) sem saber.
+  const existing = (await saidaRepo.getParticipants(saidaId)).find(p => p.member_id === member.id);
+  if (existing && existing.participant_type !== participantType) {
+    throw new Error(
+      `Já estás inscrito como **${existing.participant_type}**. ` +
+      `Usa o botão "Sair da Saída" primeiro e depois regista-te como ${participantType}.`
+    );
+  }
+
+  // Guard 3: limite 12 caracterizados (só para novos registos; mantém tipo = upsert)
+  if (participantType === 'caracterizado' && !existing) {
+    const maxCharacterized = saida.max_participants || 12;
+    const currentCount = await saidaRepo.countCharacterized(saidaId);
+    if (currentCount >= maxCharacterized) {
+      throw new Error(`Limite de ${maxCharacterized} caracterizados atingido. Regista-te como trabalhador.`);
     }
   }
 

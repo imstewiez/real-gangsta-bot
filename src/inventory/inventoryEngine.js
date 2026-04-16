@@ -94,8 +94,25 @@ async function recordDelivery({ discordId, itemId, quantity, movementType, notes
 }
 
 async function adjustStock({ itemId, quantity, notes, createdBy }) {
+  if (!Number.isFinite(quantity) || quantity === 0) {
+    throw new Error('Quantidade inválida. Tem de ser um número diferente de zero.');
+  }
+
   const item = await inventoryRepo.getItemById(itemId);
   if (!item) throw new Error('Item não encontrado.');
+
+  // Guard: não permitir ajuste que deixe stock negativo. Permite descontar
+  // (quantity < 0) desde que saldo actual + quantity >= 0.
+  if (quantity < 0) {
+    const current = await inventoryRepo.getStockForItem(itemId).catch(() => null);
+    const balance = Number(current?.balance ?? 0);
+    if (balance + quantity < 0) {
+      throw new Error(
+        `Stock insuficiente para **${item.name}** — saldo actual ${balance}, ajuste pedido ${quantity}. ` +
+        `Máximo que podes descontar: ${balance}.`
+      );
+    }
+  }
 
   const movement = await inventoryRepo.recordMovement({
     movementType: 'ajuste_manual',
