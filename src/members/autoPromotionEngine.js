@@ -180,7 +180,7 @@ async function getPromotionProgress(discordId) {
   const dbMember = await memberRepo.findByDiscordId(discordId);
   if (!dbMember) return null;
 
-  const currentTier = dbMember.tier || CONFIG.MORADOR_DEFAULT_TIER;
+  const currentTier = dbMember.tier || CONFIG.BAIRRISTA_DEFAULT_TIER;
   const promotion = PROMOTIONS.find(p => p.from === currentTier);
 
   const totalQty = await getMemberMaterialQty(dbMember.id);

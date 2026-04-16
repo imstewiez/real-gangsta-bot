@@ -7,7 +7,7 @@ const CONFIG = require('../config');
 const { safeReply, safeShowModal, getModalField, isDuplicate, lockMessageComponents } = require('../shared/interactionHelpers');
 const { brandEmbed, successEmbed, applyLogo } = require('../shared/embedBuilders');
 const { EMOJI, PANELS, BUTTONS, MODALS, ONBOARDING, ERRORS } = require('../content');
-const { isChefeMoradores } = require('../permissions/permissionEngine');
+const { isPatraoDiZona } = require('../permissions/permissionEngine');
 const { query } = require('../db');
 const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
 
@@ -172,7 +172,7 @@ async function handleTagModal(interaction) {
 async function handleApproveButton(interaction, requestId) {
   if (isDuplicate(interaction.id)) return;
 
-  if (!isChefeMoradores(interaction.member)) {
+  if (!isPatraoDiZona(interaction.member)) {
     return safeReply(interaction, { content: ERRORS.NO_PERMISSION('aprovar tags'), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
@@ -210,7 +210,7 @@ async function handleApproveButton(interaction, requestId) {
 async function handleDenyButton(interaction, requestId) {
   if (isDuplicate(interaction.id)) return;
 
-  if (!isChefeMoradores(interaction.member)) {
+  if (!isPatraoDiZona(interaction.member)) {
     return safeReply(interaction, { content: ERRORS.NO_PERMISSION('negar tags'), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
@@ -273,5 +273,4 @@ module.exports = {
   handleApproveButton,
   handleDenyButton,
   buildBairristaChannelPanel,
-  buildMoradorChannelPanel: buildBairristaChannelPanel, // legacy alias
 };

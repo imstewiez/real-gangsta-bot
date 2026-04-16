@@ -46,8 +46,7 @@ function getBairristaTier(member) {
   if (ids.has(CONFIG.YOUNG_BLOOD_ROLE_ID)) return 'young_blood';
   return null;
 }
-/** @deprecated usa getBairristaTier */
-const getMoradorTier = getBairristaTier;
+
 
 function getExactRole(member) {
   const ids = memberRoleIds(member);
@@ -82,12 +81,7 @@ function isPatraoDiZona(member) {
     || isCommand(member)
     || isSupervisor(member);
 }
-/** @deprecated usa isPatraoDiZona */
-const isChefeMoradores = isPatraoDiZona;
-
 function isBairrista(member) { return hasAny(memberRoleIds(member), CONFIG.BAIRRISTA_TIER_ROLE_IDS); }
-/** @deprecated usa isBairrista */
-const isMorador = isBairrista;
 
 function isAnyMember(member) {
   return isCommand(member) || isSupervisor(member) || isPatraoDiZona(member) || isBairrista(member);
@@ -101,8 +95,6 @@ function canManageBairro(member) {
   return isCommand(member) || isSupervisor(member)
     || hasAny(memberRoleIds(member), CONFIG.PATRAO_DI_ZONA_ROLE_IDS);
 }
-/** @deprecated usa canManageBairro */
-const canManageGuetto = canManageBairro;
 function canViewAllMembers(member) { return canManageBairro(member); }
 function canRegisterMaterial(member) { return isAnyMember(member); }
 function canManageStructure(member) { return isCommand(member); }
@@ -110,26 +102,19 @@ function canBootstrapStock(member) { return isCommand(member); }
 function canRegisterKill(member) { return isAnyMember(member); }
 
 module.exports = {
-  // introspection
   getMemberRoles,
   getBairristaTier,
-  getMoradorTier,      // legacy alias
   getExactRole,
-  // predicates
   isCommand,
   isSupervisor,
   isChefia,
   isOficial,
   isPatraoDiZona,
-  isChefeMoradores,    // legacy alias
   isBairrista,
-  isMorador,           // legacy alias
   isAnyMember,
-  // capabilities
   canManageInventory,
   canManageOperations,
   canManageBairro,
-  canManageGuetto,     // legacy alias
   canViewAllMembers,
   canRegisterMaterial,
   canManageStructure,

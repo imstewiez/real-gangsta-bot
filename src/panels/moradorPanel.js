@@ -30,7 +30,4 @@ function buildBairristaPanel() {
   return { embeds: [embed], components: [row1, row2] };
 }
 
-// Alias legado — código antigo importa buildMoradorPanel.
-const buildMoradorPanel = buildBairristaPanel;
-
-module.exports = { buildBairristaPanel, buildMoradorPanel };
+module.exports = { buildBairristaPanel };

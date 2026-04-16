@@ -46,7 +46,6 @@ const PANELS = {
       VENDA:     'Registar Material',
     },
   },
-  get MORADOR() { return this.BAIRRISTA; }, // legacy alias
 
   OFICIAL: {
     TITLE: `${E.TAG} Secretaria — Oficial`,
@@ -107,7 +106,6 @@ const PANELS = {
       TOPOS:    'Topo da Zona',
     },
   },
-  get CHEFE_MORADORES() { return this.PATRAO_DI_ZONA; }, // legacy alias
 
   // Canal individual do bairrista (após onboarding) — painel premium
   BAIRRISTA_CHANNEL: {

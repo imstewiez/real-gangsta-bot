@@ -24,8 +24,8 @@
  * Rate limiting: middleware global em _dispatchInteraction. Admin 30/10s,
  * outros 10/10s. Configurável em src/shared/rateLimiter.js.
  *
- * TODO (próxima iteração): split em src/routers/{slash,button,modal,select}.js
- * para reduzir este ficheiro a <300 linhas. Não feito agora por risco.
+ * Nota: este ficheiro é grande (routing central) mas estável. Se crescer
+ * acima de 1500 linhas, considerar split em src/routers/*.
  */
 const { Client, GatewayIntentBits, Events, REST, Routes, MessageFlags } = require('discord.js');
 const CONFIG = require('./config');
@@ -88,7 +88,7 @@ const { rankingEmbed, brandEmbed, stockEmbed } = require('./shared/embedBuilders
 const { inventoryRepo } = require('./repositories');
 const { getRecentLogs, sendAuditToChannel } = require('./audit/auditEngine');
 const {
-  isChefia, isChefeMoradores,
+  isChefia, isPatraoDiZona,
   canManageStructure, canRegisterKill,
 } = require('./permissions/permissionEngine');
 const { runPermsOnly } = require('./discord/structureSync');
@@ -269,7 +269,7 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
     // Any oficial role added (OG or Real Gangster) — promotion from morador tier
     for (const oficialId of CONFIG.OFICIAL_ROLE_IDS) {
       if (!oldRoles.has(oficialId) && newRoles.has(oficialId)) {
-        const wasMorador = CONFIG.ALL_MORADOR_TIER_IDS.some(id => oldRoles.has(id));
+        const wasMorador = CONFIG.BAIRRISTA_TIER_ROLE_IDS.some(id => oldRoles.has(id));
         if (wasMorador) {
           await handlePromotionToOficial(newMember, client);
           break;
@@ -1036,7 +1036,7 @@ async function _dispatchInteraction(interaction) {
 
       // Chefia — novos sistemas (disponibilidade / rádio / stickys)
       if (id === 'chefia::abrir_disponibilidade') {
-        if (!isChefia(interaction.member) && !isChefeMoradores(interaction.member))
+        if (!isChefia(interaction.member) && !isPatraoDiZona(interaction.member))
           return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('disponibilidade'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const channelId = CONFIG.AVAILABILITY_CHANNEL_ID;
@@ -1090,7 +1090,7 @@ async function _dispatchInteraction(interaction) {
 
       // Patrão di Zona buttons
       if (id === 'chefe_mor::listar_moradores') {
-        if (!isChefeMoradores(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('listar bairristas'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!isPatraoDiZona(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('listar bairristas'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const { query } = require('./db');
         const resBair = await query(
@@ -1104,7 +1104,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (id === 'chefe_mor::ver_entregas' || id === 'chefe_mor::ver_vendas') {
-        if (!isChefeMoradores(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver dados'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!isPatraoDiZona(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver dados'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const types = id.includes('entregas')
           ? ['entrega_bairrista', 'entrega_morador']
@@ -1126,7 +1126,7 @@ async function _dispatchInteraction(interaction) {
       }
 
       if (id === 'chefe_mor::ver_tops') {
-        if (!isChefeMoradores(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver tops'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+        if (!isPatraoDiZona(interaction.member)) return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('ver tops'), flags: MessageFlags.Ephemeral }, { dismissible: true });
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const { rankingRepo } = require('./repositories');
         const { start, end } = weekBounds();

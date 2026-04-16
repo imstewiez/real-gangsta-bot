@@ -48,8 +48,8 @@ async function handleMemberLeave(guildMember, client) {
           );
           channelAction = 'deleted';
           log(`[OFFBOARDING] Canal de ${displayName} apagado.`);
-        } else if (CONFIG.ARCHIVE_ON_LEAVE && CONFIG.MORADOR_ARQUIVO_CATEGORY_ID) {
-          await queueChannelOp(() => channel.setParent(CONFIG.MORADOR_ARQUIVO_CATEGORY_ID, { lockPermissions: true }));
+        } else if (CONFIG.ARCHIVE_ON_LEAVE && CONFIG.BAIRRISTA_ARQUIVO_CATEGORY_ID) {
+          await queueChannelOp(() => channel.setParent(CONFIG.BAIRRISTA_ARQUIVO_CATEGORY_ID, { lockPermissions: true }));
           await queueChannelOp(() => channel.send({ content: `🪦 **${displayName}** saiu do servidor — canal arquivado.` }).catch(() => {}));
           await query(
             `UPDATE resident_channels SET status = 'archived', archived_at = NOW()

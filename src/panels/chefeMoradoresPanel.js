@@ -23,7 +23,4 @@ function buildPatraoDiZonaPanel() {
   return { embeds: [embed], components: [row] };
 }
 
-// Alias legado — código antigo importa buildChefeMoradoresPanel.
-const buildChefeMoradoresPanel = buildPatraoDiZonaPanel;
-
-module.exports = { buildPatraoDiZonaPanel, buildChefeMoradoresPanel };
+module.exports = { buildPatraoDiZonaPanel };

@@ -8,7 +8,7 @@ const { welcomeChannelEmbed } = require('../shared/embedBuilders');
 const { queueChannelOp, queueMemberOp } = require('../discordQueue');
 const { log, warn } = require('../logger');
 const metrics = require('../lib/metrics');
-const { buildMoradorChannelPanel } = require('./onboardingHandlers');
+const { buildBairristaChannelPanel } = require('./onboardingHandlers');
 
 /**
  * Process an approved tag request:
@@ -123,7 +123,7 @@ async function processApproval(tagRequest, approverMember, client) {
 
       // Send welcome embed + enhanced panel
       const welcomeEmbed = welcomeChannelEmbed(fullName);
-      const panelRows = buildMoradorChannelPanel();
+      const panelRows = buildBairristaChannelPanel();
       await channel.send({ embeds: [welcomeEmbed], components: panelRows });
 
       result.channelCreated = true;
@@ -185,8 +185,8 @@ async function handlePromotionToOficial(member, client) {
     try {
       const channel = await guild.channels.fetch(dbMember.channel_id).catch(() => null);
       if (channel) {
-        if (CONFIG.MORADOR_ARQUIVO_CATEGORY_ID) {
-          await queueChannelOp(() => channel.setParent(CONFIG.MORADOR_ARQUIVO_CATEGORY_ID, { lockPermissions: false }));
+        if (CONFIG.BAIRRISTA_ARQUIVO_CATEGORY_ID) {
+          await queueChannelOp(() => channel.setParent(CONFIG.BAIRRISTA_ARQUIVO_CATEGORY_ID, { lockPermissions: false }));
         }
         await queueChannelOp(() => channel.permissionOverwrites.edit(discordId, {
           ViewChannel: false, SendMessages: false,

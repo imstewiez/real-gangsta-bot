@@ -172,7 +172,7 @@ async function bootstrapAll(client) {
  */
 async function backfillResidentPanels(client) {
   const { query } = require('./db');
-  const { buildMoradorChannelPanel } = require('./onboarding/onboardingHandlers');
+  const { buildBairristaChannelPanel } = require('./onboarding/onboardingHandlers');
   const { welcomeChannelEmbed } = require('./shared/embedBuilders');
 
   const res = await query(
@@ -200,7 +200,7 @@ async function backfillResidentPanels(client) {
       const name = row.full_name || row.display_name || row.nickname || 'bairrista';
       await ch.send({
         embeds: [welcomeChannelEmbed(name)],
-        components: buildMoradorChannelPanel(),
+        components: buildBairristaChannelPanel(),
       });
       posted++;
       await new Promise(r => setTimeout(r, 300));
