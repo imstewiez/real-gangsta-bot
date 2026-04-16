@@ -327,7 +327,9 @@ const CATEGORY_PERMS = {
     denyEveryone: ['ViewChannel'],
     allow: [
       { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages'] },
-      { roleSources: ['bot'], perms: ['ViewChannel'] },
+      // Bairristas consultam spots/mapas — read-only (staff planeia, malta vê)
+      { roleSources: ['bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'ReadMessageHistory'] },
+      { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
   },
   ECONOMIA: {
@@ -492,6 +494,29 @@ const _READONLY_CONSULT_NAMES = [
 ];
 for (const n of _READONLY_CONSULT_NAMES) {
   CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_READONLY_BAIRRISTAS_VIEW;
+}
+
+// ── Pin dos painéis por ID (defensa contra mismatches de nome) ───────────────
+// O matching por nome é frágil — depende do canal estar com o nome canónico
+// exacto (bold unicode ou legacy `emoji│nome`). Se o utilizador tiver um canal
+// com outro nome mas o ID configurado, o sync por nome salta-o e o canal fica
+// com perms do everyone (== "mil cargos vêem"). Pinar por ID resolve isto
+// definitivamente: section 4a (perms por ID) aplica sempre, independentemente
+// de como o canal se chame ou em que categoria esteja.
+if (CONFIG.PANEL_ENTRADA_CHANNEL_ID) {
+  CHANNEL_PERM_OVERRIDES[CONFIG.PANEL_ENTRADA_CHANNEL_ID] = PERMS_BOAS_VINDAS;
+}
+if (CONFIG.PANEL_BAIRRISTAS_CHANNEL_ID) {
+  CHANNEL_PERM_OVERRIDES[CONFIG.PANEL_BAIRRISTAS_CHANNEL_ID] = PERMS_PAINEL_READ_ONLY;
+}
+if (CONFIG.PANEL_OFICIAIS_CHANNEL_ID) {
+  CHANNEL_PERM_OVERRIDES[CONFIG.PANEL_OFICIAIS_CHANNEL_ID] = PERMS_PAINEL_READ_ONLY;
+}
+if (CONFIG.PANEL_CHEFIA_CHANNEL_ID) {
+  CHANNEL_PERM_OVERRIDES[CONFIG.PANEL_CHEFIA_CHANNEL_ID] = PERMS_PAINEL_READ_ONLY;
+}
+if (CONFIG.PANEL_PATRAO_DI_ZONA_CHANNEL_ID) {
+  CHANNEL_PERM_OVERRIDES[CONFIG.PANEL_PATRAO_DI_ZONA_CHANNEL_ID] = PERMS_PAINEL_PATRAO_DI_ZONA;
 }
 
 module.exports = {
