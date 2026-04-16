@@ -66,15 +66,20 @@ function buildBairristaChannelOverwrites(guild, ownerId, botId) {
     });
   }
 
-  // ── DENY explícito para roles de bairrista (tiers + base) ───────────────
+  // ── DENY explícito para roles de bairrista + flavor roles ──────────────
   // Sem isto, a categoria GUETTO (que permite bairristas ver) cascata para
   // o canal filho e outros bairristas vêem o canal do colega.
-  const bairristaRolesToDeny = [
+  // Tropinhas/Patrulha Pata: roles flavor — deny por defesa (prevenção
+  // contra permissões futuras que os abram acidentalmente).
+  const peerRolesToDeny = [
     ...CONFIG.BAIRRISTA_TIER_ROLE_IDS,
     CONFIG.BAIRRISTAS_BASE_ROLE_ID,
+    CONFIG.TROPINHAS_DO_GUETTO_ROLE_ID,
+    CONFIG.PATRULHA_PATA_ROLE_ID,
+    CONFIG.PENDENTE_ROLE_ID,
   ].filter(Boolean);
-  for (const roleId of bairristaRolesToDeny) {
-    overwrites.push({ id: roleId, deny: [PermissionFlagsBits.ViewChannel] });
+  for (const roleId of peerRolesToDeny) {
+    overwrites.push({ id: roleId, deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] });
   }
 
   return overwrites;

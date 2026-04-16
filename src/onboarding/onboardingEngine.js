@@ -228,13 +228,18 @@ async function handlePromotionToOficial(member, client) {
     color: 0xF39C12,
   });
 
-  // Event bus — subscribers projectam para Sheets (Membros).
+  // Event bus — subscribers projectam para Sheets (Membros) + ORG_LIFECYCLE.
   eventBus.emitAsync('member.promoted', {
     memberId: dbMember.id,
     discordId,
     displayName,
     fromRole: dbMember.role,
     toRole: 'oficial',
+    beforeState: { role: dbMember.role },
+    afterState: { role: 'oficial' },
+    actorId: 'system',
+    context: 'Detectado via role Discord',
+    at: new Date(),
   }).catch(e => warn(`[EVENT] member.promoted: ${e.message}`));
 }
 

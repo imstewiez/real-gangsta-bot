@@ -78,11 +78,16 @@ async function recordDelivery({ discordId, itemId, quantity, movementType, notes
     movementType,
     itemId,
     itemName: item.name,
+    itemValue: parseFloat(item.estimated_value) || 0,
     quantity,
     memberId: member.id,
     memberDiscordId: member.discord_id,
     memberRole: member.role,
     operationId,
+    actorId: createdBy,
+    balanceAfter,
+    notes,
+    at: new Date(),
   }).catch(e => warn(`[EVENT] material.registered: ${e.message}`));
 
   return { movement, member, item };
@@ -113,6 +118,19 @@ async function adjustStock({ itemId, quantity, notes, createdBy }) {
     movementType: 'ajuste_manual', itemName: item.name, quantity,
     actorId: createdBy, balanceAfter, context: notes,
   }).catch(() => {});
+
+  // Event bus — notification routing publica em INVENTORY_EVENTS.
+  eventBus.emitAsync('material.adjusted', {
+    movementId: movement.id,
+    itemId,
+    itemName: item.name,
+    itemValue: parseFloat(item.estimated_value) || 0,
+    quantity,
+    actorId: createdBy,
+    balanceAfter,
+    notes,
+    at: new Date(),
+  }).catch(e => warn(`[EVENT] material.adjusted: ${e.message}`));
 
   return movement;
 }

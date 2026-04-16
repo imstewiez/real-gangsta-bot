@@ -67,6 +67,18 @@ async function createSaida({ date, scheduledTime, spot, spotType, saidaType, lea
     actorId: createdBy,
     afterState: { saidaType, spot, spotType, date, groupNumber },
   });
+
+  // Event bus — notification routing publica em SAIDAS_EVENTS.
+  eventBus.emitAsync('saida.opened', {
+    saidaId: s.id,
+    date, scheduledTime, spot, spotType, saidaType,
+    leaderId: leaderDiscordId,
+    groupNumber, maxParticipants,
+    actorId: createdBy,
+    notes,
+    at: new Date(),
+  }).catch(e => warn(`[EVENT] saida.opened: ${e.message}`));
+
   return s;
 }
 
@@ -95,7 +107,11 @@ async function _assertTransition(saidaId, toStatus) {
 
 async function startSaida(saidaId, actorId) {
   await _assertTransition(saidaId, 'em_curso');
-  return saidaRepo.updateStatus(saidaId, 'em_curso', { start_time: new Date() });
+  const r = await saidaRepo.updateStatus(saidaId, 'em_curso', { start_time: new Date() });
+  eventBus.emitAsync('saida.started', {
+    saidaId, actorId, at: new Date(),
+  }).catch(e => warn(`[EVENT] saida.started: ${e.message}`));
+  return r;
 }
 
 async function cancelSaida(saidaId, actorId) {
@@ -234,12 +250,16 @@ async function closeSaida(saidaId, resultData, actorId) {
   // Event bus — permite projecções Sheets + subscribers não acoplados.
   eventBus.emitAsync('saida.closed', {
     saidaId,
+    spot: closed.spot,
+    saidaType: closed.operation_type,
     result: closed.result,
     participantsCount: scoredParticipants.length,
     supplied, returned, lost, consumed, gross, net, was_profitable,
     mvp: scoredParticipants.find(p => p.mvp_flag)?.member_id || null,
     characterized_count, workers_count,
     unaccounted: recon.unaccounted,
+    actorId,
+    at: new Date(),
   }).catch(e => warn(`[EVENT] saida.closed: ${e.message}`));
 
   return {

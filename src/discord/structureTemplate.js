@@ -434,6 +434,19 @@ const PERMS_PAINEL_PATRAO_DI_ZONA = {
 // Legacy alias — ainda referenciado acima
 const PERMS_PAINEL_CHEFE_MORADORES = PERMS_PAINEL_PATRAO_DI_ZONA;
 
+// ── Read-only para bairristas + staff publica ───────────────────────────────
+// Usado em canais de consulta (spots, mapas, precários, rankings, info).
+// Bairristas vêem mas não escrevem; staff+bot publicam.
+const PERMS_READONLY_BAIRRISTAS_VIEW = {
+  denyEveryone: ['ViewChannel', ..._PANEL_WRITE_DENIES],
+  allow: [
+    { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages', 'ReadMessageHistory'] },
+    { roleSources: ['bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'ReadMessageHistory'] },
+    { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
+  ],
+  reason: 'read-only para bairristas — staff+bot publicam, bairristas consultam',
+};
+
 // Aceita tanto o nome formatado (`emoji・𝗻𝗼𝗺𝗲`) como nomes legacy
 // (`emoji│nome`). Assim, seja qual for o que existe, as perms aplicam-se.
 const _BOAS_VINDAS_NAMES = [
@@ -455,6 +468,31 @@ for (const n of _PAINEL_BAIRRISTAS_NAMES)      CHANNEL_PERM_OVERRIDES_BY_NAME[n]
 for (const n of _PAINEL_OFICIAIS_NAMES)        CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_READ_ONLY;
 for (const n of _PAINEL_CHEFIA_NAMES)          CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_READ_ONLY;
 for (const n of _PAINEL_PATRAO_DI_ZONA_NAMES)  CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_PAINEL_CHEFE_MORADORES;
+
+// ── Canais de consulta read-only (bairristas vêem, staff/bot escrevem) ──
+// Respeita o naming real — nunca renomeia. Cobre formatos bold e legacy.
+const _READONLY_CONSULT_NAMES = [
+  // spots — canal de consulta de spots (OPERACOES). Bairristas consultam,
+  // staff atribui/publica.
+  'spots', ch('🗺️', 'spots'), ch('📍', 'spots'), '🗺️│spots', '📍│spots',
+  // mapas — imagens/layouts de spots (OPERACOES).
+  'mapas', ch('🗺️', 'mapas'), '🗺️│mapas',
+  // precários — tabela de preços dos parceiros (ARSENAL/ECONOMIA).
+  'precarios', 'precários', ch('💰', 'precarios'), ch('💰', 'precários'),
+  ch('📋', 'precarios'), ch('📋', 'precários'),
+  // ranking / tops — canais de publicação de rankings (REPUTACAO).
+  'ranking', ch('🏆', 'ranking'), ch('📊', 'ranking'),
+  'tops-semanais', ch('🏆', 'tops-semanais'), ch('📊', 'tops-semanais'),
+  // regras, info-geral — informativos read-only.
+  'regras', ch('📜', 'regras'),
+  'info-geral', ch('ℹ️', 'info-geral'),
+  'meta-semanal', ch('📈', 'meta-semanal'),
+  'ofertas-org', ch('💼', 'ofertas-org'),
+  'premios-semanais', 'prémios-semanais', ch('🏅', 'premios-semanais'), ch('🏅', 'prémios-semanais'),
+];
+for (const n of _READONLY_CONSULT_NAMES) {
+  CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_READONLY_BAIRRISTAS_VIEW;
+}
 
 module.exports = {
   bold,

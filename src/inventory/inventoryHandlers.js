@@ -544,25 +544,40 @@ async function handleEncomendaModal(interaction) {
   if (!member) return safeReply(interaction, { content: 'Não estás registado no sistema.' }, { dismissible: true });
 
   const { query } = require('../db');
-  await query(
-    `INSERT INTO orders (member_id, item_id, quantity, notes) VALUES ($1, $2, $3, $4)`,
+  const insertRes = await query(
+    `INSERT INTO orders (member_id, item_id, quantity, notes) VALUES ($1, $2, $3, $4) RETURNING id, created_at`,
     [member.id, pending.itemId, quantity, notes]
   );
+  const order = insertRes.rows[0];
 
   pendingItemSelections.delete(interaction.user.id);
 
   const { logAudit } = require('../audit/auditEngine');
   await logAudit({
-    action: 'order_created', entityType: 'order', entityId: String(member.id),
+    action: 'order_created', entityType: 'order', entityId: String(order.id),
     actorId: interaction.user.id,
     afterState: { item: pending.itemName, quantity, notes },
   });
+
+  // Event bus — notification routing publica em INVENTORY_EVENTS.
+  const eventBus = require('../core/eventBus');
+  eventBus.emitAsync('order.created', {
+    orderId: order.id,
+    itemName: pending.itemName,
+    quantity,
+    memberDiscordId: interaction.user.id,
+    actorId: interaction.user.id,
+    status: 'pending',
+    notes,
+    createdAt: order.created_at,
+    at: new Date(),
+  }).catch(() => {});
 
   const embed = successEmbed('Encomenda Registada',
     `**${quantity}x** ${pending.itemName}\nEstado: Pendente\n${notes ? `Notas: ${notes}` : ''}\n\nA chefia será notificada.`
   );
 
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 module.exports = {

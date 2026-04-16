@@ -11,6 +11,7 @@ const CONFIG = require('../../config');
 const { log, warn, error } = require('../../logger');
 const { onMessageCreate: stickyOnMessage } = require('../../sticky/stickyEngine');
 const { handlePromotionToOficial } = require('../../onboarding/onboardingEngine');
+const eventBus = require('../../core/eventBus');
 
 function registerLifecycleListeners(client) {
   // ── Sticky messages — listener para modo `repost` ─────────────────────────
@@ -26,16 +27,22 @@ function registerLifecycleListeners(client) {
   // Pendente é o único role que vê boas-vindas; removido ao aprovar tag.
   client.on(Events.GuildMemberAdd, async (member) => {
     try {
-      if (!CONFIG.AUTO_ASSIGN_PENDENTE) return;
-      if (!CONFIG.PENDENTE_ROLE_ID) {
-        warn('[MEMBER_ADD] AUTO_ASSIGN_PENDENTE=true mas PENDENTE_ROLE_ID não configurado.');
-        return;
-      }
       if (member.user.bot) return;
-      await member.roles.add(CONFIG.PENDENTE_ROLE_ID, 'Newcomer — atribuir Pendente').catch(e => {
-        warn(`[MEMBER_ADD] Falha ao dar Pendente a ${member.id}: ${e.message}`);
-      });
-      log(`[MEMBER_ADD] Pendente atribuído a ${member.displayName} (${member.id}).`);
+      if (CONFIG.AUTO_ASSIGN_PENDENTE && CONFIG.PENDENTE_ROLE_ID) {
+        await member.roles.add(CONFIG.PENDENTE_ROLE_ID, 'Newcomer — atribuir Pendente').catch(e => {
+          warn(`[MEMBER_ADD] Falha ao dar Pendente a ${member.id}: ${e.message}`);
+        });
+        log(`[MEMBER_ADD] Pendente atribuído a ${member.displayName} (${member.id}).`);
+      } else if (CONFIG.AUTO_ASSIGN_PENDENTE) {
+        warn('[MEMBER_ADD] AUTO_ASSIGN_PENDENTE=true mas PENDENTE_ROLE_ID não configurado.');
+      }
+
+      // Event — vida da org
+      eventBus.emitAsync('member.joined', {
+        discordId: member.id,
+        displayName: member.displayName || member.user.username,
+        at: new Date(),
+      }).catch(() => {});
     } catch (e) {
       error(`[MEMBER_ADD] ${e.message}`, e);
     }
@@ -46,6 +53,13 @@ function registerLifecycleListeners(client) {
     try {
       const { handleMemberLeave } = require('../../onboarding/offboardingEngine');
       await handleMemberLeave(member, client);
+
+      // Event — vida da org
+      eventBus.emitAsync('member.left', {
+        discordId: member.id,
+        displayName: member.displayName || member.user?.username || 'Desconhecido',
+        at: new Date(),
+      }).catch(() => {});
     } catch (e) {
       error(`[MEMBER_REMOVE] ${e.message}`, e);
     }

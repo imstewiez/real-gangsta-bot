@@ -32,6 +32,7 @@ const { setClient: setStockClient } = require('../inventory/stockNotifier');
 const { setClient: setBairristaLogClient } = require('../inventory/bairristaNotifier');
 const { setClient: setSaidaClient } = require('../saidas/saidaEngine');
 const { registerSheetProjections } = require('../sheets/projections');
+const { setClient: setNotifRouterClient, registerNotificationRouting } = require('../notifications/routing');
 
 const { createClient } = require('./discord/client');
 const { registerCommands } = require('./discord/registerCommands');
@@ -65,10 +66,10 @@ async function bootstrap() {
   await runMigrations();
   await seedFromCatalog();
 
-  // Subscribers do event bus — sheets projections ouvem domain events
-  // e debouncam syncs por tab. Registados antes do client para apanhar
-  // qualquer emit precoce (ex: seed).
+  // Subscribers do event bus — sheets projections + notification routing.
+  // Registados antes do client para apanhar qualquer emit precoce (ex: seed).
   registerSheetProjections();
+  registerNotificationRouting();
 
   // Client + listeners.
   client = createClient();
@@ -97,6 +98,7 @@ async function readyHook(c) {
   setStockClient(c);
   setBairristaLogClient(c);
   setSaidaClient(c);
+  setNotifRouterClient(c);
 
   if (CONFIG.PANEL_BOOTSTRAP_ON_READY) {
     await bootstrapAll(c);
