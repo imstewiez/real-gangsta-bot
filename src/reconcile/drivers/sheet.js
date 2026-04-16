@@ -6,7 +6,9 @@
  *   - last_synced_at > 2× SHEETS_SYNC_INTERVAL_MIN → stale
  *   - sem entry → never synced
  *
- * apply() força um syncAll para regenerar todas as tabs marcadas stale.
+ * apply() itera pelas tabs com drift e chama syncOne() em cada. Como a
+ * projecção é event-driven, apply() só é invocada em reconciliação manual
+ * (hoje raramente usada — os projections mantêm tudo fresco).
  */
 
 const CONFIG = require('../../config');
@@ -50,13 +52,29 @@ async function check() {
 }
 
 async function apply(_ignored, drift, { actor = 'system:reconcile' } = {}) {
-  // Força syncAll — re-sincroniza todas as tabs (mais simples do que per-tab).
-  const { syncAll } = require('../../sheets/syncEngine');
-  const r = await syncAll();
+  // Corre syncOne por cada tab com drift. Evita re-sincronizar tabs OK.
+  const { syncOne } = require('../../sheets/syncEngine');
+  const t0 = Date.now();
+  const tabsToFix = new Set([
+    ...(drift.errors || []).map(x => x.tab),
+    ...(drift.stale || []).map(x => x.tab),
+    ...(drift.never_synced || []).map(x => x.tab),
+  ]);
+  const results = [];
+  const errors = [];
+  for (const tab of tabsToFix) {
+    try {
+      const r = await syncOne(tab);
+      if (r?.skipped) continue;
+      results.push(r);
+    } catch (e) {
+      errors.push({ tab, message: e.message });
+    }
+  }
   return {
-    corrected: r.results?.length || 0,
-    errors: r.errors || [],
-    total_ms: r.ms,
+    corrected: results.length,
+    errors,
+    total_ms: Date.now() - t0,
   };
 }
 

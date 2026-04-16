@@ -54,13 +54,9 @@ function startAll(client) {
     }
   });
 
-  // Sync do Google Sheet (dashboard premium). Intervalo configurável via
-  // SHEETS_SYNC_INTERVAL_MIN (default 15). Suporta SPREADSHEET_ID legado.
-  if (CONFIG.SPREADSHEET_ID || CONFIG.GOOGLE_SHEET_ID || CONFIG.SHEET_ID) {
-    const { syncAll } = require('../sheets/syncEngine');
-    const minutes = Number(CONFIG.SHEETS_SYNC_INTERVAL_MIN) || 15;
-    registerJob('sheets_sync', minutes * 60 * 1000, async () => { await syncAll(); });
-  }
+  // (Sheets sync periódico removido — a projecção é event-driven em
+  // src/sheets/projections.js, que debounce eventos de domínio em syncs
+  // por tab. Ver docs/ARCHITECTURE.md.)
 
   // Retention — corre 1x por dia (24h interval). Remove audit_logs > 365d,
   // job_runs > 90d, radio_history > 365d. Soft-delete availability > 180d.
