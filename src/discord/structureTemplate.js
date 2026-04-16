@@ -244,16 +244,16 @@ function id(envVar, fallback) {
 // ── Categorias (referência para lookup por chave nas permissões) ─────────────
 // NÃO são usadas para renomear nem reordenar. São apenas um mapa
 // `key → id` para saber em que categoria aplicar as permissões.
+// Categorias actuais do servidor. ARSENAL/OPERACOES/ECONOMIA foram
+// consolidadas/apagadas — os IDs antigos (CAT_PRECARIOS/CAT_MAPAS_SPOTS/
+// CAT_WOOD) já não resolvem. Canais que viviam lá foram movidos para
+// outras categorias e precisam de pins por ID se queremos perms estritas.
 const CATEGORIES = [
   { key: 'ENTRADA',    id: id('CAT_BEM_VINDO_ID',       DISCOVERED.CAT_BEM_VINDO) },
   { key: 'COMANDO',    id: id('CAT_CHEFIA_ID',          DISCOVERED.CAT_CHEFIA) },
   { key: 'OFICIAIS',   id: id('CAT_OFICIAIS_ID',        DISCOVERED.CAT_OFICIAIS) },
   { key: 'GUETTO',     id: id('CAT_MORADIA_TOPICOS_ID', DISCOVERED.CAT_MORADIA_TOPICOS) },
   { key: 'INVENTARIO', id: id('CAT_MORADIA_ID',         DISCOVERED.CAT_MORADIA) },
-  { key: 'ARSENAL',    id: id('CAT_PRECARIOS_ID',       DISCOVERED.CAT_PRECARIOS) },
-  { key: 'OPERACOES',  id: id('CAT_MAPAS_SPOTS_ID',     DISCOVERED.CAT_MAPAS_SPOTS) },
-  { key: 'ECONOMIA',   id: id('CAT_WOOD_ID',            DISCOVERED.CAT_WOOD) },
-  { key: 'REPUTACAO',  id: id('CAT_CHEFIA_MOR_ID',      DISCOVERED.CAT_CHEFIA_MOR) },
   { key: 'CALLS',      id: id('CAT_CALLS_ID',           DISCOVERED.CAT_CALLS) },
   { key: 'GERAL',      id: id('CAT_GERAL_ID',           DISCOVERED.CAT_GERAL) },
 ];
@@ -369,44 +369,6 @@ const CATEGORY_PERMS = {
     denyEveryone: ['ViewChannel', 'Connect'],
     allow: [
       { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'Connect', 'SendMessages'] },
-      { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
-    ],
-  },
-  ARSENAL: {
-    denyEveryone: ['ViewChannel'],
-    allow: [
-      // Admins (command + supervisor) escrevem — arsenal é catálogo admin
-      { roleSources: ['command', 'supervisor'], perms: ['ViewChannel', 'SendMessages'] },
-      // Patrão + bairristas consultam (precisam de ver catálogo de armas/material)
-      { roleSources: ['patrao_di_zona', 'bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'ReadMessageHistory'] },
-      { roleSources: ['bot'], perms: ['ViewChannel'] },
-    ],
-  },
-  OPERACOES: {
-    denyEveryone: ['ViewChannel'],
-    allow: [
-      // Admins (command + supervisor) planeiam spots/mapas
-      { roleSources: ['command', 'supervisor'], perms: ['ViewChannel', 'SendMessages'] },
-      // Patrão + bairristas consultam — read-only
-      { roleSources: ['patrao_di_zona', 'bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'ReadMessageHistory'] },
-      { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
-    ],
-  },
-  ECONOMIA: {
-    denyEveryone: ['ViewChannel'],
-    allow: [
-      // Só chefia escreve em comunicados/ofertas/prémios/etc.
-      { roleSources: ['command'], perms: ['ViewChannel', 'SendMessages'] },
-      // Supervisor/patrão/bairristas consultam
-      { roleSources: ['supervisor', 'patrao_di_zona', 'bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'ReadMessageHistory'] },
-      { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
-    ],
-  },
-  REPUTACAO: {
-    denyEveryone: ['ViewChannel'],
-    allow: [
-      { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages'] },
-      { roleSources: ['bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'SendMessages'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
   },
@@ -717,8 +679,9 @@ _applyReadonlyConsultOverrides();
 // qualquer canal com overwrites user-specific (OPERACOES = spots/mapas: só
 // staff + bot publicam; INVENTARIO = bau/encomendas/material: staff + patrão).
 const CATEGORY_CHILD_FORCE_PERMS = {
-  OPERACOES: PERMS_READONLY_OG_PLUS_WRITE,      // spots/mapas — só admins (OG+) escrevem, patrão/bairristas vêem
   INVENTARIO: PERMS_PATRAO_DI_ZONA_PRIVATE,     // bau/encomendas/material — chefia + patrão di zona
+  // OPERACOES removido — categoria não existe no servidor actual.
+  // Para apertar spots/mapas precisamos dos IDs dos canais (pin por ID).
 };
 
 // ── Map panel key → permission config ────────────────────────────────────────
