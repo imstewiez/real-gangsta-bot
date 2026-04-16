@@ -9,6 +9,7 @@ const { queueChannelOp, queueMemberOp } = require('../discordQueue');
 const { log, warn } = require('../logger');
 const metrics = require('../lib/metrics');
 const { buildBairristaChannelPanel } = require('./onboardingHandlers');
+const eventBus = require('../core/eventBus');
 
 /**
  * Process an approved tag request:
@@ -226,6 +227,15 @@ async function handlePromotionToOficial(member, client) {
     description: `<@${discordId}> sobe a **Oficial**.`,
     color: 0xF39C12,
   });
+
+  // Event bus — subscribers projectam para Sheets (Membros).
+  eventBus.emitAsync('member.promoted', {
+    memberId: dbMember.id,
+    discordId,
+    displayName,
+    fromRole: dbMember.role,
+    toRole: 'oficial',
+  }).catch(e => warn(`[EVENT] member.promoted: ${e.message}`));
 }
 
 module.exports = { processApproval, handlePromotionToOficial };

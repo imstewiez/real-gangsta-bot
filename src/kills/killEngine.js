@@ -9,6 +9,8 @@ const { memberRepo, killRepo } = require('../repositories');
 const { logAudit } = require('../audit/auditEngine');
 const CONFIG = require('../config');
 const { EmbedBuilder } = require('discord.js');
+const eventBus = require('../core/eventBus');
+const { warn } = require('../logger');
 
 async function recordKill({ killerDiscordId, victimName, victimDiscordId = null, victimFaction = '', spot = '', context = '', saidaId = null, date = null, notes = '', confirmedBy = null, createdBy }) {
   if (!victimName?.trim()) throw new Error('Nome da vítima obrigatório.');
@@ -37,6 +39,18 @@ async function recordKill({ killerDiscordId, victimName, victimDiscordId = null,
     actorId: createdBy,
     afterState: { killer: killerDiscordId, victim: victimName, victimFaction, spot, saidaId },
   });
+
+  // Event bus — subscribers projectam para Sheets (Saídas & Combate).
+  eventBus.emitAsync('kill.registered', {
+    killId: kill.id,
+    killerId: killer.id,
+    killerDiscordId,
+    victimName: victimName.trim(),
+    victimDiscordId,
+    victimFaction,
+    spot,
+    saidaId,
+  }).catch(e => warn(`[EVENT] kill.registered: ${e.message}`));
 
   return { ...kill, killer };
 }

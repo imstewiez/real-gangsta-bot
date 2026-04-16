@@ -20,6 +20,7 @@ const { notifyMovement } = require('../inventory/stockNotifier');
 const { computeSaidaScores } = require('./saidaScoring');
 const metrics = require('../lib/metrics');
 const { log, warn } = require('../logger');
+const eventBus = require('../core/eventBus');
 
 // Cliente Discord injectado no boot. Usado apenas para publicar resultados
 // ricos no fecho de saída (fire-and-forget). Se não estiver definido,
@@ -229,6 +230,17 @@ async function closeSaida(saidaId, resultData, actorId) {
     const { publishResults } = require('./saidaResultsPublisher');
     publishResults(_client, saidaId).catch(e => warn(`[SAIDA] publishResults: ${e.message}`));
   }
+
+  // Event bus — permite projecções Sheets + subscribers não acoplados.
+  eventBus.emitAsync('saida.closed', {
+    saidaId,
+    result: closed.result,
+    participantsCount: scoredParticipants.length,
+    supplied, returned, lost, consumed, gross, net, was_profitable,
+    mvp: scoredParticipants.find(p => p.mvp_flag)?.member_id || null,
+    characterized_count, workers_count,
+    unaccounted: recon.unaccounted,
+  }).catch(e => warn(`[EVENT] saida.closed: ${e.message}`));
 
   return {
     ...closed,

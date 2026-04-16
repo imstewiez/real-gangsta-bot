@@ -6,6 +6,7 @@ const { notifyBairristaMovement } = require('./bairristaNotifier');
 const metrics = require('../lib/metrics');
 const { weekBounds } = require('../util');
 const { warn } = require('../logger');
+const eventBus = require('../core/eventBus');
 
 async function recordDelivery({ discordId, itemId, quantity, movementType, notes = '', operationId = null, createdBy }) {
   const member = await memberRepo.findByDiscordId(discordId);
@@ -70,6 +71,19 @@ async function recordDelivery({ discordId, itemId, quantity, movementType, notes
       });
     })().catch(() => {});
   }
+
+  // Event bus — subscribers podem projectar para Sheets / dashboards.
+  eventBus.emitAsync('material.registered', {
+    movementId: movement.id,
+    movementType,
+    itemId,
+    itemName: item.name,
+    quantity,
+    memberId: member.id,
+    memberDiscordId: member.discord_id,
+    memberRole: member.role,
+    operationId,
+  }).catch(e => warn(`[EVENT] material.registered: ${e.message}`));
 
   return { movement, member, item };
 }

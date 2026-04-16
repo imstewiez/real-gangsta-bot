@@ -31,6 +31,7 @@ const { registerBuiltinRenderers } = require('../sticky/stickyRenderers');
 const { setClient: setStockClient } = require('../inventory/stockNotifier');
 const { setClient: setBairristaLogClient } = require('../inventory/bairristaNotifier');
 const { setClient: setSaidaClient } = require('../saidas/saidaEngine');
+const { registerSheetProjections } = require('../sheets/projections');
 
 const { createClient } = require('./discord/client');
 const { registerCommands } = require('./discord/registerCommands');
@@ -63,6 +64,11 @@ async function bootstrap() {
 
   await runMigrations();
   await seedFromCatalog();
+
+  // Subscribers do event bus — sheets projections ouvem domain events
+  // e debouncam syncs por tab. Registados antes do client para apanhar
+  // qualquer emit precoce (ex: seed).
+  registerSheetProjections();
 
   // Client + listeners.
   client = createClient();
