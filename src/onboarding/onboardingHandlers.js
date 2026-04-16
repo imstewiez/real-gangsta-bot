@@ -5,8 +5,8 @@ const {
 } = require('discord.js');
 const CONFIG = require('../config');
 const { safeReply, safeShowModal, getModalField, isDuplicate, lockMessageComponents } = require('../shared/interactionHelpers');
-const { brandEmbed, successEmbed } = require('../shared/embedBuilders');
-const { EMOJI, footer } = require('../content');
+const { brandEmbed, successEmbed, applyLogo } = require('../shared/embedBuilders');
+const { EMOJI, PANELS, BUTTONS, MODALS, ONBOARDING, ERRORS } = require('../content');
 const { isChefeMoradores } = require('../permissions/permissionEngine');
 const { query } = require('../db');
 const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
@@ -16,25 +16,17 @@ const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
 // ═══════════════════════════════════════════════════════════════════════════
 
 function buildEntradaPanel() {
-  const { applyLogo } = require('../shared/embedBuilders');
-  const embed = applyLogo(new EmbedBuilder()
-    .setColor(CONFIG.BOT_COLOR)
-    .setTitle(`${EMOJI.FIRMA} Entrada`)
-    .setDescription(
-      'Queres entrar pro guetto? Faz o pedido aqui.\n\n' +
-      'Carrega no botão, mete o **nome in-game** e a **alcunha**.\n' +
-      'Um oficial lê o pedido — se bater certo, tens tag, acesso e canal só teu.\n\n' +
-      '_A rua é pra quem aparece._'
-    )
-    .setFooter(footer('SHORT', CONFIG.BOT_LOGO_URL))
-    .setTimestamp());
+  const embed = applyLogo(brandEmbed('SHORT')
+    .setTitle(PANELS.ENTRADA.TITLE)
+    .setDescription(PANELS.ENTRADA.DESCRIPTION));
 
+  const b = BUTTONS.ENTRADA.PEDIR_TAG;
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('onboard::pedir_tag')
-      .setLabel('Pedir tag')
-      .setStyle(ButtonStyle.Success)
-      .setEmoji('🏷️'),
+      .setLabel(b.label)
+      .setStyle(ButtonStyle[b.style])
+      .setEmoji(b.emoji),
   );
 
   return { embeds: [embed], components: [row] };

@@ -1,34 +1,29 @@
 'use strict';
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
-const CONFIG = require('../config');
-const { footer, EMOJI } = require('../content');
-const { applyLogo } = require('../shared/embedBuilders');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { brandEmbed, applyLogo } = require('../shared/embedBuilders');
+const { PANELS, BUTTONS } = require('../content');
 
+// Painel do Patrão di Zona.
+// Publicado em canal dedicado ao patrão; gere bairristas: listar, entregas,
+// vendas, topo da zona.
 function buildPatraoDiZonaPanel() {
-  const embed = applyLogo(new EmbedBuilder()
-    .setColor(CONFIG.BOT_COLOR)
-    .setTitle(`${EMOJI.LIDER} Patrão di Zona`)
-    .setDescription(
-      'És o elo entre os bairristas e a chefia. Olha quem rende, quem some, quem precisa de puxão.\n\n' +
-      `${EMOJI.PARTICIPANTE} **Listar** · quem está no bairro\n` +
-      `${EMOJI.MATERIAL} **Entregas** · topo por material entregue\n` +
-      `${EMOJI.LUCRO} **Vendas** · topo por material vendido\n` +
-      `${EMOJI.TOPO} **Topo** · ranking semanal`
-    )
-    .setFooter(footer('HOUSE', CONFIG.BOT_LOGO_URL))
-    .setTimestamp());
+  const embed = applyLogo(brandEmbed('HOUSE')
+    .setTitle(PANELS.PATRAO_DI_ZONA.TITLE)
+    .setDescription(PANELS.PATRAO_DI_ZONA.DESCRIPTION));
+
+  const B = BUTTONS.PATRAO;
 
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('chefe_mor::listar_moradores').setLabel('Listar Bairristas').setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDC65'),
-    new ButtonBuilder().setCustomId('chefe_mor::ver_entregas').setLabel('Ver Entregas').setStyle(ButtonStyle.Secondary).setEmoji('\uD83D\uDCE6'),
-    new ButtonBuilder().setCustomId('chefe_mor::ver_vendas').setLabel('Ver Vendas').setStyle(ButtonStyle.Secondary).setEmoji('\uD83D\uDCB0'),
-    new ButtonBuilder().setCustomId('chefe_mor::ver_tops').setLabel('Ver Topo').setStyle(ButtonStyle.Secondary).setEmoji('\uD83C\uDFC6'),
+    new ButtonBuilder().setCustomId('chefe_mor::listar_moradores').setLabel(B.LISTAR.label).setStyle(ButtonStyle[B.LISTAR.style]).setEmoji(B.LISTAR.emoji),
+    new ButtonBuilder().setCustomId('chefe_mor::ver_entregas').setLabel(B.ENTREGAS.label).setStyle(ButtonStyle[B.ENTREGAS.style]).setEmoji(B.ENTREGAS.emoji),
+    new ButtonBuilder().setCustomId('chefe_mor::ver_vendas').setLabel(B.VENDAS.label).setStyle(ButtonStyle[B.VENDAS.style]).setEmoji(B.VENDAS.emoji),
+    new ButtonBuilder().setCustomId('chefe_mor::ver_tops').setLabel(B.TOPOS.label).setStyle(ButtonStyle[B.TOPOS.style]).setEmoji(B.TOPOS.emoji),
   );
 
   return { embeds: [embed], components: [row] };
 }
 
-// Alias legado — ficheiro mantém nome por causa de imports existentes.
+// Alias legado — código antigo importa buildChefeMoradoresPanel.
 const buildChefeMoradoresPanel = buildPatraoDiZonaPanel;
 
 module.exports = { buildPatraoDiZonaPanel, buildChefeMoradoresPanel };

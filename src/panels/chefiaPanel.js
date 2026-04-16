@@ -1,43 +1,58 @@
 'use strict';
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
-const CONFIG = require('../config');
-const { PANELS, footer } = require('../content');
-const { applyLogo } = require('../shared/embedBuilders');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { brandEmbed, applyLogo } = require('../shared/embedBuilders');
+const { PANELS, BUTTONS } = require('../content');
 
+// Centro de Comando — painel da chefia.
+// 15 acções organizadas em 4 rows com hierarquia visual clara:
+//   row 1 — Saídas (Nova, Fechar, Ver, Participantes)
+//   row 2 — Material (da Saída, Fornecer, Stock, Ajustar, Gerir)
+//   row 3 — Gestão (Presença, Rádio, Stickys)
+//   row 4 — Dados (Topo, Stats, Logs)
+// Cores: Success=acção primária, Danger=destrutiva, Primary=ver/aceder,
+// Secondary=auxiliar.
 function buildChefiaPanel() {
-  const P = PANELS.CHEFIA;
-  const embed = applyLogo(new EmbedBuilder()
-    .setColor(CONFIG.BOT_COLOR)
-    .setTitle(P.TITLE)
-    .setDescription(P.DESCRIPTION)
-    .setFooter(footer('MOVEMENT', CONFIG.BOT_LOGO_URL))
-    .setTimestamp());
+  const embed = applyLogo(brandEmbed('MOVEMENT')
+    .setTitle(PANELS.CHEFIA.TITLE)
+    .setDescription(PANELS.CHEFIA.DESCRIPTION));
 
+  const B = BUTTONS.CHEFIA;
+  const btn = (customId, def) =>
+    new ButtonBuilder()
+      .setCustomId(customId)
+      .setLabel(def.label)
+      .setStyle(ButtonStyle[def.style])
+      .setEmoji(def.emoji);
+
+  // Row 1 — Saídas
   const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('chefia::criar_saida').setLabel(P.BUTTONS.CRIAR_SAIDA).setStyle(ButtonStyle.Success).setEmoji('\u2694\uFE0F'),
-    new ButtonBuilder().setCustomId('chefia::fechar_saida').setLabel(P.BUTTONS.FECHAR_SAIDA).setStyle(ButtonStyle.Danger).setEmoji('\uD83C\uDFC1'),
-    new ButtonBuilder().setCustomId('chefia::ver_saidas').setLabel(P.BUTTONS.VER_SAIDAS).setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDCC5'),
-    new ButtonBuilder().setCustomId('chefia::adicionar_participante').setLabel(P.BUTTONS.PARTICIPANTES).setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDC65'),
+    btn('chefia::criar_saida', B.CRIAR_SAIDA),
+    btn('chefia::fechar_saida', B.FECHAR_SAIDA),
+    btn('chefia::ver_saidas', B.VER_SAIDAS),
+    btn('chefia::adicionar_participante', B.PARTICIPANTES),
   );
 
+  // Row 2 — Material
   const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('chefia::registar_material_saida').setLabel(P.BUTTONS.MATERIAL_SAIDA).setStyle(ButtonStyle.Secondary).setEmoji('\uD83D\uDCE6'),
-    new ButtonBuilder().setCustomId('chefia::fornecer_participante').setLabel(P.BUTTONS.FORNECER).setStyle(ButtonStyle.Success).setEmoji('\uD83C\uDFAF'),
-    new ButtonBuilder().setCustomId('chefia::ver_stock').setLabel(P.BUTTONS.VER_STOCK).setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDCCA'),
-    new ButtonBuilder().setCustomId('chefia::ajustar_stock').setLabel(P.BUTTONS.AJUSTAR_STOCK).setStyle(ButtonStyle.Danger).setEmoji('\uD83D\uDD27'),
-    new ButtonBuilder().setCustomId('chefia::gerir_materiais').setLabel(P.BUTTONS.GERIR_MATERIAIS).setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDEE0\uFE0F'),
+    btn('chefia::registar_material_saida', B.MATERIAL_SAIDA),
+    btn('chefia::fornecer_participante', B.FORNECER),
+    btn('chefia::ver_stock', B.VER_STOCK),
+    btn('chefia::ajustar_stock', B.AJUSTAR_STOCK),
+    btn('chefia::gerir_materiais', B.GERIR_MATERIAIS),
   );
 
+  // Row 3 — Gestão
   const row3 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('chefia::abrir_disponibilidade').setLabel(P.BUTTONS.DISPONIBILIDADE).setStyle(ButtonStyle.Success).setEmoji('\uD83D\uDCCD'),
-    new ButtonBuilder().setCustomId('chefia::publicar_radio').setLabel(P.BUTTONS.RADIO).setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDCFB'),
-    new ButtonBuilder().setCustomId('chefia::listar_stickys').setLabel(P.BUTTONS.STICKYS).setStyle(ButtonStyle.Secondary).setEmoji('\uD83D\uDCCC'),
+    btn('chefia::abrir_disponibilidade', B.DISPONIBILIDADE),
+    btn('chefia::publicar_radio', B.RADIO),
+    btn('chefia::listar_stickys', B.STICKYS),
   );
 
+  // Row 4 — Dados
   const row4 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('chefia::ver_tops').setLabel(P.BUTTONS.TOPS).setStyle(ButtonStyle.Secondary).setEmoji('\uD83C\uDFC6'),
-    new ButtonBuilder().setCustomId('chefia::stats_open').setLabel(P.BUTTONS.STATS).setStyle(ButtonStyle.Primary).setEmoji('\uD83D\uDCCA'),
-    new ButtonBuilder().setCustomId('chefia::ver_logs').setLabel(P.BUTTONS.LOGS).setStyle(ButtonStyle.Secondary).setEmoji('\uD83D\uDCDD'),
+    btn('chefia::ver_tops', B.TOPS),
+    btn('chefia::stats_open', B.STATS),
+    btn('chefia::ver_logs', B.LOGS),
   );
 
   return { embeds: [embed], components: [row1, row2, row3, row4] };

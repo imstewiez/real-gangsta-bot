@@ -5,12 +5,112 @@ const content = require('../content');
 
 const { EMOJI, footer, ROLE, STATUS, SAIDA_TYPE, ONBOARDING, INVENTORY, RANKINGS } = content;
 
+// ── Brand embeds ────────────────────────────────────────────────────────────
+
 // Footer assinado pela Firma RedWood. Icone opcional via BOT_LOGO_URL.
+// Todas as embeds do bot devem passar por aqui — garante consistência visual.
 function brandEmbed(variant = 'SHORT') {
   return new EmbedBuilder()
     .setColor(CONFIG.BOT_COLOR)
     .setFooter(footer(variant, CONFIG.BOT_LOGO_URL))
     .setTimestamp();
+}
+
+// ── Data-rich helpers (reusáveis em qualquer embed) ─────────────────────────
+
+/**
+ * Formata um delta entre dois valores. Devolve "↑ +X (+Y%)" ou "↓ -X (-Y%)".
+ * Usado em rankings, stats pessoais, resumos semanais.
+ *
+ * @param {number} previous
+ * @param {number} current
+ * @param {'int'|'pct'|'euro'} kind
+ * @returns {{ text: string, direction: 'up'|'down'|'flat', delta: number }}
+ */
+function formatDelta(previous, current, kind = 'int') {
+  const prev = Number(previous) || 0;
+  const curr = Number(current) || 0;
+  const delta = curr - prev;
+  const direction = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
+  const arrow = direction === 'up' ? '↑' : direction === 'down' ? '↓' : '→';
+  const pctBase = prev === 0 ? (curr === 0 ? 0 : 1) : Math.abs(delta) / Math.abs(prev);
+  const fmt = (v) => {
+    if (kind === 'euro') return `${v >= 0 ? '+' : '−'}${Math.abs(v).toLocaleString('pt-PT')}€`;
+    if (kind === 'pct')  return `${v >= 0 ? '+' : '−'}${(Math.abs(v) * 100).toFixed(1)}%`;
+    return `${v >= 0 ? '+' : '−'}${Math.abs(v).toLocaleString('pt-PT')}`;
+  };
+  const pctTxt = prev === 0 ? '' : ` (${(pctBase * 100).toFixed(0)}%)`;
+  return { text: `${arrow} ${fmt(delta)}${pctTxt}`, direction, delta };
+}
+
+/**
+ * Field pronto a empurrar para .addFields() com valor + delta.
+ * @param {string} label
+ * @param {number} current
+ * @param {number} previous
+ * @param {{ kind?: 'int'|'pct'|'euro', inline?: boolean }} opts
+ */
+function deltaField(label, current, previous, opts = {}) {
+  const { kind = 'int', inline = true } = opts;
+  const d = formatDelta(previous, current, kind);
+  const fmtCur = kind === 'euro'
+    ? `${Number(current).toLocaleString('pt-PT')}€`
+    : kind === 'pct'
+      ? `${(Number(current) * 100).toFixed(1)}%`
+      : Number(current).toLocaleString('pt-PT');
+  return { name: label, value: `**${fmtCur}** · ${d.text}`, inline };
+}
+
+/**
+ * Barra visual de progresso. Width em chars. Usa caracteres block.
+ * @param {number} current
+ * @param {number} max
+ * @param {{ width?: number, filled?: string, empty?: string }} opts
+ */
+function progressBar(current, max, opts = {}) {
+  const { width = 10, filled = '█', empty = '░' } = opts;
+  if (!max || max <= 0) return empty.repeat(width);
+  const pct = Math.max(0, Math.min(1, current / max));
+  const n   = Math.round(pct * width);
+  return filled.repeat(n) + empty.repeat(width - n);
+}
+
+/**
+ * Badge de posição em ranking — 🥇🥈🥉 / #N.
+ * @param {number} position 1-based
+ */
+function rankBadge(position) {
+  if (position === 1) return EMOJI.MEDAL_1;
+  if (position === 2) return EMOJI.MEDAL_2;
+  if (position === 3) return EMOJI.MEDAL_3;
+  return `#${position}`;
+}
+
+/**
+ * Emoji de streak baseado no count. 🔥 para ≥3, ⚡ para ≥5, 💀 para ≥10.
+ * @param {number} count
+ */
+function streakBadge(count) {
+  if (count >= 10) return '💀';
+  if (count >= 5)  return '⚡';
+  if (count >= 3)  return '🔥';
+  return '';
+}
+
+/**
+ * Seta simples ↑/↓/→ sem formatting.
+ */
+function trendArrow(prev, curr) {
+  if (curr > prev) return '↑';
+  if (curr < prev) return '↓';
+  return '→';
+}
+
+/**
+ * Field divisor para embeds densos — zero-width name + linha.
+ */
+function sectionDivider() {
+  return { name: '\u200b', value: '─────────', inline: false };
 }
 
 // Aplica o logo como thumbnail (canto superior direito) se BOT_LOGO_URL existir.
@@ -107,4 +207,12 @@ module.exports = {
   rankingEmbed,
   memberProfileEmbed,
   welcomeChannelEmbed,
+  // Data-rich helpers
+  formatDelta,
+  deltaField,
+  progressBar,
+  rankBadge,
+  streakBadge,
+  trendArrow,
+  sectionDivider,
 };
