@@ -146,7 +146,7 @@ async function upsertPanelSticky(panelDef, channelId, actorId = 'system:panel-bo
 //   - botões são renomeados/reorganizados
 // O estado anterior (panelMessages) é limpo e todos os painéis voltam
 // a seguir o caminho "sem mensagem existente" → delete old + create new.
-const PANELS_SCHEMA_VERSION = 4;
+const PANELS_SCHEMA_VERSION = 5;
 
 async function _maybeForceRebuild() {
   const stored = await getStateKey('panelsSchemaVersion', 0);
@@ -213,7 +213,7 @@ async function backfillResidentPanels(client) {
       const existing = messages?.find(m =>
         m.author?.id === client.user.id &&
         m.components?.length &&
-        m.components.some(row => row.components?.some(c => c.customId?.startsWith('morador::')))
+        m.components.some(row => row.components?.some(c => c.customId?.startsWith('bairrista::')))
       );
       if (existing) { skipped++; continue; }
 

@@ -35,7 +35,7 @@ function _ensureCleanup() {
  * Devolve true se pode executar, false se está em rate limit.
  *
  * @param {string} userId
- * @param {string} actionKey — ex: 'rg-member', 'morador::registar_material'
+ * @param {string} actionKey — ex: 'rg-member', 'bairrista::registar_material'
  * @param {{limit:number, windowMs:number}} opts
  * @returns {boolean}
  */

@@ -16,33 +16,42 @@
 
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
+const { DISCOVERED } = require('../discord/structureTemplate');
 
-// Mapeamento família → variável ENV preferida → slugs candidatos.
+// Mapeamento família → variável ENV preferida → defaultId (pin direto)
+// → slugs candidatos. Resolução: env → fallbackEnvs → defaultId → slug match.
 const FAMILY_CONFIG = {
   ORG_LIFECYCLE: {
     envId: 'ORG_LIFECYCLE_CHANNEL_ID',
     fallbackEnvs: ['AUDIT_LOG_CHANNEL_ID'],
-    slugs: ['logs', 'logs-bot', 'audit-log', 'auditoria'],
+    defaultId: DISCOVERED.CH_LOGS_BOT,  // 1492739363463758027
+    slugs: ['logs-bot', 'logs', 'audit-log', 'auditoria'],
   },
   INVENTORY_EVENTS: {
     envId: 'INVENTORY_EVENTS_CHANNEL_ID',
-    fallbackEnvs: ['STOCK_LOG_CHANNEL_ID'],
-    slugs: ['stock-log', 'stock_log', 'log-stock', 'inventario-log', 'inventory-log'],
+    fallbackEnvs: [],
+    // Canal consolidado para material/ofertas/entregas/vendas/encomendas/ajustes
+    defaultId: DISCOVERED.CH_MATERIAL_ENTREG,  // 1491506821599330545
+    slugs: ['material-entregue', 'stock-log', 'log-stock', 'inventario-log'],
   },
   SAIDAS_EVENTS: {
     envId: 'SAIDAS_EVENTS_CHANNEL_ID',
-    fallbackEnvs: ['SAIDA_RESULTS_CHANNEL_ID', 'AUDIT_LOG_CHANNEL_ID'],
-    slugs: ['resultados', 'saidas-log', 'saida-log', 'op-log', 'saida-results'],
+    fallbackEnvs: ['SAIDA_RESULTS_CHANNEL_ID'],
+    defaultId: DISCOVERED.CH_RESULTADOS,  // 1490397810489692292
+    slugs: ['resultados', 'saidas-log', 'saida-log', 'op-log'],
   },
   CEMETERY: {
     envId: 'CEMETERY_CHANNEL_ID',
     fallbackEnvs: [],
+    defaultId: DISCOVERED.CH_CEMITERIO,  // 1492344204012163122
     slugs: ['cemiterio', 'cemitério'],
   },
   RANKINGS: {
     envId: 'WEEKLY_TOP_CHANNEL_ID',
-    fallbackEnvs: ['DAILY_SUMMARY_CHANNEL_ID'],
-    slugs: ['tops-semanais', 'tops', 'ranking', 'top-semanal'],
+    fallbackEnvs: [],
+    // Canal top-semanal — usado para top material semanal, top K/D, top kills, top vitórias
+    defaultId: DISCOVERED.CH_TOP_SEMANAL,  // 1493242996337147915
+    slugs: ['top-semanal', 'tops-semanais', 'tops', 'ranking'],
   },
 };
 
@@ -97,6 +106,12 @@ function resolveChannelId(client, family) {
   for (const key of envIds) {
     const id = _resolveFromEnv(key);
     if (id) { _cache.set(family, id); return id; }
+  }
+
+  // Fallback explícito por ID canónico antes do slug match
+  if (cfg.defaultId) {
+    _cache.set(family, cfg.defaultId);
+    return cfg.defaultId;
   }
 
   const id = _resolveFromGuild(client, cfg.slugs || []);

@@ -11,8 +11,6 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "db:migrate": "node -e \"require('./src/dbMigrate').runMigrations().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); })\"",
-    "stock:bootstrap": "node scripts/bootstrapStock.js",
-    "stock:bootstrap:apply": "node scripts/bootstrapStock.js --apply --confirm",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {

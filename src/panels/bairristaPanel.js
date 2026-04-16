@@ -15,9 +15,9 @@ function buildBairristaPanel() {
   const B = BUTTONS.BAIRRISTA;
 
   const row1 = buttonRow(
-    buttonFromDef('morador::registar_material', B.ENTREGA),
-    buttonFromDef('morador::movimento',         B.MOVIMENTO),
-    buttonFromDef('morador::ranking',           B.RANKING),
+    buttonFromDef('bairrista::registar_material', B.ENTREGA),
+    buttonFromDef('bairrista::movimento',         B.MOVIMENTO),
+    buttonFromDef('bairrista::ranking',           B.RANKING),
     button({ customId: 'perfil::encomendas', label: 'Encomendas', style: 'Secondary', emoji: EMOJI.ENCOMENDA }),
   );
 

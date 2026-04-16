@@ -14,10 +14,10 @@ function buildPatraoDiZonaPanel() {
   const B = BUTTONS.PATRAO;
 
   const row = buttonRow(
-    buttonFromDef('chefe_mor::listar_moradores', B.LISTAR),
-    buttonFromDef('chefe_mor::ver_entregas',     B.ENTREGAS),
-    buttonFromDef('chefe_mor::ver_vendas',       B.VENDAS),
-    buttonFromDef('chefe_mor::ver_tops',         B.TOPOS),
+    buttonFromDef('patrao::listar_bairristas', B.LISTAR),
+    buttonFromDef('patrao::ver_entregas',     B.ENTREGAS),
+    buttonFromDef('patrao::ver_vendas',       B.VENDAS),
+    buttonFromDef('patrao::ver_tops',         B.TOPOS),
   );
 
   return { embeds: [embed], components: [row] };

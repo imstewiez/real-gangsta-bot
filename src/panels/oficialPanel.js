@@ -18,9 +18,9 @@ function buildOficialPanel() {
   const row = buttonRow(
     button({ customId: 'chefia::criar_saida',   label: 'Nova Sessão',  style: 'Success',   emoji: EMOJI.SAIDA }),
     button({ customId: 'oficial::ver_saidas',   label: 'Ver Saídas',   style: 'Primary',   emoji: '🏴' }),
-    buttonFromDef('morador::registar_material', B.REGISTAR),
-    buttonFromDef('morador::historico',         B.MEMBROS),
-    button({ customId: 'morador::totais',       label: 'Resumo',       style: 'Secondary', emoji: '🏆' }),
+    buttonFromDef('bairrista::registar_material', B.REGISTAR),
+    buttonFromDef('bairrista::historico',         B.MEMBROS),
+    button({ customId: 'bairrista::totais',       label: 'Resumo',       style: 'Secondary', emoji: '🏆' }),
   );
 
   return { embeds: [embed], components: [row] };

@@ -1,11 +1,11 @@
 'use strict';
 /**
- * Patrão di Zona panel — acções de botão do painel `chefe_mor::*`.
+ * Patrão di Zona panel — acções de botão do painel `patrao::*`.
  *
- *   - listar_moradores  — lista Bairristas activos
- *   - ver_entregas      — top de entregas por Bairrista
- *   - ver_vendas        — top de vendas por Bairrista
- *   - ver_tops          — top semanal dos Bairristas
+ *   - listar_bairristas — lista bairristas activos
+ *   - ver_entregas      — top de entregas por bairrista
+ *   - ver_vendas        — top de vendas por bairrista
+ *   - ver_tops          — top semanal dos bairristas
  */
 
 const { MessageFlags } = require('discord.js');

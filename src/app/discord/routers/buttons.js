@@ -4,7 +4,7 @@
  * `prefix` (startsWith). Primeira correspondência vence.
  *
  * Convenção:
- *   - `exact` para IDs fixos (ex: 'morador::movimento')
+ *   - `exact` para IDs fixos (ex: 'bairrista::movimento')
  *   - `prefix` para IDs dinâmicos com payload (ex: 'avail::all::<sessId>')
  *
  * Um customId canónico por acção. Sem aliases legacy.
@@ -101,15 +101,15 @@ const BUTTON_ROUTES = [
   prefix('onboard::deny::',      denyHandler),
 
   // Bairrista / Oficial — painel bairrista
-  exact('morador::registar_material', handleRegistarMaterialButton),
-  exact('morador::encomendar',        handleEncomendasButton),
-  exact('morador::historico',         perfilHistorico.handle),
-  exact('morador::totais',            handleMemberTotalsButton),
-  exact('morador::progresso',         handleProgressButton),
-  exact('morador::top_semanal',       handleTopSemanalButton),
-  exact('morador::movimento',         handleMovimento),
-  exact('morador::ranking',           handleRanking),
-  exact('morador::progresso_tier',    perfilProgressao.handle),
+  exact('bairrista::registar_material', handleRegistarMaterialButton),
+  exact('bairrista::encomendar',        handleEncomendasButton),
+  exact('bairrista::historico',         perfilHistorico.handle),
+  exact('bairrista::totais',            handleMemberTotalsButton),
+  exact('bairrista::progresso',         handleProgressButton),
+  exact('bairrista::top_semanal',       handleTopSemanalButton),
+  exact('bairrista::movimento',         handleMovimento),
+  exact('bairrista::ranking',           handleRanking),
+  exact('bairrista::progresso_tier',    perfilProgressao.handle),
 
   // Movimento no Bairro — drill-downs do cockpit
   exact('perfil::material',    perfilMaterial.handle),
@@ -140,10 +140,10 @@ const BUTTON_ROUTES = [
   prefix('session::register_material::',handleRegisterMaterialButton),
 
   // Patrão di Zona
-  exact('chefe_mor::listar_moradores',  patraoDiZonaActions.listarBairristas),
-  exact('chefe_mor::ver_entregas',      patraoDiZonaActions.verEntregasOuVendas),
-  exact('chefe_mor::ver_vendas',        patraoDiZonaActions.verEntregasOuVendas),
-  exact('chefe_mor::ver_tops',          patraoDiZonaActions.verTopsBairristas),
+  exact('patrao::listar_bairristas', patraoDiZonaActions.listarBairristas),
+  exact('patrao::ver_entregas',      patraoDiZonaActions.verEntregasOuVendas),
+  exact('patrao::ver_vendas',        patraoDiZonaActions.verEntregasOuVendas),
+  exact('patrao::ver_tops',          patraoDiZonaActions.verTopsBairristas),
 ];
 
 async function handleButton(interaction) {

@@ -208,6 +208,7 @@ const DISCOVERED = {
   CH_REGRAS:           '1490397806106513478',
   CH_WOOD_COMUN:       '1491194611543183430',
   CH_ARQUIVOS:         '1493849342161719317',
+  CH_TOP_SEMANAL:      '1493242996337147915',
   CH_INFO_GERAL:       '1490397836490309693',
   CH_COR_ORG:          '1490397834048966890',
   CH_META_SEMANAL:     '1490397816030236883',
@@ -244,16 +245,17 @@ function id(envVar, fallback) {
 // ── Categorias (referência para lookup por chave nas permissões) ─────────────
 // NÃO são usadas para renomear nem reordenar. São apenas um mapa
 // `key → id` para saber em que categoria aplicar as permissões.
-// Categorias actuais do servidor. ARSENAL/OPERACOES/ECONOMIA foram
-// consolidadas/apagadas — os IDs antigos (CAT_PRECARIOS/CAT_MAPAS_SPOTS/
-// CAT_WOOD) já não resolvem. Canais que viviam lá foram movidos para
-// outras categorias e precisam de pins por ID se queremos perms estritas.
+// Categorias do servidor. ARSENAL/ECONOMIA foram consolidadas — canais
+// que viviam lá foram movidos e precisam de pins por ID se queremos
+// perms estritas (feito em _applyOgPlusWriteOverrides, etc.).
+// OPERACOES (categoria `spots`) MANTIDA — é onde vivem os canais spots/mapas.
 const CATEGORIES = [
   { key: 'ENTRADA',    id: id('CAT_BEM_VINDO_ID',       DISCOVERED.CAT_BEM_VINDO) },
   { key: 'COMANDO',    id: id('CAT_CHEFIA_ID',          DISCOVERED.CAT_CHEFIA) },
   { key: 'OFICIAIS',   id: id('CAT_OFICIAIS_ID',        DISCOVERED.CAT_OFICIAIS) },
   { key: 'GUETTO',     id: id('CAT_MORADIA_TOPICOS_ID', DISCOVERED.CAT_MORADIA_TOPICOS) },
   { key: 'INVENTARIO', id: id('CAT_MORADIA_ID',         DISCOVERED.CAT_MORADIA) },
+  { key: 'OPERACOES',  id: id('CAT_MAPAS_SPOTS_ID',     DISCOVERED.CAT_MAPAS_SPOTS) },
   { key: 'CALLS',      id: id('CAT_CALLS_ID',           DISCOVERED.CAT_CALLS) },
   { key: 'GERAL',      id: id('CAT_GERAL_ID',           DISCOVERED.CAT_GERAL) },
 ];
@@ -319,10 +321,6 @@ function rolesFor(key) {
     case 'tropinhas':       return [CONFIG.TROPINHAS_DO_GUETTO_ROLE_ID].filter(Boolean);
     case 'patrulha_pata':   return [CONFIG.PATRULHA_PATA_ROLE_ID].filter(Boolean);
     case 'bot':             return [CONFIG.BOT_ROLE_ID].filter(Boolean);
-    // Legacy aliases — aceita keys antigas (morador_tiers, moradores_base, chefe_moradores)
-    case 'chefe_moradores': return CONFIG.PATRAO_DI_ZONA_ROLE_IDS;
-    case 'morador_tiers':   return CONFIG.BAIRRISTA_TIER_ROLE_IDS;
-    case 'moradores_base':  return [CONFIG.BAIRRISTAS_BASE_ROLE_ID].filter(Boolean);
     default:                return [];
   }
 }
@@ -369,6 +367,16 @@ const CATEGORY_PERMS = {
     denyEveryone: ['ViewChannel', 'Connect'],
     allow: [
       { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'Connect', 'SendMessages'] },
+      { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
+    ],
+  },
+  OPERACOES: {
+    // Categoria `spots` — planeamento e consulta. Admins (OG+) escrevem,
+    // patrão/bairristas consultam (read-only).
+    denyEveryone: ['ViewChannel'],
+    allow: [
+      { roleSources: ['command', 'supervisor'], perms: ['ViewChannel', 'SendMessages'] },
+      { roleSources: ['patrao_di_zona', 'bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'ReadMessageHistory'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
     ],
   },
@@ -439,8 +447,27 @@ const CHANNEL_PERM_OVERRIDES = {
 function _applyPatraoDiZonaPrivateOverrides() {
   CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_BAU_CASA] = PERMS_PATRAO_DI_ZONA_PRIVATE;
   CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_REG_ENCOMENDAS] = PERMS_PATRAO_DI_ZONA_PRIVATE;
-  CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_MATERIAL_ENTREG] = PERMS_PATRAO_DI_ZONA_PRIVATE;
   CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_ARQUIVOS] = PERMS_PATRAO_DI_ZONA_PRIVATE;
+  // CH_MATERIAL_ENTREG (1491506821599330545) passa a ser o canal consolidado
+  // de INVENTORY_EVENTS — ver _applyInventoryLogOverrides abaixo.
+}
+
+// Canal consolidado de logs de inventário (notificações de material,
+// ofertas, entregas, vendas, ajustes, encomendas). Staff + patrão vêem;
+// só bot publica.
+function _applyInventoryLogOverrides() {
+  if (!DISCOVERED.CH_MATERIAL_ENTREG) return;
+  CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_MATERIAL_ENTREG] = {
+    denyEveryone: ['ViewChannel', ..._PANEL_WRITE_DENIES],
+    deny: [
+      { roleSources: ['bairrista_tiers', 'bairristas_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
+    ],
+    allow: [
+      { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'ReadMessageHistory'] },
+      { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
+    ],
+    reason: 'material-entregue — logs consolidados de inventário (staff + patrão read-only, bot publica)',
+  };
 }
 
 // Canais staff-only (command + supervisor + patrão di zona vêem).
@@ -476,6 +503,7 @@ function _applyReadonlyConsultOverrides() {
     DISCOVERED.CH_COR_ORG,
     DISCOVERED.CH_DIVULGACAO,
     DISCOVERED.CH_WOOD_COMUN,
+    DISCOVERED.CH_TOP_SEMANAL,  // rankings — bot publica, todos consultam
   ];
   for (const id of ids) {
     if (id) CHANNEL_PERM_OVERRIDES[id] = PERMS_READONLY_BAIRRISTAS_VIEW;
@@ -678,6 +706,7 @@ _applyPatraoDiZonaPrivateOverrides();
 _applyStaffOnlyOverrides();
 _applyOgPlusWriteOverrides();
 _applyReadonlyConsultOverrides();
+_applyInventoryLogOverrides();
 
 // ── Categoria → perm config aplicado a TODOS os children (aggressive sweep) ─
 // Usado pelo structureSync.runPermsOnly para forçar perms em todos os canais
@@ -686,9 +715,8 @@ _applyReadonlyConsultOverrides();
 // qualquer canal com overwrites user-specific (OPERACOES = spots/mapas: só
 // staff + bot publicam; INVENTARIO = bau/encomendas/material: staff + patrão).
 const CATEGORY_CHILD_FORCE_PERMS = {
-  INVENTARIO: PERMS_PATRAO_DI_ZONA_PRIVATE,     // bau/encomendas/material — chefia + patrão di zona
-  // OPERACOES removido — categoria não existe no servidor actual.
-  // Para apertar spots/mapas precisamos dos IDs dos canais (pin por ID).
+  INVENTARIO: PERMS_PATRAO_DI_ZONA_PRIVATE,     // bau/encomendas/arquivos — chefia + patrão di zona
+  OPERACOES:  PERMS_READONLY_OG_PLUS_WRITE,     // spots/mapas — OG+ escreve, patrão/bairristas consultam
 };
 
 // ── Map panel key → permission config ────────────────────────────────────────

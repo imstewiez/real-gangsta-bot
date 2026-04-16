@@ -3,9 +3,9 @@
  * Handlers do ecossistema Bairristas — Movimento no Bairro, Ranking.
  *
  * CustomIds:
- *   morador::movimento  → cockpit Movimento no Bairro (KPIs + loading bar
+ *   bairrista::movimento  → cockpit Movimento no Bairro (KPIs + loading bar
  *                         de tier + drill-downs)
- *   morador::ranking    → ranking semanal/mensal com dropdown de período
+ *   bairrista::ranking    → ranking semanal/mensal com dropdown de período
  *
  * Detalhes (Material, PvP, Encomendas, Histórico, Progressão) vivem em
  * src/perfil/* e são acedidos via botões drill-down de "Movimento".

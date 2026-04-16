@@ -255,9 +255,9 @@ async function handleDenyButton(interaction, requestId) {
 
 function buildBairristaChannelPanel() {
   const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('morador::registar_material').setLabel('Registar Material').setStyle(ButtonStyle.Success).setEmoji('📦'),
-    new ButtonBuilder().setCustomId('morador::movimento').setLabel('Movimento no Bairro').setStyle(ButtonStyle.Primary).setEmoji('🔥'),
-    new ButtonBuilder().setCustomId('morador::ranking').setLabel('Ranking').setStyle(ButtonStyle.Primary).setEmoji('🥇'),
+    new ButtonBuilder().setCustomId('bairrista::registar_material').setLabel('Registar Material').setStyle(ButtonStyle.Success).setEmoji('📦'),
+    new ButtonBuilder().setCustomId('bairrista::movimento').setLabel('Movimento no Bairro').setStyle(ButtonStyle.Primary).setEmoji('🔥'),
+    new ButtonBuilder().setCustomId('bairrista::ranking').setLabel('Ranking').setStyle(ButtonStyle.Primary).setEmoji('🥇'),
     new ButtonBuilder().setCustomId('perfil::encomendas').setLabel('Encomendas').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
   );
 
