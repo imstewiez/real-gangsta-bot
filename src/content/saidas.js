@@ -73,6 +73,18 @@ const SAIDAS = {
   // Auto-liquidação
   AUTO_SETTLED: 'Auto-liquidado como vivo sem kills.',
 
+  // Select prompts e placeholders
+  SELECTS: {
+    QUAL_SAIDA_FECHAR: 'Qual saída vais fechar?',
+    QUAL_SAIDA_MATERIAL: 'Escolhe a saída',
+    QUAL_SAIDA_PARTICIPANTE: 'Escolhe a saída',
+    TIPO_SAIDA: 'Escolhe o tipo de saída',
+    RESULTADO_SAIDA: 'Qual foi o resultado?',
+    DIRECAO_MATERIAL: 'Que tipo de movimento?',
+    ESCOLHE_MATERIAL: 'Escolhe o material',
+    ESCOLHE_PARTICIPANTE: 'Escolhe até 25 nomes',
+  },
+
   // Placeholders de modal
   MODAL: {
     KILLS_LABEL: 'Kills',

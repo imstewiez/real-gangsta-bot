@@ -14,7 +14,7 @@ const { saidaRepo } = require('../repositories');
 const saidaEngine = require('./saidaEngine');
 const { publishSessionEmbed } = require('./saidaSession');
 const MESSAGES = require('../shared/errorMessages');
-const { EMOJI, ERRORS, SUCCESS, SAIDAS } = require('../content');
+const { EMOJI, ERRORS, SUCCESS, SAIDAS, MODALS } = require('../content');
 
 // Context efémero por user durante fluxos multi-step (manteve nome legado
 // `pendingOpContext` só para não partir imports de código que ainda referencia).
@@ -32,26 +32,50 @@ async function handleCreateSaidaButton(interaction) {
   if (!isChefia(interaction.member)) {
     return safeReply(interaction, { content: ERRORS.NO_PERMISSION('criar saídas'), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
+  // Step 1: select tipo de saída (predefinido — zero erros humanos)
+  const options = SAIDA_TYPES.map(t => ({
+    label: { craft: 'Craft', dominio: 'Domínio', ataque: 'Ataque', defesa: 'Defesa', recolha: 'Recolha', outra: 'Outra' }[t],
+    description: { craft: 'Produção no spot', dominio: 'Controlo de zona', ataque: 'Ataque ofensivo', defesa: 'Defesa de posição', recolha: 'Recolha de material', outra: 'Outro tipo' }[t],
+    value: t,
+    emoji: { craft: '🛠️', dominio: '🏴', ataque: '⚔️', defesa: '🛡️', recolha: '📦', outra: '📋' }[t],
+  }));
+  const row = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('saida::select_create_type')
+      .setPlaceholder(SAIDAS.SELECTS.TIPO_SAIDA)
+      .setMinValues(1).setMaxValues(1)
+      .addOptions(options)
+  );
+  await safeReply(interaction, {
+    content: `${EMOJI.SAIDA} Que tipo de saída vais criar?`,
+    components: [row],
+    flags: MessageFlags.Ephemeral,
+  });
+}
+
+// Step 2: tipo seleccionado → abre modal com os campos restantes (sem campo tipo)
+async function handleCreateTypeSelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const saidaType = interaction.values[0];
+  pendingSaidaContext.set(interaction.user.id, { saidaType });
+
+  const F = MODALS.SAIDA_CREATE.FIELDS;
   const modal = new ModalBuilder()
     .setCustomId('saida::modal_create')
-    .setTitle(SAIDAS.CREATE_TITLE)
+    .setTitle(MODALS.SAIDA_CREATE.TITLE)
     .addComponents(
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('date').setLabel('Data (YYYY-MM-DD)').setStyle(TextInputStyle.Short)
-          .setPlaceholder(new Date().toISOString().split('T')[0]).setRequired(true).setMaxLength(10)),
+        new TextInputBuilder().setCustomId('date').setLabel(F.date.label).setStyle(TextInputStyle.Short)
+          .setPlaceholder(new Date().toISOString().split('T')[0]).setRequired(F.date.required).setMaxLength(F.date.maxLength)),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('time').setLabel('Hora (HH:MM)').setStyle(TextInputStyle.Short)
-          .setPlaceholder('21:30').setRequired(false).setMaxLength(5)),
+        new TextInputBuilder().setCustomId('time').setLabel(F.time.label).setStyle(TextInputStyle.Short)
+          .setPlaceholder(F.time.placeholder).setRequired(false).setMaxLength(F.time.maxLength)),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('spot').setLabel('Spot').setStyle(TextInputStyle.Short)
-          .setRequired(false).setMaxLength(100)),
+        new TextInputBuilder().setCustomId('spot').setLabel(F.spot.label).setStyle(TextInputStyle.Short)
+          .setPlaceholder(F.spot.placeholder).setRequired(false).setMaxLength(F.spot.maxLength)),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('type').setLabel('Tipo')
-          .setStyle(TextInputStyle.Short).setPlaceholder('craft / dominio / ataque / defesa / recolha / outra')
-          .setRequired(true).setMaxLength(20)),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('notes').setLabel('Notas').setStyle(TextInputStyle.Paragraph)
-          .setRequired(false).setMaxLength(500)),
+        new TextInputBuilder().setCustomId('notes').setLabel(F.notes.label).setStyle(TextInputStyle.Paragraph)
+          .setPlaceholder(F.notes.placeholder).setRequired(F.notes.required).setMaxLength(F.notes.maxLength)),
     );
   await safeShowModal(interaction, modal);
 }
@@ -62,10 +86,13 @@ async function handleCreateSaidaModal(interaction) {
   const date = getModalField(interaction, 'date');
   const time = getModalField(interaction, 'time');
   const spot = getModalField(interaction, 'spot');
-  const type = getModalField(interaction, 'type').toLowerCase();
   const notes = getModalField(interaction, 'notes');
+  // Tipo vem do select predefinido (step anterior), não do modal
+  const ctx = pendingSaidaContext.get(interaction.user.id) || {};
+  const type = ctx.saidaType || getModalField(interaction, 'type')?.toLowerCase() || 'outra';
+  pendingSaidaContext.delete(interaction.user.id);
   if (!SAIDA_TYPES.includes(type)) {
-    return safeReply(interaction, { content: `${EMOJI.WARN} Tipo inválido. Usa: ${SAIDA_TYPES.join(', ')}.` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.WARN} Tipo inválido.` }, { dismissible: true });
   }
   try {
     const s = await saidaEngine.createSaida({
@@ -123,7 +150,7 @@ async function handleCloseSaidaButton(interaction) {
   }));
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder().setCustomId('saida::select_close')
-      .setPlaceholder('Qual saída vais fechar?').setMinValues(1).setMaxValues(1)
+      .setPlaceholder(SAIDAS.SELECTS.QUAL_SAIDA_FECHAR).setMinValues(1).setMaxValues(1)
       .addOptions(options.slice(0, 25)));
   await safeReply(interaction, { content: `${EMOJI.FECHAR} Escolhe a saída a fechar:`, components: [row], flags: MessageFlags.Ephemeral });
 }
@@ -132,31 +159,57 @@ async function handleCloseSaidaSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const saidaId = parseInt(interaction.values[0]);
   pendingSaidaContext.set(interaction.user.id, { saidaId });
-  // Close modal captura APENAS o contexto macro (result, inimigo, craft, notas).
-  // Kills/deaths per-participante ficam para o wizard a seguir.
+
+  // Step 2: resultado predefinido (select, não texto livre)
+  const resultOptions = VALID_RESULTS.map(r => ({
+    label: { vitoria: 'Vitória', derrota: 'Derrota', empate: 'Empate', sem_conflito: 'Sem conflito', abortada: 'Abortada' }[r],
+    description: { vitoria: 'Ganhamos a fight', derrota: 'Perdemos', empate: 'Nenhum lado ganhou', sem_conflito: 'Não houve fight', abortada: 'Saída cancelada/abortada' }[r],
+    value: r,
+    emoji: { vitoria: '🏆', derrota: '☠️', empate: '⚖️', sem_conflito: 'ℹ️', abortada: '⚠️' }[r],
+  }));
+  const row = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('saida::select_close_result')
+      .setPlaceholder(SAIDAS.SELECTS.RESULTADO_SAIDA)
+      .setMinValues(1).setMaxValues(1)
+      .addOptions(resultOptions)
+  );
+  return safeUpdate(interaction, {
+    content: `${EMOJI.FECHAR} Saída **#${saidaId}** — qual foi o resultado?`,
+    components: [row],
+  });
+}
+
+// Step 3: resultado seleccionado → abre modal para detalhes (sem campo resultado)
+async function handleCloseResultSelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const result = interaction.values[0];
+  const ctx = pendingSaidaContext.get(interaction.user.id) || {};
+  ctx.result = result;
+  pendingSaidaContext.set(interaction.user.id, ctx);
+
+  const saidaId = ctx.saidaId;
+  const SF = MODALS.SAIDA_SETTLE.FIELDS;
+  // Resultado já foi seleccionado no step anterior — modal só tem detalhes complementares
+  const resultLabel = { vitoria: 'Vitória', derrota: 'Derrota', empate: 'Empate', sem_conflito: 'Sem conflito', abortada: 'Abortada' }[result] || result;
   const modal = new ModalBuilder()
     .setCustomId('saida::modal_close')
-    .setTitle(`Fechar Saída #${saidaId}`)
+    .setTitle(`${EMOJI.FECHAR} Fechar #${saidaId} — ${resultLabel}`.slice(0, 45))
     .addComponents(
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('result').setLabel('Resultado')
-          .setStyle(TextInputStyle.Short)
-          .setPlaceholder('vitoria / derrota / empate / sem_conflito / abortada')
-          .setRequired(true).setMaxLength(15)),
+        new TextInputBuilder().setCustomId('enemy').setLabel(SF.enemy.label)
+          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(SF.enemy.maxLength || 80)
+          .setPlaceholder(SF.enemy.placeholder)),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('enemy').setLabel('Inimigo · facção')
-          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(120)
-          .setPlaceholder('Ex: Tony Bloods · Red Street')),
+        new TextInputBuilder().setCustomId('craft_amount').setLabel(SF.crafted.label)
+          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(SF.crafted.maxLength || 12).setPlaceholder(SF.crafted.placeholder)),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('craft_amount').setLabel('Valor craftado (€)')
-          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(6).setPlaceholder('0')),
+        new TextInputBuilder().setCustomId('kills').setLabel(SF.kills.label)
+          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(SF.kills.maxLength || 5).setPlaceholder(SF.kills.placeholder)),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('flags').setLabel('Flags (vírgulas)')
-          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(120)
-          .setPlaceholder('craft, dominio, voltaram')),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('result_notes').setLabel('Notas')
-          .setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(500)),
+        new TextInputBuilder().setCustomId('result_notes').setLabel(SF.notes.label)
+          .setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(SF.notes.maxLength || 500)
+          .setPlaceholder(SF.notes.placeholder)),
     );
   await safeShowModal(interaction, modal);
 }
@@ -167,24 +220,24 @@ async function handleCloseSaidaModal(interaction) {
   const ctx = pendingSaidaContext.get(interaction.user.id);
   if (!ctx) return safeReply(interaction, { content: `${EMOJI.PENDENTE} Sessão expirada — começa de novo.` }, { dismissible: true });
 
-  const resultRaw = getModalField(interaction, 'result').toLowerCase().trim();
-  const result = VALID_RESULTS.includes(resultRaw) ? resultRaw : 'sem_conflito';
+  // Resultado vem do select predefinido (step anterior)
+  const result = ctx.result || 'sem_conflito';
   const enemyRaw = getModalField(interaction, 'enemy');
   let enemy_name = enemyRaw, enemy_faction = '';
   const sepMatch = enemyRaw.match(/^(.+?)\s*[·\-—]\s*(.+)$/);
   if (sepMatch) { enemy_name = sepMatch[1].trim(); enemy_faction = sepMatch[2].trim(); }
   const craft_amount = parseInt(getModalField(interaction, 'craft_amount')) || 0;
-  const flagsRaw = (getModalField(interaction, 'flags') || '').toLowerCase();
+  const our_kills = parseInt(getModalField(interaction, 'kills')) || 0;
   const result_notes = getModalField(interaction, 'result_notes') || '';
-  const had_craft = flagsRaw.includes('craft') || craft_amount > 0;
-  const had_domination = flagsRaw.includes('dominio') || flagsRaw.includes('domínio');
+  const had_craft = craft_amount > 0;
   const had_fight = result === 'vitoria' || result === 'derrota';
+  const had_domination = false; // definido pela chefia no wizard se necessário
 
   try {
     await saidaRepo.updateStatus(ctx.saidaId, 'em_curso', {
       result, had_fight, had_craft, had_domination,
       enemy_name, enemy_faction,
-      craft_amount,
+      craft_amount, our_kills,
       result_notes,
     });
   } catch (e) {
@@ -515,8 +568,8 @@ async function handleIssueQtyModal(interaction) {
 }
 
 module.exports = {
-  handleCreateSaidaButton, handleCreateSaidaModal,
-  handleCloseSaidaButton, handleCloseSaidaSelect, handleCloseSaidaModal,
+  handleCreateSaidaButton, handleCreateTypeSelect, handleCreateSaidaModal,
+  handleCloseSaidaButton, handleCloseSaidaSelect, handleCloseResultSelect, handleCloseSaidaModal,
   handleMarkDeadSelect,
   handleViewSaidasButton,
   handleAddParticipantButton, handleAddParticipantSelect, handleParticipantUsersSelect,

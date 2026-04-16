@@ -81,10 +81,14 @@ function buildComponents(session, slots) {
 
   const select = new StringSelectMenuBuilder()
     .setCustomId(`avail::vote_select::${session.id}`)
-    .setPlaceholder('Vota num horário…')
+    .setPlaceholder('Marca a tua presença')
     .setMinValues(1).setMaxValues(1);
 
-  for (const slot of slots) {
+  // Discord limita a 25 opções por select. Cada slot gera 3 opções (×estado).
+  // Truncar a 8 slots (8 × 3 = 24 opções) para caber com margem.
+  const maxSlots = Math.min(slots.length, 8);
+  for (let i = 0; i < maxSlots; i++) {
+    const slot = slots[i];
     for (const state of STATE_ORDER) {
       const m = STATE_META[state];
       select.addOptions({

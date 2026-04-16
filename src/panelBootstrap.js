@@ -3,10 +3,10 @@ const { ChannelType } = require('discord.js');
 const CONFIG = require('./config');
 const { getStateKey, setStateKey } = require('./state');
 const { log, warn } = require('./logger');
-const { buildMoradorPanel } = require('./panels/moradorPanel');
+const { buildBairristaPanel } = require('./panels/moradorPanel');
 const { buildOficialPanel } = require('./panels/oficialPanel');
 const { buildChefiaPanel } = require('./panels/chefiaPanel');
-const { buildChefeMoradoresPanel } = require('./panels/chefeMoradoresPanel');
+const { buildPatraoDiZonaPanel } = require('./panels/chefeMoradoresPanel');
 const { buildEntradaPanel } = require('./panels/entradaPanel');
 const { CATEGORY_BY_KEY, bold } = require('./discord/structureTemplate');
 
@@ -18,10 +18,10 @@ function autoName(slug, emoji = '📋') { return `${emoji}・${bold(slug)}`; }
 
 const PANELS = [
   { key: 'panel_entrada',         channelKey: 'PANEL_ENTRADA_CHANNEL_ID',         autoName: autoName('boas-vindas', '👋'),         autoAltNames: [autoName('painel-entrada')], autoCategoryKey: 'ENTRADA',  build: buildEntradaPanel,         stickySource: 'panel:entrada' },
-  { key: 'panel_moradores',       channelKey: 'PANEL_MORADORES_CHANNEL_ID',       autoName: autoName('painel-moradores'),          autoCategoryKey: 'GUETTO',   build: buildMoradorPanel,         stickySource: 'panel:moradores' },
+  { key: 'panel_moradores',       channelKey: 'PANEL_MORADORES_CHANNEL_ID',       autoName: autoName('painel-moradores'),          autoCategoryKey: 'GUETTO',   build: buildBairristaPanel,       stickySource: 'panel:moradores' },
   { key: 'panel_oficiais',        channelKey: 'PANEL_OFICIAIS_CHANNEL_ID',        autoName: autoName('painel-oficiais'),           autoCategoryKey: 'OFICIAIS', build: buildOficialPanel,         stickySource: 'panel:oficiais' },
   { key: 'panel_chefia',          channelKey: 'PANEL_CHEFIA_CHANNEL_ID',          autoName: autoName('painel-chefia'),             autoCategoryKey: 'COMANDO',  build: buildChefiaPanel,          stickySource: 'panel:chefia' },
-  { key: 'panel_chefe_moradores', channelKey: 'PANEL_CHEFE_MORADORES_CHANNEL_ID', autoName: autoName('painel-chefe-moradores'),    autoCategoryKey: 'GUETTO',   build: buildChefeMoradoresPanel,  stickySource: 'panel:chefe_moradores' },
+  { key: 'panel_chefe_moradores', channelKey: 'PANEL_CHEFE_MORADORES_CHANNEL_ID', autoName: autoName('painel-chefe-moradores'),    autoCategoryKey: 'GUETTO',   build: buildPatraoDiZonaPanel,    stickySource: 'panel:chefe_moradores' },
 ];
 
 /**

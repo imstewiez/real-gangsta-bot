@@ -51,7 +51,12 @@ const PANELS = {
   OFICIAL: {
     TITLE: `${E.TAG} Secretaria — Oficial`,
     DESCRIPTION:
-      'Registas, validas, consultas. Sem ruído.',
+      'Controlo de material, saídas e quem está na rua.\n' +
+      '\n' +
+      `${E.MATERIAL} **Registar** · entrega ou venda\n` +
+      `${E.SAIDA} **Saídas** · abertas e recentes\n` +
+      `${E.AUDIT} **Histórico** · o teu rasto\n` +
+      `${E.TOPO} **Resumo** · totais acumulados`,
     BUTTONS: {
       VALIDAR:        'Validar Entrega',
       MEMBROS:        'Lista de Nomes',

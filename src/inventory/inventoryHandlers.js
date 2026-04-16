@@ -12,7 +12,7 @@ const { recordDelivery, adjustStock, getCurrentStock } = require('./inventoryEng
 const { buildItemSelectMenu, buildStockAdjustmentModal } = require('./inventoryMenus');
 const { inventoryRepo, memberRepo } = require('../repositories');
 const { isChefia } = require('../permissions/permissionEngine');
-const { EMOJI, ERRORS, MODALS } = require('../content');
+const { EMOJI, ERRORS, MODALS, INVENTORY } = require('../content');
 const MESSAGES = require('../shared/errorMessages'); // legacy shim
 
 const pendingItemSelections = new Map();
@@ -37,7 +37,7 @@ async function handleRegistarMaterialButton(interaction) {
   );
 
   await safeReply(interaction, {
-    content: 'Queres **entregar** (dar) ou **vender** material ao grupo?',
+    content: INVENTORY.PROMPTS.ENTREGA_OU_VENDA,
     components: [row],
     flags: MessageFlags.Ephemeral,
   });
@@ -53,8 +53,8 @@ async function handleTipoRegistoSelect(interaction) {
   const menu = await buildItemSelectMenu(prefix, 'Seleciona o material');
   await safeUpdate(interaction, {
     content: tipo === 'venda'
-      ? 'Que material queres **vender**? O valor será calculado automaticamente.'
-      : 'Que material queres **entregar**?',
+      ? INVENTORY.PROMPTS.QUE_MATERIAL_VENDA
+      : INVENTORY.PROMPTS.QUE_MATERIAL_ENTREGA,
     components: [menu],
   });
 }

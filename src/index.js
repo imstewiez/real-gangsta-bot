@@ -69,8 +69,8 @@ const {
   handleEncomendasButton, handleEncomendaSelect, handleEncomendaModal,
 } = require('./inventory/inventoryHandlers');
 const {
-  handleCreateSaidaButton, handleCreateSaidaModal,
-  handleCloseSaidaButton, handleCloseSaidaSelect, handleCloseSaidaModal,
+  handleCreateSaidaButton, handleCreateTypeSelect, handleCreateSaidaModal,
+  handleCloseSaidaButton, handleCloseSaidaSelect, handleCloseResultSelect, handleCloseSaidaModal,
   handleViewSaidasButton, handleAddParticipantButton,
   handleAddParticipantSelect, handleParticipantUsersSelect,
   handleRegisterMaterialButton,
@@ -1157,6 +1157,10 @@ async function _dispatchInteraction(interaction) {
 
       // Bairrista — ranking por período
       if (id === 'bairrista::ranking_period') return handleRankingSelect(interaction);
+
+      // Saída — selects predefinidos (tipo e resultado)
+      if (id === 'saida::select_create_type') return handleCreateTypeSelect(interaction);
+      if (id === 'saida::select_close_result') return handleCloseResultSelect(interaction);
 
       // Inventory — gestão de materiais (chefia)
       if (id === 'inv::select_gerir_action') return handleGerirActionSelect(interaction);
