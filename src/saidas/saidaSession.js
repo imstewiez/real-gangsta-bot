@@ -287,10 +287,14 @@ async function handleCaracterizadoSource(interaction) {
   const weaponCats = new Set(['armas_fogo', 'armas_brancas']);
   let weapons = items.filter(i => weaponCats.has(i.category));
 
-  // Para "org": mostra TODAS as armas com stock actual (incluindo 0).
-  // Participante expressa a intenção; staff confirma / fornece depois.
-  // Filtrar por stock>0 escondia tudo quando não há saldo_inicial registado.
   if (source === 'org') {
+    // Só armas que a firma emite (lista curada em content/saidas.js).
+    // Comparação case-insensitive + trim para tolerar diferenças leves
+    // no naming do catálogo DB.
+    const { SAIDAS: S } = require('../content');
+    const allowed = new Set((S.ORG_ISSUED_WEAPONS || []).map(n => n.trim().toLowerCase()));
+    weapons = weapons.filter(w => allowed.has((w.name || '').trim().toLowerCase()));
+
     for (const w of weapons) {
       w._balance = Number(await inventoryRepo.getStockForItem(w.id).catch(() => 0)) || 0;
     }

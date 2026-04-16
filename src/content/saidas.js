@@ -7,6 +7,21 @@
 
 const E = require('./emojis');
 
+// Armas que a firma pode emitir em "Pedir à Org". Subset curado do catálogo
+// armas_fogo. "Arma Própria" continua a mostrar o catálogo completo
+// (armas_fogo + armas_brancas) — cada um leva o que tem.
+const ORG_ISSUED_WEAPONS = [
+  'AP Pistola',
+  'Carabina Especial',
+  'Pistola Tec',
+  'Pistola .50',
+  'Compact Rifle',
+  'Espingarda de Assalto',
+  'Gusenberg Sweeper',
+  'Machine Pistol',
+  'Micro SMG',
+];
+
 // Spots conhecidos — dropdown na criação de saída. Substitui texto livre
 // para garantir naming consistente (fundamental para stats por spot).
 // Se for spot pontual / raid único → escolher "Outro" e detalhar em notas.
@@ -48,6 +63,7 @@ const SAIDAS = {
   CREATE_PROMPT: 'Escolhe o tipo de movimento e o spot. O resto acerta-se na rua.',
   FACTIONS,
   SPOTS,
+  ORG_ISSUED_WEAPONS,
 
   WIZARD_TITLE: `${E.FECHAR} Liquidação de Saída`,
   WIZARD_DESC: (id) => `**Saída #${id}** — fecha nome a nome.`,
