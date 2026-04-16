@@ -177,6 +177,7 @@ const SAIDA_EVENT_META = {
   material_issued:    { label: 'Material Fornecido',   color: 0x9B59B6, emoji: EMOJI.FORNECER },
   participant_added:  { label: 'Participante Adicionado', color: 0x3498DB, emoji: EMOJI.PARTICIPANTE },
   cancelled:          { label: 'Saída Cancelada',      color: 0x95A5A6, emoji: '🚫' },
+  weapon_return:      { label: 'Devolução de Arma — Decisão', color: 0xF39C12, emoji: '🔫' },
 };
 
 function saidaLifecycleEmbed(p) {

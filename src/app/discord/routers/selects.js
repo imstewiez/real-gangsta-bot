@@ -18,6 +18,7 @@ const {
 } = require('../../../saidas/saidaHandlers');
 const saidaWizard = require('../../../saidas/saidaSettlementWizard');
 const saidaStats  = require('../../../saidas/saidaStatsHandlers');
+const saidaIndividual = require('../../../saidas/saidaIndividualResult');
 const { handleRankingSelect } = require('../../../members/bairristaHandlers');
 const { handleVoteSelect: availHandleVoteSelect } = require('../../../availability/availabilityHandlers');
 const perfilMaterial  = require('../../../perfil/perfilMaterial');
@@ -68,6 +69,9 @@ const SELECT_ROUTES = [
   prefix('saida::mark_dead::', handleMarkDeadSelect),
   prefix('saida::wz_select::', saidaWizard.handleSelectParticipant),
   exact ('saida::stats_pick',  saidaStats.handleStatsPick),
+
+  // Weapon return — staff escolhe participante
+  prefix('saida::weapon_confirm_pick::', saidaIndividual.handleWeaponConfirmPick),
 ];
 
 async function handleSelect(interaction) {

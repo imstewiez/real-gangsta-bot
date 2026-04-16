@@ -180,6 +180,13 @@ Sync idempotente: nunca apaga, apenas renomeia/move/cria. Canais fora do templat
 - [`docs/SHEETS.md`](docs/SHEETS.md) — camada Sheets (projection-only)
 - [`docs/UX_STYLE_GUIDE.md`](docs/UX_STYLE_GUIDE.md) — tone, voice, emojis
 - [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md) — code style
+- [`docs/SESSION_FLOW.md`](docs/SESSION_FLOW.md) — fluxo guiado da sessão
+  de saída (criar → painel vivo → fechar → resultado individual →
+  confirmação de devolução de arma)
+- [`docs/MESSAGE_LIFECYCLE.md`](docs/MESSAGE_LIFECYCLE.md) — classes
+  canónicas + TTLs
+- [`docs/PERMISSIONS.md`](docs/PERMISSIONS.md) — matriz de acesso
+- [`docs/NOTIFICATIONS.md`](docs/NOTIFICATIONS.md) — routing + templates
 
 ## Secrets
 

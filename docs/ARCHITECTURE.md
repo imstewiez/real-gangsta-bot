@@ -60,7 +60,9 @@ src/
 │
 ├── queries/                         # slash-command handlers user-facing
 │
-├── saidas/        │ saidaEngine, saidaHandlers, scoring, settlement, session
+├── saidas/        │ saidaEngine, saidaHandlers, scoring, settlement,
+│                 │ saidaSession (painel vivo), saidaIndividualResult
+│                 │ (resultado self-service + confirmação devolução arma)
 ├── inventory/     │ inventoryEngine, stockManager, handlers, notifier
 ├── onboarding/    │ onboardingEngine + offboarding + handlers
 ├── members/       │ memberHandlers, bairristaHandlers, backfill (lib)

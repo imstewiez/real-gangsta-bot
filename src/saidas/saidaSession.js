@@ -28,6 +28,7 @@ const { brandEmbed, applyLogo, rankBadge } = require('../shared/embedBuilders');
 const { EMOJI, SAIDA_TYPE } = require('../content');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
+const { formatPtDate } = require('../shared/formatPtDate');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BUILD SESSION EMBED + COMPONENTS
@@ -44,17 +45,27 @@ async function buildSessionEmbed(saidaId) {
   const slotsLeft = Math.max(0, maxChar - characterized.length);
 
   const type = SAIDA_TYPE[saida.operation_type] || saida.operation_type;
-  const date = String(saida.date).split('T')[0];
-  const time = saida.scheduled_time ? ` · ${String(saida.scheduled_time).slice(0, 5)}` : '';
+  // Data + hora no formato canónico do bot (dd/mm/yyyy - hh:mm).
+  // Se houver scheduled_time, constrói ISO completo para formatar;
+  // senão, só a data.
+  let dateLine;
+  if (saida.scheduled_time) {
+    const iso = `${String(saida.date).split('T')[0]}T${String(saida.scheduled_time).slice(0, 5)}:00`;
+    dateLine = formatPtDate(iso);
+  } else {
+    dateLine = formatPtDate(saida.date);
+  }
   const leader = saida.leader_name ? `<@${saida.leader_discord_id}>` : '—';
 
-  const isClosed = ['concluida', 'cancelada'].includes(saida.status);
+  const isClosed = saida.status === 'cancelada';
+  const isConcluded = saida.status === 'concluida';
+  const isOpen = !isClosed && !isConcluded;
 
   const lines = [
     `${EMOJI.SAIDA} **Saída #${saida.id}** — ${type}`,
     '',
     `${EMOJI.ZONA} **Spot:** ${saida.spot || '—'}`,
-    `📅 **Data:** ${date}${time}`,
+    `📅 **Data/Hora:** ${dateLine}`,
     `${EMOJI.LIDER} **Líder:** ${leader}`,
     '',
     `${EMOJI.PARTICIPANTE} **Caracterizados:** ${characterized.length}/${maxChar} ${slotsLeft === 0 ? '(cheio)' : `(${slotsLeft} vagas)`}`,
@@ -63,33 +74,44 @@ async function buildSessionEmbed(saidaId) {
 
   if (saida.notes) lines.push(`\n${EMOJI.AUDIT} **Notas:** ${saida.notes}`);
 
-  // Lista de inscritos
+  // Lista de inscritos com status da arma
   if (characterized.length) {
     lines.push('', `**── Caracterizados ──**`);
     for (const p of characterized) {
-      const weapon = p.own_weapon ? '🔫 própria' : (p.received_org_material ? '📦 org' : '');
-      lines.push(`• <@${p.discord_id}>${weapon ? ` · ${weapon}` : ''}`);
+      const weapon = p.own_weapon ? '🔫 própria'
+        : (p.received_org_material ? '📦 org' : '⏳ sem arma definida');
+      const resultMark = p.individual_result_submitted ? ' ✅' : (isConcluded ? ' ⏳ resultado' : '');
+      lines.push(`• <@${p.discord_id}> · ${weapon}${resultMark}`);
     }
   }
   if (workers.length) {
     lines.push('', `**── Trabalhadores ──**`);
     for (const p of workers) {
-      lines.push(`• <@${p.discord_id}>`);
+      const resultMark = p.individual_result_submitted ? ' ✅' : (isConcluded ? ' ⏳ resultado' : '');
+      lines.push(`• <@${p.discord_id}>${resultMark}`);
     }
   }
 
   if (isClosed) {
     lines.push('', `${EMOJI.FECHAR} _Saída ${saida.status}. Registo encerrado._`);
+  } else if (isConcluded) {
+    const pendingResult = participants.filter(p => !p.individual_result_submitted).length;
+    const pendingWeapon = characterized.filter(p => p.weapon_return_status === 'declared_returned').length;
+    lines.push('', `${EMOJI.FECHAR} _Sessão concluída. Participantes — preencham o vosso resultado ↓_`);
+    if (pendingResult > 0) lines.push(`⏳ **${pendingResult}** resultado(s) por preencher`);
+    if (pendingWeapon > 0) lines.push(`${EMOJI.WARN} **${pendingWeapon}** devolução(ões) de arma pendente(s) de confirmação`);
   }
 
+  const embedColor = isClosed ? 0x95A5A6 : (isConcluded ? 0xF39C12 : 0x3498DB);
   const embed = brandEmbed('MOVEMENT')
-    .setColor(isClosed ? 0x95A5A6 : 0x3498DB)
+    .setColor(embedColor)
     .setDescription(lines.join('\n'));
 
-  // Botões (só se saída aberta)
   const components = [];
-  if (!isClosed) {
-    const row1 = new ActionRowBuilder().addComponents(
+
+  if (isOpen) {
+    // Row 1 — inscrição self-service
+    components.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`saida::session_caracterizado::${saidaId}`)
         .setLabel(`Caracterizado (${characterized.length}/${maxChar})`)
@@ -106,8 +128,39 @@ async function buildSessionEmbed(saidaId) {
         .setLabel('Cancelar Registo')
         .setStyle(ButtonStyle.Danger)
         .setEmoji(EMOJI.APAGAR),
-    );
-    components.push(row1);
+    ));
+
+    // Row 2 — staff (permissão verificada no handler)
+    components.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`session::issue_material::${saidaId}`)
+        .setLabel('Staff: Fornecer Arma/Material')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji(EMOJI.FORNECER),
+      new ButtonBuilder()
+        .setCustomId(`session::close::${saidaId}`)
+        .setLabel('Staff: Fechar Sessão')
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji(EMOJI.FECHAR),
+    ));
+  } else if (isConcluded) {
+    // Row 1 — resultado individual (self-service pós-fecho)
+    components.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`saida::submit_result::${saidaId}`)
+        .setLabel('Preencher o meu Resultado')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji(EMOJI.OK),
+    ));
+
+    // Row 2 — staff OG+ confirma devoluções
+    components.push(new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`saida::weapon_queue::${saidaId}`)
+        .setLabel('Staff: Confirmar Devoluções de Arma')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('🔫'),
+    ));
   }
 
   return { embed, components };

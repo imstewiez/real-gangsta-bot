@@ -34,6 +34,7 @@ const {
 const saidaWizard  = require('../../../saidas/saidaSettlementWizard');
 const saidaStats   = require('../../../saidas/saidaStatsHandlers');
 const saidaSession = require('../../../saidas/saidaSession');
+const saidaIndividual = require('../../../saidas/saidaIndividualResult');
 const {
   handleVoteAll: availHandleVoteAll,
   handleSummary: availHandleSummary,
@@ -77,6 +78,11 @@ const BUTTON_ROUTES = [
   prefix('saida::session_caracterizado::', saidaSession.handleSessionCaracterizado),
   prefix('saida::session_trabalhador::',   saidaSession.handleSessionTrabalhador),
   prefix('saida::session_cancel::',        saidaSession.handleSessionCancel),
+
+  // Saída — resultado individual (self-service) + weapon return queue
+  prefix('saida::submit_result::',         saidaIndividual.handleOpenSubmitResult),
+  prefix('saida::weapon_queue::',          saidaIndividual.handleOpenWeaponQueue),
+  prefix('saida::weapon_decide::',         saidaIndividual.handleWeaponDecide),
 
   // Saída wizard + stats
   prefix('saida::wz_finish::', saidaWizard.handleFinish),

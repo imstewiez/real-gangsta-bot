@@ -113,6 +113,18 @@ function _onKillRegistered(evt) {
   return Promise.resolve();
 }
 
+// ── Weapon return decisions ────────────────────────────────────────────────
+function _onWeaponDecided(evt, decision) {
+  const embed = templates.saidaLifecycleEmbed({
+    saidaId: evt.saidaId,
+    event: 'weapon_return',
+    actorId: evt.actorId,
+    notes: `Decisão: **${decision}** para membro #${evt.memberId}`,
+    at: evt.at,
+  });
+  return _publish('SAIDAS_EVENTS', { embeds: [embed] });
+}
+
 function registerNotificationRouting() {
   // Inventory
   eventBus.on('material.registered', _onMaterialRegistered);
@@ -138,6 +150,11 @@ function registerNotificationRouting() {
   eventBus.on('saida.participant_added',  _onSaidaParticipantAdded);
   // Kills (delegado)
   eventBus.on('kill.registered', _onKillRegistered);
+
+  // Weapon return decisions
+  eventBus.on('weapon.return_confirmed',    evt => _onWeaponDecided(evt, 'confirmada'));
+  eventBus.on('weapon.return_rejected',     evt => _onWeaponDecided(evt, 'rejeitada'));
+  eventBus.on('weapon.return_inconclusive', evt => _onWeaponDecided(evt, 'inconclusiva'));
 
   log('[NOTIF] Routing subscribers registados (3 famílias consolidadas).');
 }

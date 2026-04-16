@@ -917,6 +917,33 @@ const MIGRATIONS = [
       ALTER TABLE operations ADD COLUMN IF NOT EXISTS session_message_id TEXT;
       ALTER TABLE operations ADD COLUMN IF NOT EXISTS session_channel_id TEXT;
     `
+  },
+  {
+    id: 22,
+    name: 'participant_individual_result_and_weapon_return',
+    // Resultado individual self-service + confirmação explícita de devolução
+    // de arma por staff OG+.
+    //   - individual_result_submitted: flag (o participante já preencheu?)
+    //   - individual_result_at: quando preencheu
+    //   - weapon_return_status: lifecycle da devolução de arma
+    //       none                      — participante não declarou
+    //       declared_returned         — diz que devolveu, pendente confirmação
+    //       confirmed_returned        — OG+ confirmou devolução
+    //       confirmed_not_returned    — OG+ rejeitou (não devolveu)
+    //       inconclusive              — OG+ marcou como inconclusivo
+    //       not_applicable            — trabalhador / sem arma fornecida
+    //   - weapon_return_confirmed_by / _at: auditoria
+    up: `
+      ALTER TABLE operation_participants ADD COLUMN IF NOT EXISTS individual_result_submitted BOOLEAN DEFAULT FALSE;
+      ALTER TABLE operation_participants ADD COLUMN IF NOT EXISTS individual_result_at TIMESTAMPTZ;
+      ALTER TABLE operation_participants ADD COLUMN IF NOT EXISTS weapon_return_status TEXT
+        DEFAULT 'none'
+        CHECK (weapon_return_status IN ('none','declared_returned','confirmed_returned','confirmed_not_returned','inconclusive','not_applicable'));
+      ALTER TABLE operation_participants ADD COLUMN IF NOT EXISTS weapon_return_confirmed_by TEXT;
+      ALTER TABLE operation_participants ADD COLUMN IF NOT EXISTS weapon_return_confirmed_at TIMESTAMPTZ;
+      CREATE INDEX IF NOT EXISTS idx_op_part_weapon_return ON operation_participants(weapon_return_status);
+      CREATE INDEX IF NOT EXISTS idx_op_part_result_submitted ON operation_participants(individual_result_submitted);
+    `
   }
 ];
 
