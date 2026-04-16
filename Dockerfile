@@ -34,7 +34,6 @@ COPY --from=deps /app/package-lock.json ./package-lock.json
 # Copiar código da aplicação
 COPY src/ ./src/
 COPY config/ ./config/
-COPY scripts/ ./scripts/
 
 # Criar directórios que o bot precisa de escrever (logs, state)
 # ANTES de mudar para non-root user
