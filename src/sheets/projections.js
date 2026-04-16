@@ -98,6 +98,7 @@ function onDomainEvent(event) {
   return (_payload) => {
     const tabs = EVENT_TO_TABS[event];
     if (!tabs?.length) return;
+    log(`[PROJ] evento '${event}' → tabs pendentes: ${tabs.join(', ')}`);
     for (const tab of tabs) _pending.add(tab);
     scheduleFlush();
   };
