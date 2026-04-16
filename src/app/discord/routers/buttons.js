@@ -82,11 +82,17 @@ const BUTTON_ROUTES = [
 
   // Saída — resultado individual (self-service) + weapon return queue
   prefix('saida::submit_result::',         saidaIndividual.handleOpenSubmitResult),
+  prefix('saida::res_outcome::',           saidaIndividual.handleResOutcome),
+  prefix('saida::res_weapon::',            saidaIndividual.handleResWeapon),
   prefix('saida::weapon_queue::',          saidaIndividual.handleOpenWeaponQueue),
   prefix('saida::weapon_decide::',         saidaIndividual.handleWeaponDecide),
 
-  // Saída wizard + stats
-  prefix('saida::wz_finish::', saidaWizard.handleFinish),
+  // Saída — settlement wizard (staff fecha participante a participante)
+  prefix('saida::wz_outcome::',            saidaWizard.handleOutcome),
+  prefix('saida::wz_weapon::',             saidaWizard.handleWeaponDecision),
+  prefix('saida::wz_finish::',             saidaWizard.handleFinish),
+
+  // Saída stats
   exact ('chefia::stats_open', saidaStats.handleStatsOpen),
 
   // Radio

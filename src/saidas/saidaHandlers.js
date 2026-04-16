@@ -93,6 +93,16 @@ async function handleCreateTypeSelect(interaction) {
   const saidaType = interaction.values[0];
   _setContext(interaction.user.id, { saidaType });
 
+  // Pré-preencher data + hora com o momento actual (user pode editar).
+  // Timezone local do processo — Railway corre UTC; para Portugal (UTC+1/WEST),
+  // o user vê hora UTC no placeholder e edita se quiser. Boa opção é usar
+  // Intl.DateTimeFormat com pt-PT.
+  const now = new Date();
+  const fmtDate = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Lisbon' }).format(now); // YYYY-MM-DD
+  const fmtTime = new Intl.DateTimeFormat('pt-PT', {
+    timeZone: 'Europe/Lisbon', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(now); // HH:MM
+
   const F = MODALS.SAIDA_CREATE.FIELDS;
   const modal = new ModalBuilder()
     .setCustomId('saida::modal_create')
@@ -100,10 +110,10 @@ async function handleCreateTypeSelect(interaction) {
     .addComponents(
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('date').setLabel(F.date.label).setStyle(TextInputStyle.Short)
-          .setPlaceholder(new Date().toISOString().split('T')[0]).setRequired(F.date.required).setMaxLength(F.date.maxLength)),
+          .setValue(fmtDate).setPlaceholder(fmtDate).setRequired(F.date.required).setMaxLength(F.date.maxLength)),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('time').setLabel(F.time.label).setStyle(TextInputStyle.Short)
-          .setPlaceholder(F.time.placeholder).setRequired(false).setMaxLength(F.time.maxLength)),
+          .setValue(fmtTime).setPlaceholder(fmtTime).setRequired(false).setMaxLength(F.time.maxLength)),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('spot').setLabel(F.spot.label).setStyle(TextInputStyle.Short)
           .setPlaceholder(F.spot.placeholder).setRequired(false).setMaxLength(F.spot.maxLength)),

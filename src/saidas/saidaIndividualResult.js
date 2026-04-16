@@ -96,26 +96,101 @@ async function handleOpenSubmitResult(interaction) {
     }, { messageClass: 'BANAL' });
   }
 
-  // Modal — 4 campos, simples
+  // STEP 1 — ephemeral: escolhe Sobrevivi / Morri via botão.
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`saida::res_outcome::${saidaId}::survived`)
+      .setLabel('Sobrevivi')
+      .setStyle(ButtonStyle.Success)
+      .setEmoji(EMOJI.OK),
+    new ButtonBuilder()
+      .setCustomId(`saida::res_outcome::${saidaId}::died`)
+      .setLabel('Morri')
+      .setStyle(ButtonStyle.Danger)
+      .setEmoji(EMOJI.MORTE),
+  );
+
+  return safeReply(interaction, {
+    content: `**Saída #${saidaId}** — o que te aconteceu?`,
+    components: [row],
+    flags: MessageFlags.Ephemeral,
+  }, { messageClass: 'FLOW' });
+}
+
+// STEP 2 — clicou Sobrevivi/Morri. Se era caracterizado com arma da org
+// e sobreviveu, vai para step 3 (perguntar devolução). Caso contrário,
+// salta para o modal de kills/notes.
+async function handleResOutcome(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const parts = interaction.customId.split('::');
+  const saidaId = parseInt(parts[2], 10);
+  const outcome = parts[3]; // 'survived' | 'died'
+
+  const member = await memberRepo.findByDiscordId(interaction.user.id);
+  const participants = await saidaRepo.getParticipants(saidaId);
+  const me = participants.find(p => p.member_id === member?.id);
+  if (!me) {
+    return safeReply(interaction, {
+      content: `${EMOJI.ERRO} Não és participante desta saída.`,
+      flags: MessageFlags.Ephemeral,
+    }, { messageClass: 'WARN' });
+  }
+
+  const hadOrgWeapon = me.received_org_material && !me.own_weapon;
+  const needsWeaponQuestion = outcome === 'survived' && hadOrgWeapon;
+
+  if (needsWeaponQuestion) {
+    // STEP 3 — ephemeral: devolveste a arma?
+    await interaction.deferUpdate();
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`saida::res_weapon::${saidaId}::survived::returned`)
+        .setLabel('Devolvi a arma')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji(EMOJI.DEVOLVER),
+      new ButtonBuilder()
+        .setCustomId(`saida::res_weapon::${saidaId}::survived::not_returned`)
+        .setLabel('Não devolvi')
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji(EMOJI.ERRO),
+      new ButtonBuilder()
+        .setCustomId(`saida::res_weapon::${saidaId}::survived::lost`)
+        .setLabel('Perdi na rua')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji(EMOJI.PERDIDO),
+    );
+    return interaction.editReply({
+      content: `**Saída #${saidaId}** — e a arma da org que levaste?`,
+      components: [row],
+    });
+  }
+
+  // Saltou o passo da arma (morreu ou não tinha arma da org).
+  // Abrir modal directamente — weapon decision encoded como "skip".
+  const weaponDecision = outcome === 'died' ? 'died_auto' : 'no_org_weapon';
+  return _openResultModal(interaction, saidaId, outcome, weaponDecision);
+}
+
+// STEP 3 — clicou decisão da arma. Abre modal para kills + notes.
+async function handleResWeapon(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const parts = interaction.customId.split('::');
+  const saidaId = parseInt(parts[2], 10);
+  const outcome = parts[3]; // 'survived' (morri não chega aqui)
+  const weaponDecision = parts[4]; // 'returned' | 'not_returned' | 'lost'
+  return _openResultModal(interaction, saidaId, outcome, weaponDecision);
+}
+
+async function _openResultModal(interaction, saidaId, outcome, weaponDecision) {
   const modal = new ModalBuilder()
-    .setCustomId(`saida::submit_result_modal::${saidaId}`)
+    .setCustomId(`saida::submit_result_modal::${saidaId}::${outcome}::${weaponDecision}`)
     .setTitle(`Resultado — Saída #${saidaId}`)
     .addComponents(
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('survived')
-          .setLabel('Sobrevivi? (S/N) · N = morri')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true).setMaxLength(3).setPlaceholder('S')),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('kills')
           .setLabel('Kills que fiz')
           .setStyle(TextInputStyle.Short)
-          .setRequired(true).setMaxLength(3).setPlaceholder('0')),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('returned_weapon')
-          .setLabel('Devolvi a arma? (S/N) · ignora se morri')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(false).setMaxLength(3).setPlaceholder('S')),
+          .setRequired(true).setMaxLength(3).setPlaceholder('0').setValue('0')),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('notes')
           .setLabel('Notas (opcional)')
@@ -125,20 +200,20 @@ async function handleOpenSubmitResult(interaction) {
   await safeShowModal(interaction, modal);
 }
 
-function _yesNo(raw, defaultValue = false) {
-  const v = String(raw || '').toLowerCase().trim();
-  if (!v) return defaultValue;
-  return v.startsWith('s') || v.startsWith('y') || v === '1';
-}
-
 /**
- * Handler do submit do modal.
+ * Handler do submit do modal. CustomId encoda outcome + weaponDecision
+ * que vieram dos botões dos steps 2 e 3 (sem S/N text).
+ * Formato: saida::submit_result_modal::<saidaId>::<outcome>::<weaponDecision>
  */
 async function handleSubmitResultModal(interaction) {
   if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const saidaId = parseInt(interaction.customId.split('::')[2], 10);
+  const parts = interaction.customId.split('::');
+  const saidaId = parseInt(parts[2], 10);
+  const outcome = parts[3];          // 'survived' | 'died'
+  const weaponDecision = parts[4];   // 'returned' | 'not_returned' | 'lost' | 'died_auto' | 'no_org_weapon'
+
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {
     return safeReply(interaction, {
@@ -154,28 +229,22 @@ async function handleSubmitResultModal(interaction) {
     }, { messageClass: 'WARN' });
   }
 
-  const survived = _yesNo(getModalField(interaction, 'survived'), true);
+  const survived = outcome === 'survived';
   const died = !survived;
   const killsRaw = String(getModalField(interaction, 'kills') || '0').trim();
   const kills = Math.max(0, Math.min(99, parseInt(killsRaw, 10) || 0));
-  const declaredReturn = _yesNo(getModalField(interaction, 'returned_weapon'), true);
   const notes = String(getModalField(interaction, 'notes') || '').slice(0, 300);
 
   // ── Regras de weapon_return_status ─────────────────────────────────────
-  // 1. Trabalhador OU arma própria → not_applicable (não há arma da casa)
-  // 2. Morreu → confirmed_not_returned (automático — perdeu arma)
-  // 3. Disse que devolveu → declared_returned (pendente OG+)
-  // 4. Disse que não devolveu → confirmed_not_returned (já é definitivo)
-  let weaponReturnStatus;
-  if (me.participant_type === 'trabalhador' || me.own_weapon) {
-    weaponReturnStatus = 'not_applicable';
-  } else if (died) {
-    weaponReturnStatus = 'confirmed_not_returned';
-  } else if (declaredReturn) {
-    weaponReturnStatus = 'declared_returned';
-  } else {
-    weaponReturnStatus = 'confirmed_not_returned';
-  }
+  // Decisão vem directa dos botões (no text parse).
+  const WEAPON_STATUS_MAP = {
+    died_auto:       'confirmed_not_returned', // morreu → arma perdida auto
+    no_org_weapon:   'not_applicable',          // trabalhador ou arma própria
+    returned:        'declared_returned',       // pendente confirmação OG+
+    not_returned:    'confirmed_not_returned',  // admissão definitiva
+    lost:            'confirmed_not_returned',  // perdida na rua = não devolvida
+  };
+  const weaponReturnStatus = WEAPON_STATUS_MAP[weaponDecision] || 'not_applicable';
 
   // Persiste — UPDATE idempotente: só aceita se `individual_result_submitted`
   // ainda é FALSE. Duplo-clique / race condition não sobrepõe o resultado
@@ -450,6 +519,8 @@ async function handleWeaponDecide(interaction) {
 
 module.exports = {
   handleOpenSubmitResult,
+  handleResOutcome,
+  handleResWeapon,
   handleSubmitResultModal,
   handleOpenWeaponQueue,
   handleWeaponConfirmPick,

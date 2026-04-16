@@ -100,37 +100,110 @@ async function handleStart(interaction, saidaId) {
   return safeReply(interaction, { embeds: [embed], components, flags: MessageFlags.Ephemeral }, { dismissible: false });
 }
 
+// STEP 1: staff escolheu participante → ephemeral com "Vivo / Morto" botões.
 async function handleSelectParticipant(interaction) {
   if (isDuplicate(interaction.id)) return;
   const parts = interaction.customId.split('::');
   const saidaId = parseInt(parts[2]);
   const discordId = interaction.values[0];
   const member = await memberRepo.findByDiscordId(discordId);
+  const name = member?.display_name || discordId;
 
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`saida::wz_outcome::${saidaId}::${discordId}::alive`)
+      .setLabel('Vivo')
+      .setStyle(ButtonStyle.Success)
+      .setEmoji(EMOJI.OK),
+    new ButtonBuilder()
+      .setCustomId(`saida::wz_outcome::${saidaId}::${discordId}::dead`)
+      .setLabel('Morto')
+      .setStyle(ButtonStyle.Danger)
+      .setEmoji(EMOJI.MORTE),
+  );
+
+  await safeReply(interaction, {
+    content: `**${name}** — como foi a saída?`,
+    components: [row],
+    flags: MessageFlags.Ephemeral,
+  }, { messageClass: 'FLOW' });
+}
+
+// STEP 2: clicou Vivo/Morto → se caracterizado+org+vivo, pergunta arma;
+// caso contrário salta para o modal de kills/downs/notes.
+async function handleOutcome(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const parts = interaction.customId.split('::');
+  const saidaId = parseInt(parts[2]);
+  const discordId = parts[3];
+  const outcome = parts[4]; // 'alive' | 'dead'
+
+  const participants = await saidaRepo.getParticipants(saidaId);
+  const p = participants.find(x => x.discord_id === discordId);
+  if (!p) {
+    return safeReply(interaction, { content: `${EMOJI.ERRO} Participante não encontrado.`, flags: MessageFlags.Ephemeral }, { messageClass: 'WARN' });
+  }
+
+  const hadOrgWeapon = p.received_org_material && !p.own_weapon;
+  const needsWeaponQuestion = outcome === 'alive' && hadOrgWeapon;
+
+  if (needsWeaponQuestion) {
+    await interaction.deferUpdate();
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`saida::wz_weapon::${saidaId}::${discordId}::alive::returned`)
+        .setLabel('Devolveu')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji(EMOJI.DEVOLVER),
+      new ButtonBuilder()
+        .setCustomId(`saida::wz_weapon::${saidaId}::${discordId}::alive::not_returned`)
+        .setLabel('Não devolveu')
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji(EMOJI.ERRO),
+      new ButtonBuilder()
+        .setCustomId(`saida::wz_weapon::${saidaId}::${discordId}::alive::lost`)
+        .setLabel('Perdeu na rua')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji(EMOJI.PERDIDO),
+    );
+    return interaction.editReply({
+      content: `E a arma da org?`,
+      components: [row],
+    });
+  }
+
+  // Sem pergunta de arma (morto ou sem arma da org) → modal.
+  const weaponDecision = outcome === 'dead' ? 'died_auto' : 'no_org_weapon';
+  return _openSettleModal(interaction, saidaId, discordId, outcome, weaponDecision);
+}
+
+// STEP 3: clicou decisão da arma → abre modal.
+async function handleWeaponDecision(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const parts = interaction.customId.split('::');
+  const saidaId = parseInt(parts[2]);
+  const discordId = parts[3];
+  const outcome = parts[4];         // 'alive'
+  const weaponDecision = parts[5];  // 'returned' | 'not_returned' | 'lost'
+  return _openSettleModal(interaction, saidaId, discordId, outcome, weaponDecision);
+}
+
+async function _openSettleModal(interaction, saidaId, discordId, outcome, weaponDecision) {
+  const member = await memberRepo.findByDiscordId(discordId);
   const modal = new ModalBuilder()
-    .setCustomId(`saida::wz_modal::${saidaId}::${discordId}`)
+    .setCustomId(`saida::wz_modal::${saidaId}::${discordId}::${outcome}::${weaponDecision}`)
     .setTitle(`Liquidar — ${member?.display_name || discordId}`.slice(0, 45))
     .addComponents(
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('kills')
           .setLabel(SAIDAS.MODAL.KILLS_LABEL)
           .setStyle(TextInputStyle.Short)
-          .setRequired(false).setMaxLength(4).setPlaceholder('0')),
+          .setRequired(false).setMaxLength(4).setPlaceholder('0').setValue('0')),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('downs')
           .setLabel(SAIDAS.MODAL.DOWNS_LABEL)
           .setStyle(TextInputStyle.Short)
-          .setRequired(false).setMaxLength(4).setPlaceholder('0')),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('died')
-          .setLabel(SAIDAS.MODAL.DIED_LABEL)
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true).setMaxLength(3).setPlaceholder('N')),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('died_with_mat')
-          .setLabel('Devolveu material? (N se morreu = assume perda)')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(false).setMaxLength(3).setPlaceholder('S (default: N se morreu)')),
+          .setRequired(false).setMaxLength(4).setPlaceholder('0').setValue('0')),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('notes')
           .setLabel(SAIDAS.MODAL.NOTES_LABEL)
@@ -144,19 +217,20 @@ async function handleSettleModal(interaction) {
   if (isDuplicate(interaction.id)) return;
   await interaction.deferUpdate().catch(() => {});
 
+  // Formato custom ID: saida::wz_modal::<saidaId>::<discId>::<outcome>::<weapon>
   const parts = interaction.customId.split('::');
   const saidaId = parseInt(parts[2]);
   const discordId = parts[3];
+  const outcome = parts[4];        // 'alive' | 'dead'
+  const weaponDecision = parts[5]; // 'returned' | 'not_returned' | 'lost' | 'died_auto' | 'no_org_weapon'
 
   const kills = Math.max(0, Math.min(parseInt(getModalField(interaction, 'kills')) || 0, 100));
   const downs = Math.max(0, Math.min(parseInt(getModalField(interaction, 'downs')) || 0, 100));
-  const diedRaw = getModalField(interaction, 'died').toLowerCase().trim();
-  const died = diedRaw.startsWith('s') || diedRaw.startsWith('y') || diedRaw === '1';
-  const diedWithRaw = getModalField(interaction, 'died_with_mat').toLowerCase().trim();
-  // Regra da casa: morreu = perdeu material, salvo se explicitamente indicar N.
-  // Se morreu e o campo estiver vazio ou 'S', assume perda total.
-  const diedWithExplicitNo = diedWithRaw.startsWith('n') || diedWithRaw === '0';
-  const diedWithMat = died && !diedWithExplicitNo;
+  const died = outcome === 'dead';
+  // Se morreu e tinha material da org, assume perda total. Se morreu sem
+  // material, não há perda (weaponDecision='died_auto' mas sem issued).
+  // Se sobreviveu: returned → sem perda; not_returned/lost → perda total.
+  const diedWithMat = died;
   const notes = getModalField(interaction, 'notes') || '';
 
   const member = await memberRepo.findByDiscordId(discordId);
@@ -176,21 +250,23 @@ async function handleSettleModal(interaction) {
   const issuedValue = fornecidoRes.rows.reduce((acc, r) => acc + (r.quantity * (parseFloat(r.estimated_value) || 0)), 0);
   const issuedItems = fornecidoRes.rows.map(r => ({ itemId: r.item_id, qty: r.quantity }));
 
+  // Decisão de material baseada em weaponDecision (derivado dos botões).
+  // Morreu OU sobreviveu e disse "não devolveu"/"perdeu" → material perdido.
+  // Sobreviveu e devolveu → material retornado (sem perda).
+  const materialLost = (weaponDecision !== 'returned' && weaponDecision !== 'no_org_weapon');
+
   let lostValue = 0, returnedValue = 0;
-  if (diedWithMat && issuedItems.length) {
-    // Usa settleParticipantCustody para registar tudo como perdido
+  if (materialLost && issuedItems.length) {
     const saidaEngine = require('./saidaEngine');
     await saidaEngine.settleParticipantCustody(saidaId, discordId, {
-      diedWithItems: issuedItems, died: true, survived: false, returned: false,
+      diedWithItems: issuedItems, died, survived: !died, returned: false,
     }, interaction.user.id, interaction.guild);
     lostValue = issuedValue;
   } else {
-    // Se não morreu com material (ou sobreviveu), só actualiza o estado básico
     await saidaRepo.updateParticipant(saidaId, member.id, {
       died, survived: !died, returned: !died,
     });
-    if (!died) returnedValue = issuedValue; // assumimos que sobrevivente devolveu (aproximação simples)
-    else lostValue = issuedValue; // morreu mas sem material registado nominal
+    if (!died) returnedValue = issuedValue;
   }
 
   const netDelta = returnedValue - lostValue;
@@ -269,4 +345,11 @@ async function handleFinish(interaction) {
   }, { dismissible: true });
 }
 
-module.exports = { handleStart, handleSelectParticipant, handleSettleModal, handleFinish };
+module.exports = {
+  handleStart,
+  handleSelectParticipant,
+  handleOutcome,
+  handleWeaponDecision,
+  handleSettleModal,
+  handleFinish,
+};
