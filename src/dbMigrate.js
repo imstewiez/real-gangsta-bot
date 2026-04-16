@@ -891,6 +891,32 @@ const MIGRATIONS = [
       -- 5) Default da coluna members.role passa para 'bairrista'.
       ALTER TABLE members ALTER COLUMN role SET DEFAULT 'bairrista';
     `
+  },
+  {
+    id: 21,
+    name: 'saidas_participant_types_and_session',
+    // Reformulação do domínio de saídas:
+    //   - participant_type: distinguir caracterizado (combate, 12 max) de trabalhador (apoio, ilimitado)
+    //   - own_weapon: arma própria vs material da org
+    //   - characterized_count / workers_count: contagem na saída
+    //   - crafted_value: valor do material craftado
+    //   - allow_workers: flag para permitir trabalhadores
+    //   - session_message_id / session_channel_id: embed de sessão com registo interactivo
+    up: `
+      -- ── Participant types ───────────────────────────────────────────────
+      ALTER TABLE operation_participants ADD COLUMN IF NOT EXISTS participant_type TEXT
+        DEFAULT 'caracterizado' CHECK (participant_type IN ('caracterizado', 'trabalhador'));
+      ALTER TABLE operation_participants ADD COLUMN IF NOT EXISTS own_weapon BOOLEAN DEFAULT FALSE;
+      CREATE INDEX IF NOT EXISTS idx_op_part_type ON operation_participants(participant_type);
+
+      -- ── Saída session + counts ──────────────────────────────────────────
+      ALTER TABLE operations ADD COLUMN IF NOT EXISTS characterized_count INTEGER DEFAULT 0;
+      ALTER TABLE operations ADD COLUMN IF NOT EXISTS workers_count INTEGER DEFAULT 0;
+      ALTER TABLE operations ADD COLUMN IF NOT EXISTS crafted_value NUMERIC(14,2) DEFAULT 0;
+      ALTER TABLE operations ADD COLUMN IF NOT EXISTS allow_workers BOOLEAN DEFAULT TRUE;
+      ALTER TABLE operations ADD COLUMN IF NOT EXISTS session_message_id TEXT;
+      ALTER TABLE operations ADD COLUMN IF NOT EXISTS session_channel_id TEXT;
+    `
   }
 ];
 

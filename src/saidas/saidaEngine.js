@@ -150,6 +150,10 @@ async function closeSaida(saidaId, resultData, actorId) {
     });
   }
 
+  // Contagem de tipos de participante
+  const characterized_count = participants.filter(p => p.participant_type === 'caracterizado').length;
+  const workers_count = participants.filter(p => p.participant_type === 'trabalhador').length;
+
   // Fecha a saída com valores calculados
   const closed = await saidaRepo.closeSaida(saidaId, {
     ...resultData,
@@ -160,6 +164,8 @@ async function closeSaida(saidaId, resultData, actorId) {
     gross_value: gross,
     net_value: net,
     was_profitable,
+    characterized_count,
+    workers_count,
   });
   if (!closed) return null;
 
@@ -267,13 +273,33 @@ async function _resolveOrCreateMember(discordId, guild = null) {
 
 async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
   const member = await _resolveOrCreateMember(discordId, guild);
-  const participant = await saidaRepo.addParticipant(saidaId, member.id, data);
+
+  // Enforce 12 characterized limit
+  const participantType = data.participantType || 'caracterizado';
+  if (participantType === 'caracterizado') {
+    const saida = await saidaRepo.findById(saidaId);
+    const maxCharacterized = saida?.max_participants || 12;
+    // Verificar se já é participante (update, não nova adição)
+    const existing = (await saidaRepo.getParticipants(saidaId)).find(p => p.member_id === member.id);
+    if (!existing) {
+      const currentCount = await saidaRepo.countCharacterized(saidaId);
+      if (currentCount >= maxCharacterized) {
+        throw new Error(`Limite de ${maxCharacterized} caracterizados atingido. Regista-te como trabalhador.`);
+      }
+    }
+  }
+
+  const participant = await saidaRepo.addParticipant(saidaId, member.id, {
+    ...data,
+    participantType,
+  });
+
   await logAudit({
     action: 'saida_participant_added',
     entityType: 'saida',
     entityId: String(saidaId),
     actorId,
-    afterState: { memberId: member.id, displayName: member.display_name },
+    afterState: { memberId: member.id, displayName: member.display_name, participantType },
   });
   return participant;
 }

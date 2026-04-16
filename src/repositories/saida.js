@@ -84,7 +84,8 @@ async function closeSaida(id, resultData) {
       'result', 'enemy_name', 'enemy_faction', 'enemy_count',
       'our_kills', 'survivors', 'deaths', 'returned_count', 'returned_to_bairro_count',
       'supplied_value', 'returned_value', 'lost_value', 'consumed_value',
-      'gross_value', 'net_value', 'was_profitable',
+      'gross_value', 'net_value', 'was_profitable', 'crafted_value',
+      'characterized_count', 'workers_count',
       'spot_type', 'result_notes',
     ];
     for (const field of fields) {
@@ -105,17 +106,38 @@ async function closeSaida(id, resultData) {
 
 async function addParticipant(saidaId, memberId, data = {}) {
   const res = await query(
-    `INSERT INTO operation_participants (operation_id, member_id, role_in_op, brought_own_material, received_org_material, notes)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO operation_participants
+       (operation_id, member_id, role_in_op, brought_own_material, received_org_material,
+        participant_type, own_weapon, notes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
      ON CONFLICT (operation_id, member_id) DO UPDATE SET
        role_in_op = EXCLUDED.role_in_op,
        brought_own_material = EXCLUDED.brought_own_material,
        received_org_material = EXCLUDED.received_org_material,
+       participant_type = COALESCE(EXCLUDED.participant_type, operation_participants.participant_type),
+       own_weapon = COALESCE(EXCLUDED.own_weapon, operation_participants.own_weapon),
        notes = EXCLUDED.notes
      RETURNING *`,
-    [saidaId, memberId, data.roleInSaida || data.roleInOp || 'membro', data.broughtOwn || false, data.receivedOrg || false, data.notes || '']
+    [
+      saidaId, memberId,
+      data.roleInSaida || data.roleInOp || 'membro',
+      data.broughtOwn || false,
+      data.receivedOrg || false,
+      data.participantType || 'caracterizado',
+      data.ownWeapon || false,
+      data.notes || '',
+    ]
   );
   return res.rows[0];
+}
+
+async function countCharacterized(saidaId) {
+  const res = await query(
+    `SELECT COUNT(*)::int AS n FROM operation_participants
+     WHERE operation_id = $1 AND participant_type = 'caracterizado'`,
+    [saidaId]
+  );
+  return res.rows[0]?.n || 0;
 }
 
 async function updateParticipant(saidaId, memberId, fields) {
@@ -208,10 +230,18 @@ async function countParticipationsByMember(memberId, weekStart = null, weekEnd =
   return parseInt(res.rows[0]?.count || 0);
 }
 
+async function updateSessionMessage(saidaId, messageId, channelId) {
+  return query(
+    `UPDATE operations SET session_message_id = $1, session_channel_id = $2 WHERE id = $3`,
+    [messageId, channelId, saidaId]
+  );
+}
+
 module.exports = {
   create, findById, findByDate, findRecent, findOpen,
   updateStatus, closeSaida,
   addParticipant, updateParticipant, getParticipants,
+  countCharacterized, updateSessionMessage,
   addMaterial, getMaterials, getMaterialSummary, getParticipantMaterialTotals,
   countParticipationsByMember,
 };

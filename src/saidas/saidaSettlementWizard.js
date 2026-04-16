@@ -50,9 +50,10 @@ async function _renderWizardMessage(saidaId) {
     lines.push('', `**${EMOJI.OK} Liquidados:**`);
     for (const p of settled.slice(0, 10)) {
       const status = p.died ? `${EMOJI.MORTE} Morto` : `${EMOJI.OK} Vivo`;
+      const typeTag = p.participant_type === 'trabalhador' ? ' · 🛠️' : '';
       const k = p.kills ? ` · **${p.kills}k**` : '';
       const d = p.downs ? ` · ${p.downs}d` : '';
-      lines.push(`• <@${p.discord_id}> — ${status}${k}${d}`);
+      lines.push(`• <@${p.discord_id}>${typeTag} — ${status}${k}${d}`);
     }
     if (settled.length > 10) lines.push(`_… e mais ${settled.length - 10}._`);
   }
@@ -65,11 +66,15 @@ async function _renderWizardMessage(saidaId) {
   const components = [];
 
   if (pending.length) {
-    const options = pending.slice(0, 25).map(p => ({
-      label: `${p.display_name || p.discord_id}`.slice(0, 100),
-      description: p.role_in_op || 'membro',
-      value: p.discord_id,
-    }));
+    const options = pending.slice(0, 25).map(p => {
+      const typeLabel = p.participant_type === 'trabalhador' ? '🛠️ Trabalhador' : '🏴 Caracterizado';
+      const weapon = p.own_weapon ? ' · arma própria' : '';
+      return {
+        label: `${p.display_name || p.discord_id}`.slice(0, 100),
+        description: `${typeLabel}${weapon}`.slice(0, 100),
+        value: p.discord_id,
+      };
+    });
     components.push(new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId(`saida::wz_select::${saidaId}`)
@@ -123,9 +128,9 @@ async function handleSelectParticipant(interaction) {
           .setRequired(true).setMaxLength(3).setPlaceholder('N')),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('died_with_mat')
-          .setLabel(SAIDAS.MODAL.DIED_WITH_MAT_LABEL)
+          .setLabel('Devolveu material? (N se morreu = assume perda)')
           .setStyle(TextInputStyle.Short)
-          .setRequired(false).setMaxLength(3).setPlaceholder('N')),
+          .setRequired(false).setMaxLength(3).setPlaceholder('S (default: N se morreu)')),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('notes')
           .setLabel(SAIDAS.MODAL.NOTES_LABEL)
@@ -148,7 +153,10 @@ async function handleSettleModal(interaction) {
   const diedRaw = getModalField(interaction, 'died').toLowerCase().trim();
   const died = diedRaw.startsWith('s') || diedRaw.startsWith('y') || diedRaw === '1';
   const diedWithRaw = getModalField(interaction, 'died_with_mat').toLowerCase().trim();
-  const diedWithMat = died && (diedWithRaw.startsWith('s') || diedWithRaw.startsWith('y') || diedWithRaw === '1');
+  // Regra da casa: morreu = perdeu material, salvo se explicitamente indicar N.
+  // Se morreu e o campo estiver vazio ou 'S', assume perda total.
+  const diedWithExplicitNo = diedWithRaw.startsWith('n') || diedWithRaw === '0';
+  const diedWithMat = died && !diedWithExplicitNo;
   const notes = getModalField(interaction, 'notes') || '';
 
   const member = await memberRepo.findByDiscordId(discordId);
@@ -210,6 +218,16 @@ async function handleFinish(interaction) {
 
   const saidaId = parseInt(interaction.customId.split('::')[2]);
 
+  // Guard: se a saída já foi fechada (ex: via close modal), não re-fechar
+  const currentSaida = await saidaRepo.findById(saidaId);
+  if (currentSaida?.status === 'concluida') {
+    const v = { net: currentSaida.net_value || 0, was_profitable: currentSaida.was_profitable };
+    const channelId = CONFIG.SAIDA_RESULTS_CHANNEL_ID || CONFIG.AUDIT_CHANNEL_ID || '';
+    return safeReply(interaction, {
+      content: SAIDAS.WIZARD_SUMMARY(saidaId, currentSaida.our_kills || 0, currentSaida.deaths || 0, currentSaida.survivors || 0, v.net, v.was_profitable, channelId),
+    }, { dismissible: true });
+  }
+
   // Auto-liquida os que ficaram pendentes como "vivo, sem kills"
   const participants = await saidaRepo.getParticipants(saidaId);
   const pending = participants.filter(p => !p.settled);
@@ -221,21 +239,13 @@ async function handleFinish(interaction) {
     });
   }
 
-  // Agrega totais e actualiza saída
+  // Agrega totais dos participantes (NÃO muda status aqui — closeSaida trata da transição)
   const refreshed = await saidaRepo.getParticipants(saidaId);
   const totalKills = refreshed.reduce((a, p) => a + (p.kills || 0), 0);
   const totalDeaths = refreshed.filter(p => p.died).length;
   const survivors = refreshed.filter(p => p.survived).length;
 
-  await saidaRepo.updateStatus(saidaId, 'concluida', {
-    our_kills: totalKills,
-    deaths: totalDeaths,
-    survivors,
-  });
-
-  // Chama closeSaida para disparar cálculos económicos + scoring + stats +
-  // publish dos 3 embeds. Se já foi chamado antes (close modal), isto é
-  // idempotente (updateParticipant acumula, scoring recalcula).
+  // closeSaida faz a transição, cálculos económicos, scoring, stats e publish.
   const saidaEngine = require('./saidaEngine');
   const saida = await saidaRepo.findById(saidaId);
   const result = await saidaEngine.closeSaida(saidaId, {

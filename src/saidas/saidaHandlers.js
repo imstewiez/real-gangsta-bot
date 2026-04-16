@@ -12,6 +12,7 @@ const { buildItemSelectMenu } = require('../inventory/inventoryMenus');
 const { isChefia, isOficial } = require('../permissions/permissionEngine');
 const { saidaRepo } = require('../repositories');
 const saidaEngine = require('./saidaEngine');
+const { publishSessionEmbed } = require('./saidaSession');
 const MESSAGES = require('../shared/errorMessages');
 const { EMOJI, ERRORS, SUCCESS, SAIDAS } = require('../content');
 
@@ -81,11 +82,22 @@ async function handleCreateSaidaModal(interaction) {
         { name: 'Spot',  value: spot ? `**${spot}**` : '—', inline: true },
       );
     if (notes) embed.addFields({ name: 'Notas', value: notes, inline: false });
-    embed.addFields({
-      name: '→ próximo passo',
-      value: `Adiciona **participantes** e, quando fechares, regista material + resultado.`,
-      inline: false,
-    });
+
+    // Publicar embed de sessão interactivo com botões de registo
+    const sessionMsg = await publishSessionEmbed(interaction.client, s.id);
+    if (sessionMsg) {
+      embed.addFields({
+        name: '→ sessão aberta',
+        value: `Sessão publicada em <#${sessionMsg.channelId}>. Os membros podem registar-se directamente.`,
+        inline: false,
+      });
+    } else {
+      embed.addFields({
+        name: '→ próximo passo',
+        value: `Adiciona **participantes** manualmente. Define \`SAIDA_SESSION_CHANNEL_ID\` para activar registo interactivo.`,
+        inline: false,
+      });
+    }
     return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
     return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });

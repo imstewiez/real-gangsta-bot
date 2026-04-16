@@ -82,6 +82,7 @@ const {
 } = require('./saidas/saidaHandlers');
 const saidaWizard = require('./saidas/saidaSettlementWizard');
 const saidaStats = require('./saidas/saidaStatsHandlers');
+const saidaSession = require('./saidas/saidaSession');
 const { getCurrentWeekRanking, getPreviousWeekRanking } = require('./rankings/rankingEngine');
 const { rankingEmbed, brandEmbed, stockEmbed } = require('./shared/embedBuilders');
 const { inventoryRepo } = require('./repositories');
@@ -859,6 +860,67 @@ async function _dispatchInteraction(interaction) {
 
       // ── Bairrista commands ──────────────────────────────────────────────
       if (cmd === 'rg-meu-ponto') return handleMeuPonto(interaction);
+
+      if (cmd === 'rg-minha-saida') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const { query: dbQuery } = require('./db');
+        const specificId = interaction.options.getInteger('id');
+        const member = await require('./repositories').memberRepo.findByDiscordId(interaction.user.id);
+        if (!member) return safeReply(interaction, { content: 'Não estás registado.' }, { dismissible: true });
+
+        if (specificId) {
+          // Mostra resultado de uma saída específica
+          const part = await dbQuery(
+            `SELECT op.*, o.spot, o.date, o.result, o.operation_type
+             FROM operation_participants op
+             JOIN operations o ON o.id = op.operation_id
+             WHERE op.operation_id = $1 AND op.member_id = $2`,
+            [specificId, member.id]
+          );
+          if (!part.rows[0]) return safeReply(interaction, { content: `Não participaste na saída #${specificId}.` }, { dismissible: true });
+          const p = part.rows[0];
+          const typeTag = p.participant_type === 'trabalhador' ? '🛠️ Trabalhador' : '🏴 Caracterizado';
+          const embed = brandEmbed('MOVEMENT')
+            .setTitle(`${EMOJI.SAIDA} Saída #${specificId} — O teu resultado`)
+            .addFields(
+              { name: 'Spot', value: p.spot || '—', inline: true },
+              { name: 'Data', value: String(p.date).split('T')[0], inline: true },
+              { name: 'Tipo', value: typeTag, inline: true },
+              { name: `${EMOJI.KILL} Kills`, value: String(p.kills || 0), inline: true },
+              { name: p.died ? `${EMOJI.MORTE} Morto` : `${EMOJI.OK} Vivo`, value: '\u200b', inline: true },
+              { name: 'Performance', value: `**${Math.round(p.performance_score || 0)}**`, inline: true },
+              { name: 'Disciplina', value: `**${Math.round(p.discipline_score || 0)}%**`, inline: true },
+              { name: p.mvp_flag ? `${EMOJI.MVP} MVP` : 'MVP', value: p.mvp_flag ? '**Sim**' : 'Não', inline: true },
+            );
+          return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+        }
+
+        // Últimas 10 saídas
+        const recent = await dbQuery(
+          `SELECT op.kills, op.died, op.performance_score, op.discipline_score, op.mvp_flag,
+                  op.participant_type, op.own_weapon,
+                  o.id, o.spot, o.date, o.result, o.operation_type
+           FROM operation_participants op
+           JOIN operations o ON o.id = op.operation_id
+           WHERE op.member_id = $1 AND o.status = 'concluida'
+           ORDER BY o.date DESC, o.id DESC LIMIT 10`,
+          [member.id]
+        );
+        if (!recent.rows.length) return safeReply(interaction, { content: 'Ainda não tens saídas fechadas.' }, { dismissible: true });
+
+        const lines = recent.rows.map(r => {
+          const result = r.result === 'vitoria' ? `${EMOJI.VITORIA}` : r.result === 'derrota' ? `${EMOJI.DERROTA}` : `${EMOJI.INFO}`;
+          const mvp = r.mvp_flag ? ` ${EMOJI.MVP}` : '';
+          const death = r.died ? ` ${EMOJI.MORTE}` : '';
+          const typeTag = r.participant_type === 'trabalhador' ? ' 🛠️' : '';
+          return `\`${String(r.date).split('T')[0]}\` **#${r.id}** ${r.spot || '—'} · ${result} · ${r.kills || 0}k · perf **${Math.round(r.performance_score || 0)}**${death}${mvp}${typeTag}`;
+        });
+
+        const embed = brandEmbed('MOVEMENT')
+          .setTitle(`${EMOJI.SAIDA} As tuas últimas saídas`)
+          .setDescription(lines.join('\n'));
+        return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+      }
       if (cmd === 'rg-progresso') return handleProgressoTier(interaction);
       if (cmd === 'rg-top-bairristas') return handleRanking(interaction);
       if (cmd === 'rg-ranking') {
@@ -919,6 +981,11 @@ async function _dispatchInteraction(interaction) {
       if (id.startsWith('avail::all::')) return availHandleVoteAll(interaction);
       if (id.startsWith('avail::summary::')) return availHandleSummary(interaction);
       if (id.startsWith('avail::refresh::')) return availHandleRefresh(interaction);
+
+      // Saída session — auto-registo interactivo
+      if (id.startsWith('saida::session_caracterizado::')) return saidaSession.handleSessionCaracterizado(interaction);
+      if (id.startsWith('saida::session_trabalhador::')) return saidaSession.handleSessionTrabalhador(interaction);
+      if (id.startsWith('saida::session_cancel::')) return saidaSession.handleSessionCancel(interaction);
 
       // Saída wizard — botão Concluir
       if (id.startsWith('saida::wz_finish::')) return saidaWizard.handleFinish(interaction);
@@ -1142,6 +1209,7 @@ async function _dispatchInteraction(interaction) {
       if (id === 'saida::modal_material_qty' || id === 'op::modal_material_qty') return handleMaterialQtyModal(interaction);
       if (id === 'saida::issue_modal_qty' || id === 'op::issue_modal_qty') return handleIssueQtyModal(interaction);
       if (id.startsWith('saida::wz_modal::')) return saidaWizard.handleSettleModal(interaction);
+      if (id.startsWith('saida::session_weapon_modal::')) return saidaSession.handleRegistrationModal(interaction);
 
       // Cemetery modal
       if (id === 'kill::modal' || id === 'cemetery::modal_kill') return handleKillModal(interaction);

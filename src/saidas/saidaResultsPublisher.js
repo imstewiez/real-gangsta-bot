@@ -35,14 +35,22 @@ function buildResumoEmbed(saida, participants) {
   const profitTag = saida.was_profitable ? `${EMOJI.LUCRO} Lucro` : `${EMOJI.WARN} Prejuízo`;
 
   const L = SAIDAS.LABELS;
+  const characterized = participants.filter(p => p.participant_type === 'caracterizado');
+  const workers = participants.filter(p => p.participant_type === 'trabalhador');
+  const ownWeaponCount = participants.filter(p => p.own_weapon).length;
+
   const fields = [
     { name: L.SPOT, value: saida.spot || '—', inline: true },
     { name: L.TIPO, value: type, inline: true },
     { name: L.LIDER, value: saida.leader_name || '—', inline: true },
     { name: 'Data', value: String(saida.date).split('T')[0], inline: true },
-    { name: 'Na saída', value: String(participants.length), inline: true },
+    { name: 'Na saída', value: `**${participants.length}** (${characterized.length} caract. · ${workers.length} trab.)`, inline: true },
     { name: L.RESULTADO, value: `${meta.emoji} **${meta.label}**`, inline: true },
   ];
+
+  if (ownWeaponCount > 0) {
+    fields.push({ name: '🔫 Arma própria', value: String(ownWeaponCount), inline: true });
+  }
 
   if (saida.had_fight) {
     const enemy = [saida.enemy_name, saida.enemy_faction].filter(Boolean).join(' · ') || '—';
@@ -81,7 +89,10 @@ function buildDestaquesEmbed(saida, participants) {
   const devolveram = participants.filter(p => (p.returned_value || 0) > 0 && (p.issued_value || 0) > 0 && p.returned_value >= p.issued_value);
   const ficaramDevendo = participants.filter(p => (p.issued_value || 0) > (p.returned_value || 0) + (p.lost_value || 0) + (p.consumed_value || 0));
 
-  const fmt = (p) => `<@${p.discord_id}> (${p.display_name})`;
+  const fmt = (p) => {
+    const typeTag = p.participant_type === 'trabalhador' ? ' 🛠️' : '';
+    return `<@${p.discord_id}>${typeTag}`;
+  };
   const L = SAIDAS.LABELS;
 
   const fields = [];

@@ -276,6 +276,11 @@ const commands = [
   new SlashCommandBuilder()
     .setName('rg-top-bairristas')
     .setDescription('Top Bairristas da semana'),
+
+  new SlashCommandBuilder()
+    .setName('rg-minha-saida')
+    .setDescription('As tuas últimas saídas — kills, performance, disciplina')
+    .addIntegerOption(opt => opt.setName('id').setDescription('ID de uma saída específica (opcional)').setRequired(false)),
 ];
 
 module.exports = { commands };

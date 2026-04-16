@@ -41,9 +41,13 @@ const SAIDAS = {
     RESULTADO: 'Resultado',
     KILLS: 'Kills',
     MORTES: 'Mortes',
+    CARACTERIZADOS: 'Caracterizados',
+    TRABALHADORES: 'Trabalhadores',
+    ARMA_PROPRIA: 'Arma própria',
     MATERIAL_FORNECIDO: 'Fornecido',
     MATERIAL_DEVOLVIDO: 'Devolvido',
     MATERIAL_PERDIDO: 'Perdido',
+    MATERIAL_CRAFTADO: 'Craftado',
     LUCRO_BRUTO: 'Bruto',
     LUCRO_LIQUIDO: 'Líquido',
     MVP: 'MVP',
@@ -53,6 +57,17 @@ const SAIDAS = {
     DEVENDO: 'Ficaram a dever',
     WINRATE: 'Winrate do spot',
     ORG_KILLS: 'Kills da firma (all-time)',
+  },
+
+  // Sessão interactiva
+  SESSION: {
+    TITLE: (id) => `${E.SAIDA} Sessão de Saída #${id}`,
+    REGISTER_CHARACTERIZED: 'Caracterizado',
+    REGISTER_WORKER: 'Trabalhador',
+    CANCEL_REGISTRATION: 'Cancelar Registo',
+    SLOTS_FULL: 'Slots de caracterizados cheios.',
+    REGISTERED: (type) => `Registado como ${type}.`,
+    CANCELLED: 'Registo cancelado.',
   },
 
   // Auto-liquidação
