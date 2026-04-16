@@ -14,7 +14,6 @@ const {
   handleMaterialQtyModal, handleIssueQtyModal,
 } = require('../../../saidas/saidaHandlers');
 const saidaWizard  = require('../../../saidas/saidaSettlementWizard');
-const saidaSession = require('../../../saidas/saidaSession');
 const saidaIndividual = require('../../../saidas/saidaIndividualResult');
 const { handleKillModal } = require('../../../kills/killHandlers');
 const { handleSetModal: radioHandleSetModal } = require('../../../radio/radioHandlers');
@@ -40,7 +39,6 @@ const MODAL_ROUTES = [
   exact('saida::modal_material_qty', handleMaterialQtyModal),
   exact('saida::issue_modal_qty',    handleIssueQtyModal),
   prefix('saida::wz_modal::',             saidaWizard.handleSettleModal),
-  prefix('saida::session_weapon_modal::', saidaSession.handleRegistrationModal),
   prefix('saida::submit_result_modal::',  saidaIndividual.handleSubmitResultModal),
 
   // Kill

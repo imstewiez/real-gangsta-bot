@@ -6,24 +6,36 @@
  *   - detalhes da saída (spot, tipo, data, hora, líder)
  *   - slots ocupados (X/12 caracterizados, Y trabalhadores)
  *   - lista de inscritos (separados por tipo)
- *   - botões: Registar-me (caracterizado), Registar como Trabalhador, Cancelar Registo
+ *   - botões: Caracterizado (self-serve arma), Trabalhador (1 click), Sair
  *
  * O embed é editado em tempo real à medida que membros se registam.
  *
+ * Fluxo Caracterizado (self-serve — participante escolhe a arma):
+ *   1. Click `saida::session_caracterizado::<saidaId>`
+ *      → ephemeral com 2 botões: Arma Própria / Pedir à Org
+ *   2. Click `saida::source::<saidaId>::own|org`
+ *      → ephemeral com StringSelect de armas da catálogo (ou stock se org)
+ *   3. Select `saida::weapon_pick::<saidaId>::own|org`
+ *      → guarda weapon_item_id + regista participante
+ *
+ * Fluxo Trabalhador: click → regista directamente (não precisa arma).
+ *
  * CustomIds:
- *   saida::session_caracterizado::<saidaId>  - registar como caracterizado
- *   saida::session_trabalhador::<saidaId>    - registar como trabalhador
- *   saida::session_cancel::<saidaId>         - cancelar registo
- *   saida::session_weapon_modal::<saidaId>   - modal arma/notas
+ *   saida::session_caracterizado::<saidaId>  - step 1 (abre source picker)
+ *   saida::session_trabalhador::<saidaId>    - regista trabalhador directo
+ *   saida::session_cancel::<saidaId>         - cancela registo
+ *   saida::source::<saidaId>::<own|org>      - step 2 (abre weapon select)
+ *   saida::weapon_pick::<saidaId>::<own|org> - step 3 (grava)
  */
 
 const {
   ActionRowBuilder, ButtonBuilder, ButtonStyle,
-  ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags,
+  StringSelectMenuBuilder, StringSelectMenuOptionBuilder,
+  MessageFlags,
 } = require('discord.js');
-const { saidaRepo, memberRepo } = require('../repositories');
+const { saidaRepo, memberRepo, inventoryRepo } = require('../repositories');
 const saidaEngine = require('./saidaEngine');
-const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
 const { brandEmbed, applyLogo, rankBadge } = require('../shared/embedBuilders');
 const { EMOJI, SAIDA_TYPE } = require('../content');
 const CONFIG = require('../config');
@@ -72,14 +84,27 @@ async function buildSessionEmbed(saidaId) {
 
   if (saida.notes) lines.push(`\n${EMOJI.AUDIT} **Notas:** ${saida.notes}`);
 
-  // Lista de inscritos com status da arma
+  // Lista de inscritos com status da arma + nome específico se escolheu
+  const weaponIds = characterized.map(p => p.weapon_item_id).filter(Boolean);
+  const weaponMap = new Map();
+  if (weaponIds.length) {
+    for (const wid of new Set(weaponIds)) {
+      const it = await inventoryRepo.getItemById(wid).catch(() => null);
+      if (it) weaponMap.set(wid, it.name);
+    }
+  }
+
   if (characterized.length) {
     lines.push('', `**── Caracterizados ──**`);
     for (const p of characterized) {
-      const weapon = p.own_weapon ? '🔫 própria'
-        : (p.received_org_material ? '📦 org' : '⏳ sem arma definida');
+      const weaponName = p.weapon_item_id ? weaponMap.get(p.weapon_item_id) : null;
+      const srcIcon = p.own_weapon ? '🔫' : (p.received_org_material ? '📦' : '⏳');
+      const srcLabel = p.own_weapon ? 'própria' : (p.received_org_material ? 'org' : 'sem arma');
+      const weaponFull = weaponName
+        ? `${srcIcon} ${weaponName} (${srcLabel})`
+        : `${srcIcon} ${srcLabel}`;
       const resultMark = p.individual_result_submitted ? ' ✅' : (isConcluded ? ' ⏳ resultado' : '');
-      lines.push(`• <@${p.discord_id}> · ${weapon}${resultMark}`);
+      lines.push(`• <@${p.discord_id}> · ${weaponFull}${resultMark}`);
     }
   }
   if (workers.length) {
@@ -224,71 +249,145 @@ async function refreshSessionEmbed(client, saidaId) {
 // HANDLERS — registo interactivo
 // ═══════════════════════════════════════════════════════════════════════════
 
+// ── STEP 1: Caracterizado → ephemeral com 2 botões (origem da arma) ─────
 async function handleSessionCaracterizado(interaction) {
   if (isDuplicate(interaction.id)) return;
   const saidaId = parseInt(interaction.customId.split('::')[2]);
-  return _openRegistrationModal(interaction, saidaId, 'caracterizado');
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`saida::source::${saidaId}::own`)
+      .setLabel('Arma Própria')
+      .setStyle(ButtonStyle.Primary)
+      .setEmoji('🔫'),
+    new ButtonBuilder()
+      .setCustomId(`saida::source::${saidaId}::org`)
+      .setLabel('Pedir à Org')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji(EMOJI.FORNECER),
+  );
+
+  return safeReply(interaction, {
+    content: `**Saída #${saidaId}** — como te armas?\n\n🔫 **Arma Própria** — já tens arma contigo\n${EMOJI.FORNECER} **Pedir à Org** — a firma cede a arma do stock`,
+    components: [row],
+    flags: MessageFlags.Ephemeral,
+  }, { messageClass: 'FLOW' });
 }
 
-async function handleSessionTrabalhador(interaction) {
+// ── STEP 2: source picker → abre StringSelect com armas ─────────────────
+async function handleCaracterizadoSource(interaction) {
   if (isDuplicate(interaction.id)) return;
-  const saidaId = parseInt(interaction.customId.split('::')[2]);
-  return _openRegistrationModal(interaction, saidaId, 'trabalhador');
-}
-
-async function _openRegistrationModal(interaction, saidaId, participantType) {
-  const typeLabel = participantType === 'caracterizado' ? 'Caracterizado' : 'Trabalhador';
-  const modal = new ModalBuilder()
-    .setCustomId(`saida::session_weapon_modal::${saidaId}::${participantType}`)
-    .setTitle(`Registar — ${typeLabel}`)
-    .addComponents(
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('own_weapon')
-          .setLabel('Arma própria? (S/N)')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true).setMaxLength(3).setPlaceholder('N')),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('notes')
-          .setLabel('Notas (opcional)')
-          .setStyle(TextInputStyle.Paragraph)
-          .setRequired(false).setMaxLength(300)),
-    );
-  await safeShowModal(interaction, modal);
-}
-
-async function handleRegistrationModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const parts = interaction.customId.split('::');
   const saidaId = parseInt(parts[2]);
-  const participantType = parts[3]; // 'caracterizado' ou 'trabalhador'
+  const source = parts[3]; // 'own' ou 'org'
 
-  const ownWeaponRaw = getModalField(interaction, 'own_weapon').toLowerCase().trim();
-  const ownWeapon = ownWeaponRaw.startsWith('s') || ownWeaponRaw.startsWith('y') || ownWeaponRaw === '1';
-  const notes = getModalField(interaction, 'notes') || '';
+  // Armas da catálogo — filtrar categorias de armamento.
+  const items = await inventoryRepo.getItems(true);
+  const weaponCats = new Set(['armas_fogo', 'armas_brancas']);
+  let weapons = items.filter(i => weaponCats.has(i.category));
+
+  // Para "org", só mostra armas com stock > 0.
+  if (source === 'org') {
+    const weaponsWithStock = [];
+    for (const w of weapons) {
+      const stock = await inventoryRepo.getStockForItem(w.id).catch(() => null);
+      const balance = Number(stock?.balance ?? 0);
+      if (balance > 0) weaponsWithStock.push({ ...w, _balance: balance });
+    }
+    weapons = weaponsWithStock;
+  }
+
+  if (weapons.length === 0) {
+    const empty = source === 'org'
+      ? 'Não há armas em stock no momento. Escolhe **Arma Própria** ou tenta mais tarde.'
+      : 'Não há armas definidas no catálogo.';
+    return safeReply(interaction, { content: `${EMOJI.WARN} ${empty}`, flags: MessageFlags.Ephemeral }, { messageClass: 'WARN' });
+  }
+
+  // Discord StringSelect: max 25 opções. Se passar, trunca.
+  const options = weapons.slice(0, 25).map(w => {
+    const label = source === 'org' ? `${w.name} (stock: ${w._balance})` : w.name;
+    return new StringSelectMenuOptionBuilder()
+      .setLabel(label.slice(0, 100))
+      .setValue(String(w.id))
+      .setEmoji(w.category === 'armas_brancas' ? '🔪' : '🔫');
+  });
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(`saida::weapon_pick::${saidaId}::${source}`)
+    .setPlaceholder(source === 'org' ? 'Escolhe a arma da org' : 'Escolhe a tua arma')
+    .addOptions(options);
+
+  const row = new ActionRowBuilder().addComponents(select);
+  return safeReply(interaction, {
+    content: source === 'org'
+      ? `**Saída #${saidaId}** — escolhe a arma que queres da org.`
+      : `**Saída #${saidaId}** — diz qual é a tua arma.`,
+    components: [row],
+    flags: MessageFlags.Ephemeral,
+  }, { messageClass: 'FLOW' });
+}
+
+// ── STEP 3: weapon pick → grava participante + refresh embed ────────────
+async function handleCaracterizadoWeaponPick(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  await interaction.deferUpdate();
+
+  const parts = interaction.customId.split('::');
+  const saidaId = parseInt(parts[2]);
+  const source = parts[3]; // 'own' ou 'org'
+  const weaponItemId = parseInt(interaction.values[0]);
 
   try {
+    const item = await inventoryRepo.getItemById(weaponItemId);
     await saidaEngine.addParticipant(saidaId, interaction.user.id, {
-      participantType,
-      ownWeapon,
-      broughtOwn: ownWeapon,
-      notes,
+      participantType: 'caracterizado',
+      ownWeapon: source === 'own',
+      broughtOwn: source === 'own',
+      receivedOrgMaterial: source === 'org',
+      weaponItemId,
+      notes: '',
     }, interaction.user.id, interaction.guild);
 
-    const typeLabel = participantType === 'caracterizado' ? 'caracterizado' : 'trabalhador';
-    const weaponLabel = ownWeapon ? 'arma própria' : 'sem arma própria';
+    const weaponName = item?.name || 'arma';
+    const srcLabel = source === 'own' ? 'própria' : 'da org';
+    await interaction.editReply({
+      content: `${EMOJI.OK} Registado como **caracterizado** na saída #${saidaId} — arma ${srcLabel}: **${weaponName}**.`,
+      components: [],
+    });
 
-    await safeReply(interaction, {
-      content: `${EMOJI.OK} Registado na saída **#${saidaId}** como **${typeLabel}** (${weaponLabel}).`,
-    }, { dismissible: true });
-
-    // Refresh session embed
     refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
   } catch (e) {
-    await safeReply(interaction, {
+    await interaction.editReply({
       content: `${EMOJI.ERRO} ${e.message}`,
-    }, { dismissible: true });
+      components: [],
+    });
+  }
+}
+
+// ── Trabalhador: click único → regista directamente ─────────────────────
+async function handleSessionTrabalhador(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const saidaId = parseInt(interaction.customId.split('::')[2]);
+  try {
+    await saidaEngine.addParticipant(saidaId, interaction.user.id, {
+      participantType: 'trabalhador',
+      ownWeapon: false,
+      broughtOwn: false,
+      receivedOrgMaterial: false,
+      notes: '',
+    }, interaction.user.id, interaction.guild);
+
+    await safeReply(interaction, {
+      content: `${EMOJI.OK} Registado como **trabalhador** na saída #${saidaId}.`,
+    }, { messageClass: 'BANAL' });
+
+    refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
+  } catch (e) {
+    await safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'ERROR' });
   }
 }
 
@@ -338,7 +437,8 @@ module.exports = {
   publishSessionEmbed,
   refreshSessionEmbed,
   handleSessionCaracterizado,
+  handleCaracterizadoSource,
+  handleCaracterizadoWeaponPick,
   handleSessionTrabalhador,
-  handleRegistrationModal,
   handleSessionCancel,
 };

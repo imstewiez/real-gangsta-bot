@@ -944,6 +944,17 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_op_part_weapon_return ON operation_participants(weapon_return_status);
       CREATE INDEX IF NOT EXISTS idx_op_part_result_submitted ON operation_participants(individual_result_submitted);
     `
+  },
+  {
+    id: 23,
+    name: 'participant_weapon_item',
+    // Participante escolhe a arma que leva (própria ou da org) no registo,
+    // em vez de staff atribuir depois. FK opcional — trabalhadores e quem
+    // não especificar ficam com NULL.
+    up: `
+      ALTER TABLE operation_participants ADD COLUMN IF NOT EXISTS weapon_item_id INT REFERENCES items(id);
+      CREATE INDEX IF NOT EXISTS idx_op_part_weapon_item ON operation_participants(weapon_item_id);
+    `
   }
 ];
 

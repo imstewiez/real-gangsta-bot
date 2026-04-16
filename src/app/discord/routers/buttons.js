@@ -74,8 +74,9 @@ const BUTTON_ROUTES = [
   prefix('avail::summary::',  availHandleSummary),
   prefix('avail::refresh::',  availHandleRefresh),
 
-  // Saída session — auto-registo interactivo
+  // Saída session — auto-registo interactivo (self-serve weapon pick)
   prefix('saida::session_caracterizado::', saidaSession.handleSessionCaracterizado),
+  prefix('saida::source::',                saidaSession.handleCaracterizadoSource),
   prefix('saida::session_trabalhador::',   saidaSession.handleSessionTrabalhador),
   prefix('saida::session_cancel::',        saidaSession.handleSessionCancel),
 

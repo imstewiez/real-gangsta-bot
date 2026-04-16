@@ -108,23 +108,25 @@ async function addParticipant(saidaId, memberId, data = {}) {
   const res = await query(
     `INSERT INTO operation_participants
        (operation_id, member_id, role_in_op, brought_own_material, received_org_material,
-        participant_type, own_weapon, notes)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        participant_type, own_weapon, weapon_item_id, notes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      ON CONFLICT (operation_id, member_id) DO UPDATE SET
        role_in_op = EXCLUDED.role_in_op,
        brought_own_material = EXCLUDED.brought_own_material,
        received_org_material = EXCLUDED.received_org_material,
        participant_type = COALESCE(EXCLUDED.participant_type, operation_participants.participant_type),
        own_weapon = COALESCE(EXCLUDED.own_weapon, operation_participants.own_weapon),
+       weapon_item_id = COALESCE(EXCLUDED.weapon_item_id, operation_participants.weapon_item_id),
        notes = EXCLUDED.notes
      RETURNING *`,
     [
       saidaId, memberId,
       data.roleInSaida || data.roleInOp || 'membro',
       data.broughtOwn || false,
-      data.receivedOrg || false,
+      data.receivedOrgMaterial || data.receivedOrg || false,
       data.participantType || 'caracterizado',
       data.ownWeapon || false,
+      data.weaponItemId || null,
       data.notes || '',
     ]
   );
