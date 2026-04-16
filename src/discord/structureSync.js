@@ -22,7 +22,7 @@
  * Para auditar divergências contra o lock usar `/rg-layout-check`.
  */
 
-const { PermissionFlagsBits } = require('discord.js');
+const { PermissionFlagsBits, ChannelType } = require('discord.js');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
 const {
@@ -31,10 +31,40 @@ const {
   CATEGORY_PERMS,
   CHANNEL_PERM_OVERRIDES,
   CHANNEL_PERM_OVERRIDES_BY_NAME,
+  PANEL_PERM_BY_KEY,
   ROLE_GUILD_PERMS,
   ROLE_KEY_TO_ID_KEYS,
   rolesFor,
 } = require('./structureTemplate');
+
+/**
+ * Resolve o channelId de um painel da mesma forma que o panelBootstrap:
+ *   1) CONFIG[panel.channelKey] (env var / default)
+ *   2) auto-discover por nome canónico + slugs na categoria esperada
+ *
+ * Usa `guild.channels.cache` directamente (já populado via `guild.channels.fetch`
+ * no início de runPermsOnly).
+ */
+function _resolvePanelChannelId(guild, panelDef) {
+  const explicit = CONFIG[panelDef.channelKey];
+  if (explicit) {
+    const ch = guild.channels.cache.get(explicit);
+    if (ch) return { channelId: explicit, source: 'env' };
+  }
+  if (!panelDef.autoName || !panelDef.autoCategoryKey) return null;
+
+  const cat = CATEGORY_BY_KEY[panelDef.autoCategoryKey];
+  if (!cat || !cat.id) return null;
+
+  const acceptedNames = [panelDef.autoName, ...(panelDef.autoAltNames || [])];
+  const slugs = acceptedNames.map(n => n.split('・')[1]).filter(Boolean);
+  const found = guild.channels.cache.find(c =>
+    c.type === ChannelType.GuildText &&
+    c.parentId === cat.id &&
+    (acceptedNames.includes(c.name) || slugs.some(s => c.name.includes(s)))
+  );
+  return found ? { channelId: found.id, source: 'auto-discover' } : null;
+}
 
 function permBits(names = []) {
   return names.map(n => PermissionFlagsBits[n]).filter(Boolean);
@@ -171,8 +201,42 @@ async function runPermsOnly(guild, opts = {}) {
     }
   }
 
+  // ── 4c. Perms de painéis (auto-discover: env var OU nome+categoria) ────
+  // Lazy require para evitar problemas de load-order (panelBootstrap puxa
+  // db/state/handlers ao carregar).
+  const panelChannelIdsHandled = new Set();
+  try {
+    const { PANELS } = require('../panelBootstrap');
+    for (const panelDef of PANELS) {
+      const resolved = _resolvePanelChannelId(guild, panelDef);
+      if (!resolved) {
+        act('SKIP_PANEL_NOT_FOUND', { panel: panelDef.key, reason: `sem env var e auto-discover em ${panelDef.autoCategoryKey} falhou` });
+        continue;
+      }
+      const permCfg = PANEL_PERM_BY_KEY[panelDef.key];
+      if (!permCfg) continue;
+      const ch = guild.channels.cache.get(resolved.channelId);
+      if (!ch) {
+        act('SKIP_PANEL_CHANNEL_GONE', { panel: panelDef.key, channelId: resolved.channelId });
+        continue;
+      }
+      panelChannelIdsHandled.add(ch.id);
+      const overwrites = buildOverwrites(guild, permCfg);
+      act('PERM_PANEL', { panel: panelDef.key, channel: ch.name, source: resolved.source, reason: permCfg.reason });
+      if (apply) {
+        try { await ch.permissionOverwrites.set(overwrites); }
+        catch (e) { errored(`PERM_PANEL:${ch.name}`, e); }
+      }
+    }
+  } catch (e) {
+    errored('PANEL_PERMS_SECTION', e);
+  }
+
   // ── 5. Child channels sync com categoria (idempotente) ─────────────────
-  const explicitIds = new Set(Object.keys(CHANNEL_PERM_OVERRIDES || {}));
+  const explicitIds = new Set([
+    ...Object.keys(CHANNEL_PERM_OVERRIDES || {}),
+    ...panelChannelIdsHandled,
+  ]);
   const explicitNames = new Set(Object.keys(CHANNEL_PERM_OVERRIDES_BY_NAME || {}));
   for (const [key] of Object.entries(CATEGORY_PERMS)) {
     const tpl = CATEGORY_BY_KEY[key];

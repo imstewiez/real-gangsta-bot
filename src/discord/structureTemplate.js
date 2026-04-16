@@ -496,28 +496,19 @@ for (const n of _READONLY_CONSULT_NAMES) {
   CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_READONLY_BAIRRISTAS_VIEW;
 }
 
-// ── Pin dos painéis por ID (defensa contra mismatches de nome) ───────────────
-// O matching por nome é frágil — depende do canal estar com o nome canónico
-// exacto (bold unicode ou legacy `emoji│nome`). Se o utilizador tiver um canal
-// com outro nome mas o ID configurado, o sync por nome salta-o e o canal fica
-// com perms do everyone (== "mil cargos vêem"). Pinar por ID resolve isto
-// definitivamente: section 4a (perms por ID) aplica sempre, independentemente
-// de como o canal se chame ou em que categoria esteja.
-if (CONFIG.PANEL_ENTRADA_CHANNEL_ID) {
-  CHANNEL_PERM_OVERRIDES[CONFIG.PANEL_ENTRADA_CHANNEL_ID] = PERMS_BOAS_VINDAS;
-}
-if (CONFIG.PANEL_BAIRRISTAS_CHANNEL_ID) {
-  CHANNEL_PERM_OVERRIDES[CONFIG.PANEL_BAIRRISTAS_CHANNEL_ID] = PERMS_PAINEL_READ_ONLY;
-}
-if (CONFIG.PANEL_OFICIAIS_CHANNEL_ID) {
-  CHANNEL_PERM_OVERRIDES[CONFIG.PANEL_OFICIAIS_CHANNEL_ID] = PERMS_PAINEL_READ_ONLY;
-}
-if (CONFIG.PANEL_CHEFIA_CHANNEL_ID) {
-  CHANNEL_PERM_OVERRIDES[CONFIG.PANEL_CHEFIA_CHANNEL_ID] = PERMS_PAINEL_READ_ONLY;
-}
-if (CONFIG.PANEL_PATRAO_DI_ZONA_CHANNEL_ID) {
-  CHANNEL_PERM_OVERRIDES[CONFIG.PANEL_PATRAO_DI_ZONA_CHANNEL_ID] = PERMS_PAINEL_PATRAO_DI_ZONA;
-}
+// ── Map panel key → permission config ────────────────────────────────────────
+// Consumido pelo `runPermsOnly` (structureSync) — faz auto-discovery dos
+// canais de painel (env var OU nome+categoria, espelha panelBootstrap) e
+// aplica estas perms em runtime. Resolve o caso em que os
+// `PANEL_*_CHANNEL_ID` não estão configurados no env e os nomes dos canais
+// não batem com os matchers em `CHANNEL_PERM_OVERRIDES_BY_NAME`.
+const PANEL_PERM_BY_KEY = {
+  panel_entrada:        PERMS_BOAS_VINDAS,
+  panel_bairristas:     PERMS_PAINEL_READ_ONLY,
+  panel_oficiais:       PERMS_PAINEL_READ_ONLY,
+  panel_chefia:         PERMS_PAINEL_READ_ONLY,
+  panel_patrao_di_zona: PERMS_PAINEL_PATRAO_DI_ZONA,
+};
 
 module.exports = {
   bold,
@@ -532,6 +523,7 @@ module.exports = {
   CATEGORY_PERMS,
   CHANNEL_PERM_OVERRIDES,
   CHANNEL_PERM_OVERRIDES_BY_NAME,
+  PANEL_PERM_BY_KEY,
   ROLE_GUILD_PERMS,
   ROLE_KEY_TO_ID_KEYS,
   rolesFor,
