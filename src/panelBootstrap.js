@@ -18,10 +18,10 @@ function autoName(slug, emoji = '📋') { return `${emoji}・${bold(slug)}`; }
 
 const PANELS = [
   { key: 'panel_entrada',         channelKey: 'PANEL_ENTRADA_CHANNEL_ID',         autoName: autoName('boas-vindas', '👋'),         autoAltNames: [autoName('painel-entrada')], autoCategoryKey: 'ENTRADA',  build: buildEntradaPanel,         stickySource: 'panel:entrada' },
-  { key: 'panel_moradores',       channelKey: 'PANEL_MORADORES_CHANNEL_ID',       autoName: autoName('painel-moradores'),          autoCategoryKey: 'GUETTO',   build: buildBairristaPanel,       stickySource: 'panel:moradores' },
+  { key: 'panel_bairristas',      channelKey: 'PANEL_BAIRRISTAS_CHANNEL_ID',      autoName: autoName('painel-bairristas'),         autoAltNames: [autoName('painel-moradores')], autoCategoryKey: 'GUETTO',   build: buildBairristaPanel,       stickySource: 'panel:bairristas' },
   { key: 'panel_oficiais',        channelKey: 'PANEL_OFICIAIS_CHANNEL_ID',        autoName: autoName('painel-oficiais'),           autoCategoryKey: 'OFICIAIS', build: buildOficialPanel,         stickySource: 'panel:oficiais' },
   { key: 'panel_chefia',          channelKey: 'PANEL_CHEFIA_CHANNEL_ID',          autoName: autoName('painel-chefia'),             autoCategoryKey: 'COMANDO',  build: buildChefiaPanel,          stickySource: 'panel:chefia' },
-  { key: 'panel_chefe_moradores', channelKey: 'PANEL_CHEFE_MORADORES_CHANNEL_ID', autoName: autoName('painel-chefe-moradores'),    autoCategoryKey: 'GUETTO',   build: buildPatraoDiZonaPanel,    stickySource: 'panel:chefe_moradores' },
+  { key: 'panel_patrao_di_zona',  channelKey: 'PANEL_PATRAO_DI_ZONA_CHANNEL_ID',  autoName: autoName('painel-patrao-di-zona'),     autoAltNames: [autoName('painel-chefe-moradores')], autoCategoryKey: 'GUETTO',   build: buildPatraoDiZonaPanel,    stickySource: 'panel:patrao_di_zona' },
 ];
 
 /**

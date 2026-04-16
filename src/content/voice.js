@@ -79,9 +79,6 @@ const ROLE = {
   chefia: 'Chefia',
   inativo: 'Inactivo',
   pendente: 'Pendente',
-  // Legacy aliases
-  morador: 'Bairrista',
-  chefe_moradores: 'Patrão di Zona',
 };
 
 // Tipo de saída → label curta pt-PT.

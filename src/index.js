@@ -83,8 +83,8 @@ const {
 const saidaWizard = require('./saidas/saidaSettlementWizard');
 const saidaStats = require('./saidas/saidaStatsHandlers');
 const saidaSession = require('./saidas/saidaSession');
-const { getCurrentWeekRanking, getPreviousWeekRanking } = require('./rankings/rankingEngine');
-const { rankingEmbed, brandEmbed, stockEmbed } = require('./shared/embedBuilders');
+const { getCurrentWeekRanking } = require('./rankings/rankingEngine');
+const { rankingEmbed, brandEmbed } = require('./shared/embedBuilders');
 const { ERRORS, EMOJI } = require('./content');
 const { inventoryRepo } = require('./repositories');
 const { getRecentLogs, sendAuditToChannel } = require('./audit/auditEngine');

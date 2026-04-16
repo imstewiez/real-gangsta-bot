@@ -85,14 +85,9 @@ const CONFIG = {
   get BAIRRISTA_TIER_ROLE_IDS() {
     return [this.YOUNG_BLOOD_ROLE_ID, this.O_GUNAO_ROLE_ID, this.GANGSTER_FODIDO_ROLE_ID].filter(Boolean);
   },
-  /** Aliases legados — código antigo ainda importava estes nomes. */
-  get MORADOR_TIER_ROLE_IDS() { return this.BAIRRISTA_TIER_ROLE_IDS; },
-  get MORADOR_ROLE_IDS() { return this.BAIRRISTA_TIER_ROLE_IDS; },
-  get ALL_MORADOR_TIER_IDS() { return this.BAIRRISTA_TIER_ROLE_IDS; },
 
   /** Tier por defeito para entrada no BAIRRO (set pela onboardingEngine). */
   BAIRRISTA_DEFAULT_TIER: process.env.BAIRRISTA_DEFAULT_TIER || process.env.MORADOR_DEFAULT_TIER || 'young_blood',
-  get MORADOR_DEFAULT_TIER() { return this.BAIRRISTA_DEFAULT_TIER; }, // legacy alias
 
   // ── Promoção automática por material (valor em €) ─────────────────────────
   // Ordem natural: YB (entry) → 25k€ → O Gunão → 50k€ → Gangster Fodido.
@@ -114,8 +109,6 @@ const CONFIG = {
   // Canais individuais dos bairristas (antes: moradores).
   BAIRRISTA_TOPICOS_CATEGORY_ID: optId('BAIRRISTA_TOPICOS_CATEGORY_ID', optId('MORADOR_TOPICOS_CATEGORY_ID', '1491543491233448006')),
   BAIRRISTA_ARQUIVO_CATEGORY_ID: optId('BAIRRISTA_ARQUIVO_CATEGORY_ID', optId('MORADOR_ARQUIVO_CATEGORY_ID')),
-  get MORADOR_TOPICOS_CATEGORY_ID() { return this.BAIRRISTA_TOPICOS_CATEGORY_ID; }, // legacy alias
-  get MORADOR_ARQUIVO_CATEGORY_ID() { return this.BAIRRISTA_ARQUIVO_CATEGORY_ID; }, // legacy alias
 
   // ── Channel IDs ───────────────────────────────────────────────────────────
   TAG_REQUEST_CHANNEL_ID: optId('TAG_REQUEST_CHANNEL_ID', '1490397785948688529'),

@@ -94,43 +94,49 @@ Stock é sempre calculado a partir do ledger — nunca sobreposto.
 
 ### Sticky messages (Fase 5)
 - 2 modos: `update` (edita a mesma mensagem) e `repost` (republica após N mensagens novas e/ou Y minutos).
-- `/rg-sticky-set canal:#X source:radio:current modo:update` mantém o painel da rádio sempre visível.
-- `availability:daily` e `radio:current` são source_keys built-in com renderers automáticos — qualquer mudança refresca a sticky.
-- `/rg-sticky-list`, `/rg-sticky-remove`, `/rg-sticky-refresh`.
+- Stickys configuráveis via painel da chefia (botão Stickys).
+- `availability:daily` e `radio:current` são source_keys built-in com renderers automáticos.
 
-## Slash commands
+## Slash commands (23 — organizado por camada)
 
-| Comando | Destinatário | Descrição |
-|---|---|---|
-| `/rg-setup` | Comando | Configura painéis iniciais |
-| `/rg-sync-panels` | Comando | Republica painéis |
-| `/rg-sync-structure modo:[dry-run|apply]` | Comando | Sincroniza estrutura do Discord |
-| `/rg-sync-roles modo:[dry-run|apply]` | Comando | Reconcilia invariantes de roles |
-| `/rg-bootstrap-stock modo:[dry-run|apply] force:[bool]` | Comando | Importa stock inicial |
-| `/rg-stock` | Todos | Ver stock |
-| `/rg-member` | Todos | Ficha de membro |
-| `/rg-top-week` | Todos | Top semanal |
-| `/rg-close-saida` | Comando | Fechar saída (fallback ao painel) |
-| `/rg-meu-ponto` | Todos | O teu ponto na casa |
-| `/rg-ranking` | Todos | Ranking dos Bairristas |
-| `/rg-progresso` | Todos | Progresso para próximo tier |
-| `/rg-minha-saida` | Todos | As tuas últimas saídas |
-| `/rg-audit` | Comando | Logs de auditoria |
-| `/rg-items` | Todos | Catálogo |
-| `/rg-add-item` | Comando | Adicionar item |
-| `/rg-sync-sheets` | Comando | Export para Sheets (opcional) |
-| `/rg-kill` | Todos | Registar kill |
-| `/rg-cemetery` | Todos | Leaderboard cemitério |
-| `/rg-fix-tiers modo:[dry-run|apply]` | Comando | Migração da nova ordem de tiers (Fase 2) |
-| `/rg-availability-create` | Chefia/Chefe Mor | Publica disponibilidade do dia |
-| `/rg-availability-close` | Chefia/Chefe Mor | Fecha sessão (votos congelados) |
-| `/rg-availability-summary` | Todos | Resumo detalhado por slot |
-| `/rg-radio` | Todos | Publica painel da rádio |
-| `/rg-radio-set tipo:.. valor:..` | Chefia | Define rádio manualmente |
-| `/rg-radio-random tipo:..` | Chefia/Chefe Mor | Gera rádio aleatória |
-| `/rg-radio-history` | Todos | Histórico de alterações |
-| `/rg-sticky-set canal:.. source:.. modo:..` | Comando | Configura sticky |
-| `/rg-sticky-remove` / `refresh` / `list` | Comando | Gestão de stickys |
+### User-facing (qualquer membro)
+| Comando | Descrição |
+|---|---|
+| `/rg-version` | Versão e estado do bot |
+| `/rg-stock` | Stock actual de materiais |
+| `/rg-items` | Catálogo de materiais com preços |
+| `/rg-member` | Ficha de um membro |
+| `/rg-meu-ponto` | O teu ponto na casa (material, ranking, combate, progresso) |
+| `/rg-ranking` | Rankings (semanal, mensal, histórico) |
+| `/rg-minha-saida` | As tuas últimas saídas |
+
+### Staff operacional
+| Comando | Descrição |
+|---|---|
+| `/rg-kill` | Registar uma kill |
+| `/rg-audit` | Logs de auditoria recentes |
+| `/rg-stock-check` | Stock actual de um item (por casa) |
+| `/rg-stock-transfer` | Mover material entre casas |
+
+### Admin técnico
+| Comando | Descrição |
+|---|---|
+| `/rg-rebuild-rankings` | Recalcular rankings mensais + all-time |
+| `/rg-catalog-sync-prices` | Carregar preços do precário oficial |
+| `/rg-backfill-members` | Importar membros Discord com role RP |
+
+### Manutenção / emergência
+| Comando | Descrição |
+|---|---|
+| `/rg-sync-panels` | Republicar painéis do bot |
+| `/rg-sync-perms` | Sincronizar permissões Discord |
+| `/rg-layout-check` | Verificar layout contra lock file |
+| `/rg-reconcile` | Detectar drift DB↔Discord |
+| `/rg-retention-run` | Executar políticas de retenção |
+| `/rg-data-health` | Snapshot da saúde dos dados |
+| `/rg-sync-sheets` | Sincronizar Google Sheet (todas as tabs) |
+| `/rg-sync-sheets-tab` | Sincronizar uma tab específica |
+| `/rg-sync-sheets-rebuild` | Reconstruir Google Sheet (apaga e recria) |
 
 ## CLI scripts
 

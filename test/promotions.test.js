@@ -43,17 +43,17 @@ require.cache[resolvedPath('repositories/index.js')] = {
 const CONFIG = require('../src/config');
 
 describe('tier hierarchy & promotion chain', () => {
-  it('MORADOR_TIER_ROLE_IDS está na ordem entry → topo', () => {
+  it('BAIRRISTA_TIER_ROLE_IDS está na ordem entry → topo', () => {
     // Young Blood (entry) → O Gunão (mid) → Gangster Fodido (topo)
-    const ids = CONFIG.MORADOR_TIER_ROLE_IDS;
+    const ids = CONFIG.BAIRRISTA_TIER_ROLE_IDS;
     assert.equal(ids.length, 3, 'esperam-se 3 tiers configurados');
     assert.equal(ids[0], CONFIG.YOUNG_BLOOD_ROLE_ID, '[0] deve ser YOUNG_BLOOD');
     assert.equal(ids[1], CONFIG.O_GUNAO_ROLE_ID, '[1] deve ser O_GUNAO');
     assert.equal(ids[2], CONFIG.GANGSTER_FODIDO_ROLE_ID, '[2] deve ser GANGSTER_FODIDO');
   });
 
-  it('MORADOR_DEFAULT_TIER é young_blood', () => {
-    assert.equal(CONFIG.MORADOR_DEFAULT_TIER, 'young_blood');
+  it('BAIRRISTA_DEFAULT_TIER é young_blood', () => {
+    assert.equal(CONFIG.BAIRRISTA_DEFAULT_TIER, 'young_blood');
   });
 
   it('thresholds default são 25k → 50k', () => {
