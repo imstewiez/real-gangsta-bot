@@ -72,6 +72,16 @@ const OFICIAL_ROLES   = new Set(['oficial', 'chefia']);
 async function syncMembros(batch, sheetId) {
   const rows = await getMembersFull();
 
+  // Diagnóstico: breakdown por role para identificar members "invisíveis"
+  // (ex.: role nulo, role fora das tabelas, status inactivo).
+  const byRole = rows.reduce((acc, m) => {
+    const k = m.role || '(null)';
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
+  const { log } = require('../../logger');
+  log(`[SHEETS:membros] ${rows.length} members: ${Object.entries(byRole).map(([k, n]) => `${k}=${n}`).join(' · ')}`);
+
   const chefia      = rows.filter(m => m.role === 'chefia');
   const oficial     = rows.filter(m => m.role === 'oficial');
   const patroes     = rows.filter(m => PATRAO_ROLES.has(m.role));
