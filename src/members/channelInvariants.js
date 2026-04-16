@@ -23,6 +23,7 @@ const CONFIG = require('../config');
 const { query } = require('../db');
 const { queueChannelOp } = require('../discordQueue');
 const { log, warn } = require('../logger');
+const { formatResidentChannelName } = require('../discord/structureTemplate');
 
 /**
  * Constrói o array de permissionOverwrites para um canal individual de
@@ -100,14 +101,14 @@ async function reconcileBairristaChannels(guild, opts = {}) {
   const botId = guild.members.me.id;
 
   const res = await query(`
-    SELECT m.id, m.discord_id, m.channel_id, m.display_name
+    SELECT m.id, m.discord_id, m.channel_id, m.display_name, m.nickname, m.tier
       FROM members m
      WHERE m.channel_id IS NOT NULL
        AND m.status = 'ativo'
        AND m.role IN ('bairrista', 'morador', 'patrao_di_zona', 'chefe_moradores')
   `);
 
-  const report = { scanned: 0, fixed: 0, skipped: 0, missing: 0, errors: [] };
+  const report = { scanned: 0, fixed: 0, renamed: 0, skipped: 0, missing: 0, errors: [] };
 
   for (const row of res.rows) {
     report.scanned++;
@@ -118,20 +119,32 @@ async function reconcileBairristaChannels(guild, opts = {}) {
     }
 
     const overwrites = buildBairristaChannelOverwrites(guild, row.discord_id, botId);
+
+    // Rename: se o nome actual não bater com o formato canónico (novo
+    // labels curtos), renomear. Idempotente — só setName se diferente.
+    const nick = row.nickname || row.display_name;
+    const expectedName = row.tier && nick ? formatResidentChannelName(row.tier, nick) : null;
+    const needsRename = expectedName && channel.name !== expectedName;
+
     if (dryRun) {
       report.fixed++;
+      if (needsRename) report.renamed++;
       continue;
     }
     try {
       await queueChannelOp(() => channel.permissionOverwrites.set(overwrites, 'reconcileBairristaChannels — deny bairrista peers'));
       report.fixed++;
+      if (needsRename) {
+        await queueChannelOp(() => channel.setName(expectedName, 'reconcileBairristaChannels — tier label encurtado'));
+        report.renamed++;
+      }
     } catch (e) {
       warn(`[CHANNEL-INV] Falha em ${row.display_name} (${row.channel_id}): ${e.message}`);
       report.errors.push({ discordId: row.discord_id, channelId: row.channel_id, message: e.message });
     }
   }
 
-  log(`[CHANNEL-INV] scanned=${report.scanned} fixed=${report.fixed} missing=${report.missing} errors=${report.errors.length} dry=${dryRun}`);
+  log(`[CHANNEL-INV] scanned=${report.scanned} fixed=${report.fixed} renamed=${report.renamed} missing=${report.missing} errors=${report.errors.length} dry=${dryRun}`);
   return report;
 }
 

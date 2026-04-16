@@ -96,17 +96,27 @@ const TIER_EMOJI = {
   kingpin:         '💎',
   manda_chuva:     '🐉',
 };
+// Labels curtos para canais individuais — reduzem comprimento do nome do
+// canal. Longos ficavam tipo `🍼・𝗬𝗼𝘂𝗻𝗴 𝗕𝗹𝗼𝗼𝗱 - 𝗡𝗶𝗰𝗸` → agora `🍼・𝗬𝗕 - 𝗡𝗶𝗰𝗸`.
 const TIER_LABEL = {
-  young_blood:     'Young Blood',
-  o_gunao:         'O Gunão',
-  gangster_fodido: 'Gangster Fodido',
-  patrao_di_zona:  'Patrão di Zona',
-  real_gangster:   'Real Gangster',
+  young_blood:     'YB',
+  o_gunao:         'Gunão',
+  gangster_fodido: 'GF',
+  patrao_di_zona:  'Patrão',
+  real_gangster:   'RG',
   og:              'OG',
-  kingpin:         'Kingpin',
-  manda_chuva:     'Manda-Chuva',
+  kingpin:         'KP',
+  manda_chuva:     'MC',
 };
-const _TIER_LABELS_FOR_EXTRACT = Object.values(TIER_LABEL)
+
+// Labels legacy — usados APENAS para extractNicknameFromFormatted conseguir
+// ler nomes de canais antigos (pré-encurtamento) quando há promoções ou
+// renames. Sem isto, canais antigos ficam unparseable no reconcile.
+const _TIER_LABELS_LEGACY = [
+  'Young Blood', 'O Gunão', 'Gangster Fodido',
+  'Patrão di Zona', 'Real Gangster', 'Kingpin', 'Manda-Chuva',
+];
+const _TIER_LABELS_FOR_EXTRACT = [...Object.values(TIER_LABEL), ..._TIER_LABELS_LEGACY]
   .map(l => bold(l).replace(/ /g, '-') + '-')
   .sort((a, b) => b.length - a.length);
 
@@ -216,7 +226,8 @@ const ROLE_GUILD_PERMS = {
     'ChangeNickname', 'ManageMessages', 'ManageThreads',
     'CreatePublicThreads', 'SendMessagesInThreads',
     'MuteMembers', 'DeafenMembers', 'MoveMembers',
-    'KickMembers', 'ViewAuditLog',
+    'ViewAuditLog',
+    // KickMembers removido — só chefia (Administrator) pode expulsar.
   ],
   patrao_di_zona: [
     'ViewChannel', 'SendMessages', 'EmbedLinks', 'AttachFiles',
@@ -367,11 +378,14 @@ const CATEGORY_PERMS = {
 const CHANNEL_PERM_OVERRIDES = {
   [DISCOVERED.CH_CHEFIA_MOR_CHAT]: {
     denyEveryone: ['ViewChannel'],
+    deny: [
+      { roleSources: ['supervisor', 'bairrista_tiers', 'bairristas_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
+    ],
     allow: [
-      { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages'] },
+      { roleSources: ['command', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages'] },
       { roleSources: ['bot'], perms: ['ViewChannel'] },
     ],
-    reason: 'patrao-di-zona é privado — só chefia + patrão di zona',
+    reason: 'patrao-di-zona chat — chefia + patrão di zona only (oficiais fora)',
   },
   [DISCOVERED.CH_TAGS]: {
     denyEveryone: ['ViewChannel'],
@@ -418,6 +432,19 @@ function _applyPatraoDiZonaPrivateOverrides() {
 // também precisam. Pin explícito resolve.
 function _applyStaffOnlyOverrides() {
   CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_CHEFIA_COMUN] = PERMS_STAFF_ONLY;
+}
+
+// Canais informativos com write restrito a OG+ (command + supervisor).
+// Patrão di zona consulta mas não altera (info central não é do domínio dele).
+function _applyOgPlusWriteOverrides() {
+  const ids = [
+    DISCOVERED.CH_ROUPA,           // roupa — catálogo mantido por admin
+    DISCOVERED.CH_RADIO_MOR,       // rádio bairristas — frequências definidas por admin
+    DISCOVERED.CH_PRECOS_PARCERIA, // preços-parceria — tabela admin-only
+  ];
+  for (const id of ids) {
+    if (id) CHANNEL_PERM_OVERRIDES[id] = PERMS_READONLY_OG_PLUS_WRITE;
+  }
 }
 
 // Canais informativos pinados por ID (imunes a mismatches de nome):
@@ -518,17 +545,32 @@ const PERMS_STAFF_ONLY = {
   reason: 'staff only — bairristas não vêem',
 };
 
-// Privado patrão di zona — gestão de material/encomendas/bau. Staff + patrão di zona apenas.
+// Privado patrão di zona — gestão de material/encomendas/bau/arquivos.
+// APENAS command (chefia oversight) + patrão di zona. Supervisors (OG,
+// Real Gangster) NÃO vêem — não é do domínio deles.
 const PERMS_PATRAO_DI_ZONA_PRIVATE = {
   denyEveryone: ['ViewChannel', 'Connect'],
   deny: [
-    { roleSources: ['bairrista_tiers', 'bairristas_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
+    { roleSources: ['supervisor', 'bairrista_tiers', 'bairristas_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
   ],
   allow: [
-    { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'EmbedLinks', 'AttachFiles', 'ManageMessages'] },
+    { roleSources: ['command', 'patrao_di_zona'], perms: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'EmbedLinks', 'AttachFiles', 'ManageMessages'] },
     { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'EmbedLinks', 'AttachFiles'] },
   ],
-  reason: 'privado patrão di zona — gestão de material/encomendas',
+  reason: 'privado patrão di zona — chefia + patrão only (oficiais não vêem)',
+};
+
+// Read-only consulta com write restrito a OG+ (command + supervisor).
+// Usado em canais onde patrão di zona NÃO deve escrever (precários, roupa,
+// rádio — info central mantida por admins). Bairristas e patrão consultam.
+const PERMS_READONLY_OG_PLUS_WRITE = {
+  denyEveryone: ['ViewChannel', ..._PANEL_WRITE_DENIES],
+  allow: [
+    { roleSources: ['command', 'supervisor'], perms: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'EmbedLinks', 'AttachFiles'] },
+    { roleSources: ['patrao_di_zona', 'bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'ReadMessageHistory'] },
+    { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
+  ],
+  reason: 'consulta — só OG+ (command + supervisor) escreve; todos consultam',
 };
 
 // ── Read-only para bairristas + staff publica ───────────────────────────────
@@ -570,13 +612,10 @@ for (const n of _PAINEL_PATRAO_DI_ZONA_NAMES)  CHANNEL_PERM_OVERRIDES_BY_NAME[n]
 // Respeita o naming real — nunca renomeia. Cobre formatos bold e legacy.
 const _READONLY_CONSULT_NAMES = [
   // spots — canal de consulta de spots (OPERACOES). Bairristas consultam,
-  // staff atribui/publica.
+  // staff atribui/publica (incluindo patrão di zona).
   'spots', ch('🗺️', 'spots'), ch('📍', 'spots'), '🗺️│spots', '📍│spots',
   // mapas — imagens/layouts de spots (OPERACOES).
   'mapas', ch('🗺️', 'mapas'), '🗺️│mapas',
-  // precários — tabela de preços dos parceiros (ARSENAL/ECONOMIA).
-  'precarios', 'precários', ch('💰', 'precarios'), ch('💰', 'precários'),
-  ch('📋', 'precarios'), ch('📋', 'precários'),
   // ranking / tops — canais de publicação de rankings (REPUTACAO).
   'ranking', ch('🏆', 'ranking'), ch('📊', 'ranking'),
   'tops-semanais', ch('🏆', 'tops-semanais'), ch('📊', 'tops-semanais'),
@@ -591,9 +630,23 @@ for (const n of _READONLY_CONSULT_NAMES) {
   CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_READONLY_BAIRRISTAS_VIEW;
 }
 
+// Canais de consulta com write restrito a OG+ (não inclui patrão di zona).
+// Precários, roupa, rádio — info central mantida por admins.
+const _READONLY_OG_PLUS_NAMES = [
+  'precarios', 'precários',
+  ch('💰', 'precarios'), ch('💰', 'precários'),
+  ch('📋', 'precarios'), ch('📋', 'precários'),
+  'roupa', ch('👕', 'roupa'),
+  'radio', 'rádio', ch('📻', 'radio'), ch('📻', 'rádio'),
+];
+for (const n of _READONLY_OG_PLUS_NAMES) {
+  CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_READONLY_OG_PLUS_WRITE;
+}
+
 // Aplicar overrides pinados por ID (forward-reference: PERMS_* declarados acima)
 _applyPatraoDiZonaPrivateOverrides();
 _applyStaffOnlyOverrides();
+_applyOgPlusWriteOverrides();
 _applyReadonlyConsultOverrides();
 
 // ── Categoria → perm config aplicado a TODOS os children (aggressive sweep) ─
