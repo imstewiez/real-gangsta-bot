@@ -12,7 +12,7 @@
  */
 
 const { EmbedBuilder } = require('discord.js');
-const { EMOJI } = require('../content');
+const { EMOJI, SAIDA_TYPE } = require('../content');
 const { formatPtDate } = require('../shared/formatPtDate');
 const { brandEmbed } = require('../shared/embedBuilders');
 
@@ -188,7 +188,10 @@ function saidaLifecycleEmbed(p) {
 
   const fields = [];
   if (p.spot)         fields.push({ name: 'Spot',    value: p.spot, inline: true });
-  if (p.saidaType)    fields.push({ name: 'Tipo',    value: p.saidaType, inline: true });
+  if (p.saidaType) {
+    const typeLabel = SAIDA_TYPE[p.saidaType] || p.saidaType;
+    fields.push({ name: 'Tipo', value: typeLabel, inline: true });
+  }
   if (p.leaderId)     fields.push({ name: 'Líder',   value: mention(p.leaderId), inline: true });
   if (p.result)       fields.push({ name: 'Resultado', value: `\`${p.result}\``, inline: true });
 

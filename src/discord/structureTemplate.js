@@ -209,6 +209,7 @@ const DISCOVERED = {
   CH_WOOD_COMUN:       '1491194611543183430',
   CH_ARQUIVOS:         '1493849342161719317',
   CH_TOP_SEMANAL:      '1493242996337147915',
+  CH_SAIDAS_LOG:       '1494383859893276714',
   CH_INFO_GERAL:       '1490397836490309693',
   CH_COR_ORG:          '1490397834048966890',
   CH_META_SEMANAL:     '1490397816030236883',
@@ -452,12 +453,9 @@ function _applyPatraoDiZonaPrivateOverrides() {
   // de INVENTORY_EVENTS — ver _applyInventoryLogOverrides abaixo.
 }
 
-// Canal consolidado de logs de inventário (notificações de material,
-// ofertas, entregas, vendas, ajustes, encomendas). Staff + patrão vêem;
-// só bot publica.
+// Canais consolidados de logs — bot publica, staff + patrão lêem, bairristas fora.
 function _applyInventoryLogOverrides() {
-  if (!DISCOVERED.CH_MATERIAL_ENTREG) return;
-  CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_MATERIAL_ENTREG] = {
+  const staffLogPerms = {
     denyEveryone: ['ViewChannel', ..._PANEL_WRITE_DENIES],
     deny: [
       { roleSources: ['bairrista_tiers', 'bairristas_base', 'tropinhas', 'patrulha_pata'], perms: ['ViewChannel'] },
@@ -466,8 +464,17 @@ function _applyInventoryLogOverrides() {
       { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'ReadMessageHistory'] },
       { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
     ],
-    reason: 'material-entregue — logs consolidados de inventário (staff + patrão read-only, bot publica)',
+    reason: 'log staff — bot publica; staff + patrão lêem; bairristas fora',
   };
+
+  // Material / inventário (ofertas, entregas, vendas, ajustes, encomendas).
+  if (DISCOVERED.CH_MATERIAL_ENTREG) {
+    CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_MATERIAL_ENTREG] = staffLogPerms;
+  }
+  // Saídas — ciclo de vida (opened/started/closed/weapon_return/participant).
+  if (DISCOVERED.CH_SAIDAS_LOG) {
+    CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_SAIDAS_LOG] = staffLogPerms;
+  }
 }
 
 // Canais staff-only (command + supervisor + patrão di zona vêem).

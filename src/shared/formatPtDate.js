@@ -15,7 +15,7 @@
  * Aceita Date | string ISO | number (epoch ms) | null.
  */
 
-function _pad2(n) { return String(n).padStart(2, '0'); }
+const TZ = 'Europe/Lisbon';
 
 function toDate(input) {
   if (!input) return null;
@@ -24,28 +24,45 @@ function toDate(input) {
   return isNaN(d.getTime()) ? null : d;
 }
 
+// Formatadores em TZ Lisboa — Railway corre UTC mas a UI é para pessoas em PT.
+// Usar d.getHours()/d.getDate() dava a hora UTC (ex.: 17:07 em vez de 18:07
+// quando em DST/WEST). Intl.DateTimeFormat com timeZone resolve.
+const _dtFull = new Intl.DateTimeFormat('pt-PT', {
+  timeZone: TZ,
+  day: '2-digit', month: '2-digit', year: 'numeric',
+  hour: '2-digit', minute: '2-digit', hour12: false,
+});
+const _dtOnly = new Intl.DateTimeFormat('pt-PT', {
+  timeZone: TZ,
+  day: '2-digit', month: '2-digit', year: 'numeric',
+});
+
+function _extract(d, formatter) {
+  const parts = formatter.formatToParts(d);
+  const m = {};
+  for (const p of parts) m[p.type] = p.value;
+  return m;
+}
+
 /**
- * Devolve `dd/mm/yyyy - hh:mm` em fuso local (a UI é para pessoas em PT).
+ * Devolve `dd/mm/yyyy - hh:mm` em TZ Europe/Lisbon.
  * Se input inválido, devolve '—'.
  */
 function formatPtDate(input) {
   const d = toDate(input);
   if (!d) return '—';
-  const dd = _pad2(d.getDate());
-  const mm = _pad2(d.getMonth() + 1);
-  const yyyy = d.getFullYear();
-  const hh = _pad2(d.getHours());
-  const mi = _pad2(d.getMinutes());
-  return `${dd}/${mm}/${yyyy} - ${hh}:${mi}`;
+  const m = _extract(d, _dtFull);
+  return `${m.day}/${m.month}/${m.year} - ${m.hour}:${m.minute}`;
 }
 
 /**
- * Só a parte da data: `dd/mm/yyyy`. Útil em tabelas compactas.
+ * Só a parte da data: `dd/mm/yyyy` em TZ Europe/Lisbon. Útil em tabelas.
  */
 function formatPtDateOnly(input) {
   const d = toDate(input);
   if (!d) return '—';
-  return `${_pad2(d.getDate())}/${_pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+  const m = _extract(d, _dtOnly);
+  return `${m.day}/${m.month}/${m.year}`;
 }
 
 /**

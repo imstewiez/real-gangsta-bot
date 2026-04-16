@@ -37,8 +37,8 @@ const FAMILY_CONFIG = {
   SAIDAS_EVENTS: {
     envId: 'SAIDAS_EVENTS_CHANNEL_ID',
     fallbackEnvs: ['SAIDA_RESULTS_CHANNEL_ID'],
-    defaultId: DISCOVERED.CH_RESULTADOS,  // 1490397810489692292
-    slugs: ['resultados', 'saidas-log', 'saida-log', 'op-log'],
+    defaultId: DISCOVERED.CH_SAIDAS_LOG,  // 1494383859893276714
+    slugs: ['saidas-log', 'saida-log', 'resultados', 'op-log'],
   },
   CEMETERY: {
     envId: 'CEMETERY_CHANNEL_ID',
