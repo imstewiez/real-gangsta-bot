@@ -109,6 +109,13 @@ function startAll(client) {
     log(`[SCHEDULER] monthly_rankings: ${m.count} mês + ${a.count} all-time`);
   });
 
+  // Catalog prices — corre semanalmente (7 dias). Substitui o antigo
+  // slash /precario; lê config/prices-catalog.json e aplica preços.
+  registerJob('catalog_prices', 7 * 24 * 60 * 60 * 1000, async () => {
+    const { runCatalogPricesSync } = require('./catalogPricesJob');
+    return await runCatalogPricesSync();
+  });
+
   // Sticky messages — refresh time-based (modo repost com threshold_minutes)
   registerJob('sticky_time_refresh', 60 * 1000, async (client) => {
     const { runTimeBasedRefresh } = require('../sticky/stickyEngine');
