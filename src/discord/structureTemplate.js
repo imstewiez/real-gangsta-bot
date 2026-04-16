@@ -140,6 +140,12 @@ function formatResidentChannelName(tier, nickname) {
  * substituindo bold(legacy) por bold(short). Database-independent —
  * depende apenas do nome actual do canal.
  *
+ * IMPORTANTE: Discord normaliza espaços ASCII a `-` em nomes de text
+ * channels. Portanto `bold('Young Blood')` escrito (`𝗬𝗼𝘂𝗻𝗴 𝗕𝗹𝗼𝗼𝗱`) vira
+ * `𝗬𝗼𝘂𝗻𝗴-𝗕𝗹𝗼𝗼𝗱` depois do `setName`. Temos de tentar AMBAS as formas
+ * no match, senão 'Young-Blood-xxxx' nunca bate com `bold('Young Blood')`
+ * e o rename nunca dispara.
+ *
  * @param {string} oldName
  * @returns {string|null} novo nome se precisa rewrite; null se já está curto.
  */
@@ -151,8 +157,17 @@ function normalizeChannelNameToShort(oldName) {
     if (!legacyLabel || legacyLabel === shortLabel) continue;
     const legacyBold = bold(legacyLabel);
     const shortBold = bold(shortLabel);
-    if (newName.includes(legacyBold)) {
-      newName = newName.split(legacyBold).join(shortBold);
+    // Tenta ambas as formas: com espaço (como escrevemos) e com dash
+    // (como Discord armazena após normalização de text channels).
+    const variants = [legacyBold];
+    if (legacyBold.includes(' ')) {
+      variants.push(legacyBold.replace(/ /g, '-'));
+    }
+    for (const variant of variants) {
+      if (newName.includes(variant)) {
+        newName = newName.split(variant).join(shortBold);
+        break;
+      }
     }
   }
   return newName !== oldName ? newName : null;

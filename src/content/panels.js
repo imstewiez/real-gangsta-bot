@@ -22,15 +22,16 @@ const PANELS = {
   // ENTRADA — quem acabou de chegar
   // ═══════════════════════════════════════════════════════════════════════
   ENTRADA: {
-    TITLE: `${E.ENTRADA} Entrada — Firma RedWood`,
+    TITLE: `${E.FIRMA} Firma RedWood — o guetto`,
     DESCRIPTION:
-      'A **Firma RedWood** não se entra pela porta da frente. Entra-se a provar.\n' +
+      'Aqui é **bairro**. É **firma**. É **irmandade**.\n' +
+      'Quem anda com os bairristas sabe o peso do nome.\n' +
       '\n' +
-      `${E.TAG} **Pede a tua tag** — a chefia vê quem és\n` +
-      `${E.BEMVINDO} Aprovado → entras como **Young Blood**\n` +
-      `${E.CASA} Recebes canal próprio no guetto\n` +
-      `${E.MATERIAL} Material que trazes conta para o teu peso\n` +
-      `${E.PROGRESSO} Sobes de tier pelo que mexes, não pelo que falas\n` +
+      `${E.TAG} **Pede a tag** — a chefia decide quem entra\n` +
+      `${E.BEMVINDO} Aprovado → entras como **YB** (Young Blood)\n` +
+      `${E.CASA} Ganhas **spot próprio** no guetto\n` +
+      `${E.MATERIAL} Material que trazes pesa — entregas, vendas, kills\n` +
+      `${E.PROGRESSO} Sobes pela **bandidagem**, não pela conversa\n` +
       '\n' +
       `${inlineSign('SHORT')}`,
     BUTTON: {

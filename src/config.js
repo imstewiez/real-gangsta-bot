@@ -98,7 +98,7 @@ const CONFIG = {
   // ── Channel IDs ───────────────────────────────────────────────────────────
   TAG_REQUEST_CHANNEL_ID: optId('TAG_REQUEST_CHANNEL_ID', '1490397785948688529'),
   AUDIT_LOG_CHANNEL_ID: optId('AUDIT_LOG_CHANNEL_ID'),
-  PANEL_ENTRADA_CHANNEL_ID: optId('PANEL_ENTRADA_CHANNEL_ID', '1494323241207201793'),
+  PANEL_ENTRADA_CHANNEL_ID: optId('PANEL_ENTRADA_CHANNEL_ID', '1494337043877335162'),
   WEEKLY_TOP_CHANNEL_ID: optId('WEEKLY_TOP_CHANNEL_ID'),
   // Resumo diário — default aponta ao canal de logs (staff only). O canal
   // não deve ser público (dados operacionais, não user-facing). Para forçar
