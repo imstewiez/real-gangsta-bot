@@ -9,6 +9,7 @@ const { brandEmbed } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { memberRepo } = require('../repositories');
 const { query } = require('../db');
+const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
 
 async function handle(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -37,7 +38,7 @@ async function handle(interaction) {
       .setTitle(`${EMOJI.SAIDA} Saída #${specificId} — O teu resultado`)
       .addFields(
         { name: 'Spot', value: p.spot || '—', inline: true },
-        { name: 'Data', value: String(p.date).split('T')[0], inline: true },
+        { name: 'Data', value: formatPtDate(p.date), inline: true },
         { name: 'Tipo', value: typeTag, inline: true },
         { name: `${EMOJI.KILL} Kills`, value: String(p.kills || 0), inline: true },
         { name: p.died ? `${EMOJI.MORTE} Morto` : `${EMOJI.OK} Vivo`, value: '\u200b', inline: true },
@@ -70,7 +71,7 @@ async function handle(interaction) {
     const mvp = r.mvp_flag ? ` ${EMOJI.MVP}` : '';
     const death = r.died ? ` ${EMOJI.MORTE}` : '';
     const typeTag = r.participant_type === 'trabalhador' ? ' 🛠️' : '';
-    return `\`${String(r.date).split('T')[0]}\` **#${r.id}** ${r.spot || '—'} · ${result} · ${r.kills || 0}k · perf **${Math.round(r.performance_score || 0)}**${death}${mvp}${typeTag}`;
+    return `\`${formatPtDateOnly(r.date)}\` **#${r.id}** ${r.spot || '—'} · ${result} · ${r.kills || 0}k · perf **${Math.round(r.performance_score || 0)}**${death}${mvp}${typeTag}`;
   });
 
   const embed = brandEmbed('MOVEMENT')

@@ -12,6 +12,7 @@ const { brandEmbed } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { memberAnalyticsRepo } = require('../repositories');
 const { buttonRow, button } = require('../shared/ui/buttons');
+const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('pt-PT');
 
@@ -56,7 +57,7 @@ async function handle(interaction) {
 
     // Última kill
     if (combat.lastKill) {
-      const when = new Date(combat.lastKill.created_at).toISOString().split('T')[0];
+      const when = formatPtDate(combat.lastKill.created_at);
       const faction = combat.lastKill.victim_faction ? ` · ${combat.lastKill.victim_faction}` : '';
       const spot = combat.lastKill.spot ? ` · ${combat.lastKill.spot}` : '';
       embed.addFields({
@@ -81,7 +82,7 @@ async function handle(interaction) {
   // Últimas saídas
   if (profit?.recentSaidas?.length) {
     const lines = profit.recentSaidas.map(r => {
-      const date = String(r.date).split('T')[0];
+      const date = formatPtDateOnly(r.date);
       const resEmoji = r.result === 'vitoria' ? EMOJI.VITORIA : r.result === 'derrota' ? EMOJI.DERROTA : EMOJI.INFO;
       const mvp = r.mvp_flag ? ` ${EMOJI.MVP}` : '';
       const death = r.died ? ` ${EMOJI.MORTE}` : '';

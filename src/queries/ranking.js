@@ -8,6 +8,7 @@ const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { bairristaStatsRepo } = require('../repositories');
 const { weekBounds } = require('../util');
+const { formatPtDateOnly } = require('../shared/formatPtDate');
 
 async function handle(interaction) {
   const periodo = interaction.options.getString('periodo') || 'week';
@@ -28,7 +29,7 @@ async function handle(interaction) {
     title = '🏆 Ranking Histórico — Bairristas';
   } else {
     rankings = await bairristaStatsRepo.getTopBairristas(weekStartStr, 15);
-    title = `🏆 Ranking Semanal — ${weekStartStr} → ${end.toISOString().split('T')[0]}`;
+    title = `🏆 Ranking Semanal — ${formatPtDateOnly(start)} → ${formatPtDateOnly(end)}`;
   }
 
   if (!rankings.length) {

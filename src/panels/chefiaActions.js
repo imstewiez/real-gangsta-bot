@@ -22,6 +22,7 @@ const { isChefia, isPatraoDiZona } = require('../permissions/permissionEngine');
 const { radioRepo, stickyRepo } = require('../repositories');
 const { getRecentLogs } = require('../audit/auditEngine');
 const { weekBounds } = require('../util');
+const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
 
 async function abrirDisponibilidade(interaction) {
   if (!isChefia(interaction.member) && !isPatraoDiZona(interaction.member)) {
@@ -91,7 +92,7 @@ async function verTops(interaction) {
   const { getCurrentWeekRanking } = require('../rankings/rankingEngine');
   const rankings = await getCurrentWeekRanking(10);
   const { start, end } = weekBounds();
-  const weekLabel = `${start.toISOString().split('T')[0]} a ${end.toISOString().split('T')[0]}`;
+  const weekLabel = `${formatPtDateOnly(start)} a ${formatPtDateOnly(end)}`;
   const embed = rankingEmbed('Top Semanal', rankings, weekLabel);
   return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
 }
@@ -108,7 +109,7 @@ async function verLogs(interaction) {
   if (!logs.length) {
     return safeReply(interaction, { content: 'Sem logs.' }, { dismissible: true });
   }
-  const lines = logs.map(l => `\`${l.created_at?.toISOString?.()?.split('T')[0] || ''}\` **${l.action}** — ${l.entity_type}`);
+  const lines = logs.map(l => `\`${formatPtDate(l.created_at)}\` **${l.action}** — ${l.entity_type}`);
   const embed = brandEmbed().setTitle('Logs Recentes').setDescription(lines.join('\n'));
   return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
 }

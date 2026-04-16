@@ -2,6 +2,7 @@
 const { EmbedBuilder } = require('discord.js');
 const CONFIG = require('../config');
 const content = require('../content');
+const { formatPtDate, formatPtDateOnly } = require('./formatPtDate');
 
 const { EMOJI, footer, ROLE, STATUS, SAIDA_TYPE, ONBOARDING, INVENTORY, RANKINGS } = content;
 
@@ -156,7 +157,7 @@ function operationEmbed(op) {
   return brandEmbed()
     .setTitle(`${EMOJI.SAIDA} Saída #${op.id} — ${SAIDA_TYPE[op.operation_type] || op.operation_type}`)
     .addFields(
-      { name: 'Data', value: op.date?.toISOString?.()?.split('T')[0] || String(op.date), inline: true },
+      { name: 'Data', value: formatPtDate(op.date), inline: true },
       { name: 'Estado', value: STATUS[op.status] || op.status, inline: true },
       { name: 'Spot', value: op.spot || '—', inline: true },
       { name: 'Grupo', value: `#${op.group_number} (máx ${op.max_participants})`, inline: true },
@@ -197,7 +198,7 @@ function memberProfileEmbed(member) {
     .addFields(
       { name: 'Peso', value: ROLE[member.role] || member.role, inline: true },
       { name: 'Estado', value: STATUS[member.status] || member.status, inline: true },
-      { name: 'Na casa desde', value: member.joined_at?.toISOString?.()?.split('T')[0] || '—', inline: true },
+      { name: 'Na casa desde', value: formatPtDateOnly(member.joined_at), inline: true },
     );
 }
 

@@ -14,6 +14,7 @@ const { EMOJI } = require('../content');
 const { query } = require('../db');
 const { memberRepo } = require('../repositories');
 const { buttonRow, button } = require('../shared/ui/buttons');
+const { formatPtDate } = require('../shared/formatPtDate');
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('pt-PT');
 
@@ -92,8 +93,7 @@ async function handle(interaction) {
       const lines = outras.slice(0, 10).map(o => {
         const emj = STATUS_EMOJI[o.status] || '•';
         const lbl = STATUS_LABEL[o.status] || o.status;
-        const when = o.resolved_at ? new Date(o.resolved_at).toISOString().split('T')[0]
-                                   : new Date(o.created_at).toISOString().split('T')[0];
+        const when = formatPtDate(o.resolved_at || o.created_at);
         return `${emj} \`${when}\` **${o.quantity}× ${o.item_name}** — ${lbl}`;
       });
       embed.addFields({ name: '📜 Histórico recente', value: lines.join('\n'), inline: false });

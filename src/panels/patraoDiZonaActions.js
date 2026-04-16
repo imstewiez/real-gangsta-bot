@@ -15,6 +15,7 @@ const { ERRORS } = require('../content');
 const { isPatraoDiZona } = require('../permissions/permissionEngine');
 const { query } = require('../db');
 const { weekBounds } = require('../util');
+const { formatPtDateOnly } = require('../shared/formatPtDate');
 
 async function listarBairristas(interaction) {
   if (!isPatraoDiZona(interaction.member)) {
@@ -32,7 +33,7 @@ async function listarBairristas(interaction) {
     return safeReply(interaction, { content: 'Sem bairristas registados.' }, { dismissible: true });
   }
   const lines = bairristas.map(m =>
-    `<@${m.discord_id}> — ${m.display_name} (desde ${m.joined_at?.toISOString?.()?.split('T')[0] || '-'})`
+    `<@${m.discord_id}> — ${m.display_name} (desde ${formatPtDateOnly(m.joined_at)})`
   );
   const embed = brandEmbed().setTitle('Bairristas').setDescription(lines.join('\n'));
   return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
@@ -83,7 +84,7 @@ async function verTopsBairristas(interaction) {
   // Primeiro tenta role novo; fallback para legacy.
   let rankings = await rankingRepo.getWeekRankingByRole(weekStart, 'bairrista', 10);
   if (!rankings.length) rankings = await rankingRepo.getWeekRankingByRole(weekStart, 'morador', 10);
-  const weekLabel = `${start.toISOString().split('T')[0]} a ${end.toISOString().split('T')[0]}`;
+  const weekLabel = `${formatPtDateOnly(start)} a ${formatPtDateOnly(end)}`;
   const embed = rankingEmbed('Top Bairristas', rankings, weekLabel);
   return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
 }

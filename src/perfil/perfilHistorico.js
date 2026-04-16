@@ -13,6 +13,7 @@ const { brandEmbed } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { memberRepo, inventoryRepo } = require('../repositories');
 const { buttonRow, button } = require('../shared/ui/buttons');
+const { formatPtDate } = require('../shared/formatPtDate');
 
 const fmt = (n) => (Number(n) || 0).toLocaleString('pt-PT');
 
@@ -78,7 +79,7 @@ async function render(interaction, filter) {
     const lines = filtered.map(m => {
       const emj = TYPE_EMOJI[m.movement_type] || '•';
       const lbl = TYPE_LABEL[m.movement_type] || m.movement_type;
-      const date = new Date(m.created_at).toISOString().split('T')[0];
+      const date = formatPtDate(m.created_at);
       const opTag = m.operation_id ? ` · saída **#${m.operation_id}**` : '';
       return `${emj} \`${date}\` **${m.quantity}× ${m.item_name}** — ${lbl}${opTag}`;
     });

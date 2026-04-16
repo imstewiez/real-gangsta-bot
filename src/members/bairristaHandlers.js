@@ -21,6 +21,7 @@ const { BAIRRISTAS, EMOJI } = require('../content');
 const { getPromotionProgress, formatTierName } = require('./autoPromotionEngine');
 const { weekBounds } = require('../util');
 const { buttonRow, button } = require('../shared/ui/buttons');
+const { formatPtDateOnly } = require('../shared/formatPtDate');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MOVIMENTO NO BAIRRO — cockpit pessoal do Bairrista
@@ -205,7 +206,7 @@ async function _showRanking(interaction, period) {
   } else {
     rankings = await bairristaStatsRepo.getTopBairristas(weekStartStr, 15);
     const { end } = weekBounds();
-    const weekLabel = `${weekStartStr} → ${end.toISOString().split('T')[0]}`;
+    const weekLabel = `${formatPtDateOnly(start)} → ${formatPtDateOnly(end)}`;
     title = R.TITLE_WEEK(weekLabel);
     header = R.HEADER_WEEK;
   }

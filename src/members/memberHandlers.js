@@ -6,6 +6,7 @@ const {
   memberProfileEmbed, brandEmbed, progressBar, rankBadge,
 } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS, RANKINGS } = require('../content');
+const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
 
 // Mapping canónico de tipos de movimento → label para histórico/totais.
 const MOVEMENT_LABELS = {
@@ -81,7 +82,7 @@ async function handleMemberHistoryButton(interaction) {
   }
 
   const lines = movements.map(m => {
-    const date = m.created_at?.toISOString?.()?.split('T')[0] || '';
+    const date = formatPtDate(m.created_at);
     const label = MOVEMENT_LABELS[m.movement_type] || m.movement_type;
     const e = MOVEMENT_EMOJI[m.movement_type] || EMOJI.MOVIMENTO;
     return `${e} \`${date}\` **${m.quantity}×** ${m.item_name} · ${label}`;

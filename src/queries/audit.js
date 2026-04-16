@@ -9,6 +9,7 @@ const { brandEmbed } = require('../shared/embedBuilders');
 const { ERRORS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
 const { getRecentLogs } = require('../audit/auditEngine');
+const { formatPtDate } = require('../shared/formatPtDate');
 
 async function handle(interaction) {
   if (!isChefia(interaction.member)) {
@@ -24,10 +25,10 @@ async function handle(interaction) {
     return safeReply(interaction, { content: 'Sem logs recentes.' }, { dismissible: true });
   }
   const lines = logs.map(l =>
-    `\`${l.created_at?.toISOString?.()?.split('T')[0] || ''}\` **${l.action}** — ${l.entity_type} — por <@${l.actor_id}>`
+    `\`${formatPtDate(l.created_at)}\` **${l.action}** — ${l.entity_type} — por <@${l.actor_id}>`
   );
   const embed = brandEmbed().setTitle('Logs de Auditoria').setDescription(lines.slice(0, 20).join('\n'));
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
 }
 
 module.exports = { handle };
