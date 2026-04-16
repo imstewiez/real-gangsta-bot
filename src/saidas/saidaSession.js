@@ -287,28 +287,30 @@ async function handleCaracterizadoSource(interaction) {
   const weaponCats = new Set(['armas_fogo', 'armas_brancas']);
   let weapons = items.filter(i => weaponCats.has(i.category));
 
-  // Para "org", só mostra armas com stock > 0.
-  // getStockForItem devolve um número (não objecto). Tratava-o como
-  // `.balance` → sempre 0 → "não há armas".
+  // Para "org": mostra TODAS as armas com stock actual (incluindo 0).
+  // Participante expressa a intenção; staff confirma / fornece depois.
+  // Filtrar por stock>0 escondia tudo quando não há saldo_inicial registado.
   if (source === 'org') {
-    const weaponsWithStock = [];
     for (const w of weapons) {
-      const balance = Number(await inventoryRepo.getStockForItem(w.id).catch(() => 0)) || 0;
-      if (balance > 0) weaponsWithStock.push({ ...w, _balance: balance });
+      w._balance = Number(await inventoryRepo.getStockForItem(w.id).catch(() => 0)) || 0;
     }
-    weapons = weaponsWithStock;
+    // Ordena: stock > 0 primeiro, depois alfabético.
+    weapons.sort((a, b) => (b._balance - a._balance) || a.name.localeCompare(b.name));
   }
 
   if (weapons.length === 0) {
-    const empty = source === 'org'
-      ? 'Não há armas em stock no momento. Escolhe **Arma Própria** ou tenta mais tarde.'
-      : 'Não há armas definidas no catálogo.';
-    return safeReply(interaction, { content: `${EMOJI.WARN} ${empty}`, flags: MessageFlags.Ephemeral }, { messageClass: 'WARN' });
+    return safeReply(interaction, {
+      content: `${EMOJI.WARN} Não há armas definidas no catálogo.`,
+      flags: MessageFlags.Ephemeral,
+    }, { messageClass: 'WARN' });
   }
 
   // Discord StringSelect: max 25 opções. Se passar, trunca.
   const options = weapons.slice(0, 25).map(w => {
-    const label = source === 'org' ? `${w.name} (stock: ${w._balance})` : w.name;
+    let label = w.name;
+    if (source === 'org') {
+      label = w._balance > 0 ? `${w.name} · stock ${w._balance}` : `${w.name} · sem stock`;
+    }
     return new StringSelectMenuOptionBuilder()
       .setLabel(label.slice(0, 100))
       .setValue(String(w.id))
