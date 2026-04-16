@@ -20,7 +20,8 @@ const {
   notifyStickyChange,
 } = require('./radioEngine');
 const { safeReply } = require('../shared/interactionHelpers');
-const { RADIO, EMOJI } = require('../content');
+const { successEmbed, brandEmbed } = require('../shared/embedBuilders');
+const { RADIO, EMOJI, MODALS } = require('../content');
 const { warn } = require('../logger');
 
 function parseId(customId) {
@@ -48,9 +49,11 @@ async function handleRandom(interaction) {
     await refreshMessage(interaction);
     notifyStickyChange(interaction.client).catch(() => {});
     const meta = TYPE_META[type];
-    return safeReply(interaction, {
-      content: RADIO.RANDOM(meta.label, meta.emoji, result.previous, result.value),
-    }, { dismissible: true });
+    const embed = successEmbed(
+      RADIO.RANDOM_TITLE,
+      `**${meta.label}**\n${RADIO.LABELS.ANTES}: \`${result.previous || '—'}\`\n${RADIO.LABELS.AGORA}: \`${result.value}\``,
+    );
+    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
     return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
   }
@@ -60,18 +63,19 @@ async function handleSet(interaction) {
   const [, , type] = parseId(interaction.customId);
   if (!TYPE_META[type]) return;
   const meta = TYPE_META[type];
+  const M = MODALS.RADIO_SET;
   const modal = new ModalBuilder()
     .setCustomId(`radio::modal_set::${type}`)
-    .setTitle(`Rádio ${meta.label}`)
+    .setTitle(M.TITLE(meta.label))
     .addComponents(
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
           .setCustomId('value')
-          .setLabel(`Valor (${meta.label.toLowerCase()})`)
+          .setLabel(M.FIELDS.value.label(meta.label))
           .setStyle(TextInputStyle.Short)
-          .setRequired(true)
-          .setMaxLength(8)
-          .setPlaceholder('Ex: 4321'),
+          .setRequired(M.FIELDS.value.required)
+          .setMaxLength(M.FIELDS.value.maxLength)
+          .setPlaceholder(M.FIELDS.value.placeholder),
       ),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
@@ -96,9 +100,11 @@ async function handleSetModal(interaction) {
     // é actualizado pelo refresh button.
     notifyStickyChange(interaction.client).catch(() => {});
     const meta = TYPE_META[type];
-    return safeReply(interaction, {
-      content: RADIO.SET(meta.label, meta.emoji, result.previous, result.value),
-    }, { dismissible: true });
+    const embed = successEmbed(
+      RADIO.SET_TITLE,
+      `**${meta.label}**\n${RADIO.LABELS.ANTES}: \`${result.previous || '—'}\`\n${RADIO.LABELS.AGORA}: \`${result.value}\``,
+    );
+    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
     return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
   }
@@ -110,9 +116,11 @@ async function handleSwap(interaction) {
     const swapped = await swapRadios({ actorId: interaction.user.id });
     await refreshMessage(interaction);
     notifyStickyChange(interaction.client).catch(() => {});
-    return safeReply(interaction, {
-      content: RADIO.SWAPPED(swapped.principal, swapped.parceria),
-    }, { dismissible: true });
+    const embed = successEmbed(
+      RADIO.SWAP_TITLE,
+      `${RADIO.LABELS.PRINCIPAL}: \`${swapped.principal}\`\n${RADIO.LABELS.PARCERIA}: \`${swapped.parceria}\``,
+    );
+    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
     return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
   }

@@ -191,9 +191,9 @@ function memberProfileEmbed(member) {
 }
 
 function welcomeChannelEmbed(memberName) {
-  return brandEmbed('HOUSE')
+  return applyLogo(brandEmbed('HOUSE')
     .setTitle(ONBOARDING.WELCOME_TITLE(memberName))
-    .setDescription(ONBOARDING.WELCOME_BODY);
+    .setDescription(ONBOARDING.WELCOME_BODY));
 }
 
 module.exports = {

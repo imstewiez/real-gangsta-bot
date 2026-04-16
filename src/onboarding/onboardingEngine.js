@@ -152,9 +152,10 @@ async function processApproval(tagRequest, approverMember, client) {
     afterState: { fullName, nickname, channelId: result.channelId, rolesAdded: result.rolesAdded },
   });
 
+  const { EMOJI, ONBOARDING } = require('../content');
   await sendAuditToChannel(client, {
-    title: '\uD83C\uDFF7\uFE0F Novo Bairrista — Tag Aprovada',
-    description: `<@${discordId}> entrou como **${TIER_LABEL[entryTier] || entryTier}** (tier 1)\nNome: **${fullName} (${nickname})**${result.channelCreated ? `\nCanal: <#${result.channelId}>` : ''}`,
+    title: `${EMOJI.TAG} ${ONBOARDING.TAG_APPROVED_TITLE.replace(EMOJI.TAG + ' ', '')}`,
+    description: `<@${discordId}> entra como **${TIER_LABEL[entryTier] || entryTier}** *(tier 1)*\nNome: **${fullName}** *(${nickname})*${result.channelCreated ? `\nCanal: <#${result.channelId}>` : ''}`,
     color: 0x2ECC71,
   });
 
@@ -190,7 +191,8 @@ async function handlePromotionToOficial(member, client) {
         await queueChannelOp(() => channel.permissionOverwrites.edit(discordId, {
           ViewChannel: false, SendMessages: false,
         }));
-        await channel.send({ content: `Canal arquivado \u2014 ${displayName} foi promovido a Oficial.` });
+        const { EMOJI: E } = require('../content');
+        await channel.send({ content: `${E.AUDIT} Canal arquivado — ${displayName} subiu a Oficial.` });
         await query(
           `UPDATE resident_channels SET status = 'archived', archived_at = NOW() WHERE channel_id = $1 AND status = 'active'`,
           [dbMember.channel_id]
@@ -218,9 +220,10 @@ async function handlePromotionToOficial(member, client) {
 
   await memberRepo.update(dbMember.id, { channel_id: null });
 
+  const { EMOJI } = require('../content');
   await sendAuditToChannel(client, {
-    title: 'Promoção \u2014 Bairrista \u2192 Oficial',
-    description: `<@${discordId}> foi promovido a **Oficial**.`,
+    title: `${EMOJI.LIDER} Subida — Bairrista → Oficial`,
+    description: `<@${discordId}> sobe a **Oficial**.`,
     color: 0xF39C12,
   });
 }

@@ -5,36 +5,41 @@ const {
 const {
   safeReply, safeShowModal, getModalField, isDuplicate,
 } = require('../shared/interactionHelpers');
-const { successEmbed, brandEmbed } = require('../shared/embedBuilders');
+const {
+  successEmbed, brandEmbed, rankBadge, streakBadge,
+} = require('../shared/embedBuilders');
 const { canRegisterKill } = require('../permissions/permissionEngine');
-const MESSAGES = require('../shared/errorMessages');
+const { EMOJI, MODALS, KILLS, ERRORS } = require('../content');
 const engine = require('./killEngine');
 
 async function handleRegisterKillButton(interaction) {
   if (!canRegisterKill(interaction.member)) {
-    return safeReply(interaction, { content: MESSAGES.NO_PERMISSION('registar kill'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.NO_PERMISSION('registar kill'), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
+  const M = MODALS.KILL_REGISTER;
   const modal = new ModalBuilder()
     .setCustomId('kill::modal')
-    .setTitle('Registar Kill')
+    .setTitle(M.TITLE)
     .addComponents(
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('victim').setLabel('Vítima (nome · facção)')
-          .setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(120)
-          .setPlaceholder('Ex: Tony Blood · Red Street')),
+        new TextInputBuilder().setCustomId('victim').setLabel(M.FIELDS.victim.label)
+          .setStyle(TextInputStyle.Short).setRequired(M.FIELDS.victim.required).setMaxLength(M.FIELDS.victim.maxLength)
+          .setPlaceholder(M.FIELDS.victim.placeholder)),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('spot').setLabel('Spot (onde aconteceu)')
-          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(80)),
+        new TextInputBuilder().setCustomId('spot').setLabel(M.FIELDS.spot.label)
+          .setStyle(TextInputStyle.Short).setRequired(M.FIELDS.spot.required).setMaxLength(M.FIELDS.spot.maxLength)
+          .setPlaceholder(M.FIELDS.spot.placeholder)),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('context').setLabel('Contexto')
-          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(120)
-          .setPlaceholder('Ex: emboscada, defesa de spot...')),
+        new TextInputBuilder().setCustomId('context').setLabel(M.FIELDS.context.label)
+          .setStyle(TextInputStyle.Short).setRequired(M.FIELDS.context.required).setMaxLength(M.FIELDS.context.maxLength)
+          .setPlaceholder(M.FIELDS.context.placeholder)),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('saida_id').setLabel('ID da saída (opcional)')
-          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(10)),
+        new TextInputBuilder().setCustomId('saida_id').setLabel('Saída (ID opcional)')
+          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(10)
+          .setPlaceholder('Ex: 42')),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('notes').setLabel('Observações')
+        new TextInputBuilder().setCustomId('notes').setLabel('Notas (opcional)')
           .setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(500)),
     );
 
@@ -51,7 +56,7 @@ async function handleKillModal(interaction) {
   const saidaStr = getModalField(interaction, 'saida_id').trim();
   const notes = getModalField(interaction, 'notes').trim();
 
-  if (!victimRaw) return safeReply(interaction, { content: 'Nome da vítima obrigatório.' }, { dismissible: true });
+  if (!victimRaw) return safeReply(interaction, { content: `${EMOJI.WARN} Falta o nome da vítima.` }, { dismissible: true });
 
   // "Nome · facção" / "Nome - facção" / só nome
   let victimName = victimRaw, victimFaction = '';
@@ -69,29 +74,64 @@ async function handleKillModal(interaction) {
       createdBy: interaction.user.id,
     });
     engine.publishKillToChannel(interaction.client, kill).catch(() => null);
-    const embed = successEmbed(
-      'Kill Registada',
-      `☠️ **${victimName}**${victimFaction ? ` (${victimFaction})` : ''} adicionado ao cemitério.` +
-      `${spot ? `\n📍 Spot: ${spot}` : ''}` +
-      `${saidaId ? `\n🏴 Saída: #${saidaId}` : ''}` +
-      `${context ? `\n📝 ${context}` : ''}`
-    );
+
+    // Fetch context data — rank, streak, weekly count — para enriquecer o embed.
+    const stats = await engine.getKillerStats(interaction.user.id).catch(() => null);
+
+    const embed = brandEmbed('STREET')
+      .setTitle(KILLS.REGISTERED_TITLE)
+      .setDescription(
+        KILLS.REGISTERED_LINE(
+          `${victimName}${victimFaction ? ` · ${victimFaction}` : ''}`,
+          spot
+        ) +
+        (context ? `\n_${context}_` : '') +
+        (saidaId ? `\n${EMOJI.SAIDA} Saída **#${saidaId}**` : '')
+      );
+
+    // Fields data-rich se tivermos stats
+    if (stats) {
+      const fields = [];
+      if (stats.total !== undefined) {
+        fields.push({ name: KILLS.LABELS.KILLS, value: `**${stats.total}**`, inline: true });
+      }
+      if (stats.streak !== undefined && stats.streak >= 3) {
+        const badge = streakBadge(stats.streak);
+        fields.push({ name: KILLS.LABELS.STREAK, value: `${badge} **${stats.streak}**`, inline: true });
+      }
+      if (stats.weekly !== undefined) {
+        fields.push({ name: KILLS.LABELS.SEMANA, value: `**${stats.weekly}**`, inline: true });
+      }
+      if (stats.rank !== undefined && stats.rank > 0) {
+        fields.push({ name: 'Topo', value: `${rankBadge(stats.rank)}`, inline: true });
+      }
+      if (fields.length) embed.addFields(fields);
+    }
+
     return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
-    return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
   }
 }
 
 async function handleLeaderboardButton(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const top = await engine.getLeaderboard(10);
-  if (!top.length) return safeReply(interaction, { content: 'Cemitério vazio — ninguém tem kills registadas.' }, { dismissible: true });
-  const medals = ['🥇', '🥈', '🥉'];
+  if (!top.length) {
+    return safeReply(interaction, { content: KILLS.LEADERBOARD_EMPTY }, { dismissible: true });
+  }
+
   const lines = top.map((r, i) => {
-    const prefix = medals[i] || `**${i + 1}.**`;
-    return `${prefix} <@${r.discord_id}> — **${r.kills}** kill${r.kills === 1 ? '' : 's'}`;
+    const badge = rankBadge(i + 1);
+    const extra = [];
+    if (r.kd != null) extra.push(`K/D **${Number(r.kd).toFixed(2)}**`);
+    if (r.streak != null && r.streak >= 3) extra.push(`${streakBadge(r.streak)} ${r.streak}`);
+    return KILLS.LEADERBOARD_PLACE(badge, r.discord_id, r.kills, extra.join(' · '));
   });
-  const embed = brandEmbed().setTitle('☠️ Cemitério — Top Killers').setDescription(lines.join('\n'));
+
+  const embed = brandEmbed('TOP')
+    .setTitle(KILLS.LEADERBOARD_TITLE)
+    .setDescription(lines.join('\n'));
   return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
 }
 

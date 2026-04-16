@@ -54,34 +54,35 @@ async function handlePedirTagButton(interaction) {
   const hasRole = bairristaRoleIds.some(id => interaction.member.roles.cache.has(id));
   if (hasRole) {
     return safeReply(interaction, {
-      content: `${EMOJI.WARN} Já estás na casa — não precisas de pedir outra vez.`,
+      content: ONBOARDING.ALREADY_IN_HOUSE,
       flags: MessageFlags.Ephemeral,
     }, { dismissible: true });
   }
 
+  const M = MODALS.TAG_REQUEST;
   const modal = new ModalBuilder()
     .setCustomId('onboard::modal_tag')
-    .setTitle('Pedir Tag de Bairrista')
+    .setTitle(M.TITLE)
     .addComponents(
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
           .setCustomId('full_name')
-          .setLabel('Nome completo in-game (Primeiro Último)')
+          .setLabel(M.FIELDS.full_name.label)
           .setStyle(TextInputStyle.Short)
-          .setPlaceholder('Ex: Chico Navalhas')
-          .setRequired(true)
+          .setPlaceholder(M.FIELDS.full_name.placeholder)
+          .setRequired(M.FIELDS.full_name.required)
           .setMinLength(3)
-          .setMaxLength(50)
+          .setMaxLength(M.FIELDS.full_name.maxLength)
       ),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
           .setCustomId('nickname')
-          .setLabel('Alcunha')
+          .setLabel(M.FIELDS.nickname.label)
           .setStyle(TextInputStyle.Short)
-          .setPlaceholder('Ex: Stewie')
-          .setRequired(true)
+          .setPlaceholder(M.FIELDS.nickname.placeholder)
+          .setRequired(M.FIELDS.nickname.required)
           .setMinLength(2)
-          .setMaxLength(30)
+          .setMaxLength(M.FIELDS.nickname.maxLength)
       ),
     );
 
@@ -100,7 +101,7 @@ async function handleTagModal(interaction) {
   const nickname = getModalField(interaction, 'nickname').trim();
 
   if (!fullName || !nickname) {
-    return safeReply(interaction, { content: 'Nome e alcunha são obrigatórios.' }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.WARN} Nome e alcunha são obrigatórios.` }, { dismissible: true });
   }
 
   // Save to DB. Dedup por UNIQUE INDEX `uq_tag_requests_pending_per_user` —
@@ -125,33 +126,33 @@ async function handleTagModal(interaction) {
   // Send approval embed to tag request channel
   const tagChannel = await interaction.client.channels.fetch(CONFIG.TAG_REQUEST_CHANNEL_ID).catch(() => null);
   if (!tagChannel) {
-    return safeReply(interaction, { content: 'Erro interno — canal de aprovação não encontrado.' }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.GENERIC() + ' Canal de aprovação em falta.' }, { dismissible: true });
   }
 
-  const approvalEmbed = new EmbedBuilder()
+  const approvalEmbed = brandEmbed('SHORT')
     .setColor(0xF39C12)
-    .setTitle('\uD83C\uDFF7\uFE0F Novo Pedido de Tag')
+    .setTitle(ONBOARDING.TAG_PENDING_TITLE)
     .setThumbnail(interaction.user.displayAvatarURL({ size: 64 }))
     .addFields(
-      { name: '\uD83D\uDC64 Discord', value: `<@${interaction.user.id}>\n\`${interaction.user.username}\``, inline: true },
-      { name: '\uD83D\uDCDD Nome In-Game', value: `**${fullName}**`, inline: true },
-      { name: '\uD83C\uDFAD Alcunha', value: `**${nickname}**`, inline: true },
-      { name: '\uD83D\uDD16 Nickname Final', value: `\`${fullName} (${nickname})\``, inline: false },
-    )
-    .setFooter({ text: `Pedido #${requestId} — ${CONFIG.BOT_DISPLAY_NAME}` })
-    .setTimestamp();
+      { name: 'Discord',     value: `<@${interaction.user.id}>\n\`${interaction.user.username}\``, inline: true },
+      { name: 'Nome',        value: `**${fullName}**`, inline: true },
+      { name: 'Alcunha',     value: `**${nickname}**`, inline: true },
+      { name: 'Nickname final', value: `\`${fullName} (${nickname})\``, inline: false },
+    );
 
+  const aBtn = BUTTONS.ONBOARDING.APROVAR;
+  const dBtn = BUTTONS.ONBOARDING.NEGAR;
   const approvalRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`onboard::approve::${requestId}`)
-      .setLabel('Aprovar')
-      .setStyle(ButtonStyle.Success)
-      .setEmoji('\u2705'),
+      .setLabel(aBtn.label)
+      .setStyle(ButtonStyle[aBtn.style])
+      .setEmoji(aBtn.emoji),
     new ButtonBuilder()
       .setCustomId(`onboard::deny::${requestId}`)
-      .setLabel('Negar')
-      .setStyle(ButtonStyle.Danger)
-      .setEmoji('\u274C'),
+      .setLabel(dBtn.label)
+      .setStyle(ButtonStyle[dBtn.style])
+      .setEmoji(dBtn.emoji),
   );
 
   const msg = await tagChannel.send({ embeds: [approvalEmbed], components: [approvalRow] });
@@ -160,7 +161,7 @@ async function handleTagModal(interaction) {
   await query('UPDATE tag_requests SET message_id = $1 WHERE id = $2', [msg.id, requestId]);
 
   return safeReply(interaction, {
-    content: `O teu pedido foi enviado! Aguarda pela aprovação.\n**Nome:** ${fullName} **(${nickname})**`,
+    embeds: [successEmbed('Pedido enviado', `Nome: **${fullName}** *(${nickname})*\nAguarda — alguém da firma vai ler.`)],
   }, { dismissible: true });
 }
 
@@ -172,15 +173,15 @@ async function handleApproveButton(interaction, requestId) {
   if (isDuplicate(interaction.id)) return;
 
   if (!isChefeMoradores(interaction.member)) {
-    return safeReply(interaction, { content: 'Não tens permissão para aprovar pedidos de tag.', flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.NO_PERMISSION('aprovar tags'), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const reqRes = await query('SELECT * FROM tag_requests WHERE id = $1', [requestId]);
   const tagReq = reqRes.rows[0];
-  if (!tagReq) return safeReply(interaction, { content: 'Pedido não encontrado.' }, { dismissible: true });
-  if (tagReq.status !== 'pending') return safeReply(interaction, { content: 'Este pedido já foi processado.' }, { dismissible: true });
+  if (!tagReq) return safeReply(interaction, { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.` }, { dismissible: true });
+  if (tagReq.status !== 'pending') return safeReply(interaction, { content: `${EMOJI.BLOQUEADO} Este pedido já foi tratado.` }, { dismissible: true });
 
   const { processApproval } = require('./onboardingEngine');
   const result = await processApproval(tagReq, interaction.member, interaction.client);
@@ -189,14 +190,20 @@ async function handleApproveButton(interaction, requestId) {
   if (tagReq.message_id) {
     const approvedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
       .setColor(0x2ECC71)
-      .setTitle('\u2705 Tag Aprovada')
-      .addFields({ name: '\uD83D\uDC51 Aprovado por', value: `<@${interaction.user.id}>`, inline: true });
+      .setTitle(ONBOARDING.TAG_APPROVED_TITLE)
+      .addFields({ name: 'Aprovado por', value: `<@${interaction.user.id}>`, inline: true });
 
     await interaction.message.edit({ embeds: [approvedEmbed], components: [] }).catch(() => {});
   }
 
+  const body = ONBOARDING.TAG_APPROVED_BODY(
+    `<@${tagReq.discord_id}>`,
+    tagReq.nickname,
+    result.channelId ? `<#${result.channelId}>` : null,
+  ) + (result.nicknameSet ? '' : `\n${EMOJI.WARN} Nickname não alterado (sem permissão).`);
+
   return safeReply(interaction, {
-    content: `Tag aprovada para **${tagReq.full_name} (${tagReq.nickname})**\n${result.channelCreated ? `Canal criado: <#${result.channelId}>` : 'Canal não criado (erro)'}${result.nicknameSet ? '' : '\n\u26A0\uFE0F Nickname não foi alterado (sem permissão)'}`,
+    embeds: [successEmbed('Feito', body)],
   }, { dismissible: true });
 }
 
@@ -204,15 +211,15 @@ async function handleDenyButton(interaction, requestId) {
   if (isDuplicate(interaction.id)) return;
 
   if (!isChefeMoradores(interaction.member)) {
-    return safeReply(interaction, { content: 'Não tens permissão para negar pedidos de tag.', flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.NO_PERMISSION('negar tags'), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const reqRes = await query('SELECT * FROM tag_requests WHERE id = $1', [requestId]);
   const tagReq = reqRes.rows[0];
-  if (!tagReq) return safeReply(interaction, { content: 'Pedido não encontrado.' }, { dismissible: true });
-  if (tagReq.status !== 'pending') return safeReply(interaction, { content: 'Este pedido já foi processado.' }, { dismissible: true });
+  if (!tagReq) return safeReply(interaction, { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.` }, { dismissible: true });
+  if (tagReq.status !== 'pending') return safeReply(interaction, { content: `${EMOJI.BLOQUEADO} Este pedido já foi tratado.` }, { dismissible: true });
 
   await query(
     `UPDATE tag_requests SET status = 'denied', denied_by = $1, resolved_at = NOW() WHERE id = $2`,
@@ -229,13 +236,15 @@ async function handleDenyButton(interaction, requestId) {
   if (tagReq.message_id) {
     const deniedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
       .setColor(0xE74C3C)
-      .setTitle('\u274C Tag Negada')
-      .addFields({ name: '\uD83D\uDC51 Negado por', value: `<@${interaction.user.id}>`, inline: true });
+      .setTitle(ONBOARDING.TAG_DENIED_TITLE)
+      .addFields({ name: 'Negado por', value: `<@${interaction.user.id}>`, inline: true });
 
     await interaction.message.edit({ embeds: [deniedEmbed], components: [] }).catch(() => {});
   }
 
-  return safeReply(interaction, { content: `Tag negada para **${tagReq.full_name} (${tagReq.nickname})**.` }, { dismissible: true });
+  return safeReply(interaction, {
+    embeds: [successEmbed('Negado', `Tag negada para **${tagReq.full_name}** *(${tagReq.nickname})*.`)],
+  }, { dismissible: true });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

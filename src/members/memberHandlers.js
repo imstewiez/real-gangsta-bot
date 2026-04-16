@@ -1,30 +1,69 @@
 'use strict';
-const { MessageFlags, EmbedBuilder } = require('discord.js');
+const { MessageFlags } = require('discord.js');
 const { memberRepo, inventoryRepo } = require('../repositories');
 const { safeReply } = require('../shared/interactionHelpers');
-const { memberProfileEmbed, brandEmbed } = require('../shared/embedBuilders');
-const { isChefia, isChefeMoradores } = require('../permissions/permissionEngine');
-const { mentionUser } = require('../util');
+const {
+  memberProfileEmbed, brandEmbed, progressBar, rankBadge,
+} = require('../shared/embedBuilders');
+const { EMOJI, ERRORS, RANKINGS } = require('../content');
+
+// Mapping canónico de tipos de movimento → label para histórico/totais.
+const MOVEMENT_LABELS = {
+  entrega_bairrista: 'Entrega',
+  venda_bairrista:   'Venda',
+  entrega_morador:   'Entrega',  // legacy
+  venda_morador:     'Venda',    // legacy
+  entrega_oficial:   'Entrega (oficial)',
+  devolucao_operacao:'Devolução',
+  fornecimento_org:  'Fornecido',
+  consumo_operacao:  'Consumo',
+  perda_operacao:    'Perda',
+  ajuste_manual:     'Ajuste',
+  apreendido:        'Apreendido',
+  craftado:          'Craftado',
+  saldo_inicial:     'Saldo Inicial',
+};
+
+// Emoji por tipo (para histórico visual)
+const MOVEMENT_EMOJI = {
+  entrega_bairrista: EMOJI.MATERIAL,
+  venda_bairrista:   EMOJI.LUCRO,
+  entrega_morador:   EMOJI.MATERIAL,
+  venda_morador:     EMOJI.LUCRO,
+  entrega_oficial:   EMOJI.MATERIAL,
+  devolucao_operacao:EMOJI.DEVOLVER,
+  fornecimento_org:  EMOJI.FORNECER,
+  consumo_operacao:  EMOJI.CRAFT,
+  perda_operacao:    EMOJI.PERDIDO,
+  ajuste_manual:     EMOJI.AJUSTAR,
+  apreendido:        EMOJI.MATERIAL,
+  craftado:          EMOJI.CRAFT,
+};
 
 async function handleMemberCommand(interaction) {
   const targetUser = interaction.options.getUser('membro') || interaction.user;
   const member = await memberRepo.findByDiscordId(targetUser.id);
 
   if (!member) {
-    return safeReply(interaction, { content: 'Membro não encontrado.', flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.MEMBER_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const embed = memberProfileEmbed(member);
 
   const totals = await inventoryRepo.getMemberTotals(member.id);
-  if (Object.keys(totals).length > 0) {
-    const lines = [];
-    const totalEntregas = (totals.entrega_bairrista || 0) + (totals.entrega_morador || 0);
-    const totalVendas   = (totals.venda_bairrista   || 0) + (totals.venda_morador   || 0);
-    if (totalEntregas) lines.push(`Entregas: **${totalEntregas}**`);
-    if (totalVendas)   lines.push(`Vendas: **${totalVendas}**`);
-    if (totals.entrega_oficial) lines.push(`Entregas (oficial): **${totals.entrega_oficial}**`);
-    embed.addFields({ name: 'Totais de Material', value: lines.join('\n') || '\u2014' });
+  const totalEntregas = (totals.entrega_bairrista || 0) + (totals.entrega_morador || 0);
+  const totalVendas   = (totals.venda_bairrista   || 0) + (totals.venda_morador   || 0);
+  const totalOficial  = totals.entrega_oficial || 0;
+  if (totalEntregas || totalVendas || totalOficial) {
+    embed.addFields({
+      name: 'Material',
+      value: [
+        totalEntregas ? `${EMOJI.MATERIAL} Entregas: **${totalEntregas}**` : null,
+        totalVendas   ? `${EMOJI.LUCRO} Vendas: **${totalVendas}**`       : null,
+        totalOficial  ? `${EMOJI.MATERIAL} Oficial: **${totalOficial}**`  : null,
+      ].filter(Boolean).join('\n'),
+      inline: false,
+    });
   }
 
   return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
@@ -33,29 +72,24 @@ async function handleMemberCommand(interaction) {
 async function handleMemberHistoryButton(interaction) {
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {
-    return safeReply(interaction, { content: 'Não estás registado no sistema.', flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.MEMBER_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const movements = await inventoryRepo.getMemberMovements(member.id, 20);
   if (!movements.length) {
-    return safeReply(interaction, { content: 'Sem registos no teu histórico.', flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.AUDIT} Sem histórico ainda — mete mão à rua.`, flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
-
-  const typeLabels = {
-    entrega_bairrista: 'Entrega', venda_bairrista: 'Venda',
-    entrega_morador: 'Entrega', venda_morador: 'Venda', // legacy
-    entrega_oficial: 'Entrega (oficial)', devolucao_operacao: 'Devolução',
-  };
 
   const lines = movements.map(m => {
     const date = m.created_at?.toISOString?.()?.split('T')[0] || '';
-    const label = typeLabels[m.movement_type] || m.movement_type;
-    return `\`${date}\` ${label}: **${m.quantity}x** ${m.item_name}`;
+    const label = MOVEMENT_LABELS[m.movement_type] || m.movement_type;
+    const e = MOVEMENT_EMOJI[m.movement_type] || EMOJI.MOVIMENTO;
+    return `${e} \`${date}\` **${m.quantity}×** ${m.item_name} · ${label}`;
   });
 
-  const embed = brandEmbed()
-    .setTitle('Teu Histórico')
-    .setDescription(lines.join('\n'));
+  const embed = brandEmbed('MOVEMENT')
+    .setTitle(`${EMOJI.AUDIT} O teu histórico`)
+    .setDescription(lines.join('\n').slice(0, 3900));
 
   return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
 }
@@ -63,48 +97,47 @@ async function handleMemberHistoryButton(interaction) {
 async function handleMemberTotalsButton(interaction) {
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {
-    return safeReply(interaction, { content: 'Não estás registado no sistema.', flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.MEMBER_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
   }
 
   const totals = await inventoryRepo.getMemberTotals(member.id);
-  const lines = [];
-  const aggregated = {
+  const agg = {
     entregas: (totals.entrega_bairrista || 0) + (totals.entrega_morador || 0),
     vendas:   (totals.venda_bairrista   || 0) + (totals.venda_morador   || 0),
-    entrega_oficial:    totals.entrega_oficial    || 0,
-    devolucao_operacao: totals.devolucao_operacao || 0,
+    oficial:  totals.entrega_oficial    || 0,
+    devolvido:totals.devolucao_operacao || 0,
   };
-  const labels = {
-    entregas: 'Entregas', vendas: 'Vendas',
-    entrega_oficial: 'Entregas (oficial)', devolucao_operacao: 'Devoluções',
-  };
-  for (const [type, label] of Object.entries(labels)) {
-    lines.push(`${label}: **${aggregated[type] || 0}**`);
-  }
 
-  // Progresso de promoção
-  const { getPromotionProgress, formatTierName } = require('./autoPromotionEngine');
+  const embed = brandEmbed('MOVEMENT')
+    .setTitle(`${EMOJI.TOPO} Os teus totais`)
+    .addFields(
+      { name: `${EMOJI.MATERIAL} Entregas`, value: `**${agg.entregas.toLocaleString('pt-PT')}**`, inline: true },
+      { name: `${EMOJI.LUCRO} Vendas`,      value: `**${agg.vendas.toLocaleString('pt-PT')}**`,   inline: true },
+      { name: `${EMOJI.MATERIAL} Oficial`,  value: `**${agg.oficial.toLocaleString('pt-PT')}**`,  inline: true },
+      { name: `${EMOJI.DEVOLVER} Devolvido`, value: `**${agg.devolvido.toLocaleString('pt-PT')}**`, inline: true },
+    );
+
+  // Progress to next tier — bar visual
+  const { getPromotionProgress } = require('./autoPromotionEngine');
   const progress = await getPromotionProgress(interaction.user.id).catch(() => null);
   if (progress) {
-    lines.push('');
-    lines.push(`\u2500\u2500 **Progresso** \u2500\u2500`);
-    lines.push(`Rank atual: **${progress.currentTierName}**`);
-    lines.push(`Material total: **${(progress.totalQty || 0).toLocaleString('pt-PT')} itens**`);
     if (!progress.maxedOut) {
-      const filled = Math.round(parseFloat(progress.progress) / 10);
-      const empty = 10 - filled;
-      const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(empty);
-      lines.push(`Próximo: **${progress.nextTierName}** (${progress.threshold.toLocaleString('pt-PT')} itens)`);
-      lines.push(`${bar} **${progress.progress}%**`);
-      lines.push(`Falta: **${progress.remaining.toLocaleString('pt-PT')} itens**`);
+      const bar = progressBar(parseFloat(progress.progress), 100, { width: 12 });
+      embed.addFields({
+        name: `${EMOJI.TOPO} Progresso — ${progress.currentTierName} → ${progress.nextTierName}`,
+        value:
+          `${bar} **${progress.progress}%**\n` +
+          `Meta: **${progress.threshold.toLocaleString('pt-PT')}** · Falta: **${progress.remaining.toLocaleString('pt-PT')}**`,
+        inline: false,
+      });
     } else {
-      lines.push('Nível máximo automático atingido!');
+      embed.addFields({
+        name: `${EMOJI.TOPO} Progresso`,
+        value: `**${progress.currentTierName}** — tier máximo automático. Promoções acima daqui são manuais.`,
+        inline: false,
+      });
     }
   }
-
-  const embed = brandEmbed()
-    .setTitle('Teus Totais')
-    .setDescription(lines.join('\n'));
 
   return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
 }
@@ -113,30 +146,37 @@ async function handleProgressButton(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const member = await memberRepo.findByDiscordId(interaction.user.id);
-  if (!member) return safeReply(interaction, { content: 'Não estás registado no sistema.' }, { dismissible: true });
+  if (!member) return safeReply(interaction, { content: ERRORS.MEMBER_NOT_FOUND() }, { dismissible: true });
 
-  const { getPromotionProgress, formatTierName } = require('./autoPromotionEngine');
+  const { getPromotionProgress } = require('./autoPromotionEngine');
   const progress = await getPromotionProgress(interaction.user.id);
-  if (!progress) return safeReply(interaction, { content: 'Sem dados de progresso.' }, { dismissible: true });
+  if (!progress) return safeReply(interaction, { content: `${EMOJI.INFO} Ainda sem dados de progresso.` }, { dismissible: true });
 
-  const lines = [];
-  lines.push(`\uD83C\uDFAD **Rank:** ${progress.currentTierName}`);
-  lines.push(`\uD83D\uDCE6 **Material Total:** ${(progress.totalQty || 0).toLocaleString('pt-PT')} itens`);
-  lines.push('');
+  const embed = brandEmbed('MOVEMENT')
+    .setTitle(`${EMOJI.TOPO} Progresso — ${member.display_name || member.full_name}`)
+    .addFields(
+      { name: 'Rank actual',   value: `**${progress.currentTierName}**`, inline: true },
+      { name: 'Material total',value: `**${(progress.totalQty || 0).toLocaleString('pt-PT')}**`, inline: true },
+    );
 
   if (!progress.maxedOut) {
-    const filled = Math.round(parseFloat(progress.progress) / 10);
-    const empty = 10 - filled;
-    const bar = '\u2588'.repeat(filled) + '\u2591'.repeat(empty);
-    lines.push(`\uD83C\uDFAF **Próximo Rank:** ${progress.nextTierName}`);
-    lines.push(`${bar} **${progress.progress}%**`);
-    lines.push(`Meta: **${progress.threshold.toLocaleString('pt-PT')} itens** \u2014 Falta: **${progress.remaining.toLocaleString('pt-PT')} itens**`);
+    const bar = progressBar(parseFloat(progress.progress), 100, { width: 14 });
+    embed.addFields({
+      name: `${EMOJI.SAIDA} Próximo: ${progress.nextTierName}`,
+      value:
+        `${bar} **${progress.progress}%**\n` +
+        `Meta: **${progress.threshold.toLocaleString('pt-PT')}** · Falta: **${progress.remaining.toLocaleString('pt-PT')}**`,
+      inline: false,
+    });
   } else {
-    lines.push('\u2705 **Nível máximo automático atingido!**');
-    lines.push('Promoções acima deste rank são manuais pela chefia.');
+    embed.addFields({
+      name: `${EMOJI.TOPO} Topo`,
+      value: 'Tier máximo automático atingido. Promoções acima daqui são manuais.',
+      inline: false,
+    });
   }
 
-  // Position in weekly ranking
+  // Posição no ranking semanal
   const { weekBounds } = require('../util');
   const { start } = weekBounds();
   const weekStart = start.toISOString().split('T')[0];
@@ -144,13 +184,12 @@ async function handleProgressButton(interaction) {
   const rankings = await rankingRepo.getWeekRanking(weekStart, 50);
   const myRank = rankings.findIndex(r => r.discord_id === interaction.user.id);
   if (myRank >= 0) {
-    lines.push('');
-    lines.push(`\uD83C\uDFC6 **Posição no Top Semanal:** #${myRank + 1} de ${rankings.length}`);
+    embed.addFields({
+      name: `${EMOJI.TOPO} Topo Semanal`,
+      value: `${rankBadge(myRank + 1)} em **${rankings.length}**`,
+      inline: true,
+    });
   }
-
-  const embed = brandEmbed()
-    .setTitle(`\uD83D\uDCCA Progresso \u2014 ${member.display_name || member.full_name}`)
-    .setDescription(lines.join('\n'));
 
   return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
 }
@@ -164,30 +203,28 @@ async function handleTopSemanalButton(interaction) {
   const { rankingRepo } = require('../repositories');
   const rankings = await rankingRepo.getWeekRanking(weekStart, 10);
 
-  if (!rankings.length) return safeReply(interaction, { content: 'Sem dados de ranking esta semana.' }, { dismissible: true });
+  if (!rankings.length) return safeReply(interaction, { content: `${EMOJI.INFO} Sem dados de ranking esta semana.` }, { dismissible: true });
 
-  const medals = ['\uD83E\uDD47', '\uD83E\uDD48', '\uD83E\uDD49'];
   const lines = rankings.map((r, i) => {
-    const prefix = medals[i] || `**${i + 1}.**`;
-    const isMe = r.discord_id === interaction.user.id ? ' \u2190 **TU**' : '';
-    return `${prefix} <@${r.discord_id}> \u2014 **${parseFloat(r.weighted_value).toLocaleString('pt-PT')} itens** (${r.deliveries} entregas, ${r.sales} vendas)${isMe}`;
+    const prefix = rankBadge(i + 1);
+    const isMe = r.discord_id === interaction.user.id ? ` ← **tu**` : '';
+    return `${prefix} <@${r.discord_id}> — **${parseFloat(r.weighted_value).toLocaleString('pt-PT')}** · ${r.deliveries} entregas · ${r.sales} vendas${isMe}`;
   });
 
-  // Check if user is in top 10
+  // Se user não está no top 10, mostra a sua posição
   const myRank = rankings.findIndex(r => r.discord_id === interaction.user.id);
   if (myRank < 0) {
     const allRankings = await rankingRepo.getWeekRanking(weekStart, 100);
     const myPos = allRankings.findIndex(r => r.discord_id === interaction.user.id);
     if (myPos >= 0) {
-      lines.push('');
-      lines.push(`\u2500\u2500\u2500`);
-      lines.push(`**${myPos + 1}.** <@${interaction.user.id}> \u2014 **${parseFloat(allRankings[myPos].weighted_value).toLocaleString('pt-PT')} itens** \u2190 **TU**`);
+      lines.push('─────');
+      lines.push(`**#${myPos + 1}.** <@${interaction.user.id}> — **${parseFloat(allRankings[myPos].weighted_value).toLocaleString('pt-PT')}** ← **tu**`);
     }
   }
 
-  const weekLabel = `${start.toISOString().split('T')[0]} a ${end.toISOString().split('T')[0]}`;
-  const embed = brandEmbed()
-    .setTitle(`\uD83C\uDFC6 Top Semanal \u2014 ${weekLabel}`)
+  const weekLabel = `${start.toISOString().split('T')[0]} → ${end.toISOString().split('T')[0]}`;
+  const embed = brandEmbed('TOP')
+    .setTitle(RANKINGS.TITLE('Topo da Semana', weekLabel))
     .setDescription(lines.join('\n'));
 
   return safeReply(interaction, { embeds: [embed] }, { dismissible: true });

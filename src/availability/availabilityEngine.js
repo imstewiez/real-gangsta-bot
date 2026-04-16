@@ -32,27 +32,46 @@ function todayDateString() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// Barra empilhada para visualizar distribuição de votos por slot.
+// ✅ verdes, ⏰ talvez amarelo, ❌ não dá vermelho.
+function _stackedBar(counts, width = 10) {
+  const total = Object.values(counts).reduce((a, b) => a + (b || 0), 0);
+  if (total === 0) return '·'.repeat(width);
+  const y = Math.round(((counts.disponivel   || 0) / total) * width);
+  const m = Math.round(((counts.talvez       || 0) / total) * width);
+  const n = width - y - m;
+  return '█'.repeat(Math.max(0, y)) + '▒'.repeat(Math.max(0, m)) + '░'.repeat(Math.max(0, n));
+}
+
 function buildEmbed(session, tallies, totalVoters) {
-  const embed = brandEmbed()
-    .setTitle('📍 Disponibilidade — ' + session.session_date.toString().split('T')[0])
+  const { EMOJI } = require('../content');
+  const embed = brandEmbed('HOUSE')
+    .setTitle(`${EMOJI.PRESENCA} Presença — ${session.session_date.toString().split('T')[0]}`)
     .setDescription([
       `**${session.header_text || pickHeader()}**`,
       '',
-      'Vota num horário no menu abaixo. Podes mudar o teu voto a qualquer momento.',
-      session.status === 'closed' ? '\n🔒 _Sessão fechada — votos congelados._' : '',
-    ].filter(Boolean).join('\n'));
+      session.status === 'closed'
+        ? `${EMOJI.BLOQUEADO} _Sessão fechada — votos congelados._`
+        : 'Vota no menu abaixo. Podes mudar a qualquer momento.',
+    ].join('\n'));
 
-  // Um field por slot, mostra contagens dos 3 estados em-line.
+  // Um field por slot, contagens dos 3 estados + barra empilhada.
   for (const t of tallies) {
+    const bar = _stackedBar(t.counts);
     const counts = STATE_ORDER.map(state => {
       const m = STATE_META[state];
-      return `${m.emoji} \`${t.counts[state] || 0}\``;
+      return `${m.emoji} **${t.counts[state] || 0}**`;
     }).join('   ');
-    embed.addFields({ name: `🕒 ${t.label}`, value: counts, inline: true });
+    embed.addFields({
+      name: `${EMOJI.ZONA} ${t.label}`,
+      value: `\`${bar}\`\n${counts}`,
+      inline: true,
+    });
   }
 
+  const voters = totalVoters === 1 ? 'pessoa votou' : 'pessoas votaram';
   embed.setFooter({
-    text: `${CONFIG.BOT_DISPLAY_NAME} • ${totalVoters} ${totalVoters === 1 ? 'pessoa votou' : 'pessoas votaram'} • sessão #${session.id}`,
+    text: `Firma RedWood · ${totalVoters} ${voters} · sessão #${session.id}`,
   });
   return embed;
 }

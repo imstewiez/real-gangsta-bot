@@ -55,26 +55,57 @@ async function publishKillToChannel(client, kill) {
   const ch = await client.channels.fetch(channelId).catch(() => null);
   if (!ch) return false;
 
+  const { brandEmbed } = require('../shared/embedBuilders');
+  const { EMOJI, KILLS } = require('../content');
+
   const killerMention = kill.killer?.discord_id ? `<@${kill.killer.discord_id}>` : kill.killer?.display_name || 'alguém';
   const victimStr = kill.victim_discord_id ? `<@${kill.victim_discord_id}>` : `**${kill.victim_name}**`;
 
   const fields = [];
-  if (kill.victim_faction) fields.push({ name: 'Facção', value: kill.victim_faction, inline: true });
-  if (kill.spot) fields.push({ name: 'Spot', value: kill.spot, inline: true });
-  if (kill.context) fields.push({ name: 'Contexto', value: kill.context, inline: false });
-  if (kill.saida_id) fields.push({ name: 'Saída', value: `#${kill.saida_id}`, inline: true });
-  fields.push({ name: 'Data', value: String(kill.date).split('T')[0], inline: true });
+  if (kill.victim_faction) fields.push({ name: KILLS.LABELS.FACCAO, value: kill.victim_faction, inline: true });
+  if (kill.spot)           fields.push({ name: KILLS.LABELS.SPOT,   value: kill.spot, inline: true });
+  if (kill.saida_id)       fields.push({ name: KILLS.LABELS.SAIDA,  value: `#${kill.saida_id}`, inline: true });
+  if (kill.context)        fields.push({ name: 'Contexto',          value: kill.context, inline: false });
+  fields.push({ name: KILLS.LABELS.QUANDO, value: String(kill.date).split('T')[0], inline: true });
 
-  const embed = new EmbedBuilder()
+  const embed = brandEmbed('STREET')
     .setColor(0x2C2F33)
-    .setTitle('☠️ Nova entrada no cemitério')
-    .setDescription(`${killerMention} matou ${victimStr}`)
-    .addFields(fields)
-    .setFooter({ text: `— ${CONFIG.BOT_DISPLAY_NAME} ·` })
-    .setTimestamp();
+    .setTitle(`${EMOJI.MORTE} Nova entrada no cemitério`)
+    .setDescription(`${killerMention} abateu ${victimStr}`)
+    .addFields(fields);
 
   await ch.send({ embeds: [embed] }).catch(() => null);
   return true;
 }
 
-module.exports = { recordKill, getLeaderboard, getRecent, publishKillToChannel };
+// Stats enriquecidos do killer: total, streak, weekly, rank.
+// Usados no reply embed após registar kill (data-rich confirmation).
+async function getKillerStats(killerDiscordId) {
+  const { query } = require('../db');
+  const member = await memberRepo.findByDiscordId(killerDiscordId);
+  if (!member) return null;
+
+  const [totalRow, weeklyRow, streakRow, leaderboard] = await Promise.all([
+    query(`SELECT COUNT(*)::int AS n FROM kill_logs WHERE killer_id = $1`, [member.id]),
+    query(`SELECT COUNT(*)::int AS n FROM kill_logs WHERE killer_id = $1 AND created_at >= NOW() - INTERVAL '7 days'`, [member.id]),
+    // Streak: contagem de kills consecutivas desde a última morte (death_logs).
+    // Se não houver death_logs, retorna total. Graceful se tabela não existir.
+    query(`
+      SELECT COUNT(*)::int AS n FROM kill_logs
+       WHERE killer_id = $1
+         AND created_at > COALESCE((
+           SELECT MAX(created_at) FROM kill_logs WHERE victim_discord_id = $2
+         ), '1970-01-01'::timestamptz)
+    `, [member.id, killerDiscordId]).catch(() => ({ rows: [{ n: 0 }] })),
+    killRepo.getLeaderboard(100, null).catch(() => []),
+  ]);
+
+  const total   = totalRow.rows[0]?.n || 0;
+  const weekly  = weeklyRow.rows[0]?.n || 0;
+  const streak  = streakRow.rows[0]?.n || 0;
+  const rank    = (leaderboard.findIndex(r => r.discord_id === killerDiscordId) + 1) || 0;
+
+  return { total, weekly, streak, rank };
+}
+
+module.exports = { recordKill, getLeaderboard, getRecent, publishKillToChannel, getKillerStats };
