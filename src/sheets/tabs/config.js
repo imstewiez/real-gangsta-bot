@@ -54,7 +54,7 @@ async function syncConfig(batch, sheetId) {
     ['Vitória',     'saída bem-sucedida — wins',                 badgeCell('VITÓRIA', COLOR.GREEN_DEEP)],
     ['Derrota',     'saída com perdas significativas',           badgeCell('DERROTA', COLOR.RED_DEEP)],
     ['Empate',      'saída sem vantagem clara',                  badgeCell('EMPATE',  COLOR.YELLOW_DEEP)],
-    ['Sem conflito','operação sem encontro inimigo',             badgeCell('NEUTRO',  COLOR.GRAY_DARK)],
+    ['Sem conflito','saída sem encontro inimigo',                badgeCell('NEUTRO',  COLOR.GRAY_DARK)],
     ['Abortada',    'cancelada antes de completar',              badgeCell('ABORT.',  COLOR.GRAPHITE)],
   ];
   row = tableBody(batch, sheetId, row, results.map(r => pairRow(r[0], r[1], r[2])));

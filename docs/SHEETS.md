@@ -69,31 +69,25 @@ batch — **fim das folhas com 200 linhas inúteis**.
 
 ## Tabs
 
-9 tabs canónicas, ordem fixa. Criadas automaticamente na primeira sync.
+6 tabs canónicas, ordem fixa. Criadas automaticamente na primeira sync.
 
-| # | Tab | Conteúdo premium |
+| # | Tab | Conteúdo |
 | --- | --- | --- |
-| 1 | **Dashboard** | Central de comando: header + 2 KPI strips + destaques + tendência + stock por categoria + alertas |
-| 2 | **Resumo** | Temporal: pilares da semana + comparativo vs anterior + KPI strip 14 dias + breakdown diário (consolida weekly + daily) |
-| 3 | **Membros** | Roster: panorama casa + distribuição por tier + núcleo oficiais + tabela completa filtrável (consolida members + moradores + oficiais) |
-| 4 | **Saídas** | Histórico macro: panorama operacional + ledger 24 colunas com badges de status/resultado |
-| 5 | **Participantes** | Vista micro: indicadores agregados + ledger detalhado por participação com scores + MVP |
-| 6 | **Combate** | Kills + spots: panorama + top 3 / flop 3 spots + tabela completa spots + kill log (consolida kills + spots) |
-| 7 | **Stock** | Material: panorama + breakdown categoria + inventário detalhado agrupado + ledger de movimentos (consolida inventory + movements) |
-| 8 | **Rankings** | 7 blocos (entregas, kills, profit, MVP, survival, discipline, K/D) com top 10 cada, 1º/2º/3º em gold/silver/bronze |
-| 9 | **Config** | Legendas: tiers, resultados, movimentos, cores, material vs €, scores, sync engine |
+| 1 | **📊 Dashboard** | Central de comando: 2 KPI strips + destaques + tendência vs anterior + stock por categoria + alertas |
+| 2 | **📈 Resumo & Rankings** | Pilares da semana + comparativo + breakdown 14 dias + top/flop spots + 7 rankings competitivos + rankings Bairristas (semanal/mensal/all-time/streaks) |
+| 3 | **👥 Membros** | Panorama casa + distribuição por tier + núcleo oficiais + roster completo com stats, K/D, kills, lucro |
+| 4 | **🎯 Saídas & Combate** | Panorama operacional + ledger de saídas (25 colunas) + ledger de participações (com tipo caract./trab. e arma) + spots + kill log |
+| 5 | **📦 Stock** | Panorama + stock por casa + breakdown categoria + inventário detalhado agrupado + ledger de movimentos |
+| 6 | **⚙️ Config** | Legendas: tiers, resultados, movimentos, cores, material vs €, scores compostos, sync engine |
 
 ### Identidade textual
 
 ```
 Dashboard · Firma RedWood
-Resumo · Peso da Semana & Balanço da Rua
+Resumo & Rankings · Firma RedWood
 Membros · Ficha da Casa
-Saídas · Movimento da Casa
-Participantes · Quem Rende na Rua
-Combate · Quem Pesou na Rua
+Saídas & Combate · Firma RedWood
 Stock · Inventário & Movimentos
-Rankings · Topo do Guetto
 Config · Legendas & Referências
 ```
 
@@ -105,9 +99,9 @@ Assinatura global: `— Firma RedWood`.
 
 | Comando | Efeito |
 | --- | --- |
-| `/rg-sync-sheets` | Sincroniza todas as 15 tabs |
-| `/rg-sync-sheets-tab tab:<key>` | Sincroniza apenas uma tab |
-| `/rg-sync-sheets-rebuild` | Apaga e recria as 9 tabs canónicas |
+| `/rg-sync-sheets` | Sincroniza todas as 6 tabs |
+| `/rg-sync-sheets-tab tab:<key>` | Sincroniza apenas uma tab (dashboard, resumo, membros, saidas, stock, config) |
+| `/rg-sync-sheets-rebuild` | Apaga e recria as 6 tabs canónicas |
 | `/rg-sync-sheets-rebuild purge:True` | O mesmo + apaga tabs não-canónicas (lixo antigo, duplicados) |
 
 Automático: scheduler corre `syncAll` a cada `SHEETS_SYNC_INTERVAL_MIN`
@@ -128,15 +122,12 @@ src/sheets/
   syncEngine.js       — orquestrador (syncAll/syncOne/rebuildWorkbook)
   tabs/
     _common.js        — biblioteca de componentes visuais
-    dashboard.js
-    resumo.js         — consolida weekly + daily
-    membros.js        — consolida members + moradores + oficiais
-    saidas.js
-    participantes.js
-    combate.js        — consolida kills + spots
-    stock.js          — consolida inventory + movements
-    rankings.js
-    config.js
+    dashboard.js      — central de comando + KPIs + alertas
+    resumo.js         — semanal + 14 dias + rankings competitivos + Bairristas
+    membros.js        — roster completo + stats por membro
+    saidas.js         — ledger saídas + participações + spots + kill log
+    stock.js          — inventário + movimentos por categoria
+    config.js         — legendas e referências
 ```
 
 ---
@@ -162,7 +153,7 @@ Todas as tabs analíticas usam gradients e thresholds automáticos:
 - **Queries com JOIN + CTE** em vez de loops N+1.
 - **Sequential** entre tabs — evita rate limit Sheets API.
 - **Parallel queries** dentro de cada tab (Promise.all).
-- Typical syncAll ≈ 15–20 segundos, 9 tabs com conteúdo denso (até 175 ops/tab).
+- Typical syncAll ≈ 10–15 segundos, 6 tabs com conteúdo denso (até 175 ops/tab).
 
 ---
 

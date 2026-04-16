@@ -192,7 +192,7 @@ async function syncDashboard(batch, sheetId) {
   });
 
   if (alerts.length === 0) {
-    row = alertBox(batch, sheetId, row, { kind: 'success', message: 'Sem alertas — operação estável.', columnCount: COL_COUNT });
+    row = alertBox(batch, sheetId, row, { kind: 'success', message: 'Sem alertas — tudo sob controlo.', columnCount: COL_COUNT });
   } else {
     for (const a of alerts.slice(0, 6)) {
       row = alertBox(batch, sheetId, row, { kind: a.kind, message: a.message, columnCount: COL_COUNT });
