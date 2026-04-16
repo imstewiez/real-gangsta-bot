@@ -30,8 +30,8 @@ const commands = [
     .addUserOption(opt => opt.setName('membro').setDescription('Quem consultar').setRequired(false)),
 
   new SlashCommandBuilder()
-    .setName('ponto')
-    .setDescription('O teu ponto na casa — material, ranking, combate, progresso'),
+    .setName('movimento')
+    .setDescription('Movimento no bairro — o teu cockpit pessoal (material, PvP, progressão)'),
 
   new SlashCommandBuilder()
     .setName('ranking')

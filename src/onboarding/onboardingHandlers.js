@@ -249,14 +249,14 @@ async function handleDenyButton(interaction, requestId) {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PAINEL DO CANAL INDIVIDUAL
-// Mesmas acções do painel bairrista — tudo o que é detalhe vive no Perfil
-// Operacional (clicar "Meu Ponto" abre cockpit com drill-downs).
+// Mesmas acções do painel bairrista — tudo o que é detalhe vive no
+// cockpit "Movimento no Bairro" (clicar abre embed com drill-downs).
 // ═══════════════════════════════════════════════════════════════════════════
 
 function buildBairristaChannelPanel() {
   const row1 = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('morador::registar_material').setLabel('Registar Material').setStyle(ButtonStyle.Success).setEmoji('📦'),
-    new ButtonBuilder().setCustomId('morador::meu_ponto').setLabel('Meu Ponto').setStyle(ButtonStyle.Primary).setEmoji('🏆'),
+    new ButtonBuilder().setCustomId('morador::movimento').setLabel('Movimento no Bairro').setStyle(ButtonStyle.Primary).setEmoji('🔥'),
     new ButtonBuilder().setCustomId('morador::ranking').setLabel('Ranking').setStyle(ButtonStyle.Primary).setEmoji('🥇'),
     new ButtonBuilder().setCustomId('perfil::encomendas').setLabel('Encomendas').setStyle(ButtonStyle.Secondary).setEmoji('📋'),
   );

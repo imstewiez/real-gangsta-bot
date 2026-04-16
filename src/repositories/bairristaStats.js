@@ -330,7 +330,7 @@ async function getDailySummary(date = new Date()) {
   };
 }
 
-// ── Perfil completo ("Meu Ponto") ──────────────────────────────────────────
+// ── Perfil completo ("Movimento no Bairro") ────────────────────────────────
 
 async function getFullProfile(discordId) {
   const memberId = await _memberId(discordId);

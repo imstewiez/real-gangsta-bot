@@ -4,9 +4,9 @@ const { BAIRRISTAS, BUTTONS, EMOJI } = require('../content');
 const { buttonFromDef, button, buttonRow } = require('../shared/ui/buttons');
 
 // Painel Casa — Bairrista.
-// 4 acções: Registar Material, Meu Ponto (cockpit com drill-downs),
-// Ranking, Encomendas. Tudo o que é detalhe vive dentro de "Meu Ponto"
-// → drill-downs (Material, PvP, Encomendas, Histórico, Progressão).
+// 4 acções: Registar Material, Movimento no Bairro (cockpit com drill-downs),
+// Ranking, Encomendas. Tudo o que é detalhe vive dentro de "Movimento no
+// Bairro" → drill-downs (Material, PvP, Encomendas, Histórico, Progressão).
 function buildBairristaPanel() {
   const embed = applyLogo(brandEmbed('HOUSE')
     .setTitle(BAIRRISTAS.PANEL.TITLE)
@@ -16,7 +16,7 @@ function buildBairristaPanel() {
 
   const row1 = buttonRow(
     buttonFromDef('morador::registar_material', B.ENTREGA),
-    buttonFromDef('morador::meu_ponto',         B.MEU_PONTO),
+    buttonFromDef('morador::movimento',         B.MOVIMENTO),
     buttonFromDef('morador::ranking',           B.RANKING),
     button({ customId: 'perfil::encomendas', label: 'Encomendas', style: 'Secondary', emoji: EMOJI.ENCOMENDA }),
   );

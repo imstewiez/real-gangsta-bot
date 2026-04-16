@@ -2,8 +2,8 @@
 /**
  * Perfil → Progressão (tier).
  *
- * Thin wrapper sobre handleProgressoTier — preserva a UX existente e
- * adiciona navegação de "Voltar ao Perfil".
+ * Reusa `getPromotionProgress` + barra wide e adiciona navegação de
+ * "Voltar ao Movimento no Bairro".
  */
 
 const { MessageFlags } = require('discord.js');

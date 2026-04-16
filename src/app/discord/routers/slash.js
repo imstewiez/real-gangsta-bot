@@ -17,18 +17,18 @@ const versao       = require('../../../queries/versao');
 const transfer     = require('../../../queries/transfer');
 
 const { handleRegisterKillButton } = require('../../../kills/killHandlers');
-const { handleMeuPonto } = require('../../../members/bairristaHandlers');
+const { handleMovimento } = require('../../../members/bairristaHandlers');
 
 const SLASH_ROUTES = {
   // ── Queries user-facing
-  stock:    stockCheck.handle,
-  ficha:    ficha.handle,
-  catalogo: catalogo.handle,
-  ranking:  ranking.handle,
-  saidas:   saidasMinhas.handle,
-  versao:   versao.handle,
-  ponto:    handleMeuPonto,
-  kill:     handleRegisterKillButton,
+  stock:     stockCheck.handle,
+  ficha:     ficha.handle,
+  catalogo:  catalogo.handle,
+  ranking:   ranking.handle,
+  saidas:    saidasMinhas.handle,
+  versao:    versao.handle,
+  movimento: handleMovimento,
+  kill:      handleRegisterKillButton,
 
   // ── Staff operacional
   audit:    audit.handle,

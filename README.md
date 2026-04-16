@@ -112,7 +112,7 @@ Toda a manutenção técnica corre em jobs automáticos — fora da UX do user.
 | `/stock` | Stock actual (geral ou de um item específico) |
 | `/catalogo` | Catálogo de materiais com preços |
 | `/ficha` | Ficha de um membro |
-| `/ponto` | **Perfil Operacional** — cockpit pessoal com drill-downs |
+| `/movimento` | **Movimento no Bairro** — cockpit pessoal com drill-downs |
 | `/ranking` | Rankings (semanal, mensal, histórico) |
 | `/saidas` | As tuas últimas saídas |
 | `/kill` | Registar uma kill |

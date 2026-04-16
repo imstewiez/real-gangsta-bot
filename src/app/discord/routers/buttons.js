@@ -4,7 +4,7 @@
  * `prefix` (startsWith). Primeira correspondência vence.
  *
  * Convenção:
- *   - `exact` para IDs fixos (ex: 'morador::meu_ponto')
+ *   - `exact` para IDs fixos (ex: 'morador::movimento')
  *   - `prefix` para IDs dinâmicos com payload (ex: 'avail::all::<sessId>')
  *
  * Um customId canónico por acção. Sem aliases legacy.
@@ -19,7 +19,7 @@ const {
   handleProgressButton, handleTopSemanalButton,
 } = require('../../../members/memberHandlers');
 const {
-  handleMeuPonto, handleRanking,
+  handleMovimento, handleRanking,
 } = require('../../../members/bairristaHandlers');
 const {
   handleRegistarMaterialButton, handleEncomendasButton,
@@ -101,17 +101,17 @@ const BUTTON_ROUTES = [
   exact('morador::totais',            handleMemberTotalsButton),
   exact('morador::progresso',         handleProgressButton),
   exact('morador::top_semanal',       handleTopSemanalButton),
-  exact('morador::meu_ponto',         handleMeuPonto),
+  exact('morador::movimento',         handleMovimento),
   exact('morador::ranking',           handleRanking),
   exact('morador::progresso_tier',    perfilProgressao.handle),
 
-  // Perfil Operacional — drill-downs do cockpit "Meu Ponto"
+  // Movimento no Bairro — drill-downs do cockpit
   exact('perfil::material',    perfilMaterial.handle),
   exact('perfil::pvp',         perfilPvp.handle),
   exact('perfil::encomendas',  perfilEncomendas.handle),
   exact('perfil::historico',   perfilHistorico.handle),
   exact('perfil::progressao',  perfilProgressao.handle),
-  exact('perfil::voltar',      handleMeuPonto),
+  exact('perfil::voltar',      handleMovimento),
 
   // Oficial
   exact('oficial::ver_saidas',     handleViewSaidasButton),

@@ -16,16 +16,16 @@ const BAIRRISTAS = {
       'O que mexes aqui conta — para a semana, para a subida, para o topo.\n' +
       '\n' +
       `${E.MATERIAL} **Registar** — entrega ou vende material\n` +
-      `${E.TOPO} **Meu Ponto** — o teu peso na casa\n` +
+      `${E.FIRMA} **Movimento no Bairro** — o teu peso na casa\n` +
       `${E.MEDAL_1} **Ranking** — quem rende mais\n` +
-      `${E.KILL} **Performance** — combate e saídas\n` +
+      `${E.ENCOMENDA} **Encomendas** — o que pediste à firma\n` +
       '\n' +
       `${inlineSign('HOUSE')}`,
   },
 
-  // ── Meu Ponto (ficha completa) ───────────────────────────────────────────
-  MEU_PONTO: {
-    TITLE: (name) => `${E.TOPO} O ponto de ${name}`,
+  // ── Movimento no Bairro (cockpit pessoal) ────────────────────────────────
+  MOVIMENTO: {
+    TITLE: (name) => `${E.FIRMA} Movimento de ${name} no bairro`,
     NO_DATA: 'Ainda não tens movimento na casa. Começa a trazer material.',
 
     // Secções

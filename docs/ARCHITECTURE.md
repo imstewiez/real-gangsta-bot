@@ -4,8 +4,8 @@
 
 - **DB = fonte de verdade.** Toda a lógica crítica fecha em PostgreSQL.
 - **Discord = interface operacional.** Painéis, modals, selects — o bot
-  publica, o utilizador interage. "Meu Ponto" é o **Perfil Operacional**:
-  um cockpit com KPIs topo e drill-downs navegáveis.
+  publica, o utilizador interage. **"Movimento no Bairro"** é o cockpit
+  pessoal — KPIs topo, loading bar de subida e drill-downs navegáveis.
 - **Sheets = projecção event-driven.** Reporting e analytics. Nunca verdade.
   Sem rebuild, sem sync manual — só debounce de eventos → `syncOne(tab)`.
 - **Jobs invisíveis.** Manutenção técnica (perms, reconcile, catalog prices)
@@ -51,7 +51,7 @@ src/
 │   ├── oficialPanel.js
 │   └── patraoDiZonaPanel.js + patraoDiZonaActions.js
 │
-├── perfil/                          # Perfil Operacional (drill-downs)
+├── perfil/                          # Drill-downs do Movimento no Bairro
 │   ├── perfilMaterial.js            # material com delta vs período
 │   ├── perfilPvp.js                 # K/D, spots, últimas saídas
 │   ├── perfilEncomendas.js          # Minhas Encomendas (ciclo de vida)
@@ -94,7 +94,7 @@ USER-FACING          STAFF OPERACIONAL
 /stock               /transfer
 /catalogo
 /ficha
-/ponto               ← abre Perfil Operacional
+/movimento           ← abre Movimento no Bairro (cockpit)
 /ranking
 /saidas
 /kill
@@ -104,21 +104,29 @@ USER-FACING          STAFF OPERACIONAL
 `/rebuild`, `/precario`, `/backfill`, `/perms`, `/reconcile`, `/syncsheet`,
 `/rebuildsheet`.
 
-## Perfil Operacional
+## Movimento no Bairro (cockpit pessoal)
 
-O `/ponto` (ou botão "Meu Ponto" no painel) abre o **cockpit pessoal**:
+O `/movimento` (ou botão "Movimento no Bairro" no painel) abre o cockpit:
 
 ```
 ┌─ KPI stripe ─────────────────────────────────────┐
-│ 🏆 #3/24 ↑2  · 📦 2.4k  · 🎯 12k · 2.3 K/D · 🔥 4w │
+│ 🏆 #3/24 ↑2 · 📦 2.4k · 🎯 12k · 2.3 K/D · 🔥 4w │
 ├──────────────────────────────────────────────────┤
-│ Material · Ranking · Combate · Streak · Progressão│
+│ 📈 Subida — Young Blood → Gangster Fodido        │
+│ ▰▰▰▰▰▰▰▰▰▰▰▱▱▱▱▱▱▱▱▱▱▱  48%                     │
+│ 📦 24.100 / 50.000 · falta 25.900 para subir     │
+├──────────────────────────────────────────────────┤
+│ Material · Ranking · Combate · Streak            │
 └──────────────────────────────────────────────────┘
    📦 Material  ⚔️ PvP  📋 Encomendas  📜 Histórico  📈 Progressão
 ```
 
+A **loading bar de subida** fica no topo do embed — é a primeira coisa
+que o user vê. Mostra progresso % até ao próximo tier baseado no
+material entregue + vendido (via `getPromotionProgress`).
+
 Cada botão abre uma vista ephemeral com detalhe + comparação temporal
-(ex: "+320 vs semana anterior") + botão "↩️ Voltar ao Perfil".
+(ex: "+320 vs semana anterior") + botão "↩️ Voltar ao Movimento".
 
 ## Event bus
 
