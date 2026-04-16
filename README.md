@@ -100,10 +100,10 @@ Stock é sempre calculado a partir do ledger — nunca sobreposto.
 - Stickys configuráveis via painel da chefia (botão Stickys).
 - `availability:daily` e `radio:current` são source_keys built-in com renderers automáticos.
 
-## Slash commands (17 — todos de 1 palavra, sem prefixo)
+## Slash commands (10 — todos de 1 palavra, sem prefixo)
 
-Filosofia: **painéis são a via principal**. Slash commands são atalhos rápidos
-e ferramentas de manutenção. Tudo o que é uso diário está em painel.
+Filosofia: **painéis são a via principal**. Slash commands são atalhos rápidos.
+Toda a manutenção técnica corre em jobs automáticos — fora da UX do user.
 
 ### User-facing (qualquer membro)
 | Comando | Descrição |
@@ -112,7 +112,7 @@ e ferramentas de manutenção. Tudo o que é uso diário está em painel.
 | `/stock` | Stock actual (geral ou de um item específico) |
 | `/catalogo` | Catálogo de materiais com preços |
 | `/ficha` | Ficha de um membro |
-| `/ponto` | O teu ponto na casa (material, ranking, combate, progresso) |
+| `/ponto` | **Perfil Operacional** — cockpit pessoal com drill-downs |
 | `/ranking` | Rankings (semanal, mensal, histórico) |
 | `/saidas` | As tuas últimas saídas |
 | `/kill` | Registar uma kill |
@@ -123,39 +123,23 @@ e ferramentas de manutenção. Tudo o que é uso diário está em painel.
 | `/audit` | Logs de auditoria recentes |
 | `/transfer` | Mover material entre casas |
 
-### Admin técnico
-| Comando | Descrição |
-|---|---|
-| `/rebuild` | Recalcular rankings mensais + all-time |
-| `/precario` | Carregar preços do precário oficial |
-| `/backfill` | Importar membros Discord com role RP |
-
-### Manutenção / emergência
-| Comando | Descrição |
-|---|---|
-| `/perms` | Sincronizar permissões Discord |
-| `/reconcile` | Detectar drift DB↔Discord |
-| `/syncsheet` | Sincronizar Google Sheet (tab opcional) |
-| `/rebuildsheet` | Reconstruir Google Sheet (apaga e recria) |
-
-### Eliminados (agora automáticos)
-- ~~`/rg-sync-panels`~~ → painéis auto-publicam no boot + sticky auto-repost
-- ~~`/rg-layout-check`~~ → `/reconcile` cobre detecção de drift
-- ~~`/rg-retention-run`~~ → scheduler corre retenção diariamente
-- ~~`/rg-data-health`~~ → fundido em `/versao` (staff vê saúde)
+### Erradicados (agora jobs automáticos no scheduler)
+- `/rebuild` → `monthly_rankings` (6h)
+- `/precario` → `catalog_prices` (7d)
+- `/backfill` → onboarding cobre member lifecycle
+- `/perms` → `role_invariants` diário (apply)
+- `/reconcile` → `reconcile_daily` (dry-run diário)
+- `/syncsheet` / `/rebuildsheet` → Sheets é projecção event-driven pura
 
 ## CLI scripts
 
 ```bash
-# Bootstrap de stock inicial (ledger saldo_inicial)
+# Bootstrap de stock inicial (ledger saldo_inicial) — one-time
 npm run stock:bootstrap              # dry-run (default)
 npm run stock:bootstrap:apply        # aplica (inclui --confirm)
-
-# Sync de estrutura Discord (via slash command)
-# /perms modo:dry-run              — verifica permissões
-# /perms modo:apply                — aplica permissões
-# Painéis: republicam-se automaticamente no boot (PANEL_BOOTSTRAP_ON_READY)
 ```
+
+Todo o resto é automático (scheduler em `src/jobs/scheduler.js`).
 
 ## Painéis
 
@@ -189,8 +173,13 @@ Sync idempotente: nunca apaga, apenas renomeia/move/cria. Canais fora do templat
 
 ## Documentação adicional
 
-- [`docs/AUDIT.md`](docs/AUDIT.md) — auditoria do projecto pré-refactor
-- [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — lista completa de mudanças e rationale
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — composition root, routers,
+  event bus, Perfil Operacional, jobs, session store
+- [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — lista completa de mudanças
+- [`docs/DATA_LIFECYCLE.md`](docs/DATA_LIFECYCLE.md) — normativa lifecycle
+- [`docs/SHEETS.md`](docs/SHEETS.md) — camada Sheets (projection-only)
+- [`docs/UX_STYLE_GUIDE.md`](docs/UX_STYLE_GUIDE.md) — tone, voice, emojis
+- [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md) — code style
 
 ## Secrets
 

@@ -65,8 +65,9 @@ function startAll(client) {
     return await runRetention({ dryRun: false, actor: 'system:scheduler' });
   });
 
-  // Reconcile drift Discord↔DB — corre 1x por dia (dry-run apenas por
-  // padrão). Chefia corre com /rg-reconcile apply se quiser corrigir.
+  // Reconcile drift Discord↔DB — corre 1x por dia (dry-run). Os fixes
+  // aplicam-se diariamente via `role_invariants` acima. Este job existe
+  // para gauges Prometheus + relatório de drift em /versao (data health).
   registerJob('reconcile_daily', 24 * 60 * 60 * 1000, async (client) => {
     const guild = client?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
     if (!guild) return { skipped: 'no_guild' };
