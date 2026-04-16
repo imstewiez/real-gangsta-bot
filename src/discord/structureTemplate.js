@@ -502,11 +502,18 @@ const PERMS_BOAS_VINDAS = {
   reason: 'boas-vindas — só Pendentes + staff',
 };
 
-// Painel público (painel-bairristas) — todos vêem, só bot escreve
+// Painel público (painel-bairristas) — staff + bairristas vêem, só bot escreve.
+// ViewChannel é explícito (não depende da categoria): garante que o painel
+// funciona mesmo que o canal tenha sido movido entre categorias ou fique
+// com overwrites stale que quebrem a inheritance da categoria GUETTO.
 const PERMS_PAINEL_READ_ONLY = {
-  denyEveryone: _PANEL_WRITE_DENIES,
-  allow: [{ roleSources: ['bot'], perms: _BOT_PANEL_PERMS }],
-  reason: 'painel — read-only, só bot publica',
+  denyEveryone: ['ViewChannel', ..._PANEL_WRITE_DENIES],
+  allow: [
+    { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'ReadMessageHistory'] },
+    { roleSources: ['bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'ReadMessageHistory'] },
+    { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
+  ],
+  reason: 'painel público — staff + bairristas vêem, só bot publica',
 };
 
 // Painel chefia — só comando vê, read-only excepto bot
