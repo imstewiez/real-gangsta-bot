@@ -9,7 +9,6 @@
  * Job corre hourly no scheduler.
  */
 
-const { EmbedBuilder } = require('discord.js');
 const CONFIG = require('../config');
 const { query, queryWithTransaction } = require('../db');
 const { log, warn } = require('../logger');
@@ -100,12 +99,12 @@ async function checkAndAlert({ dryRun = false, throttleHours = 24 } = {}) {
   const byCat = {};
   for (const b of breaches) (byCat[b.category] = byCat[b.category] || []).push(b);
 
-  const embed = new EmbedBuilder()
-    .setTitle('⚠️ Alerta de Stock Crítico')
-    .setDescription(`${breaches.length} item${breaches.length !== 1 ? 's' : ''} abaixo do threshold. Repor quando possível.`)
-    .setColor(0xE67E22)
-    .setTimestamp(new Date())
-    .setFooter({ text: 'Firma RedWood · Stock Alerts' });
+  const { brandEmbed } = require('../shared/embedBuilders');
+  const { EMOJI } = require('../content');
+  const embed = brandEmbed('MOVEMENT')
+    .setTitle(`${EMOJI.WARN} Alerta de Stock Crítico`)
+    .setDescription(`${breaches.length} item${breaches.length !== 1 ? 's' : ''} abaixo do threshold. Repor quando der.`)
+    .setColor(0xE67E22);
 
   for (const [cat, items] of Object.entries(byCat)) {
     const lines = items
@@ -115,7 +114,7 @@ async function checkAndAlert({ dryRun = false, throttleHours = 24 } = {}) {
         const severity = pct < 20 ? '🔴' : pct < 50 ? '🟠' : '🟡';
         return `${severity} **${b.name}** — \`${b.balance}\` / \`${b.alert_threshold}\` (${pct}%)`;
       });
-    embed.addFields({ name: `📦 ${cat.toUpperCase()}`, value: lines.join('\n').slice(0, 1024), inline: false });
+    embed.addFields({ name: `${EMOJI.MATERIAL} ${cat.toUpperCase()}`, value: lines.join('\n').slice(0, 1024), inline: false });
   }
 
   await queueMessage(ch.id, { embeds: [embed] }).catch(e => warn(`[STOCK_ALERT] post falhou: ${e.message}`));

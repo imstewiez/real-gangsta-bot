@@ -23,12 +23,11 @@ async function sendAuditToChannel(client, { title, description, fields = [], col
   try {
     const channel = await client.channels.fetch(CONFIG.AUDIT_LOG_CHANNEL_ID);
     if (!channel) return;
-    const { EmbedBuilder } = require('discord.js');
-    const embed = new EmbedBuilder()
+    const { brandEmbed } = require('../shared/embedBuilders');
+    const embed = brandEmbed('SHORT')
       .setTitle(title)
       .setDescription(description || null)
-      .setColor(color)
-      .setTimestamp();
+      .setColor(color);
     if (fields.length) embed.addFields(fields);
     await channel.send({ embeds: [embed] });
   } catch (e) {
