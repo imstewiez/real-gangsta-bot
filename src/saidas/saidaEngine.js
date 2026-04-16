@@ -320,20 +320,23 @@ async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
 
   const participantType = data.participantType || 'caracterizado';
 
-  // Guard 2: type-flip silencioso. Se o user já está inscrito com outro
-  // tipo, rejeita — tem de sair explicitamente e voltar a inscrever-se.
-  // Antes, ON CONFLICT DO UPDATE no repo fazia merge silencioso e a
-  // pessoa ficava como ambos (caracterizado ↔ trabalhador) sem saber.
+  // Guard 2: dupla inscrição silenciosa. Se o user já está inscrito
+  // (qualquer tipo, qualquer arma), rejeita. Tem de cancelar o registo
+  // primeiro via "Cancelar Registo" no painel da saída.
+  // Antes, ON CONFLICT DO UPDATE permitia re-inscrição → mudança de
+  // tipo / arma sem audit. Ex.: inscrito com "Arma da Org: Bullpup Rifle"
+  // → clica outra vez → pica "Arma Própria: X" → fica com X sem audit.
   const existing = (await saidaRepo.getParticipants(saidaId)).find(p => p.member_id === member.id);
-  if (existing && existing.participant_type !== participantType) {
+  if (existing) {
+    const currentType = existing.participant_type;
     throw new Error(
-      `Já estás inscrito como **${existing.participant_type}**. ` +
-      `Usa o botão "Sair da Saída" primeiro e depois regista-te como ${participantType}.`
+      `Já estás inscrito como **${currentType}** nesta saída. ` +
+      `Se queres mudar (tipo ou arma), usa **"Cancelar Registo"** no painel da saída e volta a inscrever-te.`
     );
   }
 
-  // Guard 3: limite 12 caracterizados (só para novos registos; mantém tipo = upsert)
-  if (participantType === 'caracterizado' && !existing) {
+  // Guard 3: limite 12 caracterizados.
+  if (participantType === 'caracterizado') {
     const maxCharacterized = saida.max_participants || 12;
     const currentCount = await saidaRepo.countCharacterized(saidaId);
     if (currentCount >= maxCharacterized) {

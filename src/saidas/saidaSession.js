@@ -254,6 +254,20 @@ async function handleSessionCaracterizado(interaction) {
   if (isDuplicate(interaction.id)) return;
   const saidaId = parseInt(interaction.customId.split('::')[2]);
 
+  // Guard pré-fluxo: se já está inscrito, diz já aqui (não deixa começar
+  // a escolher arma só para apanhar erro no submit).
+  const member = await memberRepo.findByDiscordId(interaction.user.id);
+  if (member) {
+    const existing = (await saidaRepo.getParticipants(saidaId)).find(p => p.member_id === member.id);
+    if (existing) {
+      return safeReply(interaction, {
+        content: `${EMOJI.BLOQUEADO} Já estás inscrito como **${existing.participant_type}** na saída #${saidaId}. ` +
+                 `Usa **"Cancelar Registo"** no painel da saída se queres mudar.`,
+        flags: MessageFlags.Ephemeral,
+      }, { messageClass: 'WARN' });
+    }
+  }
+
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`saida::source::${saidaId}::own`)
@@ -379,6 +393,19 @@ async function handleSessionTrabalhador(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const saidaId = parseInt(interaction.customId.split('::')[2]);
+
+  // Guard pré-fluxo (igual ao caracterizado)
+  const member = await memberRepo.findByDiscordId(interaction.user.id);
+  if (member) {
+    const existing = (await saidaRepo.getParticipants(saidaId)).find(p => p.member_id === member.id);
+    if (existing) {
+      return safeReply(interaction, {
+        content: `${EMOJI.BLOQUEADO} Já estás inscrito como **${existing.participant_type}** na saída #${saidaId}. ` +
+                 `Usa **"Cancelar Registo"** se queres mudar.`,
+      }, { messageClass: 'WARN' });
+    }
+  }
+
   try {
     await saidaEngine.addParticipant(saidaId, interaction.user.id, {
       participantType: 'trabalhador',
