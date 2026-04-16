@@ -32,14 +32,27 @@ const { normalizeChannelNameToShort } = require('../discord/structureTemplate');
  * @param {Guild} guild
  * @param {string} ownerId — Discord ID do bairrista dono
  * @param {string} botId — Discord ID do bot
+ * @param {{ ownerPresent?: boolean }} opts — se ownerPresent=false, omite
+ *   o overwrite do dono (ex.: membro saiu do servidor). Sem esta flag,
+ *   discord.js rejeita permissionOverwrites.set com "Supplied parameter
+ *   is not a cached User or Role". Default true (onboarding + flows
+ *   onde o owner está sempre presente).
  * @returns {Array} overwrites prontos para `channels.create` ou `overwrites.set`
  */
-function buildBairristaChannelOverwrites(guild, ownerId, botId) {
+function buildBairristaChannelOverwrites(guild, ownerId, botId, opts = {}) {
+  const ownerPresent = opts.ownerPresent !== false;
+
   const overwrites = [
     { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-    { id: ownerId,  allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
     { id: botId,    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageMessages] },
   ];
+
+  if (ownerPresent) {
+    overwrites.push({
+      id: ownerId,
+      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+    });
+  }
 
   // Comando total (Manda-Chuva, Kingpin) — full control
   for (const roleId of CONFIG.COMMAND_ROLE_IDS) {
@@ -120,7 +133,17 @@ async function reconcileBairristaChannels(guild, opts = {}) {
     }
     processedChannelIds.add(channel.id);
 
-    const overwrites = buildBairristaChannelOverwrites(guild, row.discord_id, botId);
+    // Guard: owner tem de estar no guild. Se saiu do servidor,
+    // permissionOverwrites.set() rejeita com "Supplied parameter is not
+    // a cached User or Role". Verifica + pede fetch best-effort; se não
+    // resolve, constrói overwrites SEM a entrada do owner (staff + denies
+    // ainda aplicam). Evita erros durante reconcile.
+    let ownerPresent = guild.members.cache.has(row.discord_id);
+    if (!ownerPresent) {
+      const fetched = await guild.members.fetch(row.discord_id).catch(() => null);
+      ownerPresent = Boolean(fetched);
+    }
+    const overwrites = buildBairristaChannelOverwrites(guild, row.discord_id, botId, { ownerPresent });
 
     // Rename: pattern-based (database-independent). Lê o nome actual do canal
     // e substitui bold(legacy label) por bold(short label) se encontrar.
