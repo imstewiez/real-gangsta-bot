@@ -3,10 +3,10 @@ const { ChannelType } = require('discord.js');
 const CONFIG = require('./config');
 const { getStateKey, setStateKey } = require('./state');
 const { log, warn } = require('./logger');
-const { buildBairristaPanel } = require('./panels/moradorPanel');
+const { buildBairristaPanel } = require('./panels/bairristaPanel');
 const { buildOficialPanel } = require('./panels/oficialPanel');
 const { buildChefiaPanel } = require('./panels/chefiaPanel');
-const { buildPatraoDiZonaPanel } = require('./panels/chefeMoradoresPanel');
+const { buildPatraoDiZonaPanel } = require('./panels/patraoDiZonaPanel');
 const { buildEntradaPanel } = require('./panels/entradaPanel');
 const { CATEGORY_BY_KEY, bold } = require('./discord/structureTemplate');
 

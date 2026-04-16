@@ -37,7 +37,7 @@ const CONFIG = {
   // Supervisão (oficiais seniores)
   OG_ROLE_ID: optId('OG_ROLE_ID', '1490397683070930945'),
   REAL_GANGSTER_ROLE_ID: optId('REAL_GANGSTER_ROLE_ID', '1491223266487173311'),
-  // Patrão di Zona — chefe do bairro (antes: "Chefe de Moradores")
+  // Patrão di Zona — chefe do bairro dos Bairristas
   PATRAO_DI_ZONA_ROLE_ID: optId('PATRAO_DI_ZONA_ROLE_ID', '1490397679753101312'),
   // Bairristas — tier ordering (entry → topo):
   //   young_blood (tier 1, entrada) → o_gunao (tier 2, após 25k€) → gangster_fodido (tier 3, após 50k€).
@@ -45,10 +45,8 @@ const CONFIG = {
   YOUNG_BLOOD_ROLE_ID: optId('YOUNG_BLOOD_ROLE_ID', '1491213753235275806'),
   O_GUNAO_ROLE_ID: optId('O_GUNAO_ROLE_ID', '1491213423613317220'),
   GANGSTER_FODIDO_ROLE_ID: optId('GANGSTER_FODIDO_ROLE_ID', '1491213170961022997'),
-  // Role base obrigatória para qualquer bairrista (invariante). Aceita env
-  // antiga MORADORES_BASE_ROLE_ID como fallback (migração de domínio).
-  BAIRRISTAS_BASE_ROLE_ID: optId('BAIRRISTAS_BASE_ROLE_ID', optId('MORADORES_BASE_ROLE_ID', '1490397684597653634')),
-  get MORADORES_BASE_ROLE_ID() { return this.BAIRRISTAS_BASE_ROLE_ID; }, // legacy alias
+  // Role base obrigatória para qualquer bairrista (invariante).
+  BAIRRISTAS_BASE_ROLE_ID: optId('BAIRRISTAS_BASE_ROLE_ID', '1490397684597653634'),
   // Pendente — atribuído automaticamente a quem acaba de chegar ao servidor.
   // Único role que vê boas-vindas. Removido quando o pedido de tag é aprovado.
   PENDENTE_ROLE_ID: optId('PENDENTE_ROLE_ID'),
@@ -78,8 +76,6 @@ const CONFIG = {
   get PATRAO_DI_ZONA_ROLE_IDS() {
     return [this.PATRAO_DI_ZONA_ROLE_ID].filter(Boolean);
   },
-  /** Alias legado — antes chamava-se "Chefe de Moradores". */
-  get CHEFE_MORADORES_ROLE_IDS() { return this.PATRAO_DI_ZONA_ROLE_IDS; },
 
   /** Tiers de bairrista (ordem: entry → topo). */
   get BAIRRISTA_TIER_ROLE_IDS() {
@@ -87,28 +83,17 @@ const CONFIG = {
   },
 
   /** Tier por defeito para entrada no BAIRRO (set pela onboardingEngine). */
-  BAIRRISTA_DEFAULT_TIER: process.env.BAIRRISTA_DEFAULT_TIER || process.env.MORADOR_DEFAULT_TIER || 'young_blood',
+  BAIRRISTA_DEFAULT_TIER: process.env.BAIRRISTA_DEFAULT_TIER || 'young_blood',
 
-  // ── Promoção automática por material (valor em €) ─────────────────────────
-  // Ordem natural: YB (entry) → 25k€ → O Gunão → 50k€ → Gangster Fodido.
-  // Aceitamos também os nomes da Fase 2 como fallback: a lógica do env
-  // descrevia a mesma "primeira promoção" e "segunda promoção", só a ordem
-  // semântica mudou.
-  PROMO_YOUNG_BLOOD_TO_GUNAO: Number(
-    process.env.PROMO_YOUNG_BLOOD_TO_GUNAO ||
-    process.env.PROMO_GUNAO_TO_YOUNG_BLOOD ||  // Phase 2 fallback (primeiro threshold)
-    25000
-  ),
-  PROMO_GUNAO_TO_GANGSTER_FODIDO: Number(
-    process.env.PROMO_GUNAO_TO_GANGSTER_FODIDO ||
-    process.env.PROMO_YOUNG_BLOOD_TO_GANGSTER_FODIDO ||  // Phase 2 fallback (segundo threshold)
-    50000
-  ),
+  // ── Promoção automática por material (unidades entregues) ──────────────────
+  // Young Blood → O Gunão aos 25.000 itens
+  // O Gunão → Gangster Fodido aos 50.000 itens
+  PROMO_YOUNG_BLOOD_TO_GUNAO: Number(process.env.PROMO_YOUNG_BLOOD_TO_GUNAO || 25000),
+  PROMO_GUNAO_TO_GANGSTER_FODIDO: Number(process.env.PROMO_GUNAO_TO_GANGSTER_FODIDO || 50000),
 
   // ── Category IDs ──────────────────────────────────────────────────────────
-  // Canais individuais dos bairristas (antes: moradores).
-  BAIRRISTA_TOPICOS_CATEGORY_ID: optId('BAIRRISTA_TOPICOS_CATEGORY_ID', optId('MORADOR_TOPICOS_CATEGORY_ID', '1491543491233448006')),
-  BAIRRISTA_ARQUIVO_CATEGORY_ID: optId('BAIRRISTA_ARQUIVO_CATEGORY_ID', optId('MORADOR_ARQUIVO_CATEGORY_ID')),
+  BAIRRISTA_TOPICOS_CATEGORY_ID: optId('BAIRRISTA_TOPICOS_CATEGORY_ID', '1491543491233448006'),
+  BAIRRISTA_ARQUIVO_CATEGORY_ID: optId('BAIRRISTA_ARQUIVO_CATEGORY_ID'),
 
   // ── Channel IDs ───────────────────────────────────────────────────────────
   TAG_REQUEST_CHANNEL_ID: optId('TAG_REQUEST_CHANNEL_ID', '1490397785948688529'),
@@ -121,12 +106,10 @@ const CONFIG = {
   // Se vazio, faz fallback para AUDIT_LOG_CHANNEL_ID.
   SAIDA_RESULTS_CHANNEL_ID: optId('SAIDA_RESULTS_CHANNEL_ID'),
   STRUCTURE_SYNC_LOG_CHANNEL_ID: optId('STRUCTURE_SYNC_LOG_CHANNEL_ID'),
-  PANEL_BAIRRISTAS_CHANNEL_ID: optId('PANEL_BAIRRISTAS_CHANNEL_ID', optId('PANEL_MORADORES_CHANNEL_ID')),
+  PANEL_BAIRRISTAS_CHANNEL_ID: optId('PANEL_BAIRRISTAS_CHANNEL_ID'),
   PANEL_OFICIAIS_CHANNEL_ID: optId('PANEL_OFICIAIS_CHANNEL_ID'),
   PANEL_CHEFIA_CHANNEL_ID: optId('PANEL_CHEFIA_CHANNEL_ID'),
-  PANEL_PATRAO_DI_ZONA_CHANNEL_ID: optId('PANEL_PATRAO_DI_ZONA_CHANNEL_ID', optId('PANEL_CHEFE_MORADORES_CHANNEL_ID')),
-  get PANEL_MORADORES_CHANNEL_ID() { return this.PANEL_BAIRRISTAS_CHANNEL_ID; }, // legacy alias
-  get PANEL_CHEFE_MORADORES_CHANNEL_ID() { return this.PANEL_PATRAO_DI_ZONA_CHANNEL_ID; }, // legacy alias
+  PANEL_PATRAO_DI_ZONA_CHANNEL_ID: optId('PANEL_PATRAO_DI_ZONA_CHANNEL_ID'),
 
   // ── Comportamento ─────────────────────────────────────────────────────────
   ARCHIVE_ON_PROMOTION: optBool('ARCHIVE_ON_PROMOTION', true),

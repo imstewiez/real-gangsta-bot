@@ -51,7 +51,7 @@ function registerBuiltinRenderers() {
     return buildEntradaPanel();
   });
   const bairristaPanel = async () => {
-    const { buildBairristaPanel } = require('../panels/moradorPanel');
+    const { buildBairristaPanel } = require('../panels/bairristaPanel');
     return buildBairristaPanel();
   };
   registerRenderer('panel:bairristas', bairristaPanel);
@@ -65,7 +65,7 @@ function registerBuiltinRenderers() {
     return buildChefiaPanel();
   });
   const patraoPanel = async () => {
-    const { buildPatraoDiZonaPanel } = require('../panels/chefeMoradoresPanel');
+    const { buildPatraoDiZonaPanel } = require('../panels/patraoDiZonaPanel');
     return buildPatraoDiZonaPanel();
   };
   registerRenderer('panel:patrao_di_zona', patraoPanel);

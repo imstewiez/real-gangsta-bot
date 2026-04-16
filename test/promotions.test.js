@@ -93,24 +93,4 @@ describe('tier hierarchy & promotion chain', () => {
   });
 });
 
-describe('PROMOTIONS thresholds via env fallback', () => {
-  it('lê nomes Fase-2 (PROMO_GUNAO_TO_YOUNG_BLOOD) como fallback do threshold 25k', () => {
-    // Limpa vars novas, define só as de Fase 2
-    delete process.env.PROMO_YOUNG_BLOOD_TO_GUNAO;
-    delete process.env.PROMO_GUNAO_TO_GANGSTER_FODIDO;
-    process.env.PROMO_GUNAO_TO_YOUNG_BLOOD = '12345';
-    process.env.PROMO_YOUNG_BLOOD_TO_GANGSTER_FODIDO = '67890';
-
-    const cfgPath = require.resolve('../src/config');
-    delete require.cache[cfgPath];
-    const fresh = require('../src/config');
-
-    assert.equal(fresh.PROMO_YOUNG_BLOOD_TO_GUNAO, 12345);
-    assert.equal(fresh.PROMO_GUNAO_TO_GANGSTER_FODIDO, 67890);
-
-    // Cleanup
-    delete process.env.PROMO_GUNAO_TO_YOUNG_BLOOD;
-    delete process.env.PROMO_YOUNG_BLOOD_TO_GANGSTER_FODIDO;
-    delete require.cache[cfgPath];
-  });
-});
+// Phase 2 env fallbacks removidos — config usa apenas os nomes finais.
