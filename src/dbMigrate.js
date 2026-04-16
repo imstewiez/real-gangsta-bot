@@ -955,6 +955,29 @@ const MIGRATIONS = [
       ALTER TABLE operation_participants ADD COLUMN IF NOT EXISTS weapon_item_id INT REFERENCES items(id);
       CREATE INDEX IF NOT EXISTS idx_op_part_weapon_item ON operation_participants(weapon_item_id);
     `
+  },
+  {
+    id: 24,
+    name: 'items_category_align_with_catalog',
+    // Migration #19 criou o CHECK com naming antigo (armas, acessorios,
+    // componentes, etc). O catálogo (config/full-inventory.json) usa
+    // naming diferente (armas_fogo, armas_brancas, dinheiro,
+    // sucata_industria, quimicos_droga, comida_pesca, equipamento).
+    // O seed dá violação de CHECK. Migração: dropa o constraint antigo
+    // e cria novo com a união das duas listas para tolerar histórico.
+    up: `
+      ALTER TABLE items DROP CONSTRAINT IF EXISTS items_category_valid;
+      ALTER TABLE items ADD CONSTRAINT items_category_valid
+        CHECK (category IN (
+          -- Catálogo actual (config/full-inventory.json)
+          'dinheiro', 'metais', 'sucata_industria', 'quimicos_droga',
+          'comida_pesca', 'equipamento', 'municoes', 'armas_fogo', 'armas_brancas',
+          -- Legacy (migração #19) — mantidos para não partir rows antigas
+          'armas', 'acessorios', 'reciclagem', 'componentes', 'madeiras',
+          'quimicos', 'electronica', 'droga', 'comida', 'pesca',
+          'texteis', 'utilidade', 'outros'
+        )) NOT VALID;
+    `
   }
 ];
 
