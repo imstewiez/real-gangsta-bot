@@ -36,10 +36,35 @@ pool.on('error', (err) => {
   console.error('[DB] Erro inesperado no pool de conexões:', err.message);
 });
 
+// Threshold para log de queries lentas (ms). Configurável via DB_SLOW_QUERY_MS.
+const SLOW_QUERY_MS = parseInt(process.env.DB_SLOW_QUERY_MS, 10) || 500;
+
+// Métricas de query (lazy — evita dependência circular no load)
+let _queryCounter = null;
+let _slowQueryCounter = null;
+function _ensureMetrics() {
+  if (_queryCounter) return;
+  try {
+    const m = require('./lib/metrics');
+    _queryCounter = m.counter('rg_db_queries_total', 'Total DB queries executed');
+    _slowQueryCounter = m.counter('rg_db_slow_queries_total', 'DB queries exceeding slow threshold');
+  } catch { /* metrics não carregado ainda */ }
+}
+
 async function query(text, params) {
+  _ensureMetrics();
+  const start = Date.now();
   const client = await pool.connect();
   try {
-    return await client.query(text, params);
+    const result = await client.query(text, params);
+    const duration = Date.now() - start;
+    if (_queryCounter) _queryCounter.inc();
+    if (duration >= SLOW_QUERY_MS) {
+      if (_slowQueryCounter) _slowQueryCounter.inc();
+      const preview = String(text).replace(/\s+/g, ' ').slice(0, 120);
+      console.warn(`[DB:SLOW] ${duration}ms · ${preview}${params?.length ? ` · params: ${params.length}` : ''}`);
+    }
+    return result;
   } finally {
     client.release();
   }
