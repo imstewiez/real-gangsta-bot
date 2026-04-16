@@ -20,31 +20,55 @@ const MIN_ROWS = 10;
 const MIN_COLS = 1;
 
 /**
- * Garante que a tab tem pelo menos {rows, cols}. Se já tiver, não faz nada.
- * Útil para tabs que podem crescer muito (ex: saidas com 500 registos).
+ * Garante que a tab tem pelo menos {rows, cols}. Idempotente e max-aware
+ * por sheetId no mesmo batch — chamadas múltiplas (ex.: pre-grow em
+ * syncEngine + grow em cada tab) consolidam-se no MÁXIMO pedido.
+ *
+ * Antes, updateSheetProperties SOBRESCREVE o rowCount/columnCount. Duas
+ * chamadas em sequência com valores diferentes deixavam o menor (último
+ * a ser aplicado) → writes após esse ponto falhavam com
+ * "beyond the last requested row".
  */
 function growSheet(batch, sheetId, { rows, cols }) {
-  const req = {
-    updateSheetProperties: {
-      properties: {
-        sheetId,
-        gridProperties: {},
-      },
-      fields: '',
-    },
+  if (!batch._growTargets) batch._growTargets = new Map();
+
+  const current = batch._growTargets.get(sheetId) || { rows: 0, cols: 0, reqIndex: -1 };
+  const target = {
+    rows: Math.max(current.rows, rows > 0 ? rows : 0),
+    cols: Math.max(current.cols, cols > 0 ? cols : 0),
+    reqIndex: current.reqIndex,
   };
+
+  // Se nada aumenta, salta.
+  if (target.rows === current.rows && target.cols === current.cols && target.reqIndex >= 0) return;
+
+  const gridProperties = {};
   const fields = [];
-  if (rows && rows > 0) {
-    req.updateSheetProperties.properties.gridProperties.rowCount = rows;
+  if (target.rows > 0) {
+    gridProperties.rowCount = target.rows;
     fields.push('gridProperties.rowCount');
   }
-  if (cols && cols > 0) {
-    req.updateSheetProperties.properties.gridProperties.columnCount = cols;
+  if (target.cols > 0) {
+    gridProperties.columnCount = target.cols;
     fields.push('gridProperties.columnCount');
   }
   if (!fields.length) return;
-  req.updateSheetProperties.fields = fields.join(',');
-  batch.addRule(req);
+
+  const req = {
+    updateSheetProperties: {
+      properties: { sheetId, gridProperties },
+      fields: fields.join(','),
+    },
+  };
+
+  if (target.reqIndex >= 0) {
+    // Actualiza o request existente no batch (max semantics).
+    batch.requests[target.reqIndex] = req;
+  } else {
+    batch.addRule(req);
+    target.reqIndex = batch.requests.length - 1;
+  }
+  batch._growTargets.set(sheetId, target);
 }
 
 /**
