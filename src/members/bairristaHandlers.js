@@ -21,13 +21,16 @@ const {
 const { BAIRRISTAS, EMOJI } = require('../content');
 const { getPromotionProgress, formatTierName } = require('./autoPromotionEngine');
 const { weekBounds } = require('../util');
+const { buttonRow, button } = require('../shared/ui/buttons');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MEU PONTO — ficha completa do Bairrista
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleMeuPonto(interaction) {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  }
 
   const profile = await bairristaStatsRepo.getFullProfile(interaction.user.id);
   if (!profile) {
@@ -45,6 +48,25 @@ async function handleMeuPonto(interaction) {
   // ── Material ─────────────────────────────────────────────────────────
   const fmtQty = (n) => (n || 0).toLocaleString('pt-PT');
   const fmtVal = (n) => `${(n || 0).toLocaleString('pt-PT', { maximumFractionDigits: 0 })}€`;
+
+  // ── KPI stripe topo — leitura em 3 segundos ──────────────────────────
+  const kpiParts = [];
+  if (ranking.week) {
+    let rk = `${rankBadge(ranking.week.position)} #${ranking.week.position}/${ranking.week.total}`;
+    if (evolution?.positionDelta != null) {
+      if (evolution.positionDelta > 0) rk += ` ↑${evolution.positionDelta}`;
+      else if (evolution.positionDelta < 0) rk += ` ↓${Math.abs(evolution.positionDelta)}`;
+    }
+    kpiParts.push(rk);
+  }
+  if (material.week?.totalQty) kpiParts.push(`${EMOJI.MATERIAL} ${fmtQty(material.week.totalQty)}`);
+  if (saida && saida.total > 0) {
+    kpiParts.push(`${EMOJI.KILL} ${saida.kills}k · ${saida.kdRatio.toFixed(1)} K/D`);
+  }
+  if (streak?.currentStreak > 0) kpiParts.push(`🔥 ${streak.currentStreak}w`);
+  if (kpiParts.length) {
+    embed.setDescription(kpiParts.join(' · '));
+  }
 
   const weekLine = material.week
     ? `**${fmtQty(material.week.totalQty)}** (${material.week.deliveries}e · ${material.week.sales}v)`
@@ -136,7 +158,16 @@ async function handleMeuPonto(interaction) {
     }
   }
 
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  // ── Drill-down navegacional — abre vistas detalhadas ephemeras ───────
+  const row1 = buttonRow(
+    button({ customId: 'perfil::material',    label: 'Material',    style: 'Secondary', emoji: '📦' }),
+    button({ customId: 'perfil::pvp',         label: 'PvP & Saídas', style: 'Secondary', emoji: '⚔️' }),
+    button({ customId: 'perfil::encomendas',  label: 'Encomendas',  style: 'Secondary', emoji: '📋' }),
+    button({ customId: 'perfil::historico',   label: 'Histórico',   style: 'Secondary', emoji: '📜' }),
+    button({ customId: 'perfil::progressao',  label: 'Progressão',  style: 'Secondary', emoji: '🏆' }),
+  );
+
+  return safeReply(interaction, { embeds: [embed], components: [row1] }, { dismissible: true });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -52,6 +52,13 @@ const {
 const chefiaActions       = require('../../../panels/chefiaActions');
 const patraoDiZonaActions = require('../../../panels/patraoDiZonaActions');
 
+// ── Perfil Operacional (drill-downs) ───────────────────────────────────────
+const perfilMaterial    = require('../../../perfil/perfilMaterial');
+const perfilPvp         = require('../../../perfil/perfilPvp');
+const perfilEncomendas  = require('../../../perfil/perfilEncomendas');
+const perfilHistorico   = require('../../../perfil/perfilHistorico');
+const perfilProgressao  = require('../../../perfil/perfilProgressao');
+
 // ── Match helpers ──────────────────────────────────────────────────────────
 const exact  = (id, handler) => ({ match: (x) => x === id, handler });
 const prefix = (p, handler)  => ({ match: (x) => x.startsWith(p), handler });
@@ -103,6 +110,14 @@ const BUTTON_ROUTES = [
   exact('morador::meu_ponto',         handleMeuPonto),
   exact('morador::ranking',           handleRanking),
   exact('morador::progresso_tier',    handleProgressoTier),
+
+  // Perfil Operacional — drill-downs do cockpit "Meu Ponto"
+  exact('perfil::material',    perfilMaterial.handle),
+  exact('perfil::pvp',         perfilPvp.handle),
+  exact('perfil::encomendas',  perfilEncomendas.handle),
+  exact('perfil::historico',   perfilHistorico.handle),
+  exact('perfil::progressao',  perfilProgressao.handle),
+  exact('perfil::voltar',      handleMeuPonto),
 
   // Oficial
   exact('oficial::ver_saidas',     handleViewSaidasButton),

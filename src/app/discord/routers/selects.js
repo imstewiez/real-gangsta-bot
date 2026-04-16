@@ -20,6 +20,8 @@ const saidaWizard = require('../../../saidas/saidaSettlementWizard');
 const saidaStats  = require('../../../saidas/saidaStatsHandlers');
 const { handleRankingSelect } = require('../../../members/bairristaHandlers');
 const { handleVoteSelect: availHandleVoteSelect } = require('../../../availability/availabilityHandlers');
+const perfilMaterial  = require('../../../perfil/perfilMaterial');
+const perfilHistorico = require('../../../perfil/perfilHistorico');
 
 const exact  = (id, handler) => ({ match: (x) => x === id, handler });
 const prefix = (p, handler)  => ({ match: (x) => x.startsWith(p), handler });
@@ -43,6 +45,10 @@ const SELECT_ROUTES = [
 
   // Bairrista — ranking por período
   exact('bairrista::ranking_period', handleRankingSelect),
+
+  // Perfil — seletores de período/filtro
+  exact('perfil::material_period',  perfilMaterial.handlePeriodSelect),
+  exact('perfil::historico_filter', perfilHistorico.handleFilterSelect),
 
   // Saída — predefinidos + fluxos
   exact('saida::select_create_type',        handleCreateTypeSelect),
