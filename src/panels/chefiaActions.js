@@ -18,45 +18,15 @@ const CONFIG = require('../config');
 const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed, rankingEmbed } = require('../shared/embedBuilders');
 const { ERRORS, EMOJI } = require('../content');
-const { isChefia, isPatraoDiZona } = require('../permissions/permissionEngine');
+const { isChefia } = require('../permissions/permissionEngine');
 const { radioRepo, stickyRepo } = require('../repositories');
 const { getRecentLogs } = require('../audit/auditEngine');
 const { weekBounds } = require('../util');
 const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
 
-async function abrirDisponibilidade(interaction) {
-  if (!isChefia(interaction.member) && !isPatraoDiZona(interaction.member)) {
-    return safeReply(interaction, {
-      content: ERRORS.NO_PERMISSION('disponibilidade'),
-      flags: MessageFlags.Ephemeral,
-    }, { dismissible: true });
-  }
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  const channelId = CONFIG.AVAILABILITY_CHANNEL_ID;
-  if (!channelId) {
-    return safeReply(interaction, {
-      content: 'Define `AVAILABILITY_CHANNEL_ID` no .env primeiro.',
-    }, { dismissible: true });
-  }
-  try {
-    const { createSession } = require('../availability/availabilityEngine');
-    const { session, alreadyOpen } = await createSession({
-      client: interaction.client,
-      channelId,
-      createdBy: interaction.user.id,
-    });
-    if (alreadyOpen) {
-      return safeReply(interaction, {
-        content: `Já existe sessão #${session.id} aberta hoje.`,
-      }, { dismissible: true });
-    }
-    return safeReply(interaction, {
-      content: `${EMOJI.OK} Sessão #${session.id} publicada em <#${channelId}>.`,
-    }, { dismissible: true });
-  } catch (e) {
-    return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
-  }
-}
+// `abrirDisponibilidade` removido — a sessão diária é agora 100%
+// automática via job `availability_auto_publish` em src/jobs/scheduler.js
+// (corre 5/5 min, age à hora configurada em AVAILABILITY_AUTO_PUBLISH_HOUR).
 
 async function publicarRadio(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -115,7 +85,6 @@ async function verLogs(interaction) {
 }
 
 module.exports = {
-  abrirDisponibilidade,
   publicarRadio,
   listarStickys,
   verTops,

@@ -46,25 +46,18 @@ const BUTTONS = {
   },
 
   CHEFIA: {
-    // Grupo Saídas
-    CRIAR_SAIDA:     { label: 'Saída Nova',       emoji: E.NOVO,          style: STYLE.SUCCESS },
-    FECHAR_SAIDA:    { label: 'Fechar Saída',     emoji: E.FECHAR,        style: STYLE.DANGER },
-    PARTICIPANTES:   { label: 'Participantes',    emoji: E.PARTICIPANTE,  style: STYLE.PRIMARY },
-    MATERIAL_SAIDA:  { label: 'Material da Saída',emoji: E.MATERIAL,      style: STYLE.PRIMARY },
-    VER_SAIDAS:      { label: 'Ver Saídas',       emoji: E.VER,           style: STYLE.SECONDARY },
-    // Grupo Stock
-    FORNECER:        { label: 'Fornecer a Nome',  emoji: E.FORNECER,      style: STYLE.SUCCESS },
-    VER_STOCK:       { label: 'Ver Stock',        emoji: E.STOCK,         style: STYLE.PRIMARY },
-    AJUSTAR_STOCK:   { label: 'Ajustar Stock',    emoji: E.AJUSTAR,       style: STYLE.SECONDARY },
-    GERIR_MATERIAIS: { label: 'Gerir Materiais',  emoji: E.EDITAR,        style: STYLE.SECONDARY },
-    // Grupo Gestão
-    DISPONIBILIDADE: { label: 'Presença Hoje',    emoji: E.PRESENCA,      style: STYLE.PRIMARY },
-    RADIO:           { label: 'Painel Rádio',     emoji: E.RADIO,         style: STYLE.PRIMARY },
-    STICKYS:         { label: 'Stickys',          emoji: E.STICKY,        style: STYLE.SECONDARY },
-    // Grupo Dados
-    TOPS:            { label: 'Topo',             emoji: E.TOPO,          style: STYLE.SECONDARY },
-    STATS:           { label: 'Estatísticas',     emoji: E.INFO,          style: STYLE.SECONDARY },
-    LOGS:            { label: 'Logs',             emoji: E.AUDIT,         style: STYLE.SECONDARY },
+    // Saídas — só acções de topo (sub-passos vivem no painel da sessão)
+    CRIAR_SAIDA:     { label: 'Nova Sessão',      emoji: E.NOVO,     style: STYLE.SUCCESS },
+    VER_SAIDAS:      { label: 'Sessões Activas',  emoji: E.VER,      style: STYLE.PRIMARY },
+    // Stock
+    VER_STOCK:       { label: 'Ver Stock',        emoji: E.STOCK,    style: STYLE.PRIMARY },
+    AJUSTAR_STOCK:   { label: 'Ajustar Stock',    emoji: E.AJUSTAR,  style: STYLE.SECONDARY },
+    GERIR_MATERIAIS: { label: 'Gerir Materiais',  emoji: E.EDITAR,   style: STYLE.SECONDARY },
+    // Gestão + Dados
+    RADIO:           { label: 'Painel Rádio',     emoji: E.RADIO,    style: STYLE.PRIMARY },
+    STICKYS:         { label: 'Stickys',          emoji: E.STICKY,   style: STYLE.SECONDARY },
+    TOPS:            { label: 'Topo',             emoji: E.TOPO,     style: STYLE.SECONDARY },
+    LOGS:            { label: 'Logs',             emoji: E.AUDIT,    style: STYLE.SECONDARY },
   },
 
   // Onboarding — aprovação/rejeição de tags

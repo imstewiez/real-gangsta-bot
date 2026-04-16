@@ -116,23 +116,22 @@ const BUTTON_ROUTES = [
   // Oficial
   exact('oficial::ver_saidas',     handleViewSaidasButton),
 
-  // Chefia — saídas
-  exact('chefia::criar_saida',              handleCreateSaidaButton),
-  exact('chefia::fechar_saida',             handleCloseSaidaButton),
-  exact('chefia::ver_saidas',               handleViewSaidasButton),
-  exact('chefia::registar_material_saida',  handleRegisterMaterialButton),
-  exact('chefia::adicionar_participante',   handleAddParticipantButton),
-  exact('chefia::fornecer_participante',    handleIssueToParticipantButton),
-  exact('chefia::ver_stock',                handleStockCommand),
-  exact('chefia::ajustar_stock',            handleAdjustStockButton),
-  exact('chefia::gerir_materiais',          handleGerirMateriaisButton),
+  // Chefia — painel de alto nível (sub-passos vivem no painel da sessão).
+  exact('chefia::criar_saida',       handleCreateSaidaButton),
+  exact('chefia::ver_saidas',        handleViewSaidasButton),
+  exact('chefia::ver_stock',         handleStockCommand),
+  exact('chefia::ajustar_stock',     handleAdjustStockButton),
+  exact('chefia::gerir_materiais',   handleGerirMateriaisButton),
+  exact('chefia::publicar_radio',    chefiaActions.publicarRadio),
+  exact('chefia::listar_stickys',    chefiaActions.listarStickys),
+  exact('chefia::ver_tops',          chefiaActions.verTops),
+  exact('chefia::ver_logs',          chefiaActions.verLogs),
 
-  // Chefia — sistemas auxiliares (disponibilidade / rádio / stickys / dados)
-  exact('chefia::abrir_disponibilidade', chefiaActions.abrirDisponibilidade),
-  exact('chefia::publicar_radio',        chefiaActions.publicarRadio),
-  exact('chefia::listar_stickys',        chefiaActions.listarStickys),
-  exact('chefia::ver_tops',              chefiaActions.verTops),
-  exact('chefia::ver_logs',              chefiaActions.verLogs),
+  // Painel da sessão (staff actions — movidos do painel chefia)
+  prefix('session::close::',            handleCloseSaidaButton),
+  prefix('session::add_participant::',  handleAddParticipantButton),
+  prefix('session::issue_material::',   handleIssueToParticipantButton),
+  prefix('session::register_material::',handleRegisterMaterialButton),
 
   // Patrão di Zona
   exact('chefe_mor::listar_moradores',  patraoDiZonaActions.listarBairristas),

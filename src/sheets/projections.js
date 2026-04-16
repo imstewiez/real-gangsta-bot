@@ -14,11 +14,41 @@ const { log, warn } = require('../logger');
 const eventBus = require('../core/eventBus');
 
 // Um evento pode tocar várias tabs. Mantém-se aqui a verdade central.
+// Cobertura total: qualquer mudança relevante aparece automaticamente no
+// Google Sheets sem syncs manuais.
 const EVENT_TO_TABS = {
-  'saida.closed':        ['saidas', 'resumo', 'dashboard', 'membros'],
-  'material.registered': ['stock', 'resumo', 'dashboard', 'membros'],
-  'member.promoted':     ['membros', 'dashboard'],
-  'kill.registered':     ['saidas', 'dashboard'],
+  // ── Saídas ─────────────────────────────────────────────────────────────
+  'saida.opened':           ['saidas', 'resumo', 'dashboard'],
+  'saida.started':          ['saidas'],
+  'saida.closed':           ['saidas', 'resumo', 'dashboard', 'membros'],
+  'saida.material_issued':  ['saidas', 'stock'],
+  'saida.participant_added':['saidas'],
+
+  // ── Inventário ─────────────────────────────────────────────────────────
+  'material.registered':    ['stock', 'resumo', 'dashboard', 'membros'],
+  'material.adjusted':      ['stock', 'resumo', 'dashboard'],
+  'material.transferred':   ['stock', 'dashboard'],
+
+  // ── Encomendas ─────────────────────────────────────────────────────────
+  'order.created':          ['stock', 'dashboard'],
+  'order.approved':         ['stock', 'dashboard'],
+  'order.fulfilled':        ['stock', 'dashboard'],
+  'order.denied':           ['stock'],
+  'order.cancelled':        ['stock'],
+
+  // ── Vida da org ────────────────────────────────────────────────────────
+  'member.joined':          ['membros', 'dashboard'],
+  'member.left':            ['membros', 'resumo', 'dashboard'],
+  'member.promoted':        ['membros', 'dashboard'],
+  'member.tier_changed':    ['membros', 'resumo', 'dashboard'],
+  'member.nickname_changed':['membros'],
+
+  // ── Kills ──────────────────────────────────────────────────────────────
+  'kill.registered':        ['saidas', 'dashboard'],
+
+  // ── Weapon return confirmation ─────────────────────────────────────────
+  'weapon.return_confirmed':['saidas', 'membros', 'dashboard'],
+  'weapon.return_rejected': ['saidas', 'membros', 'dashboard'],
 };
 
 const DEBOUNCE_MS = 5_000;
