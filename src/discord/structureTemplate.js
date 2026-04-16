@@ -209,7 +209,12 @@ const DISCOVERED = {
   CH_WOOD_COMUN:       '1491194611543183430',
   CH_ARQUIVOS:         '1493849342161719317',
   CH_TOP_SEMANAL:      '1493242996337147915',
+  // Painel público das saídas — malta junta-se aqui + notificações lifecycle.
+  // Mesmo canal serve como "session channel" (painel vivo) e "notifications"
+  // (started/closed/weapon_return/material_issued).
   CH_SAIDAS_LOG:       '1494383859893276714',
+  // Canal do painel oficial — staff abre saídas daqui.
+  CH_PAINEL_SAIDAS:    '1493661876557709452',
   CH_INFO_GERAL:       '1490397836490309693',
   CH_COR_ORG:          '1490397834048966890',
   CH_META_SEMANAL:     '1490397816030236883',
@@ -453,8 +458,9 @@ function _applyPatraoDiZonaPrivateOverrides() {
   // de INVENTORY_EVENTS — ver _applyInventoryLogOverrides abaixo.
 }
 
-// Canais consolidados de logs — bot publica, staff + patrão lêem, bairristas fora.
+// Canais consolidados de logs.
 function _applyInventoryLogOverrides() {
+  // Inventário — logs confidenciais de material. Staff+patrão lêem, bairristas fora.
   const staffLogPerms = {
     denyEveryone: ['ViewChannel', ..._PANEL_WRITE_DENIES],
     deny: [
@@ -466,14 +472,23 @@ function _applyInventoryLogOverrides() {
     ],
     reason: 'log staff — bot publica; staff + patrão lêem; bairristas fora',
   };
-
-  // Material / inventário (ofertas, entregas, vendas, ajustes, encomendas).
   if (DISCOVERED.CH_MATERIAL_ENTREG) {
     CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_MATERIAL_ENTREG] = staffLogPerms;
   }
-  // Saídas — ciclo de vida (opened/started/closed/weapon_return/participant).
+
+  // Saídas — painel vivo + notificações. TODOS vêem (malta junta-se via
+  // buttons do bot); só bot publica (ninguém escreve chat); interacção é
+  // pelos buttons do painel da saída (não conta como SendMessages).
   if (DISCOVERED.CH_SAIDAS_LOG) {
-    CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_SAIDAS_LOG] = staffLogPerms;
+    CHANNEL_PERM_OVERRIDES[DISCOVERED.CH_SAIDAS_LOG] = {
+      denyEveryone: _PANEL_WRITE_DENIES,
+      allow: [
+        { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'ReadMessageHistory'] },
+        { roleSources: ['bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'ReadMessageHistory'] },
+        { roleSources: ['bot'], perms: _BOT_PANEL_PERMS },
+      ],
+      reason: 'saídas-log — todos vêem, só bot publica (malta inscreve via buttons)',
+    };
   }
 }
 

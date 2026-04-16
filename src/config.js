@@ -108,9 +108,12 @@ const CONFIG = {
   // Canal dedicado para resultados ricos de saídas (3 embeds no fecho).
   // Se vazio, faz fallback para AUDIT_LOG_CHANNEL_ID.
   SAIDA_RESULTS_CHANNEL_ID: optId('SAIDA_RESULTS_CHANNEL_ID'),
+  // Canal onde o painel da saída é publicado (painel vivo + inscrições).
+  // Default = mesmo canal das notificações (malta junta-se e vê lifecycle).
+  SAIDA_SESSION_CHANNEL_ID: optId('SAIDA_SESSION_CHANNEL_ID', '1494383859893276714'),
   STRUCTURE_SYNC_LOG_CHANNEL_ID: optId('STRUCTURE_SYNC_LOG_CHANNEL_ID'),
   PANEL_BAIRRISTAS_CHANNEL_ID: optId('PANEL_BAIRRISTAS_CHANNEL_ID'),
-  PANEL_OFICIAIS_CHANNEL_ID: optId('PANEL_OFICIAIS_CHANNEL_ID'),
+  PANEL_OFICIAIS_CHANNEL_ID: optId('PANEL_OFICIAIS_CHANNEL_ID', '1493661876557709452'),
   PANEL_CHEFIA_CHANNEL_ID: optId('PANEL_CHEFIA_CHANNEL_ID'),
   PANEL_PATRAO_DI_ZONA_CHANNEL_ID: optId('PANEL_PATRAO_DI_ZONA_CHANNEL_ID'),
 
