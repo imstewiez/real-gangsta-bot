@@ -219,6 +219,47 @@ async function handleCloseSaidaButton(interaction) {
   await safeReply(interaction, { content: `${EMOJI.FECHAR} Escolhe a saída a fechar:`, components: [row], flags: MessageFlags.Ephemeral });
 }
 
+/**
+ * Fechar directo a partir do session embed — salta a selecção de saída
+ * (já estamos nela) e vai logo para o select de resultado.
+ */
+async function handleCloseSessionDirect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  if (!isChefia(interaction.member)) {
+    return safeReply(interaction, { content: ERRORS.NO_PERMISSION('fechar saídas'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+  }
+
+  const saidaId = parseInt(interaction.customId.split('::')[2], 10);
+  const saida = await saidaRepo.findById(saidaId);
+  if (!saida || !['aberta', 'em_preparacao', 'em_curso'].includes(saida.status)) {
+    return safeReply(interaction, {
+      content: `${EMOJI.WARN} Saída #${saidaId} já não está aberta (estado: ${saida?.status || 'não encontrada'}).`,
+      flags: MessageFlags.Ephemeral,
+    }, { dismissible: true });
+  }
+
+  // Vai directo para o select de resultado
+  _setContext(interaction.user.id, { saidaId });
+  const resultOptions = VALID_RESULTS.map(r => ({
+    label: { vitoria: 'Vitória', derrota: 'Derrota', empate: 'Empate', sem_conflito: 'Sem conflito', abortada: 'Abortada' }[r],
+    description: { vitoria: 'Ganhamos a fight', derrota: 'Perdemos', empate: 'Nenhum lado ganhou', sem_conflito: 'Não houve fight', abortada: 'Saída cancelada/abortada' }[r],
+    value: r,
+    emoji: { vitoria: '🏆', derrota: '☠️', empate: '⚖️', sem_conflito: 'ℹ️', abortada: '⚠️' }[r],
+  }));
+  const row = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('saida::select_close_result')
+      .setPlaceholder(SAIDAS.SELECTS.RESULTADO_SAIDA)
+      .setMinValues(1).setMaxValues(1)
+      .addOptions(resultOptions)
+  );
+  return safeReply(interaction, {
+    content: `${EMOJI.FECHAR} Saída **#${saidaId}** — qual foi o resultado?`,
+    components: [row],
+    flags: MessageFlags.Ephemeral,
+  });
+}
+
 async function handleCloseSaidaSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const saidaId = parseInt(interaction.values[0]);
@@ -767,7 +808,7 @@ async function handleIssueQtyModal(interaction) {
 
 module.exports = {
   handleCreateSaidaButton, handleCreateTypeSelect, handleCreateSpotSelect, handleCreateSaidaModal,
-  handleCloseSaidaButton, handleCloseSaidaSelect, handleCloseResultSelect, handleCloseSaidaModal,
+  handleCloseSaidaButton, handleCloseSessionDirect, handleCloseSaidaSelect, handleCloseResultSelect, handleCloseSaidaModal,
   handleFinalizeSaidaButton,
   handleMarkDeadSelect,
   handleViewSaidasButton,

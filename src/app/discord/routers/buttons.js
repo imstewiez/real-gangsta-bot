@@ -27,7 +27,7 @@ const {
   handleGerirMateriaisButton,
 } = require('../../../inventory/inventoryHandlers');
 const {
-  handleCreateSaidaButton, handleCloseSaidaButton,
+  handleCreateSaidaButton, handleCloseSaidaButton, handleCloseSessionDirect,
   handleViewSaidasButton, handleAddParticipantButton,
   handleRegisterMaterialButton, handleIssueToParticipantButton,
   handleFinalizeSaidaButton,
@@ -143,8 +143,9 @@ const BUTTON_ROUTES = [
   exact('chefia::ver_tops',          chefiaActions.verTops),
   exact('chefia::ver_logs',          chefiaActions.verLogs),
 
-  // Painel da sessão (staff actions — movidos do painel chefia)
-  prefix('session::close::',            handleCloseSaidaButton),
+  // Painel da sessão (staff actions)
+  prefix('saida::session_close_direct::', handleCloseSessionDirect),
+  prefix('session::close::',              handleCloseSaidaButton),
   prefix('session::add_participant::',  handleAddParticipantButton),
   prefix('session::issue_material::',   handleIssueToParticipantButton),
   prefix('session::register_material::',handleRegisterMaterialButton),

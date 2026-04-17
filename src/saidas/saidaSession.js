@@ -193,10 +193,11 @@ async function buildSessionEmbed(saidaId) {
         .setEmoji(EMOJI.APAGAR),
     ));
 
-    // Row 2 — staff: fechar sessão
+    // Row 2 — staff: fechar sessão (vai directo para o select de resultado,
+    // sem ter de escolher a saída outra vez — já estamos nela)
     components.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId(`session::close::${saidaId}`)
+        .setCustomId(`saida::session_close_direct::${saidaId}`)
         .setLabel('Fechar Sessão')
         .setStyle(ButtonStyle.Danger)
         .setEmoji(EMOJI.FECHAR),

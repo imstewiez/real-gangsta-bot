@@ -302,12 +302,15 @@ async function handleFinish(interaction) {
   const participants = await saidaRepo.getParticipants(saidaId);
   const pending = participants.filter(p => !p.settled);
   for (const p of pending) {
+    // Auto-settle: vivo, 0 kills, arma tratada conforme tipo
+    const weaponStatus = (p.own_weapon || !p.received_org_material) ? 'not_applicable' : 'confirmed_returned';
     await saidaRepo.updateParticipant(saidaId, p.member_id, {
       kills: 0, deaths_count: 0,
       died: false, survived: true, returned: true,
       settled: true,
       individual_result_submitted: true,
       individual_result_at: new Date(),
+      weapon_return_status: weaponStatus,
     });
   }
 
