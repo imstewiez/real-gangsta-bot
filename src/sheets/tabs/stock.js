@@ -11,7 +11,7 @@ const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, nu
   conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  footerBlock, autoResizeColumns, autoResizeAll,
+  totalRow, footerBlock, autoResizeColumns, autoResizeAll, applyRowBanding,
 } = require('./_common');
 const { getInventoryFull, getStockByCategory, getMovementsFull } = require('../queries');
 const { growSheet } = require('../cleanup');
@@ -188,6 +188,18 @@ async function syncStock(batch, sheetId) {
   });
   row = tableBody(batch, sheetId, row, catRows);
 
+  row = totalRow(batch, sheetId, row, {
+    label: 'TOTAL', columnCount: COL_COUNT,
+    values: [
+      { col: 1, value: inv.length, numberFormat: NUM_FMT.INT },
+      { col: 2, value: qtyArmazem, numberFormat: NUM_FMT.INT },
+      { col: 3, value: qtyGrupo, numberFormat: NUM_FMT.INT },
+      { col: 4, value: totalQty, numberFormat: NUM_FMT.INT },
+      { col: 5, value: totalValue, numberFormat: NUM_FMT.EURO },
+      { col: 6, value: 1, numberFormat: NUM_FMT.PCT },
+    ],
+  });
+
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
 
@@ -196,6 +208,7 @@ async function syncStock(batch, sheetId) {
     title: '📋 INVENTÁRIO DETALHADO', hint: 'agrupado por categoria', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, INV_HEADERS.concat(Array(COL_COUNT - INV_HEADERS.length).fill('')));
+  batch.freezeRows(sheetId, row);
   const invFirstRow = row;
 
   const groups = new Map();
@@ -277,6 +290,17 @@ async function syncStock(batch, sheetId) {
     row += 1;
     zebraIndex = 0;
   }
+
+  // Grand total do inventário
+  row = totalRow(batch, sheetId, row, {
+    label: 'GRAND TOTAL', columnCount: COL_COUNT,
+    values: [
+      { col: 3, value: qtyArmazem, numberFormat: NUM_FMT.INT },
+      { col: 4, value: qtyGrupo, numberFormat: NUM_FMT.INT },
+      { col: 5, value: totalQty, numberFormat: NUM_FMT.INT },
+      { col: 7, value: totalValue, numberFormat: NUM_FMT.EURO },
+    ],
+  });
 
   if (inv.length) {
     // Heatmap em Qtd Total (col 5)

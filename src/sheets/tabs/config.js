@@ -31,6 +31,27 @@ async function syncConfig(batch, sheetId) {
   });
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
+  // ── HIERARQUIA ──────────────────────────────────────────────────────────
+  row = sectionHeader(batch, sheetId, row, {
+    title: '👑 HIERARQUIA DA FIRMA', hint: 'do topo à base', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, ['Posição', 'Cargo', 'Nível', '', '']);
+  const hierarchy = [
+    ['1', 'Manda-Chuva',     'topo absoluto'],
+    ['2', 'Kingpin',         'braço direito / alta chefia'],
+    ['3', 'OG',              'comando operacional alto'],
+    ['4', 'Real Gangster',   'oficial'],
+    ['5', 'Patrão di Zona',  'gestão do ramo dos Bairristas'],
+    ['6', 'Gangster Fodido', 'tier alto · Bairrista'],
+    ['7', 'O Gunão',         'tier intermédio · Bairrista'],
+    ['8', 'Young Blood',     'entry · Bairrista'],
+    ['9', 'Bairristas',      'role base do ramo'],
+    ['10', 'Tropinhas do Guetto', 'recrutamento'],
+    ['11', 'Patrulha Pata',  'base'],
+  ];
+  row = tableBody(batch, sheetId, row, hierarchy.map(h => pairRow(h[0] + '. ' + h[1], h[2])));
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
+
   // ── TIERS ────────────────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
     title: '🎖️ TIERS DE BAIRRISTA', hint: 'níveis de progressão', columnCount: COL_COUNT,
@@ -135,9 +156,9 @@ async function syncConfig(batch, sheetId) {
   });
   row = tableHeader(batch, sheetId, row, ['Comando', 'Efeito', '', '', '']);
   const cmds = [
-    ['/rg-sync-sheets',                       'sincroniza todas as 15 tabs (intervalo auto: 15min)'],
+    ['/rg-sync-sheets',                       'sincroniza todas as 6 tabs (intervalo auto: 15min)'],
     ['/rg-sync-sheets-tab tab:<key>',         'sincroniza apenas uma tab específica'],
-    ['/rg-sync-sheets-rebuild',               'apaga e recria as 15 tabs canónicas (reset visual)'],
+    ['/rg-sync-sheets-rebuild',               'apaga e recria as 6 tabs canónicas (reset visual)'],
     ['/rg-sync-sheets-rebuild purge:True',    'o mesmo + apaga quaisquer tabs não-canónicas'],
     ['Trim automático',                       'cada sync encolhe a tab ao tamanho necessário (cleanup engine)'],
     ['Design system',                         'theme.js + _common.js — consistência premium'],

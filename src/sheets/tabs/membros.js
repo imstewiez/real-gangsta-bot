@@ -8,7 +8,7 @@ const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, numCell, badg
   conditionalGradient, conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  footerBlock, autoResizeColumns, autoResizeAll,
+  totalRow, footerBlock, autoResizeColumns, autoResizeAll,
 } = require('./_common');
 const { getMembersFull } = require('../queries');
 const { growSheet } = require('../cleanup');
@@ -188,6 +188,8 @@ async function syncMembros(batch, sheetId) {
     title: '👥 ROSTER COMPLETO', hint: 'filtros activos — ordena por qualquer coluna', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, HEADERS);
+  batch.freezeRows(sheetId, row);
+  batch.freezeCols(sheetId, 1);
   const firstDataRow = row;
 
   // Ordenar por hierarquia: Chefia > Oficiais > Patrão di Zona > Bairristas.
@@ -236,6 +238,26 @@ async function syncMembros(batch, sheetId) {
   row = tableBody(batch, sheetId, row, dataRows, { basicFilter: true, columnCount: COL_COUNT });
 
   if (dataRows.length) {
+    const sumEntregas = rows.reduce((a, m) => a + (m.entregas || 0), 0);
+    const sumVendas = rows.reduce((a, m) => a + (m.vendas || 0), 0);
+    const sumSaidas = rows.reduce((a, m) => a + (m.saidas_total || 0), 0);
+    const sumWins = rows.reduce((a, m) => a + (m.wins || 0), 0);
+    const sumLosses = rows.reduce((a, m) => a + (m.losses || 0), 0);
+    const sumMVPs = rows.reduce((a, m) => a + (m.mvps || 0), 0);
+    row = totalRow(batch, sheetId, row, {
+      label: 'TOTAL', columnCount: COL_COUNT,
+      values: [
+        { col: 7, value: sumEntregas, numberFormat: NUM_FMT.INT },
+        { col: 8, value: totalEntregas, numberFormat: NUM_FMT.INT },
+        { col: 9, value: sumVendas, numberFormat: NUM_FMT.INT },
+        { col: 10, value: sumSaidas, numberFormat: NUM_FMT.INT },
+        { col: 11, value: sumWins, numberFormat: NUM_FMT.INT },
+        { col: 12, value: sumLosses, numberFormat: NUM_FMT.INT },
+        { col: 13, value: totalKills, numberFormat: NUM_FMT.INT },
+        { col: 18, value: totalProfit, numberFormat: NUM_FMT.EURO },
+        { col: 19, value: sumMVPs, numberFormat: NUM_FMT.INT },
+      ],
+    });
     const N = dataRows.length;
     batch.addRule(conditionalGradient(sheetId, firstDataRow, 15, firstDataRow + N, 16, COLOR.RED_SIGNAL_SOFT, COLOR.YELLOW_SOFT, COLOR.GREEN_SOFT));
     batch.addRule(conditionalGradient(sheetId, firstDataRow, 16, firstDataRow + N, 17, COLOR.RED_SIGNAL_SOFT, COLOR.YELLOW_SOFT, COLOR.GREEN_SOFT));

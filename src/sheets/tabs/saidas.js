@@ -12,7 +12,7 @@ const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, nu
   conditionalGradient, conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  rankingBlock, footerBlock, autoResizeAll,
+  rankingBlock, totalRow, footerBlock, autoResizeAll,
 } = require('./_common');
 const {
   getSaidasFull, getParticipantsFull, getKillsFull, getKillsKPIs, getSpotsFull,
@@ -152,6 +152,8 @@ async function syncSaidas(batch, sheetId) {
     title: '📋 LEDGER DE SAÍDAS', hint: 'mais recentes no topo · filtros activos', columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, SAIDAS_HEADERS);
+  batch.freezeRows(sheetId, row);
+  batch.freezeCols(sheetId, 4);
   const saidasFirstRow = row;
   const saidasRows = rows.map(s => [
     bodyBoldCell(`#${s.id}`),
@@ -190,6 +192,29 @@ async function syncSaidas(batch, sheetId) {
   ]);
   row = tableBody(batch, sheetId, row, saidasRows, { basicFilter: true, columnCount: COL_COUNT });
   if (saidasRows.length) {
+    const sTotalKills = rows.reduce((a, r) => a + (r.kills || 0), 0);
+    const sTotalDeaths = rows.reduce((a, r) => a + (r.deaths || 0), 0);
+    const sTotalSurv = rows.reduce((a, r) => a + (r.survivors || 0), 0);
+    const sTotalSupp = rows.reduce((a, r) => a + (r.supplied_units || 0), 0);
+    const sTotalRet = rows.reduce((a, r) => a + (r.returned_units || 0), 0);
+    const sTotalLost = rows.reduce((a, r) => a + (r.lost_units || 0), 0);
+    const sTotalCons = rows.reduce((a, r) => a + (r.consumed_units || 0), 0);
+    const sTotalGross = rows.reduce((a, r) => a + Number(r.gross || 0), 0);
+    row = totalRow(batch, sheetId, row, {
+      label: 'TOTAL', columnCount: COL_COUNT,
+      values: [
+        { col: 10, value: rows.reduce((a, r) => a + (r.participantes || 0), 0), numberFormat: NUM_FMT.INT },
+        { col: 13, value: sTotalKills, numberFormat: NUM_FMT.INT },
+        { col: 14, value: sTotalDeaths, numberFormat: NUM_FMT.INT },
+        { col: 15, value: sTotalSurv, numberFormat: NUM_FMT.INT },
+        { col: 17, value: sTotalSupp, numberFormat: NUM_FMT.INT },
+        { col: 18, value: sTotalRet, numberFormat: NUM_FMT.INT },
+        { col: 19, value: sTotalLost, numberFormat: NUM_FMT.INT },
+        { col: 20, value: sTotalCons, numberFormat: NUM_FMT.INT },
+        { col: 21, value: sTotalGross, numberFormat: NUM_FMT.EURO },
+        { col: 22, value: totalNet, numberFormat: NUM_FMT.EURO },
+      ],
+    });
     const N = saidasRows.length;
     // K col=13, M col=14, Líquido col=22 (shifted +2 from Caract./Trab. columns)
     batch.addRule(conditionalGreaterThan(sheetId, saidasFirstRow, 13, saidasFirstRow + N, 14, 3, COLOR.GREEN_SOFT));

@@ -13,7 +13,7 @@ const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, nu
   formatDelta, rankCell, conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  rankingBlock, footerBlock, autoResizeAll,
+  rankingBlock, totalRow, footerBlock, autoResizeAll,
 } = require('./_common');
 const {
   getWeeklySummary, getDailyBreakdown, getTrending, getRankings, getSpotsFull,
@@ -64,6 +64,7 @@ async function syncResumo(batch, sheetId) {
     columnCount: COL_COUNT,
   });
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
+  batch.freezeRows(sheetId, row);
 
   // ── A. Pilares da semana ─────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
@@ -164,6 +165,17 @@ async function syncResumo(batch, sheetId) {
   ]);
   row = tableBody(batch, sheetId, row, dailyRows);
   if (dailyRows.length) {
+    row = totalRow(batch, sheetId, row, {
+      label: 'TOTAL 14 DIAS', columnCount: COL_COUNT,
+      values: [
+        { col: 1, value: totalOps, numberFormat: NUM_FMT.INT },
+        { col: 2, value: totalKills, numberFormat: NUM_FMT.INT },
+        { col: 3, value: daily14.reduce((a, r) => a + (r.deaths || 0), 0), numberFormat: NUM_FMT.INT },
+        { col: 4, value: totalNet, numberFormat: NUM_FMT.EURO },
+        { col: 5, value: totalEntr, numberFormat: NUM_FMT.INT },
+        { col: 6, value: daily14.reduce((a, r) => a + Number(r.vendas || 0), 0), numberFormat: NUM_FMT.INT },
+      ],
+    });
     batch.addRule(conditionalGreaterThan(sheetId, firstDailyRow, 4, firstDailyRow + dailyRows.length, 5, 0, COLOR.GREEN_SOFT));
     batch.addRule(conditionalLessThan(sheetId, firstDailyRow, 4, firstDailyRow + dailyRows.length, 5, 0, COLOR.RED_SIGNAL_SOFT));
   }

@@ -24,7 +24,7 @@ const {
   COLOR, FONT, FONT_FAMILY, NUM_FMT, ROW_H, COL_W, BORDER, SIGNATURE,
   cell, titleCell, subtitleCell, sectionCell, sectionHintCell,
   headerCell, subHeaderCell, bodyCell, bodyBoldCell, mutedCell, captionCell, numCell, signatureCell,
-  kpiLabelCell, kpiValueCell, kpiDeltaCell, badgeCell, rankCell, formatDelta,
+  kpiLabelCell, kpiValueCell, kpiDeltaCell, badgeCell, rankCell, formatDelta, rgb,
 } = require('../theme');
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -141,10 +141,20 @@ function kpiStrip(batch, sheetId, row, cards, columnCount, opts = {}) {
   let col = startCol;
   cards.forEach((c, i) => {
     const w = span + (i < remainder ? 1 : 0);
+    // Separador vertical sutil entre cards (excepto o primeiro)
+    const sep = (i > 0) ? BORDER.LEFT_SEPARATOR : undefined;
     labelRow[col] = kpiLabelCell(c.label);
     valueRow[col] = kpiValueCell(c.value, c.numberFormat);
     const deltaText = c.delta !== undefined ? c.delta : (c.hint || '');
     deltaRow[col] = kpiDeltaCell(deltaText, c.deltaDirection, c.deltaFormat);
+    if (sep) {
+      if (!labelRow[col].userEnteredFormat) labelRow[col].userEnteredFormat = {};
+      labelRow[col].userEnteredFormat.borders = sep;
+      if (!valueRow[col].userEnteredFormat) valueRow[col].userEnteredFormat = {};
+      valueRow[col].userEnteredFormat.borders = sep;
+      if (!deltaRow[col].userEnteredFormat) deltaRow[col].userEnteredFormat = {};
+      deltaRow[col].userEnteredFormat.borders = sep;
+    }
     col += w;
   });
 
@@ -175,7 +185,15 @@ function kpiStrip(batch, sheetId, row, cards, columnCount, opts = {}) {
 // Table header — linha com headers em red_blood. Sem freeze (decisão UX).
 // ─────────────────────────────────────────────────────────────────────────────
 function tableHeader(batch, sheetId, row, headers) {
-  const cells = headers.map(h => headerCell(h));
+  const cells = headers.map(h => {
+    const c = headerCell(h);
+    if (!c.userEnteredFormat) c.userEnteredFormat = {};
+    c.userEnteredFormat.borders = {
+      ...(c.userEnteredFormat.borders || {}),
+      bottom: { style: 'SOLID', width: 1, color: COLOR.RED_DEEP },
+    };
+    return c;
+  });
   batch.updateCells(sheetId, row, 0, [cells]);
   batch.setRowHeight(sheetId, row, ROW_H.TABLE_HEAD);
   return row + 1;
@@ -301,6 +319,34 @@ function autoResizeAll(batch, sheetId, rowCount, columnCount) {
   autoResizeRows(batch, sheetId, rowCount);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Total row — linha de totais/resumo no fundo de uma tabela. Visual distinto
+// com fundo BG_BLOCK_ALT, texto bold branco, borda topo RED_DEEP.
+//
+// values: array de {col, value, numberFormat} ou array directo de cells.
+// ─────────────────────────────────────────────────────────────────────────────
+function totalRow(batch, sheetId, row, { label = 'TOTAL', values = [], columnCount }) {
+  const boldWhite = { fontFamily: FONT_FAMILY, fontSize: 10, bold: true, foregroundColor: COLOR.WHITE };
+  const topBorder = { top: { style: 'SOLID', width: 1, color: COLOR.RED_DEEP } };
+  const cells = Array(columnCount).fill(null).map(() =>
+    cell('', { bg: COLOR.BG_BLOCK_ALT, borders: topBorder })
+  );
+  cells[0] = cell(label, {
+    bg: COLOR.BG_BLOCK_ALT, font: boldWhite, align: 'RIGHT', vAlign: 'MIDDLE', borders: topBorder,
+  });
+  for (const v of values) {
+    if (v.col >= 0 && v.col < columnCount) {
+      cells[v.col] = cell(v.value, {
+        bg: COLOR.BG_BLOCK_ALT, font: boldWhite, align: 'RIGHT', vAlign: 'MIDDLE',
+        numberFormat: v.numberFormat, borders: topBorder,
+      });
+    }
+  }
+  batch.updateCells(sheetId, row, 0, [cells]);
+  batch.setRowHeight(sheetId, row, ROW_H.TABLE_ROW);
+  return row + 1;
+}
+
 function _fmtNowPT() {
   const d = new Date();
   const pad = n => String(n).padStart(2, '0');
@@ -335,7 +381,7 @@ const writeFooter = (batch, sheetId, row, columnCount, freezeAt = 0) =>
 module.exports = {
   // API nova
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  rankingBlock, alertBox, footerBlock, setWidths,
+  rankingBlock, alertBox, footerBlock, totalRow, setWidths,
   autoResizeColumns, autoResizeRows, autoResizeAll, applyRowBanding,
   // API antiga (shims)
   writeHeader, writeKpiBar, writeTableHeader, writeDivider, writeSection, writeFooter,

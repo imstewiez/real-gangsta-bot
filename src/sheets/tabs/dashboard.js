@@ -13,10 +13,10 @@
  *   8. Footer com assinatura
  */
 
-const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, mutedCell, captionCell, numCell, formatDelta } = require('../theme');
+const { COLOR, FONT, NUM_FMT, cell, bodyCell, bodyBoldCell, mutedCell, captionCell, numCell, formatDelta } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  rankingBlock, alertBox, footerBlock, setWidths, autoResizeColumns, autoResizeAll,
+  rankingBlock, alertBox, footerBlock, totalRow, setWidths, autoResizeColumns, autoResizeAll,
 } = require('./_common');
 const {
   getDashboardKPIs, getTopMovers, getTrending, getAlerts, getStockByCategory,
@@ -48,6 +48,7 @@ async function syncDashboard(batch, sheetId) {
     columnCount: COL_COUNT,
   });
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
+  batch.freezeRows(sheetId, row);
 
   // ── 2. KPI strip principal ───────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
@@ -103,8 +104,8 @@ async function syncDashboard(batch, sheetId) {
   ];
   for (const h of highlights) {
     const lineCells = [
-      cell(h.icon, { bg: COLOR.BG_APP, font: { fontFamily: 'Inter', fontSize: 13 }, align: 'CENTER', vAlign: 'MIDDLE' }),
-      bodyCell(h.label, { font: { fontFamily: 'Inter', fontSize: 10, bold: true, foregroundColor: COLOR.GRAY_LIGHT }, align: 'LEFT' }),
+      cell(h.icon, { bg: COLOR.BG_APP, font: FONT.SECTION, align: 'CENTER', vAlign: 'MIDDLE' }),
+      bodyCell(h.label, { font: { ...FONT.BODY_BOLD, foregroundColor: COLOR.GRAY_LIGHT }, align: 'LEFT' }),
     ];
     for (let i = 2; i < COL_COUNT - 1; i++) lineCells.push(cell('', { bg: COLOR.BG_APP }));
     lineCells.push(bodyBoldCell(h.value, { align: 'RIGHT' }));
@@ -183,6 +184,17 @@ async function syncDashboard(batch, sheetId) {
     return cells;
   });
   row = tableBody(batch, sheetId, row, catRows);
+  const totalItems = byCat.reduce((a, r) => a + (r.items_count || 0), 0);
+  const totalQty = byCat.reduce((a, r) => a + (r.total_qty || 0), 0);
+  row = totalRow(batch, sheetId, row, {
+    label: 'TOTAL', columnCount: COL_COUNT,
+    values: [
+      { col: 1, value: totalItems, numberFormat: NUM_FMT.INT },
+      { col: 2, value: totalQty, numberFormat: NUM_FMT.INT },
+      { col: 3, value: totalCatValue, numberFormat: NUM_FMT.EURO },
+      { col: 4, value: 1, numberFormat: NUM_FMT.PCT },
+    ],
+  });
 
   // ── 7. Alertas ───────────────────────────────────────────────────────────
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');

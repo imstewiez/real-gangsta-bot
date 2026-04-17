@@ -138,6 +138,7 @@ const BORDER = {
   TOP_HAIR:       { top:    _border(COLOR.GRAY_DARK) },
   TOP_ACCENT:     { top:    _border(COLOR.RED_DEEP)  },
   LEFT_ACCENT:    { left:   { style: 'SOLID_THICK', width: 3, color: COLOR.RED_DEEP } },
+  LEFT_SEPARATOR: { left:   _border(COLOR.IRON) },
   BOX_SUBTLE:     {
     top:    _border(COLOR.GRAPHITE),
     bottom: _border(COLOR.GRAPHITE),
