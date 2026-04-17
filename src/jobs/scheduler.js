@@ -54,29 +54,10 @@ function startAll(client) {
     }
   });
 
-  // Aplicação de permissões de categorias/canais (6h). Aplica
-  // CATEGORY_PERMS + CHANNEL_PERM_OVERRIDES do structureTemplate +
-  // blindagem dos canais individuais dos bairristas. Idempotente — só
-  // escreve se houver drift. Corre também uma vez ao arranque via
-  // bootstrap ready hook para propagar mudanças de template imediato.
-  registerJob('perms_apply', 6 * 60 * 60 * 1000, async (client) => {
-    try {
-      const guild = client?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
-      if (!guild) return { skipped: 'no_guild' };
-      const { runPermsOnly } = require('../discord/structureSync');
-      const { reconcileBairristaChannels } = require('../members/channelInvariants');
-      const permsReport = await runPermsOnly(guild, { apply: true });
-      const channelsReport = await reconcileBairristaChannels(guild, { dryRun: false });
-      return {
-        perms_actions: permsReport.actions?.length || 0,
-        perms_errors: permsReport.errors?.length || 0,
-        channels_fixed: channelsReport.fixed,
-        channels_missing: channelsReport.missing,
-      };
-    } catch (e) {
-      warn(`[SCHEDULER] perms_apply failed: ${e.message}`);
-    }
-  });
+  // Job perms_apply REMOVIDO — permissões geridas manualmente no Discord.
+  // O template em structureTemplate.js serve como referência documental.
+  // Canais individuais de bairrista continuam protegidos pelo onboarding
+  // (buildBairristaChannelOverwrites) e promoção.
 
   // (Sheets sync periódico removido — a projecção é event-driven em
   // src/sheets/projections.js, que debounce eventos de domínio em syncs

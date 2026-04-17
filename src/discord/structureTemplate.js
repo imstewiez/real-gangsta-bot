@@ -177,14 +177,11 @@ function normalizeChannelNameToShort(oldName) {
 // Usados como fallback quando não há env var. Os IDs NÃO são ordem canónica —
 // ordem e nomes vêm do lock file (discord-layout.lock.json).
 const DISCOVERED = {
-  // Categorias
+  // Categorias (activas — IDs mortos removidos)
   CAT_BEM_VINDO:       '1490397735558451250',
   CAT_CHEFIA:          '1490411180328489110',
-  CAT_CHEFIA_MOR:      '1490397738246869002',
-  CAT_WOOD:            '1490397740612583575',
   CAT_OFICIAIS:        '1492729913944309890',
   CAT_CALLS:           '1490397742797815978',
-  CAT_PRECARIOS:       '1490397744324415499',
   CAT_MAPAS_SPOTS:     '1490397746966822922',
   CAT_MORADIA:         '1491323110345936916',
   CAT_MORADIA_TOPICOS: '1491543491233448006',
@@ -363,6 +360,9 @@ const CATEGORY_PERMS = {
   },
   GUETTO: {
     denyEveryone: ['ViewChannel', 'Connect'],
+    deny: [
+      { roleSources: ['pendente'], perms: ['ViewChannel'] },
+    ],
     allow: [
       { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'Connect', 'SendMessages', 'ManageMessages'] },
       { roleSources: ['bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'Connect', 'SendMessages'] },
@@ -380,6 +380,9 @@ const CATEGORY_PERMS = {
     // Categoria `spots` — planeamento e consulta. Admins (OG+) escrevem,
     // patrão/bairristas consultam (read-only).
     denyEveryone: ['ViewChannel'],
+    deny: [
+      { roleSources: ['pendente'], perms: ['ViewChannel'] },
+    ],
     allow: [
       { roleSources: ['command', 'supervisor'], perms: ['ViewChannel', 'SendMessages'] },
       { roleSources: ['patrao_di_zona', 'bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'ReadMessageHistory'] },
@@ -388,12 +391,18 @@ const CATEGORY_PERMS = {
   },
   CALLS: {
     denyEveryone: ['ViewChannel', 'Connect'],
+    deny: [
+      { roleSources: ['pendente', 'bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'Connect'] },
+    ],
     allow: [
       { roleSources: ['command', 'supervisor', 'patrao_di_zona'], perms: ['ViewChannel', 'Connect'] },
     ],
   },
   GERAL: {
     denyEveryone: ['ViewChannel'],
+    deny: [
+      { roleSources: ['pendente'], perms: ['ViewChannel'] },
+    ],
     allow: [
       { roleSources: ['command', 'supervisor', 'patrao_di_zona', 'bairrista_tiers', 'bairristas_base'], perms: ['ViewChannel', 'Connect', 'SendMessages'] },
       { roleSources: ['bot'], perms: ['ViewChannel', 'SendMessages'] },
