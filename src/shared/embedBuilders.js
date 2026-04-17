@@ -144,8 +144,24 @@ function stockEmbed(items) {
     embed.setDescription(INVENTORY.EMPTY);
     return embed;
   }
-  const lines = items.map(i => `**${i.name}** (${i.category}) — ${i.balance} ${i.unit}`);
-  embed.setDescription(lines.join('\n'));
+  // Agrupar por categoria para caber nos limites do embed (4096 chars desc + 25 fields × 1024 chars)
+  const byCat = {};
+  for (const i of items) {
+    const cat = i.category || 'outros';
+    if (!byCat[cat]) byCat[cat] = [];
+    byCat[cat].push(i);
+  }
+  const totalQty = items.reduce((a, i) => a + (Number(i.balance) || 0), 0);
+  embed.setDescription(`${items.length} itens · ${totalQty.toLocaleString('pt-PT')} unidades em stock`);
+  for (const [cat, catItems] of Object.entries(byCat)) {
+    const lines = catItems.map(i => {
+      const bal = Number(i.balance) || 0;
+      return `${bal > 0 ? '🟢' : bal === 0 ? '⚫' : '🔴'} **${i.name}** — \`${bal}\` ${i.unit || 'un'}`;
+    });
+    const value = lines.join('\n').slice(0, 1024);
+    embed.addFields({ name: `📦 ${cat.toUpperCase()}`, value, inline: false });
+    if (embed.data.fields.length >= 25) break;
+  }
   return embed;
 }
 

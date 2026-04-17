@@ -10,9 +10,7 @@ const { inventoryRepo } = require('../repositories');
 const { MODALS, INVENTORY } = require('../content');
 
 // Emoji por categoria de material — consistente em todo o bot
-// Inclui nomes do catálogo actual (config/full-inventory.json) + legacy
 const CATEGORY_EMOJI = {
-  // Catálogo actual
   armas_fogo: '🔫',
   armas_brancas: '🔪',
   dinheiro: '💵',
@@ -22,7 +20,6 @@ const CATEGORY_EMOJI = {
   equipamento: '🎒',
   municoes: '🔹',
   metais: '⛏️',
-  // Legacy (ainda pode haver items com estas categorias)
   armas: '🔫',
   acessorios: '🎒',
   reciclagem: '♻️',
@@ -38,45 +35,94 @@ const CATEGORY_EMOJI = {
   outros: '📦',
 };
 
+// Display name por categoria
+const CATEGORY_LABEL = {
+  armas: 'Armas',
+  armas_fogo: 'Armas de Fogo',
+  armas_brancas: 'Armas Brancas',
+  municoes: 'Munições',
+  acessorios: 'Acessórios',
+  equipamento: 'Equipamento',
+  metais: 'Metais',
+  sucata_industria: 'Sucata & Indústria',
+  reciclagem: 'Reciclagem',
+  componentes: 'Componentes',
+  madeiras: 'Madeiras',
+  quimicos: 'Químicos',
+  quimicos_droga: 'Químicos & Droga',
+  electronica: 'Electrónica',
+  droga: 'Droga',
+  dinheiro: 'Dinheiro',
+  comida: 'Comida',
+  comida_pesca: 'Comida & Pesca',
+  pesca: 'Pesca',
+  texteis: 'Têxteis',
+  utilidade: 'Utilidade',
+  outros: 'Outros',
+};
+
 /**
- * Select menu de materiais — agrupado por categoria, com emoji + preço + stock.
- * Máximo 25 opções (limite Discord). Ordenado por categoria, depois por nome.
+ * PASSO 1 — Select menu de categorias.
+ * Mostra todas as categorias com itens activos + contagem.
+ * O customId leva o prefixo para que o handler saiba para onde ir no passo 2.
  */
-async function buildItemSelectMenu(customIdPrefix, placeholder) {
+async function buildCategorySelectMenu(customIdPrefix, placeholder) {
   const items = await inventoryRepo.getItems(true);
 
-  // Batch-fetch stock balances para mostrar no description
-  const balanceMap = new Map();
+  const byCat = {};
   for (const item of items) {
+    const cat = item.category || 'outros';
+    if (!byCat[cat]) byCat[cat] = [];
+    byCat[cat].push(item);
+  }
+
+  const options = Object.entries(byCat)
+    .sort((a, b) => b[1].length - a[1].length)
+    .slice(0, 25)
+    .map(([cat, catItems]) => ({
+      label: (CATEGORY_LABEL[cat] || cat).slice(0, 100),
+      description: `${catItems.length} itens`.slice(0, 100),
+      value: cat,
+      emoji: CATEGORY_EMOJI[cat] || '📦',
+    }));
+
+  return new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(customIdPrefix)
+      .setPlaceholder(placeholder || 'Seleciona a categoria')
+      .setMinValues(1)
+      .setMaxValues(1)
+      .addOptions(options.length ? options : [{ label: 'Sem categorias', value: 'none' }])
+  );
+}
+
+/**
+ * PASSO 2 — Select menu de itens dentro de uma categoria.
+ * Mostra até 25 itens da categoria seleccionada com preço + stock.
+ */
+async function buildItemSelectMenuForCategory(customIdPrefix, placeholder, category) {
+  const items = await inventoryRepo.getItems(true);
+  const filtered = items.filter(i => (i.category || 'outros') === category);
+
+  // Batch-fetch stock balances
+  const balanceMap = new Map();
+  for (const item of filtered) {
     const bal = await inventoryRepo.getStockForItem(item.id).catch(() => 0);
     balanceMap.set(item.id, Number(bal) || 0);
   }
 
-  // Agrupar por categoria
-  const grouped = {};
-  for (const item of items) {
-    if (!grouped[item.category]) grouped[item.category] = [];
-    grouped[item.category].push(item);
-  }
-
-  const options = [];
-  for (const [category, catItems] of Object.entries(grouped)) {
-    const emoji = CATEGORY_EMOJI[category] || '📦';
-    for (const item of catItems) {
-      if (options.length >= 25) break;
-      const price = parseFloat(item.estimated_value) || 0;
-      const priceStr = price > 0 ? `${price.toLocaleString('pt-PT')}€` : 'sem preço';
-      const balance = balanceMap.get(item.id) || 0;
-      const stockStr = `${balance} em stock`;
-      options.push({
-        label: item.name.slice(0, 100),
-        description: `${priceStr} · ${stockStr}`.slice(0, 100),
-        value: String(item.id),
-        emoji,
-      });
-    }
-    if (options.length >= 25) break;
-  }
+  const emoji = CATEGORY_EMOJI[category] || '📦';
+  const options = filtered.slice(0, 25).map(item => {
+    const price = parseFloat(item.estimated_value) || 0;
+    const priceStr = price > 0 ? `${price.toLocaleString('pt-PT')}€` : 'sem preço';
+    const balance = balanceMap.get(item.id) || 0;
+    return {
+      label: item.name.slice(0, 100),
+      description: `${priceStr} · ${balance} em stock`.slice(0, 100),
+      value: String(item.id),
+      emoji,
+    };
+  });
 
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
@@ -84,8 +130,31 @@ async function buildItemSelectMenu(customIdPrefix, placeholder) {
       .setPlaceholder(placeholder || INVENTORY.SELECTS.MATERIAL)
       .setMinValues(1)
       .setMaxValues(1)
-      .addOptions(options.length ? options : [{ label: 'Sem itens disponíveis', value: 'none' }])
+      .addOptions(options.length ? options : [{ label: 'Sem itens nesta categoria', value: 'none' }])
   );
+}
+
+/**
+ * Select menu flat (legacy) — para fluxos com poucas opções (ex: armas de saída).
+ * Aceita items pré-filtrados, não puxa da DB.
+ */
+function buildItemSelectMenuFlat(customIdPrefix, placeholder, items, opts = {}) {
+  const emoji = opts.emoji || '📦';
+  const options = items.slice(0, 25).map(item => ({
+    label: (item.label || item.name || '—').slice(0, 100),
+    description: (item.description || '').slice(0, 100) || undefined,
+    value: String(item.value || item.id),
+    emoji: item.emoji || emoji,
+  }));
+
+  const builder = new StringSelectMenuBuilder()
+    .setCustomId(customIdPrefix)
+    .setPlaceholder(placeholder || 'Seleciona')
+    .setMinValues(opts.minValues || 1)
+    .setMaxValues(opts.maxValues || 1)
+    .addOptions(options.length ? options : [{ label: 'Sem opções', value: 'none' }]);
+
+  return new ActionRowBuilder().addComponents(builder);
 }
 
 function buildQuantityModal(title, customId) {
@@ -170,8 +239,12 @@ function buildStockAdjustmentModal(customId) {
 }
 
 module.exports = {
-  buildItemSelectMenu,
+  buildCategorySelectMenu,
+  buildItemSelectMenuForCategory,
+  buildItemSelectMenuFlat,
   buildQuantityModal,
   buildOperationMaterialModal,
   buildStockAdjustmentModal,
+  CATEGORY_EMOJI,
+  CATEGORY_LABEL,
 };
