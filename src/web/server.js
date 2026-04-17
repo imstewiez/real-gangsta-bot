@@ -5,10 +5,15 @@ const CONFIG = require('../config');
 const { log, warn } = require('../logger');
 
 let _client = null;
+let _ready = false;
 const _bootTime = Date.now();
 
 function setClient(client) {
   _client = client;
+}
+
+function markReady() {
+  _ready = true;
 }
 
 async function _checkDb() {
@@ -26,13 +31,15 @@ function createServer(port = 3000) {
   const server = http.createServer(async (req, res) => {
     const url = req.url?.split('?')[0];
 
-    // Liveness: process is alive. Does NOT require Discord to be connected,
-    // so platform healthchecks don't flap while we wait on singleton lock etc.
+    // Liveness: retorna 200 apenas quando o ready hook completou com sucesso
+    // (Discord conectado, DB pronta, scheduler a correr). Durante o boot
+    // retorna 503 para que o Railway não envie tráfego antes do bot estar pronto.
     if (url === '/health' || url === '/live') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
+      const code = _ready ? 200 : 503;
+      res.writeHead(code, { 'Content-Type': 'application/json' });
       res.end(
         JSON.stringify({
-          status: 'ok',
+          status: _ready ? 'ok' : 'not_ready',
           bot: CONFIG.BOT_INTERNAL_NAME,
           uptimeSec: Math.floor((Date.now() - _bootTime) / 1000),
         })
@@ -122,4 +129,4 @@ function createServer(port = 3000) {
   return server;
 }
 
-module.exports = { createServer, setClient };
+module.exports = { createServer, setClient, markReady };

@@ -2,13 +2,14 @@
 /**
  * Registo de slash commands na API do Discord.
  *
- * Chamado no `ready` — idempotente. Se falhar, loga warning mas não aborta.
+ * Chamado no `ready` — idempotente. Se falhar, loga erro crítico mas não aborta
+ * (modo degradado). Retorna o erro para o caller decidir.
  */
 
 const { REST, Routes } = require('discord.js');
 const CONFIG = require('../../config');
 const { commands } = require('../../slashCommands');
-const { log, warn } = require('../../logger');
+const { log, error } = require('../../logger');
 
 async function registerCommands(client) {
   const rest = new REST({ version: '10' }).setToken(CONFIG.DISCORD_BOT_TOKEN);
@@ -18,7 +19,8 @@ async function registerCommands(client) {
     });
     log(`[READY] ${commands.length} slash commands registados.`);
   } catch (e) {
-    warn(`[READY] Falha ao registar slash commands: ${e.message}`);
+    error(`[COMMANDS] FALHA CRÍTICA — comandos podem estar desatualizados: ${e.message}`);
+    return e;
   }
 }
 

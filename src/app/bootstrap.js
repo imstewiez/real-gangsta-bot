@@ -29,7 +29,7 @@ const metrics = require('../lib/metrics');
 const { bootstrapAll } = require('../panelBootstrap');
 const { seedFromCatalog } = require('../inventory/itemCatalog');
 const { startAll: startScheduler, stopAll: stopScheduler } = require('../jobs/scheduler');
-const { createServer, setClient: setWebClient } = require('../web/server');
+const { createServer, setClient: setWebClient, markReady } = require('../web/server');
 const { registerBuiltinRenderers } = require('../sticky/stickyRenderers');
 const { setClient: setStockClient } = require('../inventory/stockNotifier');
 const { setClient: setBairristaLogClient } = require('../inventory/bairristaNotifier');
@@ -146,6 +146,7 @@ async function readyHook(c) {
     });
   });
 
+  markReady();
   log(`[READY] ${CONFIG.BOT_INTERNAL_NAME} operacional.`);
 }
 
