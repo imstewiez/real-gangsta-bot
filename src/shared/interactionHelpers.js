@@ -155,14 +155,24 @@ async function lockMessageComponents(interaction) {
 }
 
 /**
- * safeShowModal — mostra modal e tranca o dropdown da mensagem original logo a seguir.
- * Para fluxos "select → modal".
+ * safeShowModal — mostra modal. Opcionalmente tranca os componentes da
+ * mensagem original se `lockSource: true`.
+ *
+ * Default é NÃO lockar — porque se o user cancela o modal, a mensagem
+ * original (ex: painel, dropdown) fica acessível para tentar outra vez.
+ * Usar `lockSource: true` só para cadeias select→modal onde o select
+ * original já não deve ser reutilizado (ex: escolha irreversível já
+ * materializada).
+ *
+ * Casos em que NÃO queres lockar (não passes lockSource):
+ *   - Botão em painel persistente (Fechar, Dar a Cara, Criar Saída) —
+ *     se o user cancela, deve poder clicar de novo sem se refrescar.
+ *   - Botões numa ephemeral onde o user pode querer outra acção.
  */
-async function safeShowModal(interaction, modal) {
+async function safeShowModal(interaction, modal, opts = {}) {
   try {
     await interaction.showModal(modal);
-    // Lock the originating select menu / button after modal opens.
-    if (interaction.message) {
+    if (opts.lockSource && interaction.message) {
       setImmediate(() => {
         lockMessageComponents(interaction);
       });
