@@ -27,8 +27,17 @@ function _setItemCtx(userId, ctx) {
 // REGISTAR MATERIAL — fluxo unificado: Entrega ou Venda
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Step 1: Morador clica "Registar Material" → escolhe Entrega ou Venda
+// Step 1: Bairrista clica "Registar Material" → escolhe Entrega ou Venda
 async function handleRegistarMaterialButton(interaction) {
+  // Early check: o user existe no sistema?
+  const member = await memberRepo.findByDiscordId(interaction.user.id);
+  if (!member) {
+    return safeReply(interaction, {
+      content: `${EMOJI.ERRO} Não estás registado na firma. Pede a tag primeiro.`,
+      flags: MessageFlags.Ephemeral,
+    }, { dismissible: true });
+  }
+
   const options = [
     { label: 'Entrega (dar material)', description: 'Material entregue à casa sem pagamento', value: 'entrega', emoji: '📥' },
     { label: 'Venda (vender material)', description: 'Material vendido — valor calculado automaticamente', value: 'venda', emoji: '💰' },
@@ -140,7 +149,7 @@ async function handleQuantityModal(interaction) {
       movementType = 'entrega_oficial';
     }
 
-    await recordDelivery({
+    const result = await recordDelivery({
       discordId: interaction.user.id,
       itemId: pending.itemId,
       quantity,
@@ -153,6 +162,7 @@ async function handleQuantityModal(interaction) {
 
     const isVenda = movementType === 'venda_bairrista' || movementType === 'venda_morador';
     const movValue = quantity * (pending.itemPrice || 0);
+    const balanceAfter = result?.balanceAfter ?? null;
 
     // ── Auto-promoção ──────────────────────────────────────────────────────
     const { checkAndPromote, getPromotionProgress, formatTierName } =
@@ -174,6 +184,13 @@ async function handleQuantityModal(interaction) {
       fields.push({
         name: 'Valor',
         value: `**${movValue.toLocaleString('pt-PT')} €**\n*${pending.itemPrice}€/un.*`,
+        inline: true,
+      });
+    }
+    if (balanceAfter !== null) {
+      fields.push({
+        name: `${EMOJI.STOCK} Stock actual`,
+        value: `**${balanceAfter.toLocaleString('pt-PT')}** em casa`,
         inline: true,
       });
     }

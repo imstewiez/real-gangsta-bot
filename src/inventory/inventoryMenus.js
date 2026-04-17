@@ -7,9 +7,15 @@ const { inventoryRepo } = require('../repositories');
 const { MODALS, INVENTORY } = require('../content');
 
 // Emoji por categoria de material — consistente em todo o bot
+// Inclui nomes do catálogo actual (config/full-inventory.json) + legacy
 const CATEGORY_EMOJI = {
-  armas: '🔫', acessorios: '🎒', municoes: '🔹', metais: '⛏️',
-  reciclagem: '♻️', componentes: '🔧', madeiras: '🪵', quimicos: '🧪',
+  // Catálogo actual
+  armas_fogo: '🔫', armas_brancas: '🔪', dinheiro: '💵',
+  sucata_industria: '♻️', quimicos_droga: '🧪', comida_pesca: '🍖',
+  equipamento: '🎒', municoes: '🔹', metais: '⛏️',
+  // Legacy (ainda pode haver items com estas categorias)
+  armas: '🔫', acessorios: '🎒', reciclagem: '♻️',
+  componentes: '🔧', madeiras: '🪵', quimicos: '🧪',
   electronica: '💻', droga: '💊', comida: '🍖', pesca: '🐟',
   texteis: '🧵', utilidade: '🔦', outros: '📦',
 };
@@ -21,7 +27,14 @@ const CATEGORY_EMOJI = {
 async function buildItemSelectMenu(customIdPrefix, placeholder) {
   const items = await inventoryRepo.getItems(true);
 
-  // Agrupar por categoria (ordem: armas primeiro, depois alfabética)
+  // Batch-fetch stock balances para mostrar no description
+  const balanceMap = new Map();
+  for (const item of items) {
+    const bal = await inventoryRepo.getStockForItem(item.id).catch(() => 0);
+    balanceMap.set(item.id, Number(bal) || 0);
+  }
+
+  // Agrupar por categoria
   const grouped = {};
   for (const item of items) {
     if (!grouped[item.category]) grouped[item.category] = [];
@@ -35,9 +48,11 @@ async function buildItemSelectMenu(customIdPrefix, placeholder) {
       if (options.length >= 25) break;
       const price = parseFloat(item.estimated_value) || 0;
       const priceStr = price > 0 ? `${price.toLocaleString('pt-PT')}€` : 'sem preço';
+      const balance = balanceMap.get(item.id) || 0;
+      const stockStr = `${balance} em stock`;
       options.push({
         label: item.name.slice(0, 100),
-        description: `${category} · ${priceStr} · ${item.unit}`.slice(0, 100),
+        description: `${priceStr} · ${stockStr}`.slice(0, 100),
         value: String(item.id),
         emoji,
       });

@@ -90,7 +90,7 @@ async function recordDelivery({ discordId, itemId, quantity, movementType, notes
     at: new Date(),
   }).catch(e => warn(`[EVENT] material.registered: ${e.message}`));
 
-  return { movement, member, item };
+  return { movement, member, item, balanceAfter: Number(balanceAfter ?? 0) };
 }
 
 async function adjustStock({ itemId, quantity, notes, createdBy }) {
@@ -104,8 +104,8 @@ async function adjustStock({ itemId, quantity, notes, createdBy }) {
   // Guard: não permitir ajuste que deixe stock negativo. Permite descontar
   // (quantity < 0) desde que saldo actual + quantity >= 0.
   if (quantity < 0) {
-    const current = await inventoryRepo.getStockForItem(itemId).catch(() => null);
-    const balance = Number(current?.balance ?? 0);
+    const current = await inventoryRepo.getStockForItem(itemId).catch(() => 0);
+    const balance = Number(current ?? 0);
     if (balance + quantity < 0) {
       throw new Error(
         `Stock insuficiente para **${item.name}** — saldo actual ${balance}, ajuste pedido ${quantity}. ` +
