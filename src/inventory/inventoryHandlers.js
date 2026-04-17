@@ -10,7 +10,7 @@ const {
 const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
 const { successEmbed, stockEmbed, brandEmbed, progressBar } = require('../shared/embedBuilders');
 const { recordDelivery, adjustStock, getCurrentStock } = require('./inventoryEngine');
-const { buildItemSelectMenu, buildStockAdjustmentModal } = require('./inventoryMenus');
+const { buildCategorySelectMenu, buildItemSelectMenuForCategory, buildStockAdjustmentModal } = require('./inventoryMenus');
 const { inventoryRepo, memberRepo } = require('../repositories');
 const { isChefia } = require('../permissions/permissionEngine');
 const { EMOJI, ERRORS, MODALS, INVENTORY } = require('../content');
@@ -80,10 +80,35 @@ async function handleTipoRegistoSelect(interaction) {
   const tipo = interaction.values[0]; // 'entrega' ou 'venda'
   _setItemCtx(interaction.user.id, { tipo });
 
-  const prefix = tipo === 'venda' ? 'inv::select_item_venda' : 'inv::select_item_entrega';
-  const menu = await buildItemSelectMenu(prefix, 'Seleciona o material');
+  const prefix = tipo === 'venda' ? 'inv::cat_venda' : 'inv::cat_entrega';
+  const menu = await buildCategorySelectMenu(prefix, 'Seleciona a categoria');
   await safeUpdate(interaction, {
     content: tipo === 'venda' ? INVENTORY.PROMPTS.QUE_MATERIAL_VENDA : INVENTORY.PROMPTS.QUE_MATERIAL_ENTREGA,
+    components: [menu],
+  });
+}
+
+// Step 2b: Escolheu categoria → mostra items dessa categoria
+async function handleCategorySelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const category = interaction.values[0];
+  if (category === 'none') return;
+  const ctx = pendingItemSelections.get(interaction.user.id);
+
+  // Determinar o customId do próximo passo baseado no fluxo
+  const customId = interaction.customId;
+  let itemPrefix;
+  if (customId.includes('cat_venda')) itemPrefix = 'inv::select_item_venda';
+  else if (customId.includes('cat_entrega')) itemPrefix = 'inv::select_item_entrega';
+  else if (customId.includes('cat_ajuste')) itemPrefix = 'inv::select_ajuste';
+  else if (customId.includes('cat_edit')) itemPrefix = 'inv::select_edit_item';
+  else if (customId.includes('cat_deactivate')) itemPrefix = 'inv::select_deactivate_item';
+  else if (customId.includes('cat_encomenda')) itemPrefix = 'inv::select_encomenda';
+  else itemPrefix = 'inv::select_item';
+
+  const menu = await buildItemSelectMenuForCategory(itemPrefix, 'Seleciona o item', category);
+  await safeUpdate(interaction, {
+    content: `Categoria: **${category}** — escolhe o item:`,
     components: [menu],
   });
 }
@@ -269,9 +294,9 @@ async function handleAdjustStockButton(interaction) {
       { dismissible: true }
     );
   }
-  const menu = await buildItemSelectMenu('inv::select_ajuste', 'Seleciona o item para ajustar');
+  const menu = await buildCategorySelectMenu('inv::cat_ajuste', 'Seleciona a categoria');
   await safeReply(interaction, {
-    content: 'Que item queres ajustar?',
+    content: 'Que categoria de item queres ajustar?',
     components: [menu],
     flags: MessageFlags.Ephemeral,
   });
@@ -418,14 +443,14 @@ async function handleGerirActionSelect(interaction) {
 
   if (action === 'edit_price') {
     _setItemCtx(interaction.user.id, { action: 'edit_price' });
-    const menu = await buildItemSelectMenu('inv::select_edit_item', 'Seleciona o material');
-    return safeUpdate(interaction, { content: 'Que material queres editar?', components: [menu] });
+    const menu = await buildCategorySelectMenu('inv::cat_edit', 'Seleciona a categoria');
+    return safeUpdate(interaction, { content: 'Que categoria de material queres editar?', components: [menu] });
   }
 
   if (action === 'deactivate') {
     _setItemCtx(interaction.user.id, { action: 'deactivate' });
-    const menu = await buildItemSelectMenu('inv::select_deactivate_item', 'Seleciona o material a desativar');
-    return safeUpdate(interaction, { content: 'Que material queres desativar?', components: [menu] });
+    const menu = await buildCategorySelectMenu('inv::cat_deactivate', 'Seleciona a categoria');
+    return safeUpdate(interaction, { content: 'Que categoria de material queres desativar?', components: [menu] });
   }
 
   if (action === 'reactivate') {
@@ -602,9 +627,9 @@ async function handleReactivateItemSelect(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleEncomendasButton(interaction) {
-  const menu = await buildItemSelectMenu('inv::select_encomenda', 'Que material queres encomendar?');
+  const menu = await buildCategorySelectMenu('inv::cat_encomenda', 'Seleciona a categoria');
   await safeReply(interaction, {
-    content: 'Seleciona o material que queres encomendar:',
+    content: 'Seleciona a categoria do material que queres encomendar:',
     components: [menu],
     flags: MessageFlags.Ephemeral,
   });
@@ -714,6 +739,7 @@ async function handleEncomendaModal(interaction) {
 module.exports = {
   handleRegistarMaterialButton,
   handleTipoRegistoSelect,
+  handleCategorySelect,
   handleItemSelect,
   handleQuantityModal,
   handleStockCommand,

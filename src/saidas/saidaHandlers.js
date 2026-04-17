@@ -10,7 +10,7 @@ const {
 } = require('discord.js');
 const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
 const { successEmbed, brandEmbed } = require('../shared/embedBuilders');
-const { buildItemSelectMenu } = require('../inventory/inventoryMenus');
+const { buildCategorySelectMenu, buildItemSelectMenuForCategory } = require('../inventory/inventoryMenus');
 const { isChefia, isOficial, canOpenSession } = require('../permissions/permissionEngine');
 const { saidaRepo } = require('../repositories');
 const saidaEngine = require('./saidaEngine');
@@ -929,8 +929,19 @@ async function handleMaterialDirectionSelect(interaction) {
   }
   ctx.direction = direction;
   _setContext(interaction.user.id, ctx);
-  const menu = await buildItemSelectMenu('saida::select_material_item', 'Escolhe o material');
-  await safeUpdate(interaction, { content: `Que material foi **${direction}**?`, components: [menu] });
+  const menu = await buildCategorySelectMenu('saida::cat_material', 'Seleciona a categoria');
+  await safeUpdate(interaction, { content: `Que material foi **${direction}**? Escolhe a categoria:`, components: [menu] });
+}
+
+// Step intermediário: categoria seleccionada → mostrar itens dessa categoria
+async function handleMaterialCategorySelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const category = interaction.values[0];
+  if (category === 'none') return;
+  const customId = interaction.customId;
+  const itemPrefix = customId.includes('cat_issue') ? 'saida::issue_select_item' : 'saida::select_material_item';
+  const menu = await buildItemSelectMenuForCategory(itemPrefix, 'Seleciona o item', category);
+  await safeUpdate(interaction, { content: `Categoria **${category}** — escolhe o item:`, components: [menu] });
 }
 
 async function handleMaterialItemSelect(interaction) {
@@ -1089,8 +1100,8 @@ async function handleIssueParticipantSelect(interaction) {
     );
   ctx.participantDiscordId = discordId;
   _setContext(interaction.user.id, ctx);
-  const menu = await buildItemSelectMenu('saida::issue_select_item', 'Que material?');
-  await safeUpdate(interaction, { content: `Saída **#${ctx.saidaId}** → <@${discordId}> — item:`, components: [menu] });
+  const menu = await buildCategorySelectMenu('saida::cat_issue', 'Seleciona a categoria');
+  await safeUpdate(interaction, { content: `Saída **#${ctx.saidaId}** → <@${discordId}> — categoria:`, components: [menu] });
 }
 
 async function handleIssueItemSelect(interaction) {
@@ -1185,6 +1196,7 @@ module.exports = {
   handleRegisterMaterialButton,
   handleMaterialOpSelect,
   handleMaterialDirectionSelect,
+  handleMaterialCategorySelect,
   handleMaterialItemSelect,
   handleMaterialQtyModal,
   handleIssueToParticipantButton,

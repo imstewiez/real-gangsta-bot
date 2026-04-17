@@ -7,6 +7,7 @@
 const {
   handleTipoRegistoSelect,
   handleItemSelect,
+  handleCategorySelect,
   handleAdjustSelect,
   handleEncomendaSelect,
   handleGerirActionSelect,
@@ -22,6 +23,7 @@ const {
   handleAddParticipantSelect,
   handleMaterialOpSelect,
   handleMaterialDirectionSelect,
+  handleMaterialCategorySelect,
   handleMaterialItemSelect,
   handleIssueSaidaSelect,
   handleIssueParticipantSelect,
@@ -44,8 +46,9 @@ const SELECT_ROUTES = [
   // Availability
   prefix('avail::vote_select::', availHandleVoteSelect),
 
-  // Inventory — registo de material
+  // Inventory — registo de material (2-step: categoria → item)
   exact('inv::select_tipo_registo', handleTipoRegistoSelect),
+  prefix('inv::cat_', handleCategorySelect),
   exact('inv::select_item_entrega', handleItemSelect),
   exact('inv::select_item_venda', handleItemSelect),
   exact('inv::select_ajuste', handleAdjustSelect),
@@ -72,6 +75,7 @@ const SELECT_ROUTES = [
   exact('saida::select_add_participant', handleAddParticipantSelect),
   exact('saida::select_material_op', handleMaterialOpSelect),
   exact('saida::select_material_direction', handleMaterialDirectionSelect),
+  prefix('saida::cat_', handleMaterialCategorySelect),
   exact('saida::select_material_item', handleMaterialItemSelect),
 
   // Custódia nominal
