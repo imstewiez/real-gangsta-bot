@@ -15,7 +15,7 @@
 
 const { Events } = require('discord.js');
 const CONFIG = require('../config');
-const { pool, acquireInstanceLockWithRetry, releaseInstanceLock } = require('../db');
+const { pool, acquireInstanceLockWithRetry, releaseInstanceLock, warmPool } = require('../db');
 const { runMigrations } = require('../dbMigrate');
 const {
   ensureInstanceTable, cleanupStaleInstances, registerInstance,
@@ -109,6 +109,9 @@ async function readyHook(c) {
   if (CONFIG.PANEL_BOOTSTRAP_ON_READY) {
     await bootstrapAll(c);
   }
+
+  // Warmup do pool — força conexões antes dos jobs para evitar cold starts.
+  await warmPool(3);
 
   startScheduler(c);
   setWebClient(c);

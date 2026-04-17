@@ -37,7 +37,8 @@ pool.on('error', (err) => {
 });
 
 // Threshold para log de queries lentas (ms). Configurável via DB_SLOW_QUERY_MS.
-const SLOW_QUERY_MS = parseInt(process.env.DB_SLOW_QUERY_MS, 10) || 500;
+// Railway Postgres tem cold starts frequentes — 1500ms evita ruído falso.
+const SLOW_QUERY_MS = parseInt(process.env.DB_SLOW_QUERY_MS, 10) || 1500;
 
 // Métricas de query (lazy — evita dependência circular no load)
 let _queryCounter = null;
@@ -130,4 +131,21 @@ async function releaseInstanceLock() {
   }
 }
 
-module.exports = { pool, query, queryWithTransaction, acquireInstanceLockWithRetry, releaseInstanceLock };
+// Warmup — abre N conexões no pool para evitar cold starts nas primeiras queries.
+// Chamar uma vez no boot, antes dos jobs e sheets sync arrancarem.
+async function warmPool(n = 3) {
+  const clients = [];
+  try {
+    for (let i = 0; i < Math.min(n, POOL_MAX); i++) {
+      clients.push(await pool.connect());
+    }
+    // Query leve para forçar o Postgres a responder
+    if (clients.length) await clients[0].query('SELECT 1');
+  } catch (e) {
+    console.warn(`[DB] Pool warmup falhou (non-fatal): ${e.message}`);
+  } finally {
+    for (const c of clients) c.release();
+  }
+}
+
+module.exports = { pool, query, queryWithTransaction, acquireInstanceLockWithRetry, releaseInstanceLock, warmPool };
