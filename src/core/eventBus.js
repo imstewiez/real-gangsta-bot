@@ -24,6 +24,7 @@
 
 const { EventEmitter } = require('events');
 const { log, warn } = require('../logger');
+const { eventsByName } = require('../lib/metrics');
 
 class DomainEventBus extends EventEmitter {
   constructor() {
@@ -36,6 +37,7 @@ class DomainEventBus extends EventEmitter {
    * é robusto em relação aos outros.
    */
   async emitAsync(event, payload = {}) {
+    eventsByName.inc({ event });
     const listeners = this.listeners(event);
     if (!listeners.length) return;
     log(`[EVENT] ${event} · ${listeners.length} listener(s)`);

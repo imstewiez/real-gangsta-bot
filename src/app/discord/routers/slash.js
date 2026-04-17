@@ -18,6 +18,7 @@ const transfer = require('../../../queries/transfer');
 
 const { handleRegisterKillButton } = require('../../../kills/killHandlers');
 const { handleMovimento } = require('../../../members/bairristaHandlers');
+const { commandsByName } = require('../../../lib/metrics');
 
 const SLASH_ROUTES = {
   // ── Queries user-facing
@@ -39,6 +40,7 @@ async function handleSlash(interaction) {
   const cmd = interaction.commandName;
   const handler = SLASH_ROUTES[cmd];
   if (!handler) return; // comando desconhecido — ignorar silenciosamente
+  commandsByName.inc({ command: cmd });
   return handler(interaction);
 }
 

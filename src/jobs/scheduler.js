@@ -25,6 +25,7 @@ async function runJob(job) {
   job._running = true;
   const jobId = await jobRepo.startJob(job.name);
   metrics.jobRunsTotal.inc();
+  metrics.jobsByName.inc({ job: job.name });
 
   try {
     const result = await job.fn(_client);

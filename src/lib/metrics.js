@@ -3,12 +3,27 @@
 const _startedAt = Date.now();
 const _counters = new Map();
 const _gauges = new Map();
+const _registry = [];
 
 function _ensureCounter(name, help) {
   if (!_counters.has(name)) _counters.set(name, { value: 0, help: help || '' });
 }
 function _ensureGauge(name, help) {
   if (!_gauges.has(name)) _gauges.set(name, { value: 0, help: help || '' });
+}
+
+function labeledCounter(name, help, labelNames = []) {
+  const values = new Map(); // 'key="val",key2="val2"' → count
+  const obj = {
+    name, help, type: 'counter', labelNames,
+    inc(labels = {}) {
+      const key = labelNames.map(l => `${l}="${labels[l] || ''}"`).join(',');
+      values.set(key, (values.get(key) || 0) + 1);
+    },
+    _values: values,
+  };
+  _registry.push(obj);
+  return obj;
 }
 
 function counter(name, help) {
@@ -79,6 +94,14 @@ function toPrometheusText() {
     lines.push(`# TYPE ${name} gauge`);
     lines.push(`${name} ${g.value}\n`);
   }
+  for (const obj of _registry) {
+    if (obj.help) lines.push(`# HELP ${obj.name} ${obj.help}`);
+    lines.push(`# TYPE ${obj.name} ${obj.type}`);
+    for (const [key, count] of obj._values) {
+      lines.push(`${obj.name}{${key}} ${count}`);
+    }
+    lines.push('');
+  }
   return lines.join('\n');
 }
 
@@ -110,6 +133,11 @@ const rateLimitDenialsTotal = counter('rg_rate_limit_denials_total', 'Rate limit
 const sheetsSyncTotal = counter('rg_sheets_sync_total', 'Google Sheets syncs executed');
 const sheetsSyncErrorsTotal = counter('rg_sheets_sync_errors_total', 'Google Sheets sync errors');
 
+// ── Labeled counters (dimensions) ────────────────────────────────────────────
+const commandsByName = labeledCounter('rg_commands_by_name', 'Commands invoked by name', ['command']);
+const jobsByName = labeledCounter('rg_jobs_by_name', 'Job runs by name', ['job']);
+const eventsByName = labeledCounter('rg_events_by_name', 'Domain events emitted', ['event']);
+
 const membersActive = gauge('rg_members_active', 'Active members');
 const discordPingMs = gauge('rg_discord_ping_ms', 'Discord WS ping ms');
 const dbPoolTotal = gauge('rg_db_pool_total', 'DB connections currently in pool (total)');
@@ -127,6 +155,7 @@ const pendingRetentionRows = gauge('rg_pending_retention_rows', 'Rows elegíveis
 module.exports = {
   counter,
   gauge,
+  labeledCounter,
   toPrometheusText,
   toJson,
   commandInvocationsTotal,
@@ -147,6 +176,9 @@ module.exports = {
   rateLimitDenialsTotal,
   sheetsSyncTotal,
   sheetsSyncErrorsTotal,
+  commandsByName,
+  jobsByName,
+  eventsByName,
   membersActive,
   discordPingMs,
   dbPoolTotal,
