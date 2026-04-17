@@ -105,6 +105,9 @@ async function updateStatus(id, status, extras = {}) {
   const values = [status];
   let i = 2;
   for (const [key, value] of Object.entries(extras)) {
+    // updated_at já está no SET via NOW() — filtrar para evitar
+    // "multiple assignments to same column" em Postgres.
+    if (key === 'updated_at' || key === 'status') continue;
     sets.push(`${key} = $${i}`);
     values.push(value);
     i++;

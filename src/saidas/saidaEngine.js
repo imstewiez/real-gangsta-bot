@@ -196,7 +196,6 @@ async function closeSaida(saidaId, resultData, actorId) {
     survivors: resultData.survivors || 0,
     characterized_count,
     workers_count,
-    updated_at: new Date(),
   });
 
   await logAudit({

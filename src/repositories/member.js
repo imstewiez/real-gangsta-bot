@@ -38,6 +38,9 @@ async function update(id, fields) {
   const values = [];
   let i = 1;
   for (const [key, value] of Object.entries(fields)) {
+    // updated_at é sempre adicionado via NOW() abaixo — filtrar para evitar
+    // "multiple assignments to same column" em Postgres.
+    if (key === 'updated_at') continue;
     sets.push(`${key} = $${i}`);
     values.push(value);
     i++;
