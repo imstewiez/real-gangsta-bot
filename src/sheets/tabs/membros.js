@@ -4,7 +4,7 @@
  * por agregado + roster completo filtrável.
  */
 
-const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, numCell, badgeCell,
+const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, numCell, badgeCell, killCell, deathCell,
   conditionalGradient, conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
@@ -227,8 +227,8 @@ async function syncMembros(batch, sheetId) {
     numCell(m.saidas_total, NUM_FMT.INT),
     numCell(m.wins, NUM_FMT.INT),
     numCell(m.losses, NUM_FMT.INT),
-    numCell(m.kills, NUM_FMT.INT),
-    numCell(m.deaths, NUM_FMT.INT),
+    killCell(m.kills),
+    deathCell(m.deaths),
     numCell(Number(m.kd), NUM_FMT.KD),
     numCell(Number(m.survival_rate) / 100, NUM_FMT.PCT),
     numCell(Number(m.return_rate) / 100, NUM_FMT.PCT),

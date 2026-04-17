@@ -8,7 +8,7 @@
  *   5. Subsecção spots (tabela agregada + tier badges)
  */
 
-const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, numCell, badgeCell,
+const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, numCell, badgeCell, killCell, deathCell,
   conditionalGradient, conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
@@ -169,8 +169,8 @@ async function syncSaidas(batch, sheetId) {
     numCell(s.participantes, NUM_FMT.INT),
     numCell(s.caracterizados || 0, NUM_FMT.INT),
     numCell(s.trabalhadores || 0, NUM_FMT.INT),
-    numCell(s.kills, NUM_FMT.INT),
-    numCell(s.deaths, NUM_FMT.INT),
+    killCell(s.kills),
+    deathCell(s.deaths),
     numCell(s.survivors, NUM_FMT.INT),
     numCell(s.returned_bairro, NUM_FMT.INT),
     numCell(s.supplied_units, NUM_FMT.INT),
@@ -245,8 +245,8 @@ async function syncSaidas(batch, sheetId) {
       numCell(p.returned_units, NUM_FMT.INT),
       numCell(p.lost_units, NUM_FMT.INT),
       numCell(p.consumed_units, NUM_FMT.INT),
-      numCell(p.kills, NUM_FMT.INT),
-      numCell(p.deaths, NUM_FMT.INT),
+      killCell(p.kills),
+      deathCell(p.deaths),
       boolBadge(p.survived),
       boolBadge(p.returned_bairro),
       mvpBadgeCell(p.mvp_flag),
@@ -285,8 +285,8 @@ async function syncSaidas(batch, sheetId) {
       numCell(s.no_conflict_runs, NUM_FMT.INT),
       numCell(wr, NUM_FMT.PCT),
       tierBadge(wr),
-      numCell(s.our_kills, NUM_FMT.INT),
-      numCell(s.our_deaths, NUM_FMT.INT),
+      killCell(s.our_kills),
+      deathCell(s.our_deaths),
       numCell(Number(s.kd), NUM_FMT.KD),
       numCell(Number(s.total_gross_value), NUM_FMT.EURO),
       numCell(Number(s.total_net_value), NUM_FMT.EURO),

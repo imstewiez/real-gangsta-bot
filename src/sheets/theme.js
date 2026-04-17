@@ -227,6 +227,14 @@ function numCell(value, numberFormat, opts = {}) {
 function signatureCell(text) {
   return cell(text || `— ${SIGNATURE}`, { bg: COLOR.BG_HEADER, font: FONT.SIG, align: 'RIGHT', vAlign: 'MIDDLE', brandRed: true });
 }
+// Kills — bold verde forte, sempre destacado
+function killCell(value) {
+  return cell(value, { bg: COLOR.BG_APP, font: _font({ fontSize: 11, bold: true, foregroundColor: COLOR.GREEN_DEEP }), align: 'RIGHT', vAlign: 'MIDDLE', numberFormat: NUM_FMT.INT });
+}
+// Deaths — bold vermelho signal, sempre destacado
+function deathCell(value) {
+  return cell(value, { bg: COLOR.BG_APP, font: _font({ fontSize: 11, bold: true, foregroundColor: COLOR.RED_SIGNAL }), align: 'RIGHT', vAlign: 'MIDDLE', numberFormat: NUM_FMT.INT });
+}
 
 // ─── Células semânticas (camada 2: KPIs / badges / rankings) ─────────────────
 function kpiLabelCell(value) {
@@ -353,6 +361,7 @@ module.exports = {
   // Células camada 1
   titleCell, subtitleCell, sectionCell, sectionHintCell,
   headerCell, subHeaderCell, bodyCell, bodyBoldCell, mutedCell, captionCell, numCell, signatureCell,
+  killCell, deathCell,
   // Células camada 2
   kpiLabelCell, kpiValueCell, kpiDeltaCell, badgeCell, pillCell, rankCell, formatDelta,
   // Conditional formatting

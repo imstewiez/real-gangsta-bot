@@ -75,6 +75,9 @@ async function syncOne(key) {
     if (result && Number.isFinite(result.lastRow) && Number.isFinite(result.lastCol)) {
       trimSheet(batch, sheetId, result.lastRow, result.lastCol);
     }
+    // Proteger tab (warning-only) e esconder config
+    batch.protectSheet(sheetId, 'Firma RedWood — gerido pelo bot');
+    if (key === 'config') batch.hideSheet(sheetId);
     flushed = await batch.flush();
   } catch (e) {
     syncErr = e;

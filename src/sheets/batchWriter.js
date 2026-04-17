@@ -164,6 +164,42 @@ class BatchWriter {
     return this;
   }
 
+  /** Protege toda a sheet (warning-only — avisa o user antes de editar). */
+  protectSheet(sheetId, description = 'Gerido pelo bot — não editar') {
+    this.requests.push({
+      addProtectedRange: {
+        protectedRange: {
+          range: { sheetId },
+          description,
+          warningOnly: true,
+        },
+      },
+    });
+    return this;
+  }
+
+  /** Esconde uma tab (fica invisível na barra de tabs). */
+  hideSheet(sheetId) {
+    this.requests.push({
+      updateSheetProperties: {
+        properties: { sheetId, hidden: true },
+        fields: 'hidden',
+      },
+    });
+    return this;
+  }
+
+  /** Mostra uma tab escondida. */
+  showSheet(sheetId) {
+    this.requests.push({
+      updateSheetProperties: {
+        properties: { sheetId, hidden: false },
+        fields: 'hidden',
+      },
+    });
+    return this;
+  }
+
   /** Proteção de range (só editores com permissão). */
   protectRange(sheetId, startRow, endRow, startCol, endCol, description, editorsEmails = []) {
     this.requests.push({

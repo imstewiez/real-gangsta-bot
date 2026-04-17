@@ -9,7 +9,7 @@
  *      MVP, survival, disciplina, K/D)
  */
 
-const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, numCell, badgeCell,
+const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, numCell, badgeCell, killCell, deathCell,
   formatDelta, rankCell, conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
   headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
@@ -155,8 +155,8 @@ async function syncResumo(batch, sheetId) {
   const dailyRows = daily14.map(d => [
     bodyBoldCell(fmtDate(d.day)),
     numCell(d.ops, NUM_FMT.INT),
-    numCell(d.kills, NUM_FMT.INT),
-    numCell(d.deaths, NUM_FMT.INT),
+    killCell(d.kills),
+    deathCell(d.deaths),
     numCell(Number(d.net), NUM_FMT.EURO),
     numCell(Number(d.entradas), NUM_FMT.INT),
     numCell(Number(d.vendas), NUM_FMT.INT),
@@ -292,8 +292,8 @@ async function syncResumo(batch, sheetId) {
       render: [
         bodyBoldCell(x.display_name || '—'),
         numCell(Number(x.kd_ratio), NUM_FMT.KD),
-        numCell(x.kills_total, NUM_FMT.INT),
-        numCell(x.deaths_total, NUM_FMT.INT),
+        killCell(x.kills_total),
+        deathCell(x.deaths_total),
       ],
     })),
   });
