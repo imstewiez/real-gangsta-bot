@@ -6,12 +6,13 @@
 const E = require('./emojis');
 
 const MEMBER_STATS = {
-  // Botões no painel bairrista
-  BUTTON: {
-    PERFORMANCE: 'Minha Performance',
-    MATERIAL: 'Meu Material',
-    LUCRO: 'Meu Lucro',
-    SAIDAS: 'Minhas Saídas',
+  // Labels dos drill-downs do cockpit pessoal
+  DRILLDOWN: {
+    MATERIAL: 'Material',
+    PVP: 'PvP & Saídas',
+    ENCOMENDAS: 'Encomendas',
+    HISTORICO: 'Histórico',
+    PROGRESSAO: 'Progressão',
   },
 
   // Performance / Combate

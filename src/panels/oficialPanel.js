@@ -13,17 +13,21 @@ function buildOficialPanel() {
     .setTitle(PANELS.OFICIAL.TITLE)
     .setDescription(PANELS.OFICIAL.DESCRIPTION));
 
-  const B = BUTTONS.OFICIAL;
-
-  const row = buttonRow(
-    button({ customId: 'chefia::criar_saida',   label: 'Nova Sessão',  style: 'Success',   emoji: EMOJI.SAIDA }),
-    button({ customId: 'oficial::ver_saidas',   label: 'Ver Saídas',   style: 'Primary',   emoji: '🏴' }),
-    buttonFromDef('bairrista::registar_material', B.REGISTAR),
-    buttonFromDef('bairrista::historico',         B.MEMBROS),
-    button({ customId: 'bairrista::totais',       label: 'Resumo',       style: 'Secondary', emoji: '🏆' }),
+  // Row 1 — Saídas e operações (core do Oficial)
+  const row1 = buttonRow(
+    button({ customId: 'chefia::criar_saida',   label: 'Nova Sessão',     style: 'Success',   emoji: EMOJI.SAIDA }),
+    button({ customId: 'oficial::ver_saidas',   label: 'Ver Saídas',      style: 'Primary',   emoji: EMOJI.SAIDA }),
+    button({ customId: 'chefia::stats_open',    label: 'Estatísticas',    style: 'Primary',   emoji: EMOJI.TOPO }),
   );
 
-  return { embeds: [embed], components: [row] };
+  // Row 2 — Material + cockpit pessoal (Oficiais também são Bairristas)
+  const row2 = buttonRow(
+    button({ customId: 'bairrista::registar_material', label: 'Registar Material', style: 'Secondary', emoji: EMOJI.ENTREGA }),
+    button({ customId: 'bairrista::movimento',         label: 'O meu Movimento',   style: 'Secondary', emoji: EMOJI.FIRMA }),
+    button({ customId: 'bairrista::ranking',           label: 'Ranking',           style: 'Secondary', emoji: EMOJI.MEDAL_1 }),
+  );
+
+  return { embeds: [embed], components: [row1, row2] };
 }
 
 module.exports = { buildOficialPanel };

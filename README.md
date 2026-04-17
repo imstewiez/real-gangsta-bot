@@ -1,14 +1,11 @@
-# Bot di Zona
+# Bot di Zona — Firma RedWood
 
-Bot de gestão do bairro/grupo RP **Bot di Zona**. Gere onboarding, hierarquia, inventário (ledger), operações/saídas, tops semanais, cemitério e auditoria — tudo com o Discord como interface e PostgreSQL como fonte de verdade.
+Bot de gestão do bairro **Gangsta di Zona / Firma RedWood**. Gere onboarding, hierarquia, inventário (ledger), saídas/PvP, tops semanais, cemitério e auditoria — tudo com o Discord como interface e PostgreSQL como fonte de verdade.
 
 ## Stack
 
 - Node.js ≥ 18 · discord.js v14 · PostgreSQL
 - Deploy: Railway (`railway.toml`)
-
-Arquitectura descrita em [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-(composition root, routers declarativos, event bus, session store).
 
 ## Arranque
 
@@ -17,12 +14,6 @@ cp .env.example .env          # preenche secrets
 npm install
 npm run db:migrate            # aplica migrations em ordem por id
 npm start
-```
-
-Testes:
-
-```bash
-npm test
 ```
 
 ## Hierarquia
@@ -34,162 +25,93 @@ npm test
  4. Real Gangster    │
  5. Patrão di Zona   │ Chefe do Bairro     (isPatraoDiZona)
  6. Gangster Fodido  │ tier 3 (topo)       ┐
- 7. Young Blood      │ tier 2 (mid)        ├─ Bairristas
- 8. O Gunão          │ tier 1 (entrada)    ┘
+ 7. O Gunão          │ tier 2 (mid)        ├─ Bairristas
+ 8. Young Blood      │ tier 1 (entrada)    ┘
 ```
 
-**Invariante core**: qualquer tier (Gun/YB/GF) ⇒ role base **Bairristas**. Aplicada em onboarding, promoções e via job diário.
-
-A ordem foi corrigida na Fase 2 (era inversa). Membros existentes em produção podem ser migrados via `/rg-fix-tiers modo:dry-run` → `apply` (swap YB↔O Gunão + DB tier + rename do canal individual).
+**Invariante core**: qualquer tier (YB/Gunão/GF) ⇒ role base **Bairristas**. Aplicada em onboarding, promoções e via job diário.
 
 ## Fluxos
 
 ### Onboarding
-1. Pessoa clica "Pedir Tag" no painel de entrada → modal (nome + alcunha).
+1. Pessoa clica "Dar a Cara" no painel de entrada → modal (nome + alcunha).
 2. Pedido fica pendente em `tag_requests`. Chefia aprova no canal `🏷️│tags`.
 3. Aprovação:
    - adiciona `Bairristas` (base) + `Young Blood` (tier 1)
    - cria registo em `members` (tier=young_blood)
-   - cria canal individual no GUETTO com overwrites para o próprio + Comando + Supervisão + Patrão di Zona
+   - cria canal individual no GUETTO
    - envia embed de boas-vindas com painel pessoal
-   - reforça invariantes
 
 ### Promoção automática
-- `25.000€` de material acumulado (entregas + vendas) → promove **O Gunão → Young Blood**
-- `50.000€` → **Young Blood → Gangster Fodido**
-- Acima disso é manual.
+- **25.000 itens** de material acumulado (entregas + vendas) → promove **Young Blood → O Gunão**
+- **50.000 itens** → **O Gunão → Gangster Fodido**
+- Acima disso é manual (chefia atribui role via Discord).
 
-Env vars: `PROMO_GUNAO_TO_YOUNG_BLOOD` e `PROMO_YOUNG_BLOOD_TO_GANGSTER_FODIDO` (com fallback para os nomes antigos `PROMO_YOUNG_BLOOD_TO_GUNAO` / `PROMO_GUNAO_TO_GANGSTER_FODIDO`).
-
-### Promoção a Oficial
-- Detectada via `GuildMemberUpdate` (adição de role OG / Real Gangster).
-- Canal individual é arquivado (`ARCHIVE_ON_PROMOTION=true`) — não apagado.
+Env vars: `PROMO_YOUNG_BLOOD_TO_GUNAO` e `PROMO_GUNAO_TO_GANGSTER_FODIDO`.
 
 ### Inventário (ledger)
-Tipos de movimento: `saldo_inicial`, `entrega_bairrista`, `venda_bairrista`, `entrega_oficial`, `fornecimento_org`, `consumo_operacao`, `devolucao_operacao`, `ajuste_manual`, `perda_operacao`, `apreendido`, `craftado`. (Legacy: `entrega_morador`, `venda_morador` — aceites em leitura durante transição.)
+Tipos de movimento: `saldo_inicial`, `entrega_bairrista`, `venda_bairrista`, `entrega_oficial`, `fornecimento_org`, `consumo_saida`, `devolucao_saida`, `ajuste_manual`, `perda_saida`, `apreendido`, `craftado`. (Legacy: `entrega_morador`, `venda_morador` — aceites em leitura.)
 
 Stock é sempre calculado a partir do ledger — nunca sobreposto.
 
-### Operações
-- Cria, adiciona participantes (via `UserSelectMenu` multi-select com pesquisa), regista material fornecido/devolvido/perdido/consumido, fecha com resultado (fight, mortes, sobreviventes).
-- **Cadeia de custódia por participante** via `operationEngine.issueMaterialToParticipant` / `settleParticipantCustody`.
+### Saídas / PvP
+Fluxo completo:
+1. **Criar** — tipo (select), spot (select), data/hora/notas (modal)
+2. **Inscrição** — participante escolhe Caracterizado (com arma) ou Trabalhador
+3. **Fechar** → entra em `em_liquidacao` (resultado guardado, scoring pendente)
+4. **Liquidação** — bot pinga todos com @, cada participante preenche: sobreviveu? kills? arma devolvida?
+5. **Finalizar** → scoring com dados reais, MVP, stats, 3 embeds publicados
+6. **Armas** — staff confirma devoluções de arma da org
+
+Cadeia de custódia por participante. Material reconciliado automaticamente.
 
 ### Cemitério
-- `/rg-kill` → modal de kill.
-- `/rg-cemetery` → leaderboard.
-- Auto-publica no canal `☠️│cemitério` (se `CEMETERY_CHANNEL_ID` configurado).
+- `/kill` → modal de kill. Auto-publica no canal cemitério.
 
 ### Tops semanais
-- Publicação automática domingo 23h no `WEEKLY_TOP_CHANNEL_ID` (controlada por `AUTO_PUBLISH_WEEKLY_TOP`).
+- Publicação automática via scheduler. Hybrid score: contribuição (40%) + performance (40%) + fiabilidade (20%).
 
-### Disponibilidade diária (Fase 3)
-- `/rg-availability-create` publica uma sessão com SelectMenu (até 8 slots × 3 estados: ✅/❌/⏰) + botões "Apareço/Talvez/Não dá" para todos os slots + Resumo + Atualizar.
-- Cada voto é upsert na DB; a mensagem **edita-se em vez de spammar**.
-- Job opcional `availability_auto_publish` (5min interval) age só na hora indicada por `AVAILABILITY_AUTO_PUBLISH_HOUR` se `AVAILABILITY_AUTO_PUBLISH_ENABLED=true`.
-- Slots default: `20:30,21:30,22:30,23:30,00:30,01:30,02:30,03:30` (configurável via `AVAILABILITY_SLOTS`).
-- 10 cabeçalhos rotativos com tom de bairro — sem cringe.
+### Disponibilidade diária
+- Sessão com SelectMenu (slots × estados) + botões de atalho.
+- Cada voto edita a mensagem — zero spam.
 
-### Rádio (Fase 4)
-- `/rg-radio` publica painel com **Principal** + **Parceria** e botões aleatória/set/swap/history/refresh.
-- Geração aleatória entre `RADIO_RANDOM_MIN`/`MAX` (default 1000-9999) com anti-colisão.
-- Histórico em `radio_history` com quem mudou e modo (manual/random).
-- `/rg-radio-set`, `/rg-radio-random`, `/rg-radio-history` para CLI rápido.
+### Rádio
+- Painel com Principal + Parceria. Botões: aleatória/set/swap/history/refresh.
 
-### Sticky messages (Fase 5)
-- 2 modos: `update` (edita a mesma mensagem) e `repost` (republica após N mensagens novas e/ou Y minutos).
-- Stickys configuráveis via painel da chefia (botão Stickys).
-- `availability:daily` e `radio:current` são source_keys built-in com renderers automáticos.
-
-## Slash commands (10 — todos de 1 palavra, sem prefixo)
+## Slash commands (10)
 
 Filosofia: **painéis são a via principal**. Slash commands são atalhos rápidos.
-Toda a manutenção técnica corre em jobs automáticos — fora da UX do user.
 
-### User-facing (qualquer membro)
+### User-facing
 | Comando | Descrição |
 |---|---|
-| `/versao` | Estado do bot (+ saúde dos dados se staff) |
-| `/stock` | Stock actual (geral ou de um item específico) |
+| `/versao` | Estado do bot |
+| `/stock` | Stock actual |
 | `/catalogo` | Catálogo de materiais com preços |
 | `/ficha` | Ficha de um membro |
-| `/movimento` | **Movimento no Bairro** — cockpit pessoal com drill-downs |
+| `/movimento` | Cockpit pessoal com drill-downs |
 | `/ranking` | Rankings (semanal, mensal, histórico) |
 | `/saidas` | As tuas últimas saídas |
 | `/kill` | Registar uma kill |
 
-### Staff operacional
+### Staff
 | Comando | Descrição |
 |---|---|
-| `/audit` | Logs de auditoria recentes |
+| `/audit` | Logs de auditoria |
 | `/transfer` | Mover material entre casas |
-
-### Erradicados (agora jobs automáticos no scheduler)
-- `/rebuild` → `monthly_rankings` (6h)
-- `/precario` → `catalog_prices` (7d)
-- `/backfill` → onboarding cobre member lifecycle
-- `/perms` → `role_invariants` diário (apply)
-- `/reconcile` → `reconcile_daily` (dry-run diário)
-- `/syncsheet` / `/rebuildsheet` → Sheets é projecção event-driven pura
-
-## CLI scripts
-
-```bash
-# Bootstrap de stock inicial (ledger saldo_inicial) — one-time
-npm run stock:bootstrap              # dry-run (default)
-npm run stock:bootstrap:apply        # aplica (inclui --confirm)
-```
-
-Todo o resto é automático (scheduler em `src/jobs/scheduler.js`).
 
 ## Painéis
 
-| Painel | Canal | Funcionalidades |
-|---|---|---|
-| Entrada | ENTRADA | Pedir Tag |
-| Bairrista | GUETTO | Registar material, histórico, totais, progresso, top semanal |
-| Oficial | OFICIAIS | Registar material, operações, histórico |
-| Chefia | COMANDO | Criar/fechar operações, adicionar participantes, material, stock, gerir materiais, tops, logs |
-| Patrão di Zona | GUETTO | Listar bairristas, entregas/vendas, tops bairristas |
-
-## Estrutura do Discord (template)
-
-11 categorias bem identificadas, geridas declarativamente em `src/discord/structureTemplate.js`:
-
-```
-╭・𝗘𝗡𝗧𝗥𝗔𝗗𝗔          divulgação · entradas · tags · regras · info
-╭・𝗖𝗢𝗠𝗔𝗡𝗗𝗢          comunicados · chefia · preços · logs · logs-bot
-╭・𝗢𝗙𝗜𝗖𝗜𝗔𝗜𝗦          chat · disponibilidade · ausências · rádio · baú
-╭・𝗚𝗨𝗘𝗧𝗧𝗢            patrao-di-zona · baú-casa · encomendas · material · canais individuais
-╭・𝗜𝗡𝗩𝗘𝗡𝗧Á𝗥𝗜𝗢       resumo-stock · entradas/saídas/ajustes
-╭・𝗔𝗥𝗦𝗘𝗡𝗔𝗟          armas · munições · carregadores · droga
-╭・𝗢𝗣𝗘𝗥𝗔𝗖̧𝗢̃𝗘𝗦         mapas · spots · planeamento · resultados
-╭・𝗘𝗖𝗢𝗡𝗢𝗠𝗜𝗔 & 𝗧𝗢𝗣𝗦  meta · ofertas · prémios · tops-semanais
-╭・𝗥𝗘𝗣𝗨𝗧𝗔𝗖̧𝗔̃𝗢        cemitério · clips
-╭・𝗖𝗔𝗟𝗟𝗦             voice channels
-╭・𝗚𝗘𝗥𝗔𝗟             chat · convívio · cor-org
-```
-
-Sync idempotente: nunca apaga, apenas renomeia/move/cria. Canais fora do template são listados no dry-run e ignorados.
-
-## Documentação adicional
-
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — composition root, routers,
-  event bus, Perfil Operacional, jobs, session store
-- [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — lista completa de mudanças
-- [`docs/DATA_LIFECYCLE.md`](docs/DATA_LIFECYCLE.md) — normativa lifecycle
-- [`docs/SHEETS.md`](docs/SHEETS.md) — camada Sheets (projection-only)
-- [`docs/UX_STYLE_GUIDE.md`](docs/UX_STYLE_GUIDE.md) — tone, voice, emojis
-- [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md) — code style
-- [`docs/SESSION_FLOW.md`](docs/SESSION_FLOW.md) — fluxo guiado da sessão
-  de saída (criar → painel vivo → fechar → resultado individual →
-  confirmação de devolução de arma)
-- [`docs/MESSAGE_LIFECYCLE.md`](docs/MESSAGE_LIFECYCLE.md) — classes
-  canónicas + TTLs
-- [`docs/PERMISSIONS.md`](docs/PERMISSIONS.md) — matriz de acesso
-- [`docs/NOTIFICATIONS.md`](docs/NOTIFICATIONS.md) — routing + templates
+| Painel | Funcionalidades |
+|---|---|
+| **Entrada** | Dar a Cara (onboarding) |
+| **Bairrista** | Registar Material, Movimento no Bairro, Ranking, Encomendas |
+| **Oficial** | Sessões (criar/ver/stats), Registar Material, O meu Movimento, Ranking |
+| **Chefia** | Sessões, Stock, Gestão (rádio/stickys), Dados (tops/logs) |
+| **Patrão di Zona** | Listar Bairristas, Entregas, Vendas, Tops |
 
 ## Secrets
 
-`.env`, `juri-490201-54e5053bd43a.json` (service account Google) e `logs/` estão em `.gitignore`. Nunca commitar secrets.
+`.env` e credenciais Google estão em `.gitignore`. Nunca commitar secrets.
 
-> **Nota**: a auditoria inicial (Fase 1) sinalizou o ficheiro de credenciais como crítico. Verificámos: o `.gitignore` está bem configurado e o ficheiro **nunca foi pushed para git history** — está apenas no working directory local, como suposto. Se algum dia for commitado por engano, usa `git filter-repo --path bot/juri-490201-54e5053bd43a.json --invert-paths` (ou BFG) e revoga a key no GCP imediatamente.
+— **Firma RedWood**

@@ -134,15 +134,20 @@ async function handleMovimento(interaction) {
 
   // ── Combate ──────────────────────────────────────────────────────────
   if (saida && saida.total > 0) {
-    embed.addFields(
+    const winRate = saida.wins > 0 ? ((saida.wins / saida.total) * 100).toFixed(0) : '0';
+    const combatFields = [
       { name: M.SAIDA_TITLE, value: '\u200b', inline: false },
       { name: M.SAIDAS, value: `**${saida.total}**`, inline: true },
       { name: M.KILLS, value: `**${saida.kills}**`, inline: true },
-      { name: M.DEATHS, value: `**${saida.deaths}**`, inline: true },
       { name: M.KD, value: `**${saida.kdRatio.toFixed(2)}**`, inline: true },
+      { name: `${EMOJI.VITORIA} Win rate`, value: `**${winRate}%** (${saida.wins}V/${saida.losses || 0}D)`, inline: true },
       { name: M.SURVIVAL, value: `**${saida.survivalRate.toFixed(1)}%**`, inline: true },
       { name: M.MVP, value: `**${saida.mvpCount}**`, inline: true },
-    );
+    ];
+    if (saida.materialReturnRate != null && saida.materialReturnRate > 0) {
+      combatFields.push({ name: `${EMOJI.DEVOLVER} Devolução`, value: `**${saida.materialReturnRate.toFixed(0)}%**`, inline: true });
+    }
+    embed.addFields(combatFields);
   }
 
   // ── Streak ───────────────────────────────────────────────────────────

@@ -69,19 +69,15 @@ const PANELS = {
     DESCRIPTION:
       'Aqui abre-se a rua, aqui fecha-se a conta. Oficial é quem põe o nome em cima — saídas, registos, linha do bairro. **Se decides, responsabilizas-te.**\n' +
       '\n' +
-      `${E.SAIDA} **Nova Sessão** — OG+ abre. Leva quem leva.\n` +
-      `${E.VER} **Ver Saídas** — abertas, em curso, fechadas.\n` +
-      `${E.ENTREGA} **Registar Material** — entrega ou venda do bairro.\n` +
-      `${E.HISTORICO} **Lista de Nomes** — quem está activo, quem sumiu.\n` +
+      `${E.SAIDA} **Sessões** — abrir, consultar, fechar saídas.\n` +
+      `${E.TOPO} **Estatísticas** — kills, spots, rankings da firma.\n` +
+      `${E.ENTREGA} **Material** — registar entregas ou vendas.\n` +
+      `${E.FIRMA} **O teu Movimento** — o teu peso no bairro.\n` +
+      `${E.MEDAL_1} **Ranking** — quem rende mais.\n` +
       '\n' +
       '_Puxar a rua é peso. Leva-o com mão firme._\n' +
       '\n' +
       '— Firma RedWood',
-    BUTTONS: {
-      VALIDAR:        'Validar Entrega',
-      MEMBROS:        'Lista de Nomes',
-      REGISTAR_VENDA: 'Registar Material',
-    },
   },
 
   // ═══════════════════════════════════════════════════════════════════════
