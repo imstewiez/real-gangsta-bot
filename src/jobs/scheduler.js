@@ -13,11 +13,16 @@ const CONFIG = require('../config');
 const jobs = [];
 let _client = null;
 
-function registerJob(name, intervalMs, fn) {
-  jobs.push({ name, intervalMs, fn, timer: null });
+function registerJob(name, intervalMs, fn, opts = {}) {
+  jobs.push({ name, intervalMs, fn, timer: null, _running: false, runOnStart: opts.runOnStart || false });
 }
 
 async function runJob(job) {
+  if (job._running) {
+    log(`[SCHEDULER] Job '${job.name}' still running — skipped overlap.`);
+    return;
+  }
+  job._running = true;
   const jobId = await jobRepo.startJob(job.name);
   metrics.jobRunsTotal.inc();
 
@@ -28,6 +33,8 @@ async function runJob(job) {
     metrics.jobErrorsTotal.inc();
     await jobRepo.failJob(jobId, e.message);
     warn(`[SCHEDULER] Job '${job.name}' failed: ${e.message}`);
+  } finally {
+    job._running = false;
   }
 }
 
@@ -94,7 +101,7 @@ function startAll(client) {
       members_drift: (r.members?.role_mismatch || 0) + (r.members?.tier_mismatch || 0),
       stuck_jobs: r.stuck_jobs?.length || 0,
     };
-  });
+  }, { runOnStart: true });
 
   // Stock alerts — corre hourly. Verifica items com alert_threshold definido
   // e posta no canal alertas-stock se balance < threshold. Throttle 24h.
@@ -102,7 +109,7 @@ function startAll(client) {
     const { setClient, checkAndAlert } = require('../inventory/stockAlertEngine');
     setClient(client);
     return await checkAndAlert({ dryRun: false });
-  });
+  }, { runOnStart: true });
 
   // Rankings mensais + all-time snapshot — corre a cada 6h (idempotente).
   // No primeiro dia do mês apanha o mês anterior; resto dos dias actualiza
@@ -112,7 +119,7 @@ function startAll(client) {
     const m = await computeMonthlyRankings();
     const a = await recomputeAllTimeStats();
     log(`[SCHEDULER] monthly_rankings: ${m.count} mês + ${a.count} all-time`);
-  });
+  }, { runOnStart: true });
 
   // Catalog prices — corre semanalmente (7 dias). Substitui o antigo
   // slash /precario; lê config/prices-catalog.json e aplica preços.
@@ -183,6 +190,15 @@ function startAll(client) {
     job.timer = setInterval(() => runJob(job), job.intervalMs);
     job.timer.unref();
     log(`[SCHEDULER] Job '${job.name}' registered (${job.intervalMs / 1000}s interval).`);
+  }
+
+  // Run critical jobs immediately at boot (don't wait for first interval)
+  const onStartJobs = jobs.filter(j => j.runOnStart);
+  if (onStartJobs.length) {
+    log(`[SCHEDULER] Running ${onStartJobs.length} jobs on start...`);
+    for (const job of onStartJobs) {
+      runJob(job).catch(e => warn(`[SCHEDULER] on-start '${job.name}' failed: ${e.message}`));
+    }
   }
 }
 
