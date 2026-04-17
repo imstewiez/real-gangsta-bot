@@ -17,11 +17,11 @@ const { SAIDAS, EMOJI, SAIDA_TYPE } = require('../content');
 const { log, warn } = require('../logger');
 
 const RESULT_META = {
-  vitoria:      { emoji: EMOJI.VITORIA, label: 'Vitória',      color: 0x2ECC71 },
-  derrota:      { emoji: EMOJI.DERROTA, label: 'Derrota',      color: 0xE74C3C },
-  empate:       { emoji: EMOJI.EMPATE,  label: 'Empate',       color: 0xF1C40F },
-  sem_conflito: { emoji: EMOJI.INFO,    label: 'Sem conflito', color: 0x3498DB },
-  abortada:     { emoji: EMOJI.WARN,    label: 'Abortada',     color: 0x95A5A6 },
+  vitoria: { emoji: EMOJI.VITORIA, label: 'Vitória', color: 0x2ecc71 },
+  derrota: { emoji: EMOJI.DERROTA, label: 'Derrota', color: 0xe74c3c },
+  empate: { emoji: EMOJI.EMPATE, label: 'Empate', color: 0xf1c40f },
+  sem_conflito: { emoji: EMOJI.INFO, label: 'Sem conflito', color: 0x3498db },
+  abortada: { emoji: EMOJI.WARN, label: 'Abortada', color: 0x95a5a6 },
 };
 
 function formatMoney(v) {
@@ -44,7 +44,11 @@ function buildResumoEmbed(saida, participants) {
     { name: L.TIPO, value: type, inline: true },
     { name: L.LIDER, value: saida.leader_name || '—', inline: true },
     { name: 'Data', value: String(saida.date).split('T')[0], inline: true },
-    { name: 'Na saída', value: `**${participants.length}** (${characterized.length} caract. · ${workers.length} trab.)`, inline: true },
+    {
+      name: 'Na saída',
+      value: `**${participants.length}** (${characterized.length} caract. · ${workers.length} trab.)`,
+      inline: true,
+    },
     { name: L.RESULTADO, value: `${meta.emoji} **${meta.label}**`, inline: true },
   ];
 
@@ -57,7 +61,7 @@ function buildResumoEmbed(saida, participants) {
     fields.push(
       { name: L.INIMIGO, value: enemy, inline: true },
       { name: `${EMOJI.KILL} ${L.KILLS}`, value: String(saida.our_kills || 0), inline: true },
-      { name: `${EMOJI.MORTE} ${L.MORTES}`, value: String(saida.deaths || 0), inline: true },
+      { name: `${EMOJI.MORTE} ${L.MORTES}`, value: String(saida.deaths || 0), inline: true }
     );
   }
 
@@ -70,10 +74,10 @@ function buildResumoEmbed(saida, participants) {
   fields.push(
     { name: `${EMOJI.MATERIAL} ${L.MATERIAL_FORNECIDO}`, value: formatMoney(saida.supplied_value), inline: true },
     { name: `${EMOJI.DEVOLVER} ${L.MATERIAL_DEVOLVIDO}`, value: formatMoney(saida.returned_value), inline: true },
-    { name: `${EMOJI.PERDIDO} ${L.MATERIAL_PERDIDO}`,    value: formatMoney(saida.lost_value),     inline: true },
-    { name: `${EMOJI.CRAFT} Consumido`,                   value: formatMoney(saida.consumed_value), inline: true },
-    { name: `${EMOJI.LUCRO} ${L.LUCRO_BRUTO}`,            value: formatMoney(saida.gross_value),    inline: true },
-    { name: `${EMOJI.DINHEIRO} ${L.LUCRO_LIQUIDO} (${profitTag})`, value: formatMoney(saida.net_value), inline: true },
+    { name: `${EMOJI.PERDIDO} ${L.MATERIAL_PERDIDO}`, value: formatMoney(saida.lost_value), inline: true },
+    { name: `${EMOJI.CRAFT} Consumido`, value: formatMoney(saida.consumed_value), inline: true },
+    { name: `${EMOJI.LUCRO} ${L.LUCRO_BRUTO}`, value: formatMoney(saida.gross_value), inline: true },
+    { name: `${EMOJI.DINHEIRO} ${L.LUCRO_LIQUIDO} (${profitTag})`, value: formatMoney(saida.net_value), inline: true }
   );
 
   if (saida.result_notes) fields.push({ name: 'Notas', value: saida.result_notes.slice(0, 200), inline: false });
@@ -90,11 +94,15 @@ function buildDestaquesEmbed(saida, participants) {
   const killers = participants.filter(p => (p.kills || 0) > 0).sort((a, b) => b.kills - a.kills);
   const mortos = participants.filter(p => p.died);
   const sobreviventes = participants.filter(p => !p.died);
-  const devolveram = participants.filter(p => (p.returned_value || 0) > 0 && (p.issued_value || 0) > 0 && p.returned_value >= p.issued_value);
-  const ficaramDevendo = participants.filter(p => (p.issued_value || 0) > (p.returned_value || 0) + (p.lost_value || 0) + (p.consumed_value || 0));
+  const devolveram = participants.filter(
+    p => (p.returned_value || 0) > 0 && (p.issued_value || 0) > 0 && p.returned_value >= p.issued_value
+  );
+  const ficaramDevendo = participants.filter(
+    p => (p.issued_value || 0) > (p.returned_value || 0) + (p.lost_value || 0) + (p.consumed_value || 0)
+  );
   const totalKills = participants.reduce((a, p) => a + (p.kills || 0), 0);
 
-  const fmt = (p) => {
+  const fmt = p => {
     const typeTag = p.participant_type === 'trabalhador' ? ' 🛠️' : '';
     return `<@${p.discord_id}>${typeTag}`;
   };
@@ -121,10 +129,13 @@ function buildDestaquesEmbed(saida, participants) {
   if (killers.length) {
     fields.push({
       name: `${EMOJI.KILL} Kills por nome`,
-      value: killers.slice(0, 10).map((k, i) => {
-        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '•';
-        return `${medal} ${fmt(k)} — **${k.kills}** kill${k.kills === 1 ? '' : 's'}`;
-      }).join('\n'),
+      value: killers
+        .slice(0, 10)
+        .map((k, i) => {
+          const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '•';
+          return `${medal} ${fmt(k)} — **${k.kills}** kill${k.kills === 1 ? '' : 's'}`;
+        })
+        .join('\n'),
       inline: false,
     });
   }
@@ -138,20 +149,26 @@ function buildDestaquesEmbed(saida, participants) {
   if (devolveram.length) {
     fields.push({
       name: `${EMOJI.OK} ${L.DEVOLVERAM} (${devolveram.length})`,
-      value: devolveram.slice(0, 10).map(m => `• ${fmt(m)}`).join('\n'),
+      value: devolveram
+        .slice(0, 10)
+        .map(m => `• ${fmt(m)}`)
+        .join('\n'),
       inline: false,
     });
   }
   if (ficaramDevendo.length) {
     fields.push({
       name: `${EMOJI.WARN} ${L.DEVENDO} (${ficaramDevendo.length})`,
-      value: ficaramDevendo.slice(0, 10).map(m => `• ${fmt(m)} (${formatMoney(m.issued_value - m.returned_value - m.lost_value - m.consumed_value)})`).join('\n'),
+      value: ficaramDevendo
+        .slice(0, 10)
+        .map(m => `• ${fmt(m)} (${formatMoney(m.issued_value - m.returned_value - m.lost_value - m.consumed_value)})`)
+        .join('\n'),
       inline: false,
     });
   }
 
   return brandEmbed('MOVEMENT')
-    .setColor(0xE67E22)
+    .setColor(0xe67e22)
     .setTitle(`${EMOJI.MVP} ${SAIDAS.DESTAQUES_TITLE} — Saída #${saida.id}`)
     .addFields(fields.length ? fields : [{ name: '—', value: 'Sem destaques.' }]);
 }
@@ -195,7 +212,7 @@ async function buildImpactoEmbed(saida) {
   }
 
   return brandEmbed('TOP')
-    .setColor(0x9B59B6)
+    .setColor(0x9b59b6)
     .setTitle(SAIDAS.IMPACTO_TITLE)
     .addFields(fields.length ? fields : [{ name: '—', value: 'Sem histórico suficiente.' }]);
 }

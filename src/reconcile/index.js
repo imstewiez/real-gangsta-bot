@@ -28,7 +28,7 @@ const DRIVERS = {
 
 async function runReconcile({ domain = 'all', guild = null, dryRun = true, actor = 'system:reconcile' } = {}) {
   const t0 = Date.now();
-  const domains = (domain === 'all') ? Object.keys(DRIVERS) : [domain];
+  const domains = domain === 'all' ? Object.keys(DRIVERS) : [domain];
   if (!domains.every(d => DRIVERS[d])) throw new Error(`Domínio inválido: ${domain}`);
 
   const per_domain = {};
@@ -57,15 +57,29 @@ async function runReconcile({ domain = 'all', guild = null, dryRun = true, actor
     await query(
       `INSERT INTO archival_log (domain, action, actor, reason, payload)
        VALUES ($1, $2, $3, $4, $5)`,
-      ['reconcile', 'archive', actor, `reconcile ${domain} dry=${dryRun}`,
-       { per_domain: Object.fromEntries(Object.entries(per_domain).map(([k, v]) => [k, {
-         has_drift: v.check?.has_drift,
-         total_checked: v.check?.total_checked,
-         corrected: v.apply?.corrected,
-         error: v.error,
-       }])) }]
+      [
+        'reconcile',
+        'archive',
+        actor,
+        `reconcile ${domain} dry=${dryRun}`,
+        {
+          per_domain: Object.fromEntries(
+            Object.entries(per_domain).map(([k, v]) => [
+              k,
+              {
+                has_drift: v.check?.has_drift,
+                total_checked: v.check?.total_checked,
+                corrected: v.apply?.corrected,
+                error: v.error,
+              },
+            ])
+          ),
+        },
+      ]
     );
-  } catch (_) { /* ignore se archival_log ainda não existir */ }
+  } catch (_) {
+    /* ignore se archival_log ainda não existir */
+  }
 
   const ms = Date.now() - t0;
   log(`[RECONCILE] domain=${domain} dry=${dryRun} · ${ms}ms · ${Object.keys(per_domain).join(', ')}`);

@@ -15,7 +15,9 @@ async function runCatalogPricesSync() {
   const { syncPrices } = require('../inventory/catalogPricesSync');
   try {
     const r = await syncPrices({ full: false });
-    log(`[JOB] catalog_prices: ${r.created.length} criados, ${r.updated.length} actualizados, ${r.unchanged.length} iguais, ${r.errors.length} erros.`);
+    log(
+      `[JOB] catalog_prices: ${r.created.length} criados, ${r.updated.length} actualizados, ${r.unchanged.length} iguais, ${r.errors.length} erros.`
+    );
 
     // Audit trail por preço alterado — permite reconstituir histórico.
     for (const u of r.updated) {
@@ -28,7 +30,9 @@ async function runCatalogPricesSync() {
           beforeState: { estimated_value: u.oldPrice },
           afterState: { estimated_value: u.newPrice },
         });
-      } catch (_) { /* audit é best-effort */ }
+      } catch (_) {
+        /* audit é best-effort */
+      }
     }
 
     return {

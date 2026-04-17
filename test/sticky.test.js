@@ -18,55 +18,80 @@ function resolvedPath(rel) {
 
 // In-memory stub do stickyRepo — cada teste reseta via setData.
 const stickyState = { rows: [], counter: 1 };
-function resetStickyState() { stickyState.rows = []; stickyState.counter = 1; }
-function setStickyRows(rows) { stickyState.rows = rows.map(r => ({ ...r })); }
+function resetStickyState() {
+  stickyState.rows = [];
+  stickyState.counter = 1;
+}
+function setStickyRows(rows) {
+  stickyState.rows = rows.map(r => ({ ...r }));
+}
 
 require.cache[resolvedPath('db.js')] = {
   exports: {
     pool: { connect: async () => ({ query: async () => ({ rows: [] }), release: () => {} }) },
     query: async () => ({ rows: [] }),
-    queryWithTransaction: async (fn) => fn({ query: async () => ({ rows: [] }) }),
+    queryWithTransaction: async fn => fn({ query: async () => ({ rows: [] }) }),
   },
 };
 require.cache[resolvedPath('repositories/index.js')] = {
   exports: {
-    memberRepo: {}, inventoryRepo: {}, operationRepo: {}, rankingRepo: {},
-    auditRepo: {}, jobRepo: {}, availabilityRepo: {}, radioRepo: {},
+    memberRepo: {},
+    inventoryRepo: {},
+    operationRepo: {},
+    rankingRepo: {},
+    auditRepo: {},
+    jobRepo: {},
+    availabilityRepo: {},
+    radioRepo: {},
     stickyRepo: {
       listActive: async () => stickyState.rows.filter(r => r.active !== false),
-      listForChannel: async (cid) => stickyState.rows.filter(r => r.channel_id === cid && r.active !== false),
-      getByChannelSource: async (cid, src) => stickyState.rows.find(r => r.channel_id === cid && r.source_key === src) || null,
-      upsert: async (data) => {
+      listForChannel: async cid => stickyState.rows.filter(r => r.channel_id === cid && r.active !== false),
+      getByChannelSource: async (cid, src) =>
+        stickyState.rows.find(r => r.channel_id === cid && r.source_key === src) || null,
+      upsert: async data => {
         const found = stickyState.rows.find(r => r.channel_id === data.channelId && r.source_key === data.sourceKey);
         if (found) {
           Object.assign(found, {
-            mode: data.mode, payload: data.payload, threshold_msgs: data.thresholdMsgs,
-            threshold_minutes: data.thresholdMinutes, active: true,
+            mode: data.mode,
+            payload: data.payload,
+            threshold_msgs: data.thresholdMsgs,
+            threshold_minutes: data.thresholdMinutes,
+            active: true,
           });
           return found;
         }
         const row = {
           id: stickyState.counter++,
-          channel_id: data.channelId, source_key: data.sourceKey,
-          mode: data.mode, payload: data.payload,
-          threshold_msgs: data.thresholdMsgs, threshold_minutes: data.thresholdMinutes,
-          msgs_since_post: 0, last_message_id: null, last_posted_at: new Date(),
-          created_by: data.createdBy, active: true,
+          channel_id: data.channelId,
+          source_key: data.sourceKey,
+          mode: data.mode,
+          payload: data.payload,
+          threshold_msgs: data.thresholdMsgs,
+          threshold_minutes: data.thresholdMinutes,
+          msgs_since_post: 0,
+          last_message_id: null,
+          last_posted_at: new Date(),
+          created_by: data.createdBy,
+          active: true,
         };
         stickyState.rows.push(row);
         return row;
       },
       setLastMessage: async (id, mid) => {
         const r = stickyState.rows.find(x => x.id === id);
-        if (r) { r.last_message_id = mid; r.msgs_since_post = 0; r.last_posted_at = new Date(); }
+        if (r) {
+          r.last_message_id = mid;
+          r.msgs_since_post = 0;
+          r.last_posted_at = new Date();
+        }
       },
-      incrementCounter: async (id) => {
+      incrementCounter: async id => {
         const r = stickyState.rows.find(x => x.id === id);
         if (!r) return null;
         r.msgs_since_post = (r.msgs_since_post || 0) + 1;
         return { msgs_since_post: r.msgs_since_post, threshold_msgs: r.threshold_msgs };
       },
-      deactivate: async (id) => {
+      deactivate: async id => {
         const r = stickyState.rows.find(x => x.id === id);
         if (r) r.active = false;
       },
@@ -82,17 +107,22 @@ const stickyEngine = require('../src/sticky/stickyEngine');
 function fakeClient(channelOps = {}) {
   return {
     channels: {
-      fetch: async (id) => ({
-        id, isTextBased: () => true,
-        send: async (payload) => {
+      fetch: async id => ({
+        id,
+        isTextBased: () => true,
+        send: async payload => {
           channelOps.lastSent = payload;
           return { id: 'msg-' + Math.random().toString(36).slice(2, 8), edit: async () => {}, delete: async () => {} };
         },
         messages: {
-          fetch: async (mid) => ({
+          fetch: async mid => ({
             id: mid,
-            edit: async (p) => { channelOps.lastEdited = p; },
-            delete: async () => { channelOps.deleted = true; },
+            edit: async p => {
+              channelOps.lastEdited = p;
+            },
+            delete: async () => {
+              channelOps.deleted = true;
+            },
           }),
         },
       }),
@@ -123,8 +153,11 @@ describe('stickyEngine — setSticky / removeSticky', () => {
 
   it('setSticky upserta e remove desactiva', async () => {
     const s = await stickyEngine.setSticky({
-      channelId: 'C1', sourceKey: 'k1', mode: 'update',
-      payload: { content: 'hi' }, createdBy: 'u1',
+      channelId: 'C1',
+      sourceKey: 'k1',
+      mode: 'update',
+      payload: { content: 'hi' },
+      createdBy: 'u1',
     });
     assert.equal(s.channel_id, 'C1');
     assert.equal(s.active, true);
@@ -145,12 +178,21 @@ describe('stickyEngine — setSticky / removeSticky', () => {
 describe('stickyEngine — onMessageCreate counter & repost', () => {
   beforeEach(() => {
     resetStickyState();
-    setStickyRows([{
-      id: 1, channel_id: 'C1', source_key: 'k1', mode: 'repost',
-      threshold_msgs: 3, threshold_minutes: 0, msgs_since_post: 0,
-      last_message_id: 'old-msg', payload: { content: 'sticky' }, active: true,
-      last_posted_at: new Date(),
-    }]);
+    setStickyRows([
+      {
+        id: 1,
+        channel_id: 'C1',
+        source_key: 'k1',
+        mode: 'repost',
+        threshold_msgs: 3,
+        threshold_minutes: 0,
+        msgs_since_post: 0,
+        last_message_id: 'old-msg',
+        payload: { content: 'sticky' },
+        active: true,
+        last_posted_at: new Date(),
+      },
+    ]);
   });
 
   it('ignora mensagens de bots', async () => {
@@ -189,12 +231,21 @@ describe('stickyEngine — onMessageCreate counter & repost', () => {
 describe('stickyEngine — runTimeBasedRefresh', () => {
   beforeEach(() => {
     resetStickyState();
-    setStickyRows([{
-      id: 1, channel_id: 'C1', source_key: 'k1', mode: 'repost',
-      threshold_msgs: 0, threshold_minutes: 5, msgs_since_post: 0,
-      last_message_id: 'old', payload: { content: 'x' }, active: true,
-      last_posted_at: new Date(Date.now() - 10 * 60 * 1000), // 10 min atrás
-    }]);
+    setStickyRows([
+      {
+        id: 1,
+        channel_id: 'C1',
+        source_key: 'k1',
+        mode: 'repost',
+        threshold_msgs: 0,
+        threshold_minutes: 5,
+        msgs_since_post: 0,
+        last_message_id: 'old',
+        payload: { content: 'x' },
+        active: true,
+        last_posted_at: new Date(Date.now() - 10 * 60 * 1000), // 10 min atrás
+      },
+    ]);
   });
 
   it('reposta quando idade > threshold_minutes', async () => {
@@ -206,12 +257,21 @@ describe('stickyEngine — runTimeBasedRefresh', () => {
   });
 
   it('não reposta antes do threshold', async () => {
-    setStickyRows([{
-      id: 1, channel_id: 'C1', source_key: 'k1', mode: 'repost',
-      threshold_msgs: 0, threshold_minutes: 60, msgs_since_post: 0,
-      last_message_id: 'old', payload: { content: 'x' }, active: true,
-      last_posted_at: new Date(Date.now() - 30 * 1000), // 30s atrás
-    }]);
+    setStickyRows([
+      {
+        id: 1,
+        channel_id: 'C1',
+        source_key: 'k1',
+        mode: 'repost',
+        threshold_msgs: 0,
+        threshold_minutes: 60,
+        msgs_since_post: 0,
+        last_message_id: 'old',
+        payload: { content: 'x' },
+        active: true,
+        last_posted_at: new Date(Date.now() - 30 * 1000), // 30s atrás
+      },
+    ]);
     const ops = {};
     const result = await stickyEngine.runTimeBasedRefresh(fakeClient(ops));
     assert.equal(result.posted, 0);

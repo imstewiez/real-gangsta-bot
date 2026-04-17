@@ -3,8 +3,13 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-  MessageClass, TTL_MS, AUTO_DELETE,
-  ttlForClass, autoDeletes, locksOnExpire, classFromLegacyOpts,
+  MessageClass,
+  TTL_MS,
+  AUTO_DELETE,
+  ttlForClass,
+  autoDeletes,
+  locksOnExpire,
+  classFromLegacyOpts,
 } = require('../src/shared/messagePolicy');
 const { formatPtDate, formatPtDateOnly } = require('../src/shared/formatPtDate');
 
@@ -15,8 +20,8 @@ describe('messagePolicy', () => {
   });
 
   it('TTLs são coerentes com a hierarquia (BANAL < WARN < COCKPIT)', () => {
-    assert.ok(TTL_MS.BANAL  < TTL_MS.WARN);
-    assert.ok(TTL_MS.WARN   < TTL_MS.COCKPIT);
+    assert.ok(TTL_MS.BANAL < TTL_MS.WARN);
+    assert.ok(TTL_MS.WARN < TTL_MS.COCKPIT);
     assert.ok(TTL_MS.RESULT === TTL_MS.ERROR);
     assert.equal(TTL_MS.FLOW, null);
     assert.equal(TTL_MS.PERSISTENT, null);

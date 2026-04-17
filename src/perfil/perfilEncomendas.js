@@ -16,21 +16,21 @@ const { memberRepo } = require('../repositories');
 const { buttonRow, button } = require('../shared/ui/buttons');
 const { formatPtDate } = require('../shared/formatPtDate');
 
-const fmt = (n) => (Number(n) || 0).toLocaleString('pt-PT');
+const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
 
 const STATUS_EMOJI = {
-  pending:   '⏳',
-  approved:  '✅',
+  pending: '⏳',
+  approved: '✅',
   fulfilled: '📦',
-  denied:    '⛔',
+  denied: '⛔',
   cancelled: '🚫',
 };
 
 const STATUS_LABEL = {
-  pending:   'Pendente',
-  approved:  'Aprovada',
+  pending: 'Pendente',
+  approved: 'Aprovada',
   fulfilled: 'Entregue',
-  denied:    'Recusada',
+  denied: 'Recusada',
   cancelled: 'Cancelada',
 };
 
@@ -46,7 +46,8 @@ async function handle(interaction) {
     return safeReply(interaction, { content: 'Não estás registado.' }, { dismissible: true });
   }
 
-  const r = await query(`
+  const r = await query(
+    `
     SELECT o.id, o.quantity, o.status, o.notes,
            o.created_at, o.resolved_at,
            i.name AS item_name, i.category, i.estimated_value
@@ -55,14 +56,16 @@ async function handle(interaction) {
      WHERE o.member_id = $1
      ORDER BY o.created_at DESC
      LIMIT 20
-  `, [member.id]);
+  `,
+    [member.id]
+  );
 
   const embed = brandEmbed('HOUSE').setTitle('📋 Minhas Encomendas');
 
   if (!r.rows.length) {
     embed.setDescription(
       'Ainda não fizeste nenhuma encomenda.\n\n' +
-      'Usa o botão **Encomendar** no teu painel para pedir material à firma.'
+        'Usa o botão **Encomendar** no teu painel para pedir material à firma.'
     );
   } else {
     // KPI stripe — contagens por estado
@@ -78,7 +81,7 @@ async function handle(interaction) {
 
     // Pendentes primeiro (mais urgente)
     const pendentes = r.rows.filter(o => o.status === 'pending');
-    const outras    = r.rows.filter(o => o.status !== 'pending');
+    const outras = r.rows.filter(o => o.status !== 'pending');
 
     if (pendentes.length) {
       const lines = pendentes.map(o => {
@@ -101,8 +104,8 @@ async function handle(interaction) {
   }
 
   const navRow = buttonRow(
-    button({ customId: 'bairrista::encomendar', label: 'Nova Encomenda',  style: 'Success',   emoji: EMOJI.NOVO }),
-    button({ customId: 'perfil::voltar',      label: 'Voltar ao Perfil', style: 'Secondary', emoji: EMOJI.VOLTAR }),
+    button({ customId: 'bairrista::encomendar', label: 'Nova Encomenda', style: 'Success', emoji: EMOJI.NOVO }),
+    button({ customId: 'perfil::voltar', label: 'Voltar ao Perfil', style: 'Secondary', emoji: EMOJI.VOLTAR })
   );
 
   return safeReply(interaction, { embeds: [embed], components: [navRow] }, { messageClass: 'COCKPIT' });

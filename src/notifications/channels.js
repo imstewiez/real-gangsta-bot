@@ -24,33 +24,33 @@ const FAMILY_CONFIG = {
   ORG_LIFECYCLE: {
     envId: 'ORG_LIFECYCLE_CHANNEL_ID',
     fallbackEnvs: ['AUDIT_LOG_CHANNEL_ID'],
-    defaultId: DISCOVERED.CH_LOGS_BOT,  // 1492739363463758027
+    defaultId: DISCOVERED.CH_LOGS_BOT, // 1492739363463758027
     slugs: ['logs-bot', 'logs', 'audit-log', 'auditoria'],
   },
   INVENTORY_EVENTS: {
     envId: 'INVENTORY_EVENTS_CHANNEL_ID',
     fallbackEnvs: [],
     // Canal consolidado para material/ofertas/entregas/vendas/encomendas/ajustes
-    defaultId: DISCOVERED.CH_MATERIAL_ENTREG,  // 1491506821599330545
+    defaultId: DISCOVERED.CH_MATERIAL_ENTREG, // 1491506821599330545
     slugs: ['material-entregue', 'stock-log', 'log-stock', 'inventario-log'],
   },
   SAIDAS_EVENTS: {
     envId: 'SAIDAS_EVENTS_CHANNEL_ID',
     fallbackEnvs: ['SAIDA_RESULTS_CHANNEL_ID'],
-    defaultId: DISCOVERED.CH_SAIDAS_LOG,  // 1494383859893276714
+    defaultId: DISCOVERED.CH_SAIDAS_LOG, // 1494383859893276714
     slugs: ['saidas-log', 'saida-log', 'resultados', 'op-log'],
   },
   CEMETERY: {
     envId: 'CEMETERY_CHANNEL_ID',
     fallbackEnvs: [],
-    defaultId: DISCOVERED.CH_CEMITERIO,  // 1492344204012163122
+    defaultId: DISCOVERED.CH_CEMITERIO, // 1492344204012163122
     slugs: ['cemiterio', 'cemitério'],
   },
   RANKINGS: {
     envId: 'WEEKLY_TOP_CHANNEL_ID',
     fallbackEnvs: [],
     // Canal top-semanal — usado para top material semanal, top K/D, top kills, top vitórias
-    defaultId: DISCOVERED.CH_TOP_SEMANAL,  // 1493242996337147915
+    defaultId: DISCOVERED.CH_TOP_SEMANAL, // 1493242996337147915
     slugs: ['top-semanal', 'tops-semanais', 'tops', 'ranking'],
   },
 };
@@ -61,9 +61,10 @@ function _normalizeSlug(name) {
   if (!name) return '';
   const noBold = require('../discord/structureTemplate').unbold(name);
   return noBold
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // remove accents
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // remove accents
     .toLowerCase()
-    .replace(/^[^a-z0-9]+/, '')                         // strip leading emoji+separator
+    .replace(/^[^a-z0-9]+/, '') // strip leading emoji+separator
     .replace(/[^a-z0-9-]/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
@@ -98,14 +99,20 @@ const _cache = new Map();
 
 function resolveChannelId(client, family) {
   const cfg = FAMILY_CONFIG[family];
-  if (!cfg) { warn(`[CHANNELS] Família desconhecida: ${family}`); return null; }
+  if (!cfg) {
+    warn(`[CHANNELS] Família desconhecida: ${family}`);
+    return null;
+  }
 
   if (_cache.has(family)) return _cache.get(family);
 
   const envIds = [cfg.envId, ...(cfg.fallbackEnvs || [])];
   for (const key of envIds) {
     const id = _resolveFromEnv(key);
-    if (id) { _cache.set(family, id); return id; }
+    if (id) {
+      _cache.set(family, id);
+      return id;
+    }
   }
 
   // Fallback explícito por ID canónico antes do slug match
@@ -115,7 +122,10 @@ function resolveChannelId(client, family) {
   }
 
   const id = _resolveFromGuild(client, cfg.slugs || []);
-  if (id) { _cache.set(family, id); return id; }
+  if (id) {
+    _cache.set(family, id);
+    return id;
+  }
 
   return null;
 }

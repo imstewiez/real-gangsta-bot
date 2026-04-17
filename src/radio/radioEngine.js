@@ -11,9 +11,7 @@
  * opcional (tipicamente o outro tipo, para evitar colisão).
  */
 
-const {
-  EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
-} = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const CONFIG = require('../config');
 const { radioRepo } = require('../repositories');
 const { logAudit } = require('../audit/auditEngine');
@@ -22,7 +20,7 @@ const { log, warn } = require('../logger');
 
 const TYPE_META = {
   principal: { emoji: '📻', label: 'Principal' },
-  parceria:  { emoji: '🤝', label: 'Parceria' },
+  parceria: { emoji: '🤝', label: 'Parceria' },
 };
 
 function isValidValue(rawValue) {
@@ -62,7 +60,7 @@ async function setRadio({ type, value, mode = 'manual', actorId, note }) {
   if (!isValidValue(value)) {
     throw new Error(
       `Valor "${value}" inválido (range ${CONFIG.RADIO_RANDOM_MIN}-${CONFIG.RADIO_RANDOM_MAX}` +
-      `${CONFIG.RADIO_ALLOW_ZERO ? ' ou 0' : ''}).`
+        `${CONFIG.RADIO_ALLOW_ZERO ? ' ou 0' : ''}).`
     );
   }
   const v = normaliseValue(value);
@@ -158,27 +156,47 @@ function buildEmbed(states) {
 
   return brandEmbed()
     .setTitle('📻 Frequências')
-    .setDescription([
-      fmt(principal, TYPE_META.principal),
-      '',
-      fmt(parceria, TYPE_META.parceria),
-    ].join('\n'));
+    .setDescription([fmt(principal, TYPE_META.principal), '', fmt(parceria, TYPE_META.parceria)].join('\n'));
 }
 
 function buildComponents() {
   return [
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('radio::random::principal').setStyle(ButtonStyle.Primary).setLabel('Aleatória — Principal').setEmoji('🎲'),
-      new ButtonBuilder().setCustomId('radio::random::parceria').setStyle(ButtonStyle.Secondary).setLabel('Aleatória — Parceria').setEmoji('🎲'),
+      new ButtonBuilder()
+        .setCustomId('radio::random::principal')
+        .setStyle(ButtonStyle.Primary)
+        .setLabel('Aleatória — Principal')
+        .setEmoji('🎲'),
+      new ButtonBuilder()
+        .setCustomId('radio::random::parceria')
+        .setStyle(ButtonStyle.Secondary)
+        .setLabel('Aleatória — Parceria')
+        .setEmoji('🎲')
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('radio::set::principal').setStyle(ButtonStyle.Primary).setLabel('Set Principal').setEmoji('📻'),
-      new ButtonBuilder().setCustomId('radio::set::parceria').setStyle(ButtonStyle.Secondary).setLabel('Set Parceria').setEmoji('🤝'),
-      new ButtonBuilder().setCustomId('radio::swap').setStyle(ButtonStyle.Success).setLabel('Trocar').setEmoji('🔁'),
+      new ButtonBuilder()
+        .setCustomId('radio::set::principal')
+        .setStyle(ButtonStyle.Primary)
+        .setLabel('Set Principal')
+        .setEmoji('📻'),
+      new ButtonBuilder()
+        .setCustomId('radio::set::parceria')
+        .setStyle(ButtonStyle.Secondary)
+        .setLabel('Set Parceria')
+        .setEmoji('🤝'),
+      new ButtonBuilder().setCustomId('radio::swap').setStyle(ButtonStyle.Success).setLabel('Trocar').setEmoji('🔁')
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('radio::history').setStyle(ButtonStyle.Secondary).setLabel('Histórico').setEmoji('📜'),
-      new ButtonBuilder().setCustomId('radio::refresh').setStyle(ButtonStyle.Secondary).setLabel('Atualizar').setEmoji('🔄'),
+      new ButtonBuilder()
+        .setCustomId('radio::history')
+        .setStyle(ButtonStyle.Secondary)
+        .setLabel('Histórico')
+        .setEmoji('📜'),
+      new ButtonBuilder()
+        .setCustomId('radio::refresh')
+        .setStyle(ButtonStyle.Secondary)
+        .setLabel('Atualizar')
+        .setEmoji('🔄')
     ),
   ];
 }
@@ -204,7 +222,9 @@ async function historyText(limit = 10) {
     const when = `<t:${Math.floor(new Date(r.created_at).getTime() / 1000)}:R>`;
     const meta = TYPE_META[r.radio_type] || { emoji: '❔', label: r.radio_type };
     const tag = r.mode === 'random' ? '🎲' : '✋';
-    lines.push(`${meta.emoji} **${meta.label}**: \`${r.old_value || '∅'}\` → \`${r.new_value}\` ${tag} • <@${r.actor_id}> ${when}`);
+    lines.push(
+      `${meta.emoji} **${meta.label}**: \`${r.old_value || '∅'}\` → \`${r.new_value}\` ${tag} • <@${r.actor_id}> ${when}`
+    );
   }
   return lines.join('\n');
 }

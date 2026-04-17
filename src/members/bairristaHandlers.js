@@ -14,9 +14,7 @@
 const { MessageFlags, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
 const { bairristaStatsRepo } = require('../repositories');
 const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
-const {
-  brandEmbed, applyLogo, progressBar, rankBadge, streakBadge,
-} = require('../shared/embedBuilders');
+const { brandEmbed, applyLogo, progressBar, rankBadge, streakBadge } = require('../shared/embedBuilders');
 const { BAIRRISTAS, EMOJI } = require('../content');
 const { getPromotionProgress, formatTierName } = require('./autoPromotionEngine');
 const { weekBounds } = require('../util');
@@ -34,18 +32,24 @@ async function handleMovimento(interaction) {
 
   const profile = await bairristaStatsRepo.getFullProfile(interaction.user.id);
   if (!profile) {
-    return safeReply(interaction, {
-      embeds: [brandEmbed().setTitle(`${EMOJI.FIRMA} Movimento no Bairro`)
-        .setDescription(BAIRRISTAS.MOVIMENTO.NO_DATA)],
-    }, { messageClass: 'WARN' });
+    return safeReply(
+      interaction,
+      {
+        embeds: [
+          brandEmbed().setTitle(`${EMOJI.FIRMA} Movimento no Bairro`).setDescription(BAIRRISTAS.MOVIMENTO.NO_DATA),
+        ],
+      },
+      { messageClass: 'WARN' }
+    );
   }
 
   const { member, material, ranking, evolution, streak, saida } = profile;
   const M = BAIRRISTAS.MOVIMENTO;
-  const embed = applyLogo(brandEmbed('TOP'))
-    .setTitle(M.TITLE(member.display_name || member.nickname || member.username));
+  const embed = applyLogo(brandEmbed('TOP')).setTitle(
+    M.TITLE(member.display_name || member.nickname || member.username)
+  );
 
-  const fmtQty = (n) => (n || 0).toLocaleString('pt-PT');
+  const fmtQty = n => (n || 0).toLocaleString('pt-PT');
 
   // ── KPI stripe topo — leitura em 3 segundos ──────────────────────────
   const kpiParts = [];
@@ -102,7 +106,7 @@ async function handleMovimento(interaction) {
     { name: M.MATERIAL_TITLE, value: '\u200b', inline: false },
     { name: M.WEEK_LABEL, value: weekLine, inline: true },
     { name: M.MONTH_LABEL, value: monthLine, inline: true },
-    { name: M.ALLTIME_LABEL, value: allTimeLine, inline: true },
+    { name: M.ALLTIME_LABEL, value: allTimeLine, inline: true }
   );
 
   // ── Ranking ──────────────────────────────────────────────────────────
@@ -123,10 +127,14 @@ async function handleMovimento(interaction) {
     rankLines.push(`**${M.ALLTIME_RANK}:** ${rankBadge(ranking.allTime.position)}/${ranking.allTime.total}`);
   }
   if (ranking.week?.above) {
-    rankLines.push(`${M.ABOVE}: **${ranking.week.above.displayName}** (${fmtQty(Math.round(ranking.week.above.score))})`);
+    rankLines.push(
+      `${M.ABOVE}: **${ranking.week.above.displayName}** (${fmtQty(Math.round(ranking.week.above.score))})`
+    );
   }
   if (ranking.week?.below) {
-    rankLines.push(`${M.BELOW}: **${ranking.week.below.displayName}** (${fmtQty(Math.round(ranking.week.below.score))})`);
+    rankLines.push(
+      `${M.BELOW}: **${ranking.week.below.displayName}** (${fmtQty(Math.round(ranking.week.below.score))})`
+    );
   }
   if (rankLines.length) {
     embed.addFields({ name: M.RANKING_TITLE, value: rankLines.join('\n'), inline: false });
@@ -140,12 +148,20 @@ async function handleMovimento(interaction) {
       { name: M.SAIDAS, value: `**${saida.total}**`, inline: true },
       { name: M.KILLS, value: `**${saida.kills}**`, inline: true },
       { name: M.KD, value: `**${saida.kdRatio.toFixed(2)}**`, inline: true },
-      { name: `${EMOJI.VITORIA} Win rate`, value: `**${winRate}%** (${saida.wins}V/${saida.losses || 0}D)`, inline: true },
+      {
+        name: `${EMOJI.VITORIA} Win rate`,
+        value: `**${winRate}%** (${saida.wins}V/${saida.losses || 0}D)`,
+        inline: true,
+      },
       { name: M.SURVIVAL, value: `**${saida.survivalRate.toFixed(1)}%**`, inline: true },
       { name: M.MVP, value: `**${saida.mvpCount}**`, inline: true },
     ];
     if (saida.materialReturnRate != null && saida.materialReturnRate > 0) {
-      combatFields.push({ name: `${EMOJI.DEVOLVER} Devolução`, value: `**${saida.materialReturnRate.toFixed(0)}%**`, inline: true });
+      combatFields.push({
+        name: `${EMOJI.DEVOLVER} Devolução`,
+        value: `**${saida.materialReturnRate.toFixed(0)}%**`,
+        inline: true,
+      });
     }
     embed.addFields(combatFields);
   }
@@ -155,19 +171,20 @@ async function handleMovimento(interaction) {
     const badge = streakBadge(streak.currentStreak);
     embed.addFields({
       name: M.STREAK_TITLE,
-      value: `${M.CURRENT_STREAK}: **${streak.currentStreak}** ${M.WEEKS} ${badge}\n` +
-             `${M.BEST_STREAK}: **${streak.bestStreak}** ${M.WEEKS}`,
+      value:
+        `${M.CURRENT_STREAK}: **${streak.currentStreak}** ${M.WEEKS} ${badge}\n` +
+        `${M.BEST_STREAK}: **${streak.bestStreak}** ${M.WEEKS}`,
       inline: false,
     });
   }
 
   // ── Drill-down navegacional — abre vistas detalhadas ephemeras ───────
   const row1 = buttonRow(
-    button({ customId: 'perfil::material',    label: 'Material',    style: 'Secondary', emoji: EMOJI.MATERIAL }),
-    button({ customId: 'perfil::pvp',         label: 'PvP & Saídas', style: 'Secondary', emoji: EMOJI.COMBATE }),
-    button({ customId: 'perfil::encomendas',  label: 'Encomendas',  style: 'Secondary', emoji: EMOJI.ENCOMENDA }),
-    button({ customId: 'perfil::historico',   label: 'Histórico',   style: 'Secondary', emoji: EMOJI.HISTORICO }),
-    button({ customId: 'perfil::progressao',  label: 'Progressão',  style: 'Secondary', emoji: EMOJI.PROGRESSO }),
+    button({ customId: 'perfil::material', label: 'Material', style: 'Secondary', emoji: EMOJI.MATERIAL }),
+    button({ customId: 'perfil::pvp', label: 'PvP & Saídas', style: 'Secondary', emoji: EMOJI.COMBATE }),
+    button({ customId: 'perfil::encomendas', label: 'Encomendas', style: 'Secondary', emoji: EMOJI.ENCOMENDA }),
+    button({ customId: 'perfil::historico', label: 'Histórico', style: 'Secondary', emoji: EMOJI.HISTORICO }),
+    button({ customId: 'perfil::progressao', label: 'Progressão', style: 'Secondary', emoji: EMOJI.PROGRESSO })
   );
 
   return safeReply(interaction, { embeds: [embed], components: [row1] }, { messageClass: 'COCKPIT' });
@@ -193,8 +210,7 @@ async function _showRanking(interaction, period) {
   const { start } = weekBounds();
   const weekStartStr = start.toISOString().split('T')[0];
   const now = new Date();
-  const monthStartStr = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-    .toISOString().split('T')[0];
+  const monthStartStr = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().split('T')[0];
 
   const R = BAIRRISTAS.RANKING;
   let rankings, title, header;
@@ -227,9 +243,10 @@ async function _showRanking(interaction, period) {
       const score = Math.round(Number(r.hybrid_score || r.weighted_value || 0));
       const isMe = r.discord_id === interaction.user.id ? ' ← **tu**' : '';
       const tierLabel = r.tier ? ` · ${formatTierName(r.tier)}` : '';
-      const details = period === 'alltime'
-        ? `${r.deliveries || 0}e · ${r.sales || 0}v · ${r.kills_total || 0}k`
-        : `${r.deliveries || 0}e · ${r.sales || 0}v · ${r.operations_count || 0}s`;
+      const details =
+        period === 'alltime'
+          ? `${r.deliveries || 0}e · ${r.sales || 0}v · ${r.kills_total || 0}k`
+          : `${r.deliveries || 0}e · ${r.sales || 0}v · ${r.operations_count || 0}s`;
       return `${prefix} <@${r.discord_id}> — **${score.toLocaleString('pt-PT')}** · ${details}${tierLabel}${isMe}`;
     });
 
@@ -245,7 +262,9 @@ async function _showRanking(interaction, period) {
       }
       if (myRank) {
         lines.push('─────');
-        lines.push(`**#${myRank.position}.** <@${interaction.user.id}> — **${Math.round(myRank.score).toLocaleString('pt-PT')}** ← **tu**`);
+        lines.push(
+          `**#${myRank.position}.** <@${interaction.user.id}> — **${Math.round(myRank.score).toLocaleString('pt-PT')}** ← **tu**`
+        );
       }
     }
 
@@ -256,11 +275,30 @@ async function _showRanking(interaction, period) {
     new StringSelectMenuBuilder()
       .setCustomId('bairrista::ranking_period')
       .setPlaceholder('Escolhe o período')
-      .setMinValues(1).setMaxValues(1)
+      .setMinValues(1)
+      .setMaxValues(1)
       .addOptions([
-        { label: 'Semanal',   description: 'Rankings desta semana', value: 'week',    emoji: '📅', default: period === 'week' },
-        { label: 'Mensal',    description: 'Rankings deste mês',     value: 'month',   emoji: '📊', default: period === 'month' },
-        { label: 'Histórico', description: 'Rankings de sempre',     value: 'alltime', emoji: '🏆', default: period === 'alltime' },
+        {
+          label: 'Semanal',
+          description: 'Rankings desta semana',
+          value: 'week',
+          emoji: '📅',
+          default: period === 'week',
+        },
+        {
+          label: 'Mensal',
+          description: 'Rankings deste mês',
+          value: 'month',
+          emoji: '📊',
+          default: period === 'month',
+        },
+        {
+          label: 'Histórico',
+          description: 'Rankings de sempre',
+          value: 'alltime',
+          emoji: '🏆',
+          default: period === 'alltime',
+        },
       ])
   );
 

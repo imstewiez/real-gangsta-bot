@@ -19,9 +19,7 @@ function memberRoleIds(member) {
   const cache = member?.roles?.cache;
   if (!cache) return new Set();
   // Discord.js Collection has .map, plain Map only has .values()
-  const ids = typeof cache.map === 'function'
-    ? cache.map(r => r.id)
-    : [...cache.values()].map(r => r.id);
+  const ids = typeof cache.map === 'function' ? cache.map(r => r.id) : [...cache.values()].map(r => r.id);
   return new Set(ids);
 }
 
@@ -47,7 +45,6 @@ function getBairristaTier(member) {
   return null;
 }
 
-
 function getExactRole(member) {
   const ids = memberRoleIds(member);
   if (ids.has(CONFIG.MANDA_CHUVA_ROLE_ID)) return 'manda_chuva';
@@ -64,24 +61,32 @@ function getExactRole(member) {
 // ── Predicados semânticos ─────────────────────────────────────────────────
 
 /** Comando total: Manda-Chuva, Kingpin. */
-function isCommand(member) { return hasAny(memberRoleIds(member), CONFIG.COMMAND_ROLE_IDS); }
+function isCommand(member) {
+  return hasAny(memberRoleIds(member), CONFIG.COMMAND_ROLE_IDS);
+}
 
 /** Supervisão: OG, Real Gangster. */
-function isSupervisor(member) { return hasAny(memberRoleIds(member), CONFIG.SUPERVISOR_ROLE_IDS); }
+function isSupervisor(member) {
+  return hasAny(memberRoleIds(member), CONFIG.SUPERVISOR_ROLE_IDS);
+}
 
 /** Chefia = Comando total (compatibilidade com código existente). */
-function isChefia(member) { return isCommand(member); }
+function isChefia(member) {
+  return isCommand(member);
+}
 
 /** Oficial = Supervisão OU Comando (quem manda acima da linha dos bairristas). */
-function isOficial(member) { return isCommand(member) || isSupervisor(member); }
+function isOficial(member) {
+  return isCommand(member) || isSupervisor(member);
+}
 
 /** Patrão di Zona ou qualquer escalão acima. */
 function isPatraoDiZona(member) {
-  return hasAny(memberRoleIds(member), CONFIG.PATRAO_DI_ZONA_ROLE_IDS)
-    || isCommand(member)
-    || isSupervisor(member);
+  return hasAny(memberRoleIds(member), CONFIG.PATRAO_DI_ZONA_ROLE_IDS) || isCommand(member) || isSupervisor(member);
 }
-function isBairrista(member) { return hasAny(memberRoleIds(member), CONFIG.BAIRRISTA_TIER_ROLE_IDS); }
+function isBairrista(member) {
+  return hasAny(memberRoleIds(member), CONFIG.BAIRRISTA_TIER_ROLE_IDS);
+}
 
 function isAnyMember(member) {
   return isCommand(member) || isSupervisor(member) || isPatraoDiZona(member) || isBairrista(member);
@@ -89,8 +94,12 @@ function isAnyMember(member) {
 
 // ── Capacidades (intent-level) ────────────────────────────────────────────
 
-function canManageInventory(member) { return isCommand(member) || isSupervisor(member); }
-function canManageOperations(member) { return isCommand(member) || isSupervisor(member); }
+function canManageInventory(member) {
+  return isCommand(member) || isSupervisor(member);
+}
+function canManageOperations(member) {
+  return isCommand(member) || isSupervisor(member);
+}
 
 /**
  * Abrir uma sessão de saída (criar + publicar painel vivo) requer
@@ -98,18 +107,26 @@ function canManageOperations(member) { return isCommand(member) || isSupervisor(
  * Ordem: Manda-Chuva (1) > Kingpin (2) > OG (3) > Real Gangster (4).
  */
 function canOpenSession(member) {
-  return isCommand(member)
-    || memberRoleIds(member).has(CONFIG.OG_ROLE_ID);
+  return isCommand(member) || memberRoleIds(member).has(CONFIG.OG_ROLE_ID);
 }
 function canManageBairro(member) {
-  return isCommand(member) || isSupervisor(member)
-    || hasAny(memberRoleIds(member), CONFIG.PATRAO_DI_ZONA_ROLE_IDS);
+  return isCommand(member) || isSupervisor(member) || hasAny(memberRoleIds(member), CONFIG.PATRAO_DI_ZONA_ROLE_IDS);
 }
-function canViewAllMembers(member) { return canManageBairro(member); }
-function canRegisterMaterial(member) { return isAnyMember(member); }
-function canManageStructure(member) { return isCommand(member); }
-function canBootstrapStock(member) { return isCommand(member); }
-function canRegisterKill(member) { return isAnyMember(member); }
+function canViewAllMembers(member) {
+  return canManageBairro(member);
+}
+function canRegisterMaterial(member) {
+  return isAnyMember(member);
+}
+function canManageStructure(member) {
+  return isCommand(member);
+}
+function canBootstrapStock(member) {
+  return isCommand(member);
+}
+function canRegisterKill(member) {
+  return isAnyMember(member);
+}
 
 module.exports = {
   getMemberRoles,

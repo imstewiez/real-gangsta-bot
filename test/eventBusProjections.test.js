@@ -23,14 +23,18 @@ describe('eventBus + projections', () => {
   it('listeners de projections recebem o evento', async () => {
     const bus = require('../src/core/eventBus');
     let received = null;
-    bus.on('__test_evt__', (payload) => { received = payload; });
+    bus.on('__test_evt__', payload => {
+      received = payload;
+    });
     await bus.emitAsync('__test_evt__', { foo: 'bar' });
     assert.deepEqual(received, { foo: 'bar' });
   });
 
   it('emitAsync tolera listeners que rejeitam', async () => {
     const bus = require('../src/core/eventBus');
-    bus.on('__test_err__', async () => { throw new Error('boom'); });
+    bus.on('__test_err__', async () => {
+      throw new Error('boom');
+    });
     // Não deve rebentar
     await assert.doesNotReject(bus.emitAsync('__test_err__', {}));
   });

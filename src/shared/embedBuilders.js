@@ -11,10 +11,7 @@ const { EMOJI, footer, ROLE, STATUS, SAIDA_TYPE, ONBOARDING, INVENTORY, RANKINGS
 // Footer assinado pela Firma RedWood. Icone opcional via BOT_LOGO_URL.
 // Todas as embeds do bot devem passar por aqui — garante consistência visual.
 function brandEmbed(variant = 'SHORT') {
-  return new EmbedBuilder()
-    .setColor(CONFIG.BOT_COLOR)
-    .setFooter(footer(variant, CONFIG.BOT_LOGO_URL))
-    .setTimestamp();
+  return new EmbedBuilder().setColor(CONFIG.BOT_COLOR).setFooter(footer(variant, CONFIG.BOT_LOGO_URL)).setTimestamp();
 }
 
 // ── Data-rich helpers (reusáveis em qualquer embed) ─────────────────────────
@@ -35,9 +32,9 @@ function formatDelta(previous, current, kind = 'int') {
   const direction = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
   const arrow = direction === 'up' ? '↑' : direction === 'down' ? '↓' : '→';
   const pctBase = prev === 0 ? (curr === 0 ? 0 : 1) : Math.abs(delta) / Math.abs(prev);
-  const fmt = (v) => {
+  const fmt = v => {
     if (kind === 'euro') return `${v >= 0 ? '+' : '−'}${Math.abs(v).toLocaleString('pt-PT')}€`;
-    if (kind === 'pct')  return `${v >= 0 ? '+' : '−'}${(Math.abs(v) * 100).toFixed(1)}%`;
+    if (kind === 'pct') return `${v >= 0 ? '+' : '−'}${(Math.abs(v) * 100).toFixed(1)}%`;
     return `${v >= 0 ? '+' : '−'}${Math.abs(v).toLocaleString('pt-PT')}`;
   };
   const pctTxt = prev === 0 ? '' : ` (${(pctBase * 100).toFixed(0)}%)`;
@@ -54,11 +51,12 @@ function formatDelta(previous, current, kind = 'int') {
 function deltaField(label, current, previous, opts = {}) {
   const { kind = 'int', inline = true } = opts;
   const d = formatDelta(previous, current, kind);
-  const fmtCur = kind === 'euro'
-    ? `${Number(current).toLocaleString('pt-PT')}€`
-    : kind === 'pct'
-      ? `${(Number(current) * 100).toFixed(1)}%`
-      : Number(current).toLocaleString('pt-PT');
+  const fmtCur =
+    kind === 'euro'
+      ? `${Number(current).toLocaleString('pt-PT')}€`
+      : kind === 'pct'
+        ? `${(Number(current) * 100).toFixed(1)}%`
+        : Number(current).toLocaleString('pt-PT');
   return { name: label, value: `**${fmtCur}** · ${d.text}`, inline };
 }
 
@@ -72,7 +70,7 @@ function progressBar(current, max, opts = {}) {
   const { width = 10, filled = '█', empty = '░' } = opts;
   if (!max || max <= 0) return empty.repeat(width);
   const pct = Math.max(0, Math.min(1, current / max));
-  const n   = Math.round(pct * width);
+  const n = Math.round(pct * width);
   return filled.repeat(n) + empty.repeat(width - n);
 }
 
@@ -93,8 +91,8 @@ function rankBadge(position) {
  */
 function streakBadge(count) {
   if (count >= 10) return '💀';
-  if (count >= 5)  return '⚡';
-  if (count >= 3)  return '🔥';
+  if (count >= 5) return '⚡';
+  if (count >= 3) return '🔥';
   return '';
 }
 
@@ -129,7 +127,7 @@ function successEmbed(title, description) {
 
 function errorEmbed(title, description) {
   return brandEmbed()
-    .setColor(0xC0392B)
+    .setColor(0xc0392b)
     .setTitle(`${EMOJI.WARN} ${title}`)
     .setDescription(description || null);
 }
@@ -146,9 +144,7 @@ function stockEmbed(items) {
     embed.setDescription(INVENTORY.EMPTY);
     return embed;
   }
-  const lines = items.map(i =>
-    `**${i.name}** (${i.category}) — ${i.balance} ${i.unit}`
-  );
+  const lines = items.map(i => `**${i.name}** (${i.category}) — ${i.balance} ${i.unit}`);
   embed.setDescription(lines.join('\n'));
   return embed;
 }
@@ -168,7 +164,7 @@ function operationEmbed(op) {
       { name: 'Estado', value: STATUS[op.status] || op.status, inline: true },
       { name: 'Spot', value: op.spot || '—', inline: true },
       { name: 'Grupo', value: `#${op.group_number} (máx ${op.max_participants})`, inline: true },
-      { name: 'Líder', value: op.leader_name || '—', inline: true },
+      { name: 'Líder', value: op.leader_name || '—', inline: true }
     );
 }
 
@@ -188,12 +184,14 @@ function rankingEmbed(title, rankings, weekLabel, opts = {}) {
     if (previousMap) {
       const prev = previousMap.get(r.discord_id);
       if (prev === undefined) deltaMark = ' ⚡ *novo*';
-      else if (prev > i + 1)  deltaMark = ` ↑ **${prev - (i + 1)}**`;
-      else if (prev < i + 1)  deltaMark = ` ↓ **${(i + 1) - prev}**`;
+      else if (prev > i + 1) deltaMark = ` ↑ **${prev - (i + 1)}**`;
+      else if (prev < i + 1) deltaMark = ` ↓ **${i + 1 - prev}**`;
     }
 
-    return `${prefix} <@${r.discord_id}> — **${qty}**` +
-      `  ·  ${r.deliveries}e · ${r.sales}v · ${r.operations_count}s${deltaMark}`;
+    return (
+      `${prefix} <@${r.discord_id}> — **${qty}**` +
+      `  ·  ${r.deliveries}e · ${r.sales}v · ${r.operations_count}s${deltaMark}`
+    );
   });
   embed.setDescription(lines.join('\n'));
   return embed;
@@ -205,14 +203,14 @@ function memberProfileEmbed(member) {
     .addFields(
       { name: 'Peso', value: ROLE[member.role] || member.role, inline: true },
       { name: 'Estado', value: STATUS[member.status] || member.status, inline: true },
-      { name: 'Na casa desde', value: formatPtDateOnly(member.joined_at), inline: true },
+      { name: 'Na casa desde', value: formatPtDateOnly(member.joined_at), inline: true }
     );
 }
 
 function welcomeChannelEmbed(memberName) {
-  return applyLogo(brandEmbed('HOUSE')
-    .setTitle(ONBOARDING.WELCOME_TITLE(memberName))
-    .setDescription(ONBOARDING.WELCOME_BODY));
+  return applyLogo(
+    brandEmbed('HOUSE').setTitle(ONBOARDING.WELCOME_TITLE(memberName)).setDescription(ONBOARDING.WELCOME_BODY)
+  );
 }
 
 module.exports = {

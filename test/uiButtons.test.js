@@ -2,9 +2,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { ButtonStyle } = require('discord.js');
-const {
-  buttonFromDef, button, buttonRow, buttonRows,
-} = require('../src/shared/ui/buttons');
+const { buttonFromDef, button, buttonRow, buttonRows } = require('../src/shared/ui/buttons');
 
 describe('shared/ui/buttons', () => {
   it('buttonFromDef constrói ButtonBuilder com style string', () => {
@@ -42,16 +40,12 @@ describe('shared/ui/buttons', () => {
   });
 
   it('buttonRow rejeita mais de 5 botões', () => {
-    const btns = Array.from({ length: 6 }, (_, i) =>
-      button({ customId: `t::${i}`, label: `${i}` })
-    );
+    const btns = Array.from({ length: 6 }, (_, i) => button({ customId: `t::${i}`, label: `${i}` }));
     assert.throws(() => buttonRow(...btns), /máximo 5/);
   });
 
   it('buttonRows auto-chunka em grupos de 5', () => {
-    const btns = Array.from({ length: 12 }, (_, i) =>
-      button({ customId: `t::${i}`, label: `${i}` })
-    );
+    const btns = Array.from({ length: 12 }, (_, i) => button({ customId: `t::${i}`, label: `${i}` }));
     const rows = buttonRows(btns, 5);
     assert.equal(rows.length, 3);
     assert.equal(rows[0].components.length, 5);

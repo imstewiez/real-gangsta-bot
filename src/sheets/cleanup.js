@@ -76,10 +76,13 @@ function growSheet(batch, sheetId, { rows, cols }) {
  * abaixo de MIN_ROWS/MIN_COLS). Aplicar no fim de cada sync para deixar a tab
  * "tight" — nada de 1000 rows inúteis.
  */
-function trimSheet(batch, sheetId, rowsUsed, colsUsed, {
-  paddingRows = DEFAULT_PADDING_ROWS,
-  paddingCols = DEFAULT_PADDING_COLS,
-} = {}) {
+function trimSheet(
+  batch,
+  sheetId,
+  rowsUsed,
+  colsUsed,
+  { paddingRows = DEFAULT_PADDING_ROWS, paddingCols = DEFAULT_PADDING_COLS } = {}
+) {
   const rowCount = Math.max(MIN_ROWS, rowsUsed + paddingRows);
   const colCount = Math.max(MIN_COLS, colsUsed + paddingCols);
   batch.addRule({

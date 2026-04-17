@@ -54,9 +54,9 @@ const PANELS = {
       '\n' +
       '— Firma RedWood',
     BUTTONS: {
-      ENTREGA:    'Registar Material',
-      MOVIMENTO:  'Movimento no Bairro',
-      RANKING:    'Ranking',
+      ENTREGA: 'Registar Material',
+      MOVIMENTO: 'Movimento no Bairro',
+      RANKING: 'Ranking',
       ENCOMENDAS: 'Encomendas',
     },
   },
@@ -97,15 +97,15 @@ const PANELS = {
       '\n' +
       '— Firma RedWood',
     BUTTONS: {
-      CRIAR_SAIDA:     'Nova Sessão',
-      VER_SAIDAS:      'Sessões Activas',
-      VER_STOCK:       'Ver Stock',
-      AJUSTAR_STOCK:   'Ajustar Stock',
+      CRIAR_SAIDA: 'Nova Sessão',
+      VER_SAIDAS: 'Sessões Activas',
+      VER_STOCK: 'Ver Stock',
+      AJUSTAR_STOCK: 'Ajustar Stock',
       GERIR_MATERIAIS: 'Gerir Materiais',
-      RADIO:           'Painel Rádio',
-      STICKYS:         'Stickys',
-      TOPS:            'Topo',
-      LOGS:            'Logs',
+      RADIO: 'Painel Rádio',
+      STICKYS: 'Stickys',
+      TOPS: 'Topo',
+      LOGS: 'Logs',
     },
   },
 
@@ -126,10 +126,10 @@ const PANELS = {
       '\n' +
       '— Firma RedWood',
     BUTTONS: {
-      LISTAR:   'Listar Bairristas',
+      LISTAR: 'Listar Bairristas',
       ENTREGAS: 'Entregas da Zona',
-      VENDAS:   'Vendas da Zona',
-      TOPOS:    'Topo da Zona',
+      VENDAS: 'Vendas da Zona',
+      TOPOS: 'Topo da Zona',
     },
   },
 
@@ -138,7 +138,7 @@ const PANELS = {
   // ═══════════════════════════════════════════════════════════════════════
   BAIRRISTA_CHANNEL: {
     WELCOME_TITLE: `${E.SANGUE} ESTA ZONA É TUA`,
-    WELCOME_DESCRIPTION: (name) =>
+    WELCOME_DESCRIPTION: name =>
       `A Firma leu-te, **${name}**. Agora começa.\n` +
       'Este canal é teu — aqui produzes, aqui o bairro vê-te trabalhar.\n' +
       '\n' +

@@ -1,20 +1,18 @@
 'use strict';
-const {
-  MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder,
-} = require('discord.js');
-const {
-  safeReply, safeShowModal, getModalField, isDuplicate,
-} = require('../shared/interactionHelpers');
-const {
-  successEmbed, brandEmbed, rankBadge, streakBadge,
-} = require('../shared/embedBuilders');
+const { MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { successEmbed, brandEmbed, rankBadge, streakBadge } = require('../shared/embedBuilders');
 const { canRegisterKill } = require('../permissions/permissionEngine');
 const { EMOJI, MODALS, KILLS, ERRORS } = require('../content');
 const engine = require('./killEngine');
 
 async function handleRegisterKillButton(interaction) {
   if (!canRegisterKill(interaction.member)) {
-    return safeReply(interaction, { content: ERRORS.NO_PERMISSION('registar kill'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(
+      interaction,
+      { content: ERRORS.NO_PERMISSION('registar kill'), flags: MessageFlags.Ephemeral },
+      { dismissible: true }
+    );
   }
 
   const M = MODALS.KILL_REGISTER;
@@ -23,24 +21,49 @@ async function handleRegisterKillButton(interaction) {
     .setTitle(M.TITLE)
     .addComponents(
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('victim').setLabel(M.FIELDS.victim.label)
-          .setStyle(TextInputStyle.Short).setRequired(M.FIELDS.victim.required).setMaxLength(M.FIELDS.victim.maxLength)
-          .setPlaceholder(M.FIELDS.victim.placeholder)),
+        new TextInputBuilder()
+          .setCustomId('victim')
+          .setLabel(M.FIELDS.victim.label)
+          .setStyle(TextInputStyle.Short)
+          .setRequired(M.FIELDS.victim.required)
+          .setMaxLength(M.FIELDS.victim.maxLength)
+          .setPlaceholder(M.FIELDS.victim.placeholder)
+      ),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('spot').setLabel(M.FIELDS.spot.label)
-          .setStyle(TextInputStyle.Short).setRequired(M.FIELDS.spot.required).setMaxLength(M.FIELDS.spot.maxLength)
-          .setPlaceholder(M.FIELDS.spot.placeholder)),
+        new TextInputBuilder()
+          .setCustomId('spot')
+          .setLabel(M.FIELDS.spot.label)
+          .setStyle(TextInputStyle.Short)
+          .setRequired(M.FIELDS.spot.required)
+          .setMaxLength(M.FIELDS.spot.maxLength)
+          .setPlaceholder(M.FIELDS.spot.placeholder)
+      ),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('context').setLabel(M.FIELDS.context.label)
-          .setStyle(TextInputStyle.Short).setRequired(M.FIELDS.context.required).setMaxLength(M.FIELDS.context.maxLength)
-          .setPlaceholder(M.FIELDS.context.placeholder)),
+        new TextInputBuilder()
+          .setCustomId('context')
+          .setLabel(M.FIELDS.context.label)
+          .setStyle(TextInputStyle.Short)
+          .setRequired(M.FIELDS.context.required)
+          .setMaxLength(M.FIELDS.context.maxLength)
+          .setPlaceholder(M.FIELDS.context.placeholder)
+      ),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('saida_id').setLabel('Saída (ID opcional)')
-          .setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(10)
-          .setPlaceholder('Ex: 42')),
+        new TextInputBuilder()
+          .setCustomId('saida_id')
+          .setLabel('Saída (ID opcional)')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(false)
+          .setMaxLength(10)
+          .setPlaceholder('Ex: 42')
+      ),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('notes').setLabel('Notas (opcional)')
-          .setStyle(TextInputStyle.Paragraph).setRequired(false).setMaxLength(500)),
+        new TextInputBuilder()
+          .setCustomId('notes')
+          .setLabel('Notas (opcional)')
+          .setStyle(TextInputStyle.Paragraph)
+          .setRequired(false)
+          .setMaxLength(500)
+      )
     );
 
   await safeShowModal(interaction, modal);
@@ -56,21 +79,29 @@ async function handleKillModal(interaction) {
   const saidaStr = getModalField(interaction, 'saida_id').trim();
   const notes = getModalField(interaction, 'notes').trim();
 
-  if (!victimRaw) return safeReply(interaction, { content: `${EMOJI.WARN} Falta o nome da vítima.` }, { dismissible: true });
+  if (!victimRaw)
+    return safeReply(interaction, { content: `${EMOJI.WARN} Falta o nome da vítima.` }, { dismissible: true });
 
   // "Nome · facção" / "Nome - facção" / só nome
-  let victimName = victimRaw, victimFaction = '';
+  let victimName = victimRaw,
+    victimFaction = '';
   const sepMatch = victimRaw.match(/^(.+?)\s*[·\-—]\s*(.+)$/);
-  if (sepMatch) { victimName = sepMatch[1].trim(); victimFaction = sepMatch[2].trim(); }
+  if (sepMatch) {
+    victimName = sepMatch[1].trim();
+    victimFaction = sepMatch[2].trim();
+  }
 
   const saidaId = saidaStr ? parseInt(saidaStr) || null : null;
 
   try {
     const kill = await engine.recordKill({
       killerDiscordId: interaction.user.id,
-      victimName, victimFaction,
-      spot, context,
-      saidaId, notes,
+      victimName,
+      victimFaction,
+      spot,
+      context,
+      saidaId,
+      notes,
       createdBy: interaction.user.id,
     });
     engine.publishKillToChannel(interaction.client, kill).catch(() => null);
@@ -81,12 +112,9 @@ async function handleKillModal(interaction) {
     const embed = brandEmbed('STREET')
       .setTitle(KILLS.REGISTERED_TITLE)
       .setDescription(
-        KILLS.REGISTERED_LINE(
-          `${victimName}${victimFaction ? ` · ${victimFaction}` : ''}`,
-          spot
-        ) +
-        (context ? `\n_${context}_` : '') +
-        (saidaId ? `\n${EMOJI.SAIDA} Saída **#${saidaId}**` : '')
+        KILLS.REGISTERED_LINE(`${victimName}${victimFaction ? ` · ${victimFaction}` : ''}`, spot) +
+          (context ? `\n_${context}_` : '') +
+          (saidaId ? `\n${EMOJI.SAIDA} Saída **#${saidaId}**` : '')
       );
 
     // Fields data-rich se tivermos stats
@@ -129,9 +157,7 @@ async function handleLeaderboardButton(interaction) {
     return KILLS.LEADERBOARD_PLACE(badge, r.discord_id, r.kills, extra.join(' · '));
   });
 
-  const embed = brandEmbed('TOP')
-    .setTitle(KILLS.LEADERBOARD_TITLE)
-    .setDescription(lines.join('\n'));
+  const embed = brandEmbed('TOP').setTitle(KILLS.LEADERBOARD_TITLE).setDescription(lines.join('\n'));
   return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
 }
 

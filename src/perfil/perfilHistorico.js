@@ -15,24 +15,36 @@ const { memberRepo, inventoryRepo } = require('../repositories');
 const { buttonRow, button } = require('../shared/ui/buttons');
 const { formatPtDate } = require('../shared/formatPtDate');
 
-const fmt = (n) => (Number(n) || 0).toLocaleString('pt-PT');
+const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
 
 const TYPE_EMOJI = {
-  entrega_bairrista: '📥', entrega_morador: '📥', entrega_oficial: '📥',
-  venda_bairrista:   '💰', venda_morador:   '💰',
-  fornecimento_org:  '📤',
-  devolucao_saida:   '↩️',  perda_saida:     '❌',  consumo_saida: '🔥',
-  ajuste_manual:     '⚙️',
-  apreendido:        '🚔',  craftado:        '🛠️',
+  entrega_bairrista: '📥',
+  entrega_morador: '📥',
+  entrega_oficial: '📥',
+  venda_bairrista: '💰',
+  venda_morador: '💰',
+  fornecimento_org: '📤',
+  devolucao_saida: '↩️',
+  perda_saida: '❌',
+  consumo_saida: '🔥',
+  ajuste_manual: '⚙️',
+  apreendido: '🚔',
+  craftado: '🛠️',
 };
 
 const TYPE_LABEL = {
-  entrega_bairrista: 'entrega', entrega_morador: 'entrega', entrega_oficial: 'entrega oficial',
-  venda_bairrista:   'venda',   venda_morador:   'venda',
-  fornecimento_org:  'fornecimento',
-  devolucao_saida:   'devolução saída', perda_saida: 'perda saída', consumo_saida: 'consumo saída',
-  ajuste_manual:     'ajuste',
-  apreendido:        'apreendido',       craftado: 'craft',
+  entrega_bairrista: 'entrega',
+  entrega_morador: 'entrega',
+  entrega_oficial: 'entrega oficial',
+  venda_bairrista: 'venda',
+  venda_morador: 'venda',
+  fornecimento_org: 'fornecimento',
+  devolucao_saida: 'devolução saída',
+  perda_saida: 'perda saída',
+  consumo_saida: 'consumo saída',
+  ajuste_manual: 'ajuste',
+  apreendido: 'apreendido',
+  craftado: 'craft',
 };
 
 async function handle(interaction) {
@@ -104,20 +116,25 @@ async function render(interaction, filter) {
       .setCustomId('perfil::historico_filter')
       .setPlaceholder('Filtrar por tipo')
       .addOptions([
-        { label: 'Tudo',     value: 'all',        emoji: '📜', default: filter === 'all' },
+        { label: 'Tudo', value: 'all', emoji: '📜', default: filter === 'all' },
         { label: 'Entregas', value: 'deliveries', emoji: '📥', default: filter === 'deliveries' },
-        { label: 'Vendas',   value: 'sales',      emoji: '💰', default: filter === 'sales' },
-        { label: 'De Saídas', value: 'saida',     emoji: '🎯', default: filter === 'saida' },
+        { label: 'Vendas', value: 'sales', emoji: '💰', default: filter === 'sales' },
+        { label: 'De Saídas', value: 'saida', emoji: '🎯', default: filter === 'saida' },
       ])
   );
 
   const navRow = buttonRow(
-    button({ customId: 'perfil::voltar', label: 'Voltar ao Perfil', style: 'Secondary', emoji: EMOJI.VOLTAR }),
+    button({ customId: 'perfil::voltar', label: 'Voltar ao Perfil', style: 'Secondary', emoji: EMOJI.VOLTAR })
   );
 
-  return safeReply(interaction, {
-    embeds: [embed], components: [filterRow, navRow],
-  }, { messageClass: 'COCKPIT' });
+  return safeReply(
+    interaction,
+    {
+      embeds: [embed],
+      components: [filterRow, navRow],
+    },
+    { messageClass: 'COCKPIT' }
+  );
 }
 
 module.exports = { handle, handleFilterSelect };

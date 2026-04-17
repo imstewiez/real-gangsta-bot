@@ -13,9 +13,17 @@ process.env.DISCORD_GUILD_ID ||= 'test-guild';
 
 const CONFIG = require('../src/config');
 const {
-  getMemberRoles, getExactRole, getBairristaTier,
-  isCommand, isSupervisor, isPatraoDiZona, isBairrista, isOficial,
-  canManageStructure, canManageBairro, canRegisterMaterial,
+  getMemberRoles,
+  getExactRole,
+  getBairristaTier,
+  isCommand,
+  isSupervisor,
+  isPatraoDiZona,
+  isBairrista,
+  isOficial,
+  canManageStructure,
+  canManageBairro,
+  canRegisterMaterial,
 } = require('../src/permissions/permissionEngine');
 
 // Override role IDs com valores de teste

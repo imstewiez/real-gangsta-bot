@@ -16,29 +16,29 @@ const { EMOJI, SAIDA_TYPE } = require('../content');
 const { formatPtDate } = require('../shared/formatPtDate');
 const { brandEmbed } = require('../shared/embedBuilders');
 
-const fmt = (n) => (Number(n) || 0).toLocaleString('pt-PT');
-const fmtVal = (n) => `${(Number(n) || 0).toLocaleString('pt-PT', { maximumFractionDigits: 0 })}€`;
-const mention = (discordId) => discordId ? `<@${discordId}>` : '—';
+const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
+const fmtVal = n => `${(Number(n) || 0).toLocaleString('pt-PT', { maximumFractionDigits: 0 })}€`;
+const mention = discordId => (discordId ? `<@${discordId}>` : '—');
 
 // ── Inventário ─────────────────────────────────────────────────────────────
 
 const MOVEMENT_LABELS = {
-  entrega_bairrista: { label: 'Entrega (Bairrista)', color: 0x27AE60, emoji: EMOJI.ENTREGA },
-  entrega_morador:   { label: 'Entrega (Bairrista)', color: 0x27AE60, emoji: EMOJI.ENTREGA },
-  entrega_oficial:   { label: 'Entrega (Oficial)',   color: 0x27AE60, emoji: EMOJI.ENTREGA },
-  venda_bairrista:   { label: 'Venda',               color: 0xF39C12, emoji: EMOJI.VENDA },
-  venda_morador:     { label: 'Venda',               color: 0xF39C12, emoji: EMOJI.VENDA },
-  fornecimento_org:  { label: 'Fornecimento (saída)',color: 0x3498DB, emoji: EMOJI.FORNECER },
-  devolucao_saida:   { label: 'Devolução de saída',  color: 0x3498DB, emoji: EMOJI.DEVOLVER },
-  perda_saida:       { label: 'Perda em saída',      color: 0xE74C3C, emoji: EMOJI.PERDIDO },
-  consumo_saida:     { label: 'Consumo em saída',    color: 0x9B59B6, emoji: '🔥' },
-  ajuste_manual:     { label: 'Ajuste manual',       color: 0x95A5A6, emoji: EMOJI.AJUSTAR },
-  apreendido:        { label: 'Apreendido',          color: 0xE67E22, emoji: '🚔' },
-  craftado:          { label: 'Craftado',            color: 0x1ABC9C, emoji: EMOJI.CRAFT },
+  entrega_bairrista: { label: 'Entrega (Bairrista)', color: 0x27ae60, emoji: EMOJI.ENTREGA },
+  entrega_morador: { label: 'Entrega (Bairrista)', color: 0x27ae60, emoji: EMOJI.ENTREGA },
+  entrega_oficial: { label: 'Entrega (Oficial)', color: 0x27ae60, emoji: EMOJI.ENTREGA },
+  venda_bairrista: { label: 'Venda', color: 0xf39c12, emoji: EMOJI.VENDA },
+  venda_morador: { label: 'Venda', color: 0xf39c12, emoji: EMOJI.VENDA },
+  fornecimento_org: { label: 'Fornecimento (saída)', color: 0x3498db, emoji: EMOJI.FORNECER },
+  devolucao_saida: { label: 'Devolução de saída', color: 0x3498db, emoji: EMOJI.DEVOLVER },
+  perda_saida: { label: 'Perda em saída', color: 0xe74c3c, emoji: EMOJI.PERDIDO },
+  consumo_saida: { label: 'Consumo em saída', color: 0x9b59b6, emoji: '🔥' },
+  ajuste_manual: { label: 'Ajuste manual', color: 0x95a5a6, emoji: EMOJI.AJUSTAR },
+  apreendido: { label: 'Apreendido', color: 0xe67e22, emoji: '🚔' },
+  craftado: { label: 'Craftado', color: 0x1abc9c, emoji: EMOJI.CRAFT },
 };
 
 function inventoryMovementEmbed(p) {
-  const info = MOVEMENT_LABELS[p.movementType] || { label: p.movementType, color: 0x95A5A6, emoji: EMOJI.MATERIAL };
+  const info = MOVEMENT_LABELS[p.movementType] || { label: p.movementType, color: 0x95a5a6, emoji: EMOJI.MATERIAL };
   const embed = brandEmbed('MOVEMENT')
     .setColor(info.color)
     .setTitle(`${info.emoji} ${info.label}`)
@@ -46,10 +46,10 @@ function inventoryMovementEmbed(p) {
 
   const fields = [];
   if (p.memberDiscordId) {
-    fields.push({ name: 'Membro',   value: mention(p.memberDiscordId), inline: true });
+    fields.push({ name: 'Membro', value: mention(p.memberDiscordId), inline: true });
   }
   if (p.actorId && p.actorId !== p.memberDiscordId) {
-    fields.push({ name: 'Registou', value: mention(p.actorId),         inline: true });
+    fields.push({ name: 'Registou', value: mention(p.actorId), inline: true });
   }
   if (p.value != null || (p.quantity && p.itemValue)) {
     const val = p.value != null ? p.value : (Number(p.quantity) || 0) * (Number(p.itemValue) || 0);
@@ -71,13 +71,11 @@ function inventoryMovementEmbed(p) {
 }
 
 function inventoryTransferEmbed(p) {
-  const fields = [
-    { name: 'Actor', value: mention(p.actorId), inline: true },
-  ];
+  const fields = [{ name: 'Actor', value: mention(p.actorId), inline: true }];
   if (p.notes) fields.push({ name: 'Notas', value: String(p.notes).slice(0, 500), inline: false });
   fields.push({ name: 'Data/hora', value: formatPtDate(p.at || new Date()), inline: false });
   return brandEmbed('MOVEMENT')
-    .setColor(0x3498DB)
+    .setColor(0x3498db)
     .setTitle(`${EMOJI.REFRESH} Transferência — ${p.from} → ${p.to}`)
     .setDescription(`**${fmt(p.quantity)}× ${p.itemName}**`)
     .addFields(fields);
@@ -86,11 +84,11 @@ function inventoryTransferEmbed(p) {
 // ── Encomendas (orders) ────────────────────────────────────────────────────
 
 const ORDER_EVENT_META = {
-  created:   { label: 'Nova Encomenda',    color: 0xF39C12, emoji: EMOJI.NOVO },
-  approved:  { label: 'Encomenda Aprovada', color: 0x27AE60, emoji: EMOJI.OK },
-  fulfilled: { label: 'Encomenda Entregue', color: 0x2ECC71, emoji: EMOJI.MATERIAL },
-  denied:    { label: 'Encomenda Recusada', color: 0xE74C3C, emoji: EMOJI.ERRO },
-  cancelled: { label: 'Encomenda Cancelada',color: 0x95A5A6, emoji: '🚫' },
+  created: { label: 'Nova Encomenda', color: 0xf39c12, emoji: EMOJI.NOVO },
+  approved: { label: 'Encomenda Aprovada', color: 0x27ae60, emoji: EMOJI.OK },
+  fulfilled: { label: 'Encomenda Entregue', color: 0x2ecc71, emoji: EMOJI.MATERIAL },
+  denied: { label: 'Encomenda Recusada', color: 0xe74c3c, emoji: EMOJI.ERRO },
+  cancelled: { label: 'Encomenda Cancelada', color: 0x95a5a6, emoji: '🚫' },
 };
 
 function orderLifecycleEmbed(p) {
@@ -101,7 +99,7 @@ function orderLifecycleEmbed(p) {
     .setDescription(`**${fmt(p.quantity)}× ${p.itemName}**`);
 
   const fields = [];
-  fields.push({ name: 'Pediu',  value: mention(p.memberDiscordId), inline: true });
+  fields.push({ name: 'Pediu', value: mention(p.memberDiscordId), inline: true });
   if (p.actorId && p.actorId !== p.memberDiscordId) {
     fields.push({ name: 'Actor', value: mention(p.actorId), inline: true });
   }
@@ -122,20 +120,18 @@ function orderLifecycleEmbed(p) {
 // ── Vida da Org ────────────────────────────────────────────────────────────
 
 const ORG_EVENT_META = {
-  joined:             { label: 'Entrada no servidor',   color: 0x3498DB, emoji: EMOJI.ENTRADA },
-  left:               { label: 'Saiu do servidor',       color: 0x95A5A6, emoji: '👋' },
-  promoted:           { label: 'Subida de Cargo',        color: 0xF39C12, emoji: EMOJI.LIDER },
-  tier_changed:       { label: 'Mudança de Tier',        color: 0xF39C12, emoji: EMOJI.TOPO },
-  nickname_changed:   { label: 'Mudança de Nome',        color: 0x95A5A6, emoji: EMOJI.EDITAR },
-  tag_approved:       { label: 'Tag Aprovada',           color: 0x27AE60, emoji: EMOJI.TAG },
-  tag_denied:         { label: 'Tag Recusada',           color: 0xE74C3C, emoji: EMOJI.ERRO },
+  joined: { label: 'Entrada no servidor', color: 0x3498db, emoji: EMOJI.ENTRADA },
+  left: { label: 'Saiu do servidor', color: 0x95a5a6, emoji: '👋' },
+  promoted: { label: 'Subida de Cargo', color: 0xf39c12, emoji: EMOJI.LIDER },
+  tier_changed: { label: 'Mudança de Tier', color: 0xf39c12, emoji: EMOJI.TOPO },
+  nickname_changed: { label: 'Mudança de Nome', color: 0x95a5a6, emoji: EMOJI.EDITAR },
+  tag_approved: { label: 'Tag Aprovada', color: 0x27ae60, emoji: EMOJI.TAG },
+  tag_denied: { label: 'Tag Recusada', color: 0xe74c3c, emoji: EMOJI.ERRO },
 };
 
 function orgLifecycleEmbed(p) {
-  const meta = ORG_EVENT_META[p.event] || { label: p.event, color: 0x95A5A6, emoji: EMOJI.INFO };
-  const embed = brandEmbed('HOUSE')
-    .setColor(meta.color)
-    .setTitle(`${meta.emoji} ${meta.label}`);
+  const meta = ORG_EVENT_META[p.event] || { label: p.event, color: 0x95a5a6, emoji: EMOJI.INFO };
+  const embed = brandEmbed('HOUSE').setColor(meta.color).setTitle(`${meta.emoji} ${meta.label}`);
 
   const lines = [];
   if (p.displayName) lines.push(`**${p.displayName}**${p.discordId ? ` (${mention(p.discordId)})` : ''}`);
@@ -154,7 +150,11 @@ function orgLifecycleEmbed(p) {
     fields.push({ name: 'Tier', value: `\`${p.fromTier}\` → **${p.toTier}**`, inline: true });
   }
   if (p.beforeState?.nickname && p.afterState?.nickname) {
-    fields.push({ name: 'Nickname', value: `\`${p.beforeState.nickname}\` → **${p.afterState.nickname}**`, inline: true });
+    fields.push({
+      name: 'Nickname',
+      value: `\`${p.beforeState.nickname}\` → **${p.afterState.nickname}**`,
+      inline: true,
+    });
   }
   if (p.actorId) {
     fields.push({ name: 'Actor', value: mention(p.actorId), inline: true });
@@ -171,29 +171,29 @@ function orgLifecycleEmbed(p) {
 // ── Saídas ─────────────────────────────────────────────────────────────────
 
 const SAIDA_EVENT_META = {
-  opened:             { label: 'Saída Criada',         color: 0x3498DB, emoji: EMOJI.SAIDA },
-  started:            { label: 'Saída Iniciada',       color: 0xF39C12, emoji: EMOJI.SAIDA },
-  closed:             { label: 'Saída Fechada',        color: 0x2ECC71, emoji: EMOJI.VITORIA },
-  material_issued:    { label: 'Material Fornecido',   color: 0x9B59B6, emoji: EMOJI.FORNECER },
-  participant_added:  { label: 'Participante Adicionado', color: 0x3498DB, emoji: EMOJI.PARTICIPANTE },
-  cancelled:          { label: 'Saída Cancelada',      color: 0x95A5A6, emoji: '🚫' },
-  weapon_return:      { label: 'Devolução de Arma — Decisão', color: 0xF39C12, emoji: '🔫' },
+  opened: { label: 'Saída Criada', color: 0x3498db, emoji: EMOJI.SAIDA },
+  started: { label: 'Saída Iniciada', color: 0xf39c12, emoji: EMOJI.SAIDA },
+  closed: { label: 'Saída Fechada', color: 0x2ecc71, emoji: EMOJI.VITORIA },
+  material_issued: { label: 'Material Fornecido', color: 0x9b59b6, emoji: EMOJI.FORNECER },
+  participant_added: { label: 'Participante Adicionado', color: 0x3498db, emoji: EMOJI.PARTICIPANTE },
+  cancelled: { label: 'Saída Cancelada', color: 0x95a5a6, emoji: '🚫' },
+  weapon_return: { label: 'Devolução de Arma — Decisão', color: 0xf39c12, emoji: '🔫' },
 };
 
 function saidaLifecycleEmbed(p) {
-  const meta = SAIDA_EVENT_META[p.event] || { label: p.event, color: 0x95A5A6, emoji: EMOJI.SAIDA };
+  const meta = SAIDA_EVENT_META[p.event] || { label: p.event, color: 0x95a5a6, emoji: EMOJI.SAIDA };
   const embed = brandEmbed('MOVEMENT')
     .setColor(meta.color)
     .setTitle(`${meta.emoji} Saída #${p.saidaId} — ${meta.label}`);
 
   const fields = [];
-  if (p.spot)         fields.push({ name: 'Spot',    value: p.spot, inline: true });
+  if (p.spot) fields.push({ name: 'Spot', value: p.spot, inline: true });
   if (p.saidaType) {
     const typeLabel = SAIDA_TYPE[p.saidaType] || p.saidaType;
     fields.push({ name: 'Tipo', value: typeLabel, inline: true });
   }
-  if (p.leaderId)     fields.push({ name: 'Líder',   value: mention(p.leaderId), inline: true });
-  if (p.result)       fields.push({ name: 'Resultado', value: `\`${p.result}\``, inline: true });
+  if (p.leaderId) fields.push({ name: 'Líder', value: mention(p.leaderId), inline: true });
+  if (p.result) fields.push({ name: 'Resultado', value: `\`${p.result}\``, inline: true });
 
   if (p.participantsCount != null) {
     const parts = [`**${p.participantsCount}** totais`];
@@ -210,17 +210,21 @@ function saidaLifecycleEmbed(p) {
 
   // Closed stats — material em UNIDADES (não €)
   if (p.event === 'closed') {
-    if (p.suppliedUnits != null) fields.push({ name: `${EMOJI.MATERIAL} Fornecido`, value: `**${fmt(p.suppliedUnits)}** un.`, inline: true });
-    if (p.returnedUnits != null) fields.push({ name: `${EMOJI.DEVOLVER} Devolvido`, value: `**${fmt(p.returnedUnits)}** un.`, inline: true });
-    if (p.lostUnits != null) fields.push({ name: `${EMOJI.PERDIDO} Perdido`, value: `**${fmt(p.lostUnits)}** un.`, inline: true });
-    if (p.craftAmount > 0) fields.push({ name: `${EMOJI.CRAFT} Craftado`, value: `**${fmt(p.craftAmount)}** un.`, inline: true });
+    if (p.suppliedUnits != null)
+      fields.push({ name: `${EMOJI.MATERIAL} Fornecido`, value: `**${fmt(p.suppliedUnits)}** un.`, inline: true });
+    if (p.returnedUnits != null)
+      fields.push({ name: `${EMOJI.DEVOLVER} Devolvido`, value: `**${fmt(p.returnedUnits)}** un.`, inline: true });
+    if (p.lostUnits != null)
+      fields.push({ name: `${EMOJI.PERDIDO} Perdido`, value: `**${fmt(p.lostUnits)}** un.`, inline: true });
+    if (p.craftAmount > 0)
+      fields.push({ name: `${EMOJI.CRAFT} Craftado`, value: `**${fmt(p.craftAmount)}** un.`, inline: true });
     if (p.unaccounted > 0) {
       fields.push({ name: `${EMOJI.WARN} Não contabilizado`, value: `**${fmt(p.unaccounted)}** un.`, inline: false });
     }
   }
 
   if (p.actorId) fields.push({ name: 'Actor', value: mention(p.actorId), inline: true });
-  if (p.notes)   fields.push({ name: 'Notas', value: String(p.notes).slice(0, 500), inline: false });
+  if (p.notes) fields.push({ name: 'Notas', value: String(p.notes).slice(0, 500), inline: false });
   fields.push({ name: 'Data/hora', value: formatPtDate(p.at || new Date()), inline: false });
 
   embed.addFields(fields);

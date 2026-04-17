@@ -37,7 +37,9 @@ function recordDenial(interaction, action, requiredRole = null) {
     const actorName = interaction?.user?.username;
     const guildId = interaction?.guildId;
 
-    warn(`[PERM-DENY] ${actorName || actorId} tentou "${action}" sem permissão${requiredRole ? ` (requer ${requiredRole})` : ''}${ctx ? ` · ${ctx.correlationId}` : ''}`);
+    warn(
+      `[PERM-DENY] ${actorName || actorId} tentou "${action}" sem permissão${requiredRole ? ` (requer ${requiredRole})` : ''}${ctx ? ` · ${ctx.correlationId}` : ''}`
+    );
 
     // Fire-and-forget DB insert
     logAudit({

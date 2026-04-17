@@ -17,8 +17,12 @@
 const { query } = require('../db');
 
 const SOFT_DELETE_TABLES = new Set([
-  'members', 'operations', 'items',
-  'resident_channels', 'availability_sessions', 'sticky_messages',
+  'members',
+  'operations',
+  'items',
+  'resident_channels',
+  'availability_sessions',
+  'sticky_messages',
 ]);
 
 function _assertTable(table) {
@@ -32,7 +36,7 @@ function _assertTable(table) {
  *  explicitamente, ou usar activeOnly() helper. */
 async function softDelete(table, id, deletedBy, reason = '') {
   _assertTable(table);
-  const col = (table === 'resident_channels') ? 'deleted_at' : 'deleted_at';
+  const col = table === 'resident_channels' ? 'deleted_at' : 'deleted_at';
   const r = await query(
     `UPDATE ${table}
         SET ${col} = NOW(),
@@ -63,10 +67,7 @@ async function restore(table, id) {
 /** Bump record_version — chamar em mutations que não passam por softDelete/restore. */
 async function bumpVersion(table, id) {
   _assertTable(table);
-  await query(
-    `UPDATE ${table} SET record_version = record_version + 1 WHERE id = $1`,
-    [id]
-  );
+  await query(`UPDATE ${table} SET record_version = record_version + 1 WHERE id = $1`, [id]);
 }
 
 // ─── Sheet sync state ────────────────────────────────────────────────────────
@@ -101,10 +102,7 @@ async function getSheetSyncState(tabKey = null) {
 // ─── Discord reconcile tracking (members) ────────────────────────────────────
 
 async function markMemberDiscordReconciled(memberId) {
-  await query(
-    'UPDATE members SET last_discord_reconciled_at = NOW() WHERE id = $1',
-    [memberId]
-  );
+  await query('UPDATE members SET last_discord_reconciled_at = NOW() WHERE id = $1', [memberId]);
 }
 
 async function getStaleMembers(staleThresholdMinutes = 60 * 24) {
@@ -121,8 +119,12 @@ async function getStaleMembers(staleThresholdMinutes = 60 * 24) {
 }
 
 module.exports = {
-  softDelete, restore, bumpVersion,
-  recordSheetSync, getSheetSyncState,
-  markMemberDiscordReconciled, getStaleMembers,
+  softDelete,
+  restore,
+  bumpVersion,
+  recordSheetSync,
+  getSheetSyncState,
+  markMemberDiscordReconciled,
+  getStaleMembers,
   SOFT_DELETE_TABLES,
 };

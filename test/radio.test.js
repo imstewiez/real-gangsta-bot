@@ -19,16 +19,21 @@ require.cache[resolvedPath('db.js')] = {
   exports: {
     pool: { connect: async () => ({ query: async () => ({ rows: [] }), release: () => {} }) },
     query: async () => ({ rows: [] }),
-    queryWithTransaction: async (fn) => fn({ query: async () => ({ rows: [] }) }),
+    queryWithTransaction: async fn => fn({ query: async () => ({ rows: [] }) }),
   },
 };
 require.cache[resolvedPath('repositories/index.js')] = {
   exports: {
-    memberRepo: {}, inventoryRepo: {}, operationRepo: {}, rankingRepo: {},
-    auditRepo: {}, jobRepo: {}, availabilityRepo: {},
+    memberRepo: {},
+    inventoryRepo: {},
+    operationRepo: {},
+    rankingRepo: {},
+    auditRepo: {},
+    jobRepo: {},
+    availabilityRepo: {},
     radioRepo: {
       getAllStates: async () => [],
-      setState: async (x) => ({ ...x, previous: '' }),
+      setState: async x => ({ ...x, previous: '' }),
       listHistory: async () => [],
     },
   },
@@ -37,9 +42,7 @@ require.cache[resolvedPath('audit/auditEngine.js')] = {
   exports: { logAudit: async () => {} },
 };
 
-const {
-  isValidValue, generateRandom, buildEmbed, buildComponents, TYPE_META,
-} = require('../src/radio/radioEngine');
+const { isValidValue, generateRandom, buildEmbed, buildComponents, TYPE_META } = require('../src/radio/radioEngine');
 
 describe('radioEngine — validação', () => {
   it('aceita valores no range default 1000-9999', () => {
@@ -94,8 +97,14 @@ describe('radioEngine — UI', () => {
 
   it('buildEmbed mostra valor quando definido', () => {
     const states = [
-      { radio_type: 'principal', value: '1234', mode: 'random', updated_by: 'u1', updated_at: new Date().toISOString() },
-      { radio_type: 'parceria',  value: '5678', mode: 'manual', updated_by: 'u2', updated_at: new Date().toISOString() },
+      {
+        radio_type: 'principal',
+        value: '1234',
+        mode: 'random',
+        updated_by: 'u1',
+        updated_at: new Date().toISOString(),
+      },
+      { radio_type: 'parceria', value: '5678', mode: 'manual', updated_by: 'u2', updated_at: new Date().toISOString() },
     ];
     const json = buildEmbed(states).toJSON();
     assert.ok(json.description.includes('1234'));

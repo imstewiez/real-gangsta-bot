@@ -38,8 +38,7 @@ const INVENTORY = {
     MATERIAL_REATIVAR: 'Escolhe o material a reativar',
   },
 
-  LOW_STOCK: (name, balance) =>
-    `${E.WARN} **${name}** está em baixo: **${balance}**.`,
+  LOW_STOCK: (name, balance) => `${E.WARN} **${name}** está em baixo: **${balance}**.`,
 };
 
 module.exports = INVENTORY;

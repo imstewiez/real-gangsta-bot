@@ -11,7 +11,9 @@ process.env.DISCORD_BOT_TOKEN ||= 'test-token';
 process.env.DISCORD_GUILD_ID ||= 'test-guild';
 process.env.DATABASE_URL ||= 'postgresql://test:test@localhost:5432/test_db';
 
-function resolved(rel) { return require.resolve(path.join(__dirname, '..', 'src', rel)); }
+function resolved(rel) {
+  return require.resolve(path.join(__dirname, '..', 'src', rel));
+}
 
 const state = { status: 'aberta' };
 
@@ -19,34 +21,56 @@ require.cache[resolved('db.js')] = {
   exports: {
     pool: { connect: async () => ({ query: async () => ({ rows: [] }), release: () => {} }) },
     query: async () => ({ rows: [] }),
-    queryWithTransaction: async (fn) => fn({ query: async () => ({ rows: [] }) }),
+    queryWithTransaction: async fn => fn({ query: async () => ({ rows: [] }) }),
   },
 };
 
 require.cache[resolved('repositories/index.js')] = {
   exports: {
-    memberRepo: {}, inventoryRepo: {},
+    memberRepo: {},
+    inventoryRepo: {},
     saidaRepo: {
-      findById: async (id) => id === 999 ? null : { id, status: state.status },
+      findById: async id => (id === 999 ? null : { id, status: state.status }),
       updateStatus: async (id, status) => ({ id, status }),
       getMaterialSummary: async () => ({}),
       getParticipants: async () => [],
       closeSaida: async (id, data) => ({ id, status: 'concluida', ...data }),
     },
-    operationRepo: {}, killRepo: {}, spotStatsRepo: { applyIncrement: async () => ({}) },
+    operationRepo: {},
+    killRepo: {},
+    spotStatsRepo: { applyIncrement: async () => ({}) },
     memberSaidaStatsRepo: { applyIncrement: async () => ({}) },
-    memberAnalyticsRepo: {}, rankingRepo: {}, auditRepo: {}, jobRepo: {},
-    availabilityRepo: {}, radioRepo: {}, stickyRepo: {},
+    memberAnalyticsRepo: {},
+    rankingRepo: {},
+    auditRepo: {},
+    jobRepo: {},
+    availabilityRepo: {},
+    radioRepo: {},
+    stickyRepo: {},
   },
 };
-require.cache[resolved('audit/auditEngine.js')] = { exports: { logAudit: async () => {}, sendAuditToChannel: async () => {} } };
-require.cache[resolved('lib/metrics.js')] = { exports: new Proxy({}, { get: () => ({ inc: () => {}, set: () => {} }) }) };
-require.cache[resolved('inventory/stockNotifier.js')] = { exports: { notifyMovement: async () => {}, setClient: () => {}, publishStockSummary: async () => {} } };
+require.cache[resolved('audit/auditEngine.js')] = {
+  exports: { logAudit: async () => {}, sendAuditToChannel: async () => {} },
+};
+require.cache[resolved('lib/metrics.js')] = {
+  exports: new Proxy({}, { get: () => ({ inc: () => {}, set: () => {} }) }),
+};
+require.cache[resolved('inventory/stockNotifier.js')] = {
+  exports: { notifyMovement: async () => {}, setClient: () => {}, publishStockSummary: async () => {} },
+};
 
-const { startSaida, closeSaida, cancelSaida, _assertTransition, ALLOWED_TRANSITIONS } = require('../src/saidas/saidaEngine');
+const {
+  startSaida,
+  closeSaida,
+  cancelSaida,
+  _assertTransition,
+  ALLOWED_TRANSITIONS,
+} = require('../src/saidas/saidaEngine');
 
 describe('saida state machine — transições', () => {
-  beforeEach(() => { state.status = 'aberta'; });
+  beforeEach(() => {
+    state.status = 'aberta';
+  });
 
   it('ALLOWED_TRANSITIONS mapeia estados corretamente', () => {
     assert.ok(ALLOWED_TRANSITIONS.aberta.has('em_curso'));

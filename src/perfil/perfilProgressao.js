@@ -14,7 +14,7 @@ const { getPromotionProgress } = require('../members/autoPromotionEngine');
 const { bairristaStatsRepo } = require('../repositories');
 const { buttonRow, button } = require('../shared/ui/buttons');
 
-const fmt = (n) => (Number(n) || 0).toLocaleString('pt-PT');
+const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
 
 async function handle(interaction) {
   if (isDuplicate(interaction.id)) return;
@@ -33,7 +33,7 @@ async function handle(interaction) {
     const P = BAIRRISTAS.PROGRESS;
     embed.addFields(
       { name: P.CURRENT_TIER, value: `**${progress.currentTierName}**`, inline: true },
-      { name: `${EMOJI.MATERIAL} Material total`, value: `**${fmt(progress.totalQty)}** ${P.UNITS}`, inline: true },
+      { name: `${EMOJI.MATERIAL} Material total`, value: `**${fmt(progress.totalQty)}** ${P.UNITS}`, inline: true }
     );
 
     if (!progress.maxedOut && progress.threshold) {
@@ -42,11 +42,12 @@ async function handle(interaction) {
         { name: P.NEXT_TIER, value: `**${progress.nextTierName}**`, inline: true },
         {
           name: `${EMOJI.TOPO} Progresso`,
-          value: `${bar} **${progress.progress}%**\n` +
+          value:
+            `${bar} **${progress.progress}%**\n` +
             `**${fmt(progress.totalQty)}** / ${fmt(progress.threshold)}\n` +
             `${P.REMAINING}: **${fmt(progress.remaining)}** ${P.UNITS}`,
           inline: false,
-        },
+        }
       );
 
       // Estimativa semanal
@@ -65,7 +66,7 @@ async function handle(interaction) {
   }
 
   const navRow = buttonRow(
-    button({ customId: 'perfil::voltar', label: 'Voltar ao Perfil', style: 'Secondary', emoji: EMOJI.VOLTAR }),
+    button({ customId: 'perfil::voltar', label: 'Voltar ao Perfil', style: 'Secondary', emoji: EMOJI.VOLTAR })
   );
 
   return safeReply(interaction, { embeds: [embed], components: [navRow] }, { messageClass: 'COCKPIT' });

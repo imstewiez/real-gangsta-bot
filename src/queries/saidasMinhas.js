@@ -28,9 +28,13 @@ async function handle(interaction) {
       [specificId, member.id]
     );
     if (!part.rows[0]) {
-      return safeReply(interaction, {
-        content: `Não participaste na saída #${specificId}.`,
-      }, { dismissible: true });
+      return safeReply(
+        interaction,
+        {
+          content: `Não participaste na saída #${specificId}.`,
+        },
+        { dismissible: true }
+      );
     }
     const p = part.rows[0];
     const typeTag = p.participant_type === 'trabalhador' ? '🛠️ Trabalhador' : '🏴 Caracterizado';
@@ -44,7 +48,7 @@ async function handle(interaction) {
         { name: p.died ? `${EMOJI.MORTE} Morto` : `${EMOJI.OK} Vivo`, value: '\u200b', inline: true },
         { name: 'Performance', value: `**${Math.round(p.performance_score || 0)}**`, inline: true },
         { name: 'Disciplina', value: `**${Math.round(p.discipline_score || 0)}%**`, inline: true },
-        { name: p.mvp_flag ? `${EMOJI.MVP} MVP` : 'MVP', value: p.mvp_flag ? '**Sim**' : 'Não', inline: true },
+        { name: p.mvp_flag ? `${EMOJI.MVP} MVP` : 'MVP', value: p.mvp_flag ? '**Sim**' : 'Não', inline: true }
       );
     return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   }
@@ -65,9 +69,8 @@ async function handle(interaction) {
   }
 
   const lines = recent.rows.map(r => {
-    const result = r.result === 'vitoria' ? `${EMOJI.VITORIA}`
-                 : r.result === 'derrota' ? `${EMOJI.DERROTA}`
-                 : `${EMOJI.INFO}`;
+    const result =
+      r.result === 'vitoria' ? `${EMOJI.VITORIA}` : r.result === 'derrota' ? `${EMOJI.DERROTA}` : `${EMOJI.INFO}`;
     const mvp = r.mvp_flag ? ` ${EMOJI.MVP}` : '';
     const death = r.died ? ` ${EMOJI.MORTE}` : '';
     const typeTag = r.participant_type === 'trabalhador' ? ' 🛠️' : '';

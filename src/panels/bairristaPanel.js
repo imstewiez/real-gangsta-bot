@@ -8,17 +8,17 @@ const { buttonFromDef, button, buttonRow } = require('../shared/ui/buttons');
 // Ranking, Encomendas. Tudo o que é detalhe vive dentro de "Movimento no
 // Bairro" → drill-downs (Material, PvP, Encomendas, Histórico, Progressão).
 function buildBairristaPanel() {
-  const embed = applyLogo(brandEmbed('HOUSE')
-    .setTitle(BAIRRISTAS.PANEL.TITLE)
-    .setDescription(BAIRRISTAS.PANEL.DESCRIPTION));
+  const embed = applyLogo(
+    brandEmbed('HOUSE').setTitle(BAIRRISTAS.PANEL.TITLE).setDescription(BAIRRISTAS.PANEL.DESCRIPTION)
+  );
 
   const B = BUTTONS.BAIRRISTA;
 
   const row1 = buttonRow(
     buttonFromDef('bairrista::registar_material', B.ENTREGA),
-    buttonFromDef('bairrista::movimento',         B.MOVIMENTO),
-    buttonFromDef('bairrista::ranking',           B.RANKING),
-    button({ customId: 'perfil::encomendas', label: 'Encomendas', style: 'Secondary', emoji: EMOJI.ENCOMENDA }),
+    buttonFromDef('bairrista::movimento', B.MOVIMENTO),
+    buttonFromDef('bairrista::ranking', B.RANKING),
+    button({ customId: 'perfil::encomendas', label: 'Encomendas', style: 'Secondary', emoji: EMOJI.ENCOMENDA })
   );
 
   return { embeds: [embed], components: [row1] };

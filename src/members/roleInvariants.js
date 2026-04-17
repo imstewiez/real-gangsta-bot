@@ -54,9 +54,7 @@ async function ensureInvariants(guildMember, opts = {}) {
     violations.push('tier_without_bairristas_base');
     if (!dryRun && CONFIG.BAIRRISTAS_BASE_ROLE_ID && CONFIG.ENFORCE_ROLE_INVARIANTS) {
       try {
-        await queueMemberOp(() =>
-          guildMember.roles.add(CONFIG.BAIRRISTAS_BASE_ROLE_ID, reason)
-        );
+        await queueMemberOp(() => guildMember.roles.add(CONFIG.BAIRRISTAS_BASE_ROLE_ID, reason));
         fixes.push('added_bairristas_base');
         await logAudit({
           action: 'invariant_fix',
@@ -143,14 +141,16 @@ async function reconcileAllMembers(guild, opts = {}) {
     }
   }
 
-  log(`[INVARIANT] Reconciliação: ${report.scanned} scan, ${report.violations} violações, ${report.fixed} corrigidas (dry=${dryRun})`);
+  log(
+    `[INVARIANT] Reconciliação: ${report.scanned} scan, ${report.violations} violações, ${report.fixed} corrigidas (dry=${dryRun})`
+  );
   return report;
 }
 
 module.exports = {
   hasAnyTier,
   hasBairristasBase,
-  hasBaseMoradores,   // legacy alias
+  hasBaseMoradores, // legacy alias
   ensureInvariants,
   reconcileAllMembers,
 };

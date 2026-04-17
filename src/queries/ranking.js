@@ -17,8 +17,7 @@ async function handle(interaction) {
   const { start, end } = weekBounds();
   const weekStartStr = start.toISOString().split('T')[0];
   const now = new Date();
-  const monthStartStr = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-    .toISOString().split('T')[0];
+  const monthStartStr = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().split('T')[0];
 
   let rankings, title;
   if (periodo === 'month') {

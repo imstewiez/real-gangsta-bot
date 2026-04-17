@@ -18,7 +18,7 @@ const ORG_ISSUED_WEAPONS = [
   'Compact Rifle',
   'Espingarda de Assalto',
   'Gusenberg',
-  'Gusenberg Sweeper',   // nome alternativo (catálogo antigo)
+  'Gusenberg Sweeper', // nome alternativo (catálogo antigo)
   'Machine Pistol',
   'Micro SMG',
 ];
@@ -27,35 +27,35 @@ const ORG_ISSUED_WEAPONS = [
 // para garantir naming consistente (fundamental para stats por spot).
 // Se for spot pontual / raid único → escolher "Outro" e detalhar em notas.
 const SPOTS = [
-  { value: 'haxixe',      label: 'Haxixe',       emoji: '🌿' },
-  { value: 'meta',        label: 'Meta',         emoji: '💎' },
-  { value: 'coca',        label: 'Coca',         emoji: '🤍' },
-  { value: 'erva',        label: 'Erva',         emoji: '🍃' },
-  { value: 'pecas',       label: 'Peças',        emoji: '🔩' },
-  { value: 'mina_ilegal', label: 'Mina Ilegal',  emoji: '⛏️' },
-  { value: 'stab_city',   label: 'Stab City',    emoji: '🔪' },
-  { value: 'cacadores',   label: 'Caçadores',    emoji: '🏹' },
-  { value: 'aviao',       label: 'Avião',        emoji: '✈️' },
-  { value: 'eletrica',    label: 'Elétrica',     emoji: '⚡' },
-  { value: 'outro',       label: 'Outro spot',   emoji: '❓' },
+  { value: 'haxixe', label: 'Haxixe', emoji: '🌿' },
+  { value: 'meta', label: 'Meta', emoji: '💎' },
+  { value: 'coca', label: 'Coca', emoji: '🤍' },
+  { value: 'erva', label: 'Erva', emoji: '🍃' },
+  { value: 'pecas', label: 'Peças', emoji: '🔩' },
+  { value: 'mina_ilegal', label: 'Mina Ilegal', emoji: '⛏️' },
+  { value: 'stab_city', label: 'Stab City', emoji: '🔪' },
+  { value: 'cacadores', label: 'Caçadores', emoji: '🏹' },
+  { value: 'aviao', label: 'Avião', emoji: '✈️' },
+  { value: 'eletrica', label: 'Elétrica', emoji: '⚡' },
+  { value: 'outro', label: 'Outro spot', emoji: '❓' },
 ];
 
 // Facções conhecidas — dropdown de inimigo no fecho de saída.
 // Se for facção nova / pontual, escolhe "Outra" e regista-se em notas.
 // Limite Discord StringSelect: 25 opções. Deixar espaço para "Outra".
 const FACTIONS = [
-  { value: 'los_vagos',    label: 'Los Vagos',     emoji: '🟡' },
-  { value: 'ballas',       label: 'Ballas',        emoji: '🟣' },
-  { value: 'families',     label: 'Families',      emoji: '🟢' },
-  { value: 'aztecas',      label: 'Aztecas',       emoji: '🔵' },
-  { value: 'marabunta',    label: 'Marabunta',     emoji: '🟤' },
-  { value: 'triads',       label: 'Triads',        emoji: '🔴' },
-  { value: 'lost_mc',      label: 'Lost MC',       emoji: '⚫' },
-  { value: 'bloods',       label: 'Bloods',        emoji: '🩸' },
-  { value: 'angels',       label: 'Angels of Death', emoji: '💀' },
-  { value: 'policia',      label: 'Polícia',       emoji: '🚓' },
-  { value: 'outra',        label: 'Outra facção',  emoji: '❓' },
-  { value: 'desconhecido', label: 'Desconhecido',  emoji: '❔' },
+  { value: 'los_vagos', label: 'Los Vagos', emoji: '🟡' },
+  { value: 'ballas', label: 'Ballas', emoji: '🟣' },
+  { value: 'families', label: 'Families', emoji: '🟢' },
+  { value: 'aztecas', label: 'Aztecas', emoji: '🔵' },
+  { value: 'marabunta', label: 'Marabunta', emoji: '🟤' },
+  { value: 'triads', label: 'Triads', emoji: '🔴' },
+  { value: 'lost_mc', label: 'Lost MC', emoji: '⚫' },
+  { value: 'bloods', label: 'Bloods', emoji: '🩸' },
+  { value: 'angels', label: 'Angels of Death', emoji: '💀' },
+  { value: 'policia', label: 'Polícia', emoji: '🚓' },
+  { value: 'outra', label: 'Outra facção', emoji: '❓' },
+  { value: 'desconhecido', label: 'Desconhecido', emoji: '❔' },
 ];
 
 const SAIDAS = {
@@ -67,12 +67,11 @@ const SAIDAS = {
   ORG_ISSUED_WEAPONS,
 
   WIZARD_TITLE: `${E.FECHAR} Liquidação de Saída`,
-  WIZARD_DESC: (id) => `**Saída #${id}** — fecha nome a nome.`,
-  WIZARD_PENDING_HINT: (n) =>
+  WIZARD_DESC: id => `**Saída #${id}** — fecha nome a nome.`,
+  WIZARD_PENDING_HINT: n =>
     `Pendentes: **${n}**. Escolhe o próximo — ou carrega em Concluir para auto-liquidar os restantes como vivos sem kills.`,
 
-  WIZARD_SELECT_PLACEHOLDER: (n) =>
-    `Próximo nome (${n} pendente${n === 1 ? '' : 's'})`,
+  WIZARD_SELECT_PLACEHOLDER: n => `Próximo nome (${n} pendente${n === 1 ? '' : 's'})`,
   WIZARD_BTN_FINISH_PENDING: 'Concluir (auto-liquida restantes)',
   WIZARD_BTN_FINISH_DONE: 'Finalizar e publicar',
 
@@ -85,28 +84,25 @@ const SAIDAS = {
   // ── Liquidação (novo estado intermédio) ─────────────────────────────
   LIQUIDACAO: {
     STATUS_LABEL: 'Em liquidação',
-    PING_HEADER: (saidaId, result) =>
-      `${E.SAIDA} **Saída #${saidaId}** fechada — resultado: **${result}**`,
+    PING_HEADER: (saidaId, result) => `${E.SAIDA} **Saída #${saidaId}** fechada — resultado: **${result}**`,
     PING_BODY:
-      `Preencham o vosso resultado individual ↓\n` +
-      `Cliquem no botão **"Preencher o meu Resultado"** no painel da saída.`,
+      'Preencham o vosso resultado individual ↓\n' +
+      'Cliquem no botão **"Preencher o meu Resultado"** no painel da saída.',
     PING_FOOTER: `${E.PENDENTE} A sessão fica em espera até todos preencherem.`,
-    PROGRESS: (submitted, total) =>
-      `${E.INFO} **${submitted}/${total}** resultado(s) preenchido(s)`,
-    ALL_DONE:
-      `${E.OK} **Todos os participantes preencheram!** Staff pode finalizar e publicar.`,
+    PROGRESS: (submitted, total) => `${E.INFO} **${submitted}/${total}** resultado(s) preenchido(s)`,
+    ALL_DONE: `${E.OK} **Todos os participantes preencheram!** Staff pode finalizar e publicar.`,
     FINALIZE_BTN: 'Finalizar e Publicar',
     FINALIZE_BTN_FORCE: 'Forçar Fecho (faltam resultados)',
     FINALIZED: (id, kills, deaths, survivors) =>
       `${E.FECHAR} Saída **#${id}** finalizada!\n` +
       `${E.KILL} **${kills}** kills · ${E.MORTE} **${deaths}** mortes · ${E.OK} **${survivors}** vivos`,
-    STAFF_NOTIFY_ALL_DONE: (saidaId) =>
+    STAFF_NOTIFY_ALL_DONE: saidaId =>
       `${E.OK} **Saída #${saidaId}** — todos os participantes preencheram o resultado!\n` +
-      `Carrega em **"Finalizar e Publicar"** no painel da sessão para fechar com dados reais.`,
+      'Carrega em **"Finalizar e Publicar"** no painel da sessão para fechar com dados reais.',
   },
 
   // Resultados
-  RESUMO_TITLE: (id) => `${E.SAIDA} Saída #${id} — Resumo`,
+  RESUMO_TITLE: id => `${E.SAIDA} Saída #${id} — Resumo`,
   DESTAQUES_TITLE: `${E.MVP} Destaques`,
   IMPACTO_TITLE: `${E.TOPO} Impacto Histórico`,
 
@@ -138,12 +134,12 @@ const SAIDAS = {
 
   // Sessão interactiva
   SESSION: {
-    TITLE: (id) => `${E.SAIDA} Sessão de Saída #${id}`,
+    TITLE: id => `${E.SAIDA} Sessão de Saída #${id}`,
     REGISTER_CHARACTERIZED: 'Caracterizado',
     REGISTER_WORKER: 'Trabalhador',
     CANCEL_REGISTRATION: 'Cancelar Registo',
     SLOTS_FULL: 'Slots de caracterizados cheios.',
-    REGISTERED: (type) => `Registado como ${type}.`,
+    REGISTERED: type => `Registado como ${type}.`,
     CANCELLED: 'Registo cancelado.',
   },
 

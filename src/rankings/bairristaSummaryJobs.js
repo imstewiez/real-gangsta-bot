@@ -27,9 +27,7 @@ async function publishBairristaDailySummary() {
     if (!summary || summary.totalQty === 0) return { skipped: 'no_activity' };
 
     const S = BAIRRISTAS.SUMMARY;
-    const embed = brandEmbed('MOVEMENT')
-      .setColor(0x2ECC71)
-      .setTitle(S.DAILY_TITLE(summary.date));
+    const embed = brandEmbed('MOVEMENT').setColor(0x2ecc71).setTitle(S.DAILY_TITLE(summary.date));
 
     embed.addFields({
       name: S.DAILY_TOTAL,
@@ -78,9 +76,7 @@ async function publishBairristaWeeklySummary() {
     if (!top.length) return { skipped: 'no_data' };
 
     const S = BAIRRISTAS.SUMMARY;
-    const embed = brandEmbed('TOP')
-      .setColor(0xF1C40F)
-      .setTitle(S.WEEKLY_TITLE(weekLabel));
+    const embed = brandEmbed('TOP').setColor(0xf1c40f).setTitle(S.WEEKLY_TITLE(weekLabel));
 
     const lines = top.map((r, i) => {
       const pos = Number(r.pos || i + 1);
@@ -102,7 +98,7 @@ async function publishBairristaWeeklySummary() {
     }
 
     await publishSummary(embed);
-    log(`[BAIRRISTA-SUMMARY] Resumo semanal publicado.`);
+    log('[BAIRRISTA-SUMMARY] Resumo semanal publicado.');
     return { published: true, weekStart: weekStartStr };
   } catch (e) {
     warn(`[BAIRRISTA-SUMMARY] Falha no resumo semanal: ${e.message}`);
@@ -117,17 +113,14 @@ async function publishBairristaWeeklySummary() {
 async function publishBairristaMonthlySummary() {
   try {
     const now = new Date();
-    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-      .toISOString().split('T')[0];
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().split('T')[0];
     const monthLabel = now.toLocaleString('pt-PT', { month: 'long', year: 'numeric' });
 
     const top = await bairristaStatsRepo.getTopBairristasMonthly(monthStart, 5);
     if (!top.length) return { skipped: 'no_data' };
 
     const S = BAIRRISTAS.SUMMARY;
-    const embed = brandEmbed('TOP')
-      .setColor(0xE67E22)
-      .setTitle(S.MONTHLY_TITLE(monthLabel));
+    const embed = brandEmbed('TOP').setColor(0xe67e22).setTitle(S.MONTHLY_TITLE(monthLabel));
 
     const lines = top.map((r, i) => {
       const pos = Number(r.pos || i + 1);
@@ -159,7 +152,7 @@ async function publishBairristaMonthlySummary() {
     }
 
     await publishSummary(embed);
-    log(`[BAIRRISTA-SUMMARY] Resumo mensal publicado.`);
+    log('[BAIRRISTA-SUMMARY] Resumo mensal publicado.');
     return { published: true, monthStart };
   } catch (e) {
     warn(`[BAIRRISTA-SUMMARY] Falha no resumo mensal: ${e.message}`);

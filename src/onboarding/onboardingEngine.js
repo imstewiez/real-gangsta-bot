@@ -43,7 +43,9 @@ async function processApproval(tagRequest, approverMember, client) {
   const entryRoleId = CONFIG[entryRoleKey];
   try {
     if (CONFIG.BAIRRISTAS_BASE_ROLE_ID) {
-      await queueMemberOp(() => guildMember.roles.add(CONFIG.BAIRRISTAS_BASE_ROLE_ID, 'Onboarding: role base Bairristas'));
+      await queueMemberOp(() =>
+        guildMember.roles.add(CONFIG.BAIRRISTAS_BASE_ROLE_ID, 'Onboarding: role base Bairristas')
+      );
     }
     if (entryRoleId) {
       await queueMemberOp(() => guildMember.roles.add(entryRoleId, `Onboarding: tier ${entryTier}`));
@@ -53,7 +55,9 @@ async function processApproval(tagRequest, approverMember, client) {
     // Remove Pendente se existir — newcomer deixa de ser "pending" depois
     // de aprovado. Silencioso se o membro nunca teve o role.
     if (CONFIG.PENDENTE_ROLE_ID && guildMember.roles.cache.has(CONFIG.PENDENTE_ROLE_ID)) {
-      await queueMemberOp(() => guildMember.roles.remove(CONFIG.PENDENTE_ROLE_ID, 'Onboarding: tag aprovada, remove Pendente'));
+      await queueMemberOp(() =>
+        guildMember.roles.remove(CONFIG.PENDENTE_ROLE_ID, 'Onboarding: tag aprovada, remove Pendente')
+      );
     }
     result.rolesAdded = true;
     log(`[ONBOARDING] Roles adicionadas a ${fullName} (${discordId}).`);
@@ -106,13 +110,15 @@ async function processApproval(tagRequest, approverMember, client) {
       const { buildBairristaChannelOverwrites } = require('../members/channelInvariants');
       const permissionOverwrites = buildBairristaChannelOverwrites(guild, discordId, botMember.id);
 
-      const channel = await queueChannelOp(() => guild.channels.create({
-        name: channelName,
-        type: ChannelType.GuildText,
-        parent: CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID,
-        permissionOverwrites,
-        topic: `Canal individual de ${fullName} (${nickname})`,
-      }));
+      const channel = await queueChannelOp(() =>
+        guild.channels.create({
+          name: channelName,
+          type: ChannelType.GuildText,
+          parent: CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID,
+          permissionOverwrites,
+          topic: `Canal individual de ${fullName} (${nickname})`,
+        })
+      );
 
       await memberRepo.update(dbMember.id, { channel_id: channel.id });
 
@@ -138,10 +144,10 @@ async function processApproval(tagRequest, approverMember, client) {
   }
 
   // ── 6. Update tag request ──────────────────────────────────────────────
-  await query(
-    `UPDATE tag_requests SET status = 'approved', approved_by = $1, resolved_at = NOW() WHERE id = $2`,
-    [approverMember.id, tagRequest.id]
-  );
+  await query("UPDATE tag_requests SET status = 'approved', approved_by = $1, resolved_at = NOW() WHERE id = $2", [
+    approverMember.id,
+    tagRequest.id,
+  ]);
 
   // ── 7. Audit ───────────────────────────────────────────────────────────
   await logAudit({
@@ -157,21 +163,23 @@ async function processApproval(tagRequest, approverMember, client) {
   await sendAuditToChannel(client, {
     title: `${EMOJI.TAG} ${ONBOARDING.TAG_APPROVED_TITLE.replace(EMOJI.TAG + ' ', '')}`,
     description: `<@${discordId}> entra como **${TIER_LABEL[entryTier] || entryTier}** *(tier 1)*\nNome: **${fullName}** *(${nickname})*${result.channelCreated ? `\nCanal: <#${result.channelId}>` : ''}`,
-    color: 0x2ECC71,
+    color: 0x2ecc71,
   });
 
   // ── 8. Event — member onboarded (tag aprovada, entrou como bairrista) ──
   // Dispara a projecção para a sheet 'membros' + dashboard. Sem isto, a
   // sheet não sabe que um novo bairrista existe (o member.joined do
   // GuildMemberAdd fire quando ainda é só Pendente, sem record na DB).
-  eventBus.emitAsync('member.onboarded', {
-    discordId,
-    memberId: dbMember.id,
-    displayName: fullName,
-    nickname,
-    tier: entryTier,
-    at: new Date(),
-  }).catch(() => {});
+  eventBus
+    .emitAsync('member.onboarded', {
+      discordId,
+      memberId: dbMember.id,
+      displayName: fullName,
+      nickname,
+      tier: entryTier,
+      at: new Date(),
+    })
+    .catch(() => {});
 
   return result;
 }
@@ -188,8 +196,12 @@ async function handlePromotionToOficial(member, client) {
   await memberRepo.promote(dbMember.id, 'oficial', 'system', 'Promoção a Oficial via role Discord');
 
   await logAudit({
-    action: 'member_promoted', entityType: 'member', entityId: discordId,
-    actorId: 'system', beforeState: { role: dbMember.role }, afterState: { role: 'oficial' },
+    action: 'member_promoted',
+    entityType: 'member',
+    entityId: discordId,
+    actorId: 'system',
+    beforeState: { role: dbMember.role },
+    afterState: { role: 'oficial' },
   });
 
   if (!dbMember.channel_id) return;
@@ -200,15 +212,20 @@ async function handlePromotionToOficial(member, client) {
       const channel = await guild.channels.fetch(dbMember.channel_id).catch(() => null);
       if (channel) {
         if (CONFIG.BAIRRISTA_ARQUIVO_CATEGORY_ID) {
-          await queueChannelOp(() => channel.setParent(CONFIG.BAIRRISTA_ARQUIVO_CATEGORY_ID, { lockPermissions: false }));
+          await queueChannelOp(() =>
+            channel.setParent(CONFIG.BAIRRISTA_ARQUIVO_CATEGORY_ID, { lockPermissions: false })
+          );
         }
-        await queueChannelOp(() => channel.permissionOverwrites.edit(discordId, {
-          ViewChannel: false, SendMessages: false,
-        }));
+        await queueChannelOp(() =>
+          channel.permissionOverwrites.edit(discordId, {
+            ViewChannel: false,
+            SendMessages: false,
+          })
+        );
         const { EMOJI: E } = require('../content');
         await channel.send({ content: `${E.AUDIT} Canal arquivado — ${displayName} subiu a Oficial.` });
         await query(
-          `UPDATE resident_channels SET status = 'archived', archived_at = NOW() WHERE channel_id = $1 AND status = 'active'`,
+          "UPDATE resident_channels SET status = 'archived', archived_at = NOW() WHERE channel_id = $1 AND status = 'active'",
           [dbMember.channel_id]
         );
       }
@@ -223,7 +240,7 @@ async function handlePromotionToOficial(member, client) {
       if (channel) {
         await queueChannelOp(() => channel.delete(`Promoção de ${displayName}`));
         await query(
-          `UPDATE resident_channels SET status = 'deleted', deleted_at = NOW() WHERE channel_id = $1 AND status = 'active'`,
+          "UPDATE resident_channels SET status = 'deleted', deleted_at = NOW() WHERE channel_id = $1 AND status = 'active'",
           [dbMember.channel_id]
         );
       }
@@ -238,22 +255,24 @@ async function handlePromotionToOficial(member, client) {
   await sendAuditToChannel(client, {
     title: `${EMOJI.LIDER} Subida — Bairrista → Oficial`,
     description: `<@${discordId}> sobe a **Oficial**.`,
-    color: 0xF39C12,
+    color: 0xf39c12,
   });
 
   // Event bus — subscribers projectam para Sheets (Membros) + ORG_LIFECYCLE.
-  eventBus.emitAsync('member.promoted', {
-    memberId: dbMember.id,
-    discordId,
-    displayName,
-    fromRole: dbMember.role,
-    toRole: 'oficial',
-    beforeState: { role: dbMember.role },
-    afterState: { role: 'oficial' },
-    actorId: 'system',
-    context: 'Detectado via role Discord',
-    at: new Date(),
-  }).catch(e => warn(`[EVENT] member.promoted: ${e.message}`));
+  eventBus
+    .emitAsync('member.promoted', {
+      memberId: dbMember.id,
+      discordId,
+      displayName,
+      fromRole: dbMember.role,
+      toRole: 'oficial',
+      beforeState: { role: dbMember.role },
+      afterState: { role: 'oficial' },
+      actorId: 'system',
+      context: 'Detectado via role Discord',
+      at: new Date(),
+    })
+    .catch(e => warn(`[EVENT] member.promoted: ${e.message}`));
 }
 
 module.exports = { processApproval, handlePromotionToOficial };

@@ -26,73 +26,82 @@ const { log, warn } = require('../logger');
 let _client = null;
 const _channelCache = new Map(); // logical key → channelId
 
-function setClient(client) { _client = client; }
+function setClient(client) {
+  _client = client;
+}
 
 // Mapping logical key → emoji + slug (igual a CHANNELS_TO_CREATE no template)
 // Estrutura compactada — 2 canais:
 //   stock_log → todos os movimentos (cor do embed distingue tipo)
 //   resumo    → snapshots periódicos + alertas críticos
 const STOCK_CHANNELS = {
-  resumo:    { emoji: '📊', slug: 'resumo-stock' },
+  resumo: { emoji: '📊', slug: 'resumo-stock' },
   stock_log: { emoji: '📦', slug: 'stock-log' },
 };
 
 // Todos os movement types → stock_log (canal único, diferenciação via cor+label)
 const MOVEMENT_TO_CHANNEL = {
-  saldo_inicial:       'stock_log',
-  entrega_bairrista:   'stock_log',
-  venda_bairrista:     'stock_log',
-  entrega_morador:     'stock_log', // legacy
-  venda_morador:       'stock_log', // legacy
-  entrega_oficial:     'stock_log',
-  devolucao_saida:     'stock_log',
-  devolucao_operacao:  'stock_log', // legacy
-  apreendido:          'stock_log',
-  craftado:            'stock_log',
-  fornecimento_org:    'stock_log',
-  consumo_saida:       'stock_log',
-  consumo_operacao:    'stock_log', // legacy
-  perda_saida:         'stock_log',
-  perda_operacao:      'stock_log', // legacy
-  ajuste_manual:       'stock_log',
+  saldo_inicial: 'stock_log',
+  entrega_bairrista: 'stock_log',
+  venda_bairrista: 'stock_log',
+  entrega_morador: 'stock_log', // legacy
+  venda_morador: 'stock_log', // legacy
+  entrega_oficial: 'stock_log',
+  devolucao_saida: 'stock_log',
+  devolucao_operacao: 'stock_log', // legacy
+  apreendido: 'stock_log',
+  craftado: 'stock_log',
+  fornecimento_org: 'stock_log',
+  consumo_saida: 'stock_log',
+  consumo_operacao: 'stock_log', // legacy
+  perda_saida: 'stock_log',
+  perda_operacao: 'stock_log', // legacy
+  ajuste_manual: 'stock_log',
 };
 
 // Classificação lógica para cor do embed (entradas verde / saídas laranja / ajustes roxo)
 const MOVEMENT_KIND = {
-  saldo_inicial: 'entradas', entrega_bairrista: 'entradas', venda_bairrista: 'entradas',
-  entrega_morador: 'entradas', venda_morador: 'entradas', // legacy
+  saldo_inicial: 'entradas',
+  entrega_bairrista: 'entradas',
+  venda_bairrista: 'entradas',
+  entrega_morador: 'entradas',
+  venda_morador: 'entradas', // legacy
   entrega_oficial: 'entradas',
-  devolucao_saida: 'entradas', devolucao_operacao: 'entradas', // legacy
-  apreendido: 'entradas', craftado: 'entradas',
+  devolucao_saida: 'entradas',
+  devolucao_operacao: 'entradas', // legacy
+  apreendido: 'entradas',
+  craftado: 'entradas',
   fornecimento_org: 'saidas',
-  consumo_saida: 'saidas', consumo_operacao: 'saidas', // legacy
-  perda_saida: 'saidas', perda_operacao: 'saidas', // legacy
+  consumo_saida: 'saidas',
+  consumo_operacao: 'saidas', // legacy
+  perda_saida: 'saidas',
+  perda_operacao: 'saidas', // legacy
   ajuste_manual: 'ajustes',
 };
 
 const MOVEMENT_LABEL = {
-  saldo_inicial:       '📦 Saldo Inicial',
-  entrega_bairrista:   '📥 Entrega (Bairrista)',
-  venda_bairrista:     '💰 Venda (Bairrista)',
-  entrega_morador:     '📥 Entrega (Bairrista)', // legacy → mesmo label
-  venda_morador:       '💰 Venda (Bairrista)',   // legacy → mesmo label
-  entrega_oficial:     '📥 Entrega (Oficial)',
-  devolucao_saida:     '↩️ Devolução de Saída',
-  devolucao_operacao:  '↩️ Devolução de Saída',  // legacy
-  apreendido:          '🪪 Apreendido',
-  craftado:            '🛠️ Craftado',
-  fornecimento_org:    '📤 Fornecimento (Org)',
-  consumo_saida:       '🔥 Consumo em Saída',
-  consumo_operacao:    '🔥 Consumo em Saída',    // legacy
-  perda_saida:         '💥 Perda em Saída',
-  perda_operacao:      '💥 Perda em Saída',      // legacy
-  ajuste_manual:       '🔧 Ajuste Manual',
+  saldo_inicial: '📦 Saldo Inicial',
+  entrega_bairrista: '📥 Entrega (Bairrista)',
+  venda_bairrista: '💰 Venda (Bairrista)',
+  entrega_morador: '📥 Entrega (Bairrista)', // legacy → mesmo label
+  venda_morador: '💰 Venda (Bairrista)', // legacy → mesmo label
+  entrega_oficial: '📥 Entrega (Oficial)',
+  devolucao_saida: '↩️ Devolução de Saída',
+  devolucao_operacao: '↩️ Devolução de Saída', // legacy
+  apreendido: '🪪 Apreendido',
+  craftado: '🛠️ Craftado',
+  fornecimento_org: '📤 Fornecimento (Org)',
+  consumo_saida: '🔥 Consumo em Saída',
+  consumo_operacao: '🔥 Consumo em Saída', // legacy
+  perda_saida: '💥 Perda em Saída',
+  perda_operacao: '💥 Perda em Saída', // legacy
+  ajuste_manual: '🔧 Ajuste Manual',
 };
 
 const MOVEMENT_COLOR = {
-  entradas: 0x2ECC71,  // verde
-  saidas:   0xE67E22,  // laranja
-  ajustes:  0x9B59B6,  // roxo
+  entradas: 0x2ecc71, // verde
+  saidas: 0xe67e22, // laranja
+  ajustes: 0x9b59b6, // roxo
 };
 
 function expectedChannelName(key) {
@@ -125,23 +134,28 @@ async function findOrCreateChannel(channelKey) {
   // Para stock_log aceita fallbacks dos canais antigos por ordem de
   // preferência (stock-log > entradas > ajustes > saídas). Reutiliza o que
   // o user já tem em vez de criar 5º canal. Para resumo, só resumo-stock.
-  const slugFallbacks = channelKey === 'stock_log'
-    ? ['stock-log', 'stock_log', 'stocklog', 'entradas-stock', 'ajustes-stock', 'saídas-stock', 'saidas-stock']
-    : [slug];
+  const slugFallbacks =
+    channelKey === 'stock_log'
+      ? ['stock-log', 'stock_log', 'stocklog', 'entradas-stock', 'ajustes-stock', 'saídas-stock', 'saidas-stock']
+      : [slug];
 
-  const textChannels = Array.from(guild.channels.cache.values())
-    .filter(c => c.type === ChannelType.GuildText);
+  const textChannels = Array.from(guild.channels.cache.values()).filter(c => c.type === ChannelType.GuildText);
 
   // Tenta cada fallback por ordem; para cada, procura primeiro na categoria alvo, depois em qualquer outra.
   let channel = null;
   for (const s of slugFallbacks) {
     const re = new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     const inCat = textChannels.find(c => c.parentId === targetCat.id && re.test(c.name));
-    if (inCat) { channel = inCat; break; }
+    if (inCat) {
+      channel = inCat;
+      break;
+    }
     const anywhere = textChannels.find(c => re.test(c.name));
     if (anywhere) {
       channel = anywhere;
-      log(`[STOCK-NOTIFY] Canal '${anywhere.name}' encontrado em categoria ${anywhere.parentId} (layout congelado — não movido).`);
+      log(
+        `[STOCK-NOTIFY] Canal '${anywhere.name}' encontrado em categoria ${anywhere.parentId} (layout congelado — não movido).`
+      );
       break;
     }
   }
@@ -187,8 +201,8 @@ async function notifyMovement(movement) {
     if (!channel) return;
 
     const label = MOVEMENT_LABEL[movement.movementType] || movement.movementType;
-    const kind  = MOVEMENT_KIND[movement.movementType] || 'ajustes';
-    const color = MOVEMENT_COLOR[kind] || 0x95A5A6;
+    const kind = MOVEMENT_KIND[movement.movementType] || 'ajustes';
+    const color = MOVEMENT_COLOR[kind] || 0x95a5a6;
 
     const fields = [
       { name: 'Item', value: `**${movement.itemName || '—'}**`, inline: true },
@@ -209,10 +223,7 @@ async function notifyMovement(movement) {
       fields.push({ name: 'Contexto', value: movement.context.slice(0, 200), inline: false });
     }
 
-    const embed = brandEmbed()
-      .setColor(color)
-      .setTitle(label)
-      .addFields(fields);
+    const embed = brandEmbed().setColor(color).setTitle(label).addFields(fields);
     if (movement.actorId) {
       embed.setFooter({ text: `Por ${movement.actorId}` });
     }
@@ -249,7 +260,7 @@ async function publishStockSummary() {
     }
 
     const embed = brandEmbed()
-      .setColor(0x3498DB)
+      .setColor(0x3498db)
       .setTitle(`📊 Resumo de Stock — ${new Date().toLocaleString('pt-PT')}`)
       .setDescription(`Total estimado: **${totalValue.toLocaleString('pt-PT')} €**`);
 
@@ -259,7 +270,8 @@ async function publishStockSummary() {
         .map(i => `\`${String(i.balance).padStart(5)}\` ${i.unit.padEnd(8)} ${i.name}`)
         .slice(0, 15)
         .join('\n');
-      if (lines) embed.addFields({ name: `**${category.toUpperCase()}**`, value: '```\n' + lines + '\n```', inline: false });
+      if (lines)
+        embed.addFields({ name: `**${category.toUpperCase()}**`, value: '```\n' + lines + '\n```', inline: false });
     }
 
     await channel.send({ embeds: [embed], allowedMentions: { parse: [] } });

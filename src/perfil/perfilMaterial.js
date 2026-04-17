@@ -13,11 +13,13 @@ const { EMOJI } = require('../content');
 const { bairristaStatsRepo, memberAnalyticsRepo } = require('../repositories');
 const { buttonRow, button } = require('../shared/ui/buttons');
 
-const fmt    = (n) => (Number(n) || 0).toLocaleString('pt-PT');
-const fmtVal = (n) => `${(Number(n) || 0).toLocaleString('pt-PT', { maximumFractionDigits: 0 })}€`;
+const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
+const fmtVal = n => `${(Number(n) || 0).toLocaleString('pt-PT', { maximumFractionDigits: 0 })}€`;
 
 function deltaLine(cur, prev) {
-  const c = Number(cur) || 0, p = Number(prev) || 0, d = c - p;
+  const c = Number(cur) || 0,
+    p = Number(prev) || 0,
+    d = c - p;
   if (!p && !c) return '';
   if (d > 0) return ` · ↑ **+${fmt(d)}** vs anterior`;
   if (d < 0) return ` · ↓ **${fmt(d)}** vs anterior`;
@@ -54,20 +56,29 @@ async function render(interaction, period) {
   } else {
     embed.setDescription(
       `**${fmt(cur.totalQty)}** un.` +
-      (cur.totalValue ? ` · ${fmtVal(cur.totalValue)}` : '') +
-      (period !== 'alltime' ? deltaLine(cur.totalQty, prev?.totalQty) : '')
+        (cur.totalValue ? ` · ${fmtVal(cur.totalValue)}` : '') +
+        (period !== 'alltime' ? deltaLine(cur.totalQty, prev?.totalQty) : '')
     );
 
     embed.addFields(
-      { name: `${EMOJI.ENTREGA} Entregas`, value: `**${fmt(cur.deliveries)}**` + (period !== 'alltime' ? deltaLine(cur.deliveries, prev?.deliveries) : ''), inline: true },
-      { name: `${EMOJI.VENDA} Vendas`,     value: `**${fmt(cur.sales)}**`      + (period !== 'alltime' ? deltaLine(cur.sales,      prev?.sales)      : ''), inline: true },
-      { name: `📅 Dias activos`,           value: `**${fmt(cur.activeDays)}**`, inline: true },
+      {
+        name: `${EMOJI.ENTREGA} Entregas`,
+        value: `**${fmt(cur.deliveries)}**` + (period !== 'alltime' ? deltaLine(cur.deliveries, prev?.deliveries) : ''),
+        inline: true,
+      },
+      {
+        name: `${EMOJI.VENDA} Vendas`,
+        value: `**${fmt(cur.sales)}**` + (period !== 'alltime' ? deltaLine(cur.sales, prev?.sales) : ''),
+        inline: true,
+      },
+      { name: '📅 Dias activos', value: `**${fmt(cur.activeDays)}**`, inline: true }
     );
   }
 
   // Top items histórico (indicativo do perfil total)
   if (profile?.breakdown?.length) {
-    const top = profile.breakdown.slice(0, 5)
+    const top = profile.breakdown
+      .slice(0, 5)
       .map(b => `• **${b.item_name}** — ${fmt(b.quantity)} un.${b.value ? ` · ${fmtVal(b.value)}` : ''}`)
       .join('\n');
     if (top) embed.addFields({ name: `${EMOJI.TOPO} Top items (histórico)`, value: top, inline: false });
@@ -78,19 +89,24 @@ async function render(interaction, period) {
       .setCustomId('perfil::material_period')
       .setPlaceholder('Escolhe o período')
       .addOptions([
-        { label: 'Semana',    value: 'week',    emoji: '📅', default: period === 'week' },
-        { label: 'Mês',       value: 'month',   emoji: '📊', default: period === 'month' },
+        { label: 'Semana', value: 'week', emoji: '📅', default: period === 'week' },
+        { label: 'Mês', value: 'month', emoji: '📊', default: period === 'month' },
         { label: 'Histórico', value: 'alltime', emoji: '🏆', default: period === 'alltime' },
       ])
   );
 
   const navRow = buttonRow(
-    button({ customId: 'perfil::voltar', label: 'Voltar ao Perfil', style: 'Secondary', emoji: EMOJI.VOLTAR }),
+    button({ customId: 'perfil::voltar', label: 'Voltar ao Perfil', style: 'Secondary', emoji: EMOJI.VOLTAR })
   );
 
-  return safeReply(interaction, {
-    embeds: [embed], components: [periodSelect, navRow],
-  }, { messageClass: 'COCKPIT' });
+  return safeReply(
+    interaction,
+    {
+      embeds: [embed],
+      components: [periodSelect, navRow],
+    },
+    { messageClass: 'COCKPIT' }
+  );
 }
 
 async function getStats(discordId, period, offsetPeriods) {

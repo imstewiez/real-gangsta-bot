@@ -2,10 +2,9 @@
 'use strict';
 const { Pool, Client } = require('pg');
 
-if (!process.env.DATABASE_URL) {
-  console.error('[DB] FATAL: DATABASE_URL não está definida. Configura a variável de ambiente antes de arrancar o bot.');
-  process.exit(1);
-}
+// DATABASE_URL validada quando o pool é usado, não no import.
+// Permite que testes e tooling importem o módulo sem crash.
+const _DB_URL = process.env.DATABASE_URL;
 
 // SSL config:
 //   - Dev: SSL off.
@@ -24,17 +23,21 @@ const SSL_CFG = _resolveSSL();
 
 const POOL_MAX = parseInt(process.env.DB_POOL_MAX, 10) || 20;
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: SSL_CFG,
-  max: POOL_MAX,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-});
+const pool = _DB_URL
+  ? new Pool({
+      connectionString: _DB_URL,
+      ssl: SSL_CFG,
+      max: POOL_MAX,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 5000,
+    })
+  : null;
 
-pool.on('error', (err) => {
-  console.error('[DB] Erro inesperado no pool de conexões:', err.message);
-});
+if (pool) {
+  pool.on('error', err => {
+    console.error('[DB] Erro inesperado no pool de conexões:', err.message);
+  });
+}
 
 // Threshold para log de queries lentas (ms). Configurável via DB_SLOW_QUERY_MS.
 // Railway Postgres tem cold starts frequentes — 1500ms evita ruído falso.
@@ -49,10 +52,13 @@ function _ensureMetrics() {
     const m = require('./lib/metrics');
     _queryCounter = m.counter('rg_db_queries_total', 'Total DB queries executed');
     _slowQueryCounter = m.counter('rg_db_slow_queries_total', 'DB queries exceeding slow threshold');
-  } catch { /* metrics não carregado ainda */ }
+  } catch {
+    /* metrics não carregado ainda */
+  }
 }
 
 async function query(text, params) {
+  if (!pool) throw new Error('[DB] DATABASE_URL não está definida — impossível executar queries.');
   _ensureMetrics();
   const start = Date.now();
   const client = await pool.connect();
@@ -64,8 +70,13 @@ async function query(text, params) {
       if (_slowQueryCounter) _slowQueryCounter.inc();
       const preview = String(text).replace(/\s+/g, ' ').slice(0, 120);
       // Lazy require — logger pode não estar carregado durante boot
-      try { require('./logger').warn(`[DB:SLOW] ${duration}ms · ${preview}${params?.length ? ` · params: ${params.length}` : ''}`); }
-      catch { console.warn(`[DB:SLOW] ${duration}ms · ${preview}`); }
+      try {
+        require('./logger').warn(
+          `[DB:SLOW] ${duration}ms · ${preview}${params?.length ? ` · params: ${params.length}` : ''}`
+        );
+      } catch {
+        console.warn(`[DB:SLOW] ${duration}ms · ${preview}`);
+      }
     }
     return result;
   } finally {
@@ -125,8 +136,16 @@ async function acquireInstanceLockWithRetry(maxWaitMs = 40000) {
 
 async function releaseInstanceLock() {
   if (_lockClient) {
-    try { await _lockClient.query('SELECT pg_advisory_unlock($1)', [ADVISORY_LOCK_ID]); } catch (_) {}
-    try { await _lockClient.end(); } catch (_) {}
+    try {
+      await _lockClient.query('SELECT pg_advisory_unlock($1)', [ADVISORY_LOCK_ID]);
+    } catch (_) {
+      /* cleanup best-effort */
+    }
+    try {
+      await _lockClient.end();
+    } catch (_) {
+      /* cleanup best-effort */
+    }
     _lockClient = null;
   }
 }
@@ -134,6 +153,7 @@ async function releaseInstanceLock() {
 // Warmup — abre N conexões no pool para evitar cold starts nas primeiras queries.
 // Chamar uma vez no boot, antes dos jobs e sheets sync arrancarem.
 async function warmPool(n = 3) {
+  if (!pool) return;
   const clients = [];
   try {
     for (let i = 0; i < Math.min(n, POOL_MAX); i++) {

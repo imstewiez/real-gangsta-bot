@@ -23,9 +23,9 @@ const HEADERS = [
 ];
 
 const STATE_META = {
-  disponivel:    { emoji: '✅', label: 'Disponível' },
-  indisponivel:  { emoji: '❌', label: 'Não dá' },
-  talvez:        { emoji: '⏰', label: 'Talvez / mais tarde' },
+  disponivel: { emoji: '✅', label: 'Disponível' },
+  indisponivel: { emoji: '❌', label: 'Não dá' },
+  talvez: { emoji: '⏰', label: 'Talvez / mais tarde' },
 };
 
 const STATE_ORDER = ['disponivel', 'talvez', 'indisponivel'];

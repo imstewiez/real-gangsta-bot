@@ -31,7 +31,7 @@ async function syncPrices({ full = false } = {}) {
   for (const it of items) {
     try {
       const { name, category, unit, price } = it;
-      const existing = await query(`SELECT id, estimated_value, category, unit FROM items WHERE name = $1`, [name]);
+      const existing = await query('SELECT id, estimated_value, category, unit FROM items WHERE name = $1', [name]);
       if (existing.rows.length === 0) {
         await query(
           `INSERT INTO items (name, category, unit, estimated_value, is_active)
@@ -54,10 +54,7 @@ async function syncPrices({ full = false } = {}) {
         values.push(category, unit || 'unidade');
       }
       values.push(row.id);
-      await query(
-        `UPDATE items SET ${sets.join(', ')} WHERE id = $${values.length}`,
-        values
-      );
+      await query(`UPDATE items SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
       result.updated.push({ name, oldPrice, newPrice: price });
     } catch (e) {
       warn(`[CATALOG-PRICES] ${it.name}: ${e.message}`);
@@ -65,7 +62,9 @@ async function syncPrices({ full = false } = {}) {
     }
   }
 
-  log(`[CATALOG-PRICES] sync: ${result.created.length} criados, ${result.updated.length} actualizados, ${result.unchanged.length} igual, ${result.errors.length} erros`);
+  log(
+    `[CATALOG-PRICES] sync: ${result.created.length} criados, ${result.updated.length} actualizados, ${result.unchanged.length} igual, ${result.errors.length} erros`
+  );
   return result;
 }
 

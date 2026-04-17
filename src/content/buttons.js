@@ -23,90 +23,90 @@ const STYLE = { SUCCESS: 'Success', PRIMARY: 'Primary', SECONDARY: 'Secondary', 
 
 const BUTTONS = {
   ENTRADA: {
-    PEDIR_TAG:     { label: 'Pedir Tag',         emoji: E.TAG,       style: STYLE.SUCCESS },
+    PEDIR_TAG: { label: 'Pedir Tag', emoji: E.TAG, style: STYLE.SUCCESS },
   },
 
   BAIRRISTA: {
-    ENTREGA:       { label: 'Registar Material',   emoji: E.MATERIAL,  style: STYLE.SUCCESS },
-    MOVIMENTO:     { label: 'Movimento no Bairro', emoji: E.FIRMA,     style: STYLE.PRIMARY },
-    RANKING:       { label: 'Ranking',             emoji: E.MEDAL_1,   style: STYLE.PRIMARY },
+    ENTREGA: { label: 'Registar Material', emoji: E.MATERIAL, style: STYLE.SUCCESS },
+    MOVIMENTO: { label: 'Movimento no Bairro', emoji: E.FIRMA, style: STYLE.PRIMARY },
+    RANKING: { label: 'Ranking', emoji: E.MEDAL_1, style: STYLE.PRIMARY },
   },
 
   PATRAO: {
-    LISTAR:        { label: 'Listar Bairristas', emoji: E.PARTICIPANTE, style: STYLE.PRIMARY },
-    ENTREGAS:      { label: 'Entregas da Zona',  emoji: E.MATERIAL,     style: STYLE.SECONDARY },
-    VENDAS:        { label: 'Vendas da Zona',    emoji: E.LUCRO,        style: STYLE.SECONDARY },
-    TOPOS:         { label: 'Topo da Zona',      emoji: E.TOPO,         style: STYLE.SECONDARY },
+    LISTAR: { label: 'Listar Bairristas', emoji: E.PARTICIPANTE, style: STYLE.PRIMARY },
+    ENTREGAS: { label: 'Entregas da Zona', emoji: E.MATERIAL, style: STYLE.SECONDARY },
+    VENDAS: { label: 'Vendas da Zona', emoji: E.LUCRO, style: STYLE.SECONDARY },
+    TOPOS: { label: 'Topo da Zona', emoji: E.TOPO, style: STYLE.SECONDARY },
   },
 
   OFICIAL: {
-    REGISTAR:      { label: 'Registar Material', emoji: E.MATERIAL,  style: STYLE.SUCCESS },
-    VALIDAR:       { label: 'Validar Entrega',   emoji: E.OK,        style: STYLE.SUCCESS },
-    MEMBROS:       { label: 'Lista de Nomes',    emoji: E.PARTICIPANTE, style: STYLE.PRIMARY },
+    REGISTAR: { label: 'Registar Material', emoji: E.MATERIAL, style: STYLE.SUCCESS },
+    VALIDAR: { label: 'Validar Entrega', emoji: E.OK, style: STYLE.SUCCESS },
+    MEMBROS: { label: 'Lista de Nomes', emoji: E.PARTICIPANTE, style: STYLE.PRIMARY },
   },
 
   CHEFIA: {
     // Saídas — só acções de topo (sub-passos vivem no painel da sessão)
-    CRIAR_SAIDA:     { label: 'Nova Sessão',      emoji: E.NOVO,     style: STYLE.SUCCESS },
-    VER_SAIDAS:      { label: 'Sessões Activas',  emoji: E.VER,      style: STYLE.PRIMARY },
+    CRIAR_SAIDA: { label: 'Nova Sessão', emoji: E.NOVO, style: STYLE.SUCCESS },
+    VER_SAIDAS: { label: 'Sessões Activas', emoji: E.VER, style: STYLE.PRIMARY },
     // Stock
-    VER_STOCK:       { label: 'Ver Stock',        emoji: E.STOCK,    style: STYLE.PRIMARY },
-    AJUSTAR_STOCK:   { label: 'Ajustar Stock',    emoji: E.AJUSTAR,  style: STYLE.SECONDARY },
-    GERIR_MATERIAIS: { label: 'Gerir Materiais',  emoji: E.EDITAR,   style: STYLE.SECONDARY },
+    VER_STOCK: { label: 'Ver Stock', emoji: E.STOCK, style: STYLE.PRIMARY },
+    AJUSTAR_STOCK: { label: 'Ajustar Stock', emoji: E.AJUSTAR, style: STYLE.SECONDARY },
+    GERIR_MATERIAIS: { label: 'Gerir Materiais', emoji: E.EDITAR, style: STYLE.SECONDARY },
     // Gestão + Dados
-    RADIO:           { label: 'Painel Rádio',     emoji: E.RADIO,    style: STYLE.PRIMARY },
-    STICKYS:         { label: 'Stickys',          emoji: E.STICKY,   style: STYLE.SECONDARY },
-    TOPS:            { label: 'Topo',             emoji: E.TOPO,     style: STYLE.SECONDARY },
-    LOGS:            { label: 'Logs',             emoji: E.AUDIT,    style: STYLE.SECONDARY },
+    RADIO: { label: 'Painel Rádio', emoji: E.RADIO, style: STYLE.PRIMARY },
+    STICKYS: { label: 'Stickys', emoji: E.STICKY, style: STYLE.SECONDARY },
+    TOPS: { label: 'Topo', emoji: E.TOPO, style: STYLE.SECONDARY },
+    LOGS: { label: 'Logs', emoji: E.AUDIT, style: STYLE.SECONDARY },
   },
 
   // Onboarding — aprovação/rejeição de tags
   ONBOARDING: {
-    APROVAR:       { label: 'Aprovar',            emoji: E.OK,            style: STYLE.SUCCESS },
-    NEGAR:         { label: 'Negar',              emoji: E.ERRO,          style: STYLE.DANGER },
+    APROVAR: { label: 'Aprovar', emoji: E.OK, style: STYLE.SUCCESS },
+    NEGAR: { label: 'Negar', emoji: E.ERRO, style: STYLE.DANGER },
   },
 
   // Inventário (canal individual do bairrista)
   INVENTORY: {
-    REGISTAR:      { label: 'Registar Material', emoji: E.MATERIAL,  style: STYLE.SUCCESS },
-    ENCOMENDAR:    { label: 'Encomendar',        emoji: E.FORNECER,  style: STYLE.PRIMARY },
-    HISTORICO:     { label: 'Histórico',         emoji: E.AUDIT,     style: STYLE.SECONDARY },
-    PROGRESSO:     { label: 'Progresso',         emoji: E.TOPO,      style: STYLE.PRIMARY },
-    TOP_SEMANAL:   { label: 'Topo Semanal',      emoji: E.TOPO,      style: STYLE.SECONDARY },
+    REGISTAR: { label: 'Registar Material', emoji: E.MATERIAL, style: STYLE.SUCCESS },
+    ENCOMENDAR: { label: 'Encomendar', emoji: E.FORNECER, style: STYLE.PRIMARY },
+    HISTORICO: { label: 'Histórico', emoji: E.AUDIT, style: STYLE.SECONDARY },
+    PROGRESSO: { label: 'Progresso', emoji: E.TOPO, style: STYLE.PRIMARY },
+    TOP_SEMANAL: { label: 'Topo Semanal', emoji: E.TOPO, style: STYLE.SECONDARY },
   },
 
   // Saídas (wizard/participantes)
   SAIDAS: {
-    ADD_PART:      { label: 'Adicionar Nome',    emoji: E.PARTICIPANTE, style: STYLE.SUCCESS },
-    REMOVE_PART:   { label: 'Remover Nome',      emoji: E.APAGAR,       style: STYLE.DANGER },
-    MATERIAL_IN:   { label: 'Dar Material',      emoji: E.FORNECER,     style: STYLE.SUCCESS },
-    MATERIAL_OUT:  { label: 'Devolver Material', emoji: E.DEVOLVER,     style: STYLE.PRIMARY },
-    SETTLE:        { label: 'Fechar Resultado',  emoji: E.FECHAR,       style: STYLE.DANGER },
+    ADD_PART: { label: 'Adicionar Nome', emoji: E.PARTICIPANTE, style: STYLE.SUCCESS },
+    REMOVE_PART: { label: 'Remover Nome', emoji: E.APAGAR, style: STYLE.DANGER },
+    MATERIAL_IN: { label: 'Dar Material', emoji: E.FORNECER, style: STYLE.SUCCESS },
+    MATERIAL_OUT: { label: 'Devolver Material', emoji: E.DEVOLVER, style: STYLE.PRIMARY },
+    SETTLE: { label: 'Fechar Resultado', emoji: E.FECHAR, style: STYLE.DANGER },
   },
 
   // Rádio
   RADIO: {
-    SET_PRIMARY:   { label: 'Definir Principal', emoji: E.EDITAR,    style: STYLE.PRIMARY },
-    SET_PARTNER:   { label: 'Definir Parceria',  emoji: E.EDITAR,    style: STYLE.PRIMARY },
-    RANDOM_PRIMARY:{ label: 'Random Principal',  emoji: E.REFRESH,   style: STYLE.SECONDARY },
-    RANDOM_PARTNER:{ label: 'Random Parceria',   emoji: E.REFRESH,   style: STYLE.SECONDARY },
-    SWAP:          { label: 'Trocar',            emoji: E.REFRESH,   style: STYLE.SECONDARY },
-    HISTORY:       { label: 'Histórico',         emoji: E.AUDIT,     style: STYLE.SECONDARY },
+    SET_PRIMARY: { label: 'Definir Principal', emoji: E.EDITAR, style: STYLE.PRIMARY },
+    SET_PARTNER: { label: 'Definir Parceria', emoji: E.EDITAR, style: STYLE.PRIMARY },
+    RANDOM_PRIMARY: { label: 'Random Principal', emoji: E.REFRESH, style: STYLE.SECONDARY },
+    RANDOM_PARTNER: { label: 'Random Parceria', emoji: E.REFRESH, style: STYLE.SECONDARY },
+    SWAP: { label: 'Trocar', emoji: E.REFRESH, style: STYLE.SECONDARY },
+    HISTORY: { label: 'Histórico', emoji: E.AUDIT, style: STYLE.SECONDARY },
   },
 
   // Disponibilidade
   AVAILABILITY: {
-    VOTE_YES:      { label: 'Apareço',          emoji: E.DISPONIVEL,   style: STYLE.SUCCESS },
-    VOTE_MAYBE:    { label: 'Talvez',           emoji: E.TALVEZ,       style: STYLE.SECONDARY },
-    VOTE_NO:       { label: 'Não dá',           emoji: E.INDISPONIVEL, style: STYLE.DANGER },
-    SUMMARY:       { label: 'Resumo',           emoji: E.INFO,         style: STYLE.SECONDARY },
-    REFRESH:       { label: 'Actualizar',       emoji: E.REFRESH,      style: STYLE.SECONDARY },
+    VOTE_YES: { label: 'Apareço', emoji: E.DISPONIVEL, style: STYLE.SUCCESS },
+    VOTE_MAYBE: { label: 'Talvez', emoji: E.TALVEZ, style: STYLE.SECONDARY },
+    VOTE_NO: { label: 'Não dá', emoji: E.INDISPONIVEL, style: STYLE.DANGER },
+    SUMMARY: { label: 'Resumo', emoji: E.INFO, style: STYLE.SECONDARY },
+    REFRESH: { label: 'Actualizar', emoji: E.REFRESH, style: STYLE.SECONDARY },
   },
 
   // Kills
   KILL: {
-    REGISTAR:      { label: 'Registar Kill',    emoji: E.KILL,      style: STYLE.SUCCESS },
-    LEADERBOARD:   { label: 'Cemitério',        emoji: E.MORTE,     style: STYLE.PRIMARY },
+    REGISTAR: { label: 'Registar Kill', emoji: E.KILL, style: STYLE.SUCCESS },
+    LEADERBOARD: { label: 'Cemitério', emoji: E.MORTE, style: STYLE.PRIMARY },
   },
 };
 

@@ -26,11 +26,14 @@ class ThrottledQueue {
 
   enqueue(fn) {
     if (this._queue.length >= this._warnThreshold) {
-      warn(`[DISCORD-QUEUE:${this._label}] fila com ${this._queue.length + 1} operações pendentes — possível burst de chamadas`);
+      warn(
+        `[DISCORD-QUEUE:${this._label}] fila com ${this._queue.length + 1} operações pendentes — possível burst de chamadas`
+      );
     }
     return new Promise((resolve, reject) => {
       this._queue.push({ fn, resolve, reject });
-      if (!this._running) this._drain().catch(err => warn(`[DISCORD-QUEUE:${this._label}] drain error: ${err?.message}`));
+      if (!this._running)
+        this._drain().catch(err => warn(`[DISCORD-QUEUE:${this._label}] drain error: ${err?.message}`));
     });
   }
 
@@ -51,10 +54,14 @@ class ThrottledQueue {
   }
 
   /** Número de operações aguardando execução */
-  get size() { return this._queue.length; }
+  get size() {
+    return this._queue.length;
+  }
 
   /** true se a queue está a executar operações */
-  get running() { return this._running; }
+  get running() {
+    return this._running;
+  }
 }
 
 // ── Queues singleton por tipo de operação ─────────────────────────────────
@@ -75,19 +82,25 @@ const channelOpsQueue = new ThrottledQueue({ delayMs: 1200, label: 'channel-ops'
  * Usar em loops de sincronização em massa.
  * @param {() => Promise<any>} fn
  */
-function queueMemberOp(fn) { return memberOpsQueue.enqueue(fn); }
+function queueMemberOp(fn) {
+  return memberOpsQueue.enqueue(fn);
+}
 
 /**
  * Enfileira uma operação de cargo (create, edit, delete).
  * @param {() => Promise<any>} fn
  */
-function queueRoleOp(fn) { return roleOpsQueue.enqueue(fn); }
+function queueRoleOp(fn) {
+  return roleOpsQueue.enqueue(fn);
+}
 
 /**
  * Enfileira uma operação de canal ou categoria.
  * @param {() => Promise<any>} fn
  */
-function queueChannelOp(fn) { return channelOpsQueue.enqueue(fn); }
+function queueChannelOp(fn) {
+  return channelOpsQueue.enqueue(fn);
+}
 
 module.exports = {
   queueMemberOp,

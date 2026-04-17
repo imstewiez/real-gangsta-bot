@@ -15,7 +15,9 @@ const { log, warn } = require('../logger');
 const { queueMessage } = require('../discordQueue');
 
 let _client = null;
-function setClient(c) { _client = c; }
+function setClient(c) {
+  _client = c;
+}
 
 // Canal alvo — por default usa o 'resumo-stock' existente (sem criar novo
 // canal). Tries fallbacks: resumo-stock, ajustes-stock, qualquer *-stock.
@@ -26,10 +28,7 @@ async function _resolveAlertChannel() {
   const channels = Array.from(guild.channels.cache.values()).filter(c => c.isTextBased?.());
   // Prioridade: resumo-stock > ajustes-stock > qualquer stock
   const find = re => channels.find(c => re.test(c.name));
-  return find(/resumo.?stock/i)
-      || find(/ajustes.?stock/i)
-      || find(/stock/i)
-      || null;
+  return find(/resumo.?stock/i) || find(/ajustes.?stock/i) || find(/stock/i) || null;
 }
 
 // Calcula balance global por item (soma over all locations).
@@ -72,7 +71,7 @@ async function checkAndAlert({ dryRun = false, throttleHours = 24 } = {}) {
   for (const it of items) {
     if (it.balance >= it.alert_threshold) continue;
     const lastAlertMs = it.last_alert_at ? new Date(it.last_alert_at).getTime() : 0;
-    const recentlyAlerted = (now - lastAlertMs) < throttleMs;
+    const recentlyAlerted = now - lastAlertMs < throttleMs;
     if (recentlyAlerted) continue;
     breaches.push(it);
   }
@@ -82,7 +81,7 @@ async function checkAndAlert({ dryRun = false, throttleHours = 24 } = {}) {
   if (dryRun) return { checked: items.length, alerted: breaches.length, dryRun: true, breaches };
 
   // Marca last_alert_at para throttle
-  await queryWithTransaction(async (client) => {
+  await queryWithTransaction(async client => {
     for (const b of breaches) {
       await client.query('UPDATE items SET last_alert_at = NOW() WHERE id = $1', [b.id]);
     }
@@ -104,17 +103,21 @@ async function checkAndAlert({ dryRun = false, throttleHours = 24 } = {}) {
   const embed = brandEmbed('MOVEMENT')
     .setTitle(`${EMOJI.WARN} Alerta de Stock Crítico`)
     .setDescription(`${breaches.length} item${breaches.length !== 1 ? 's' : ''} abaixo do threshold. Repor quando der.`)
-    .setColor(0xE67E22);
+    .setColor(0xe67e22);
 
   for (const [cat, items] of Object.entries(byCat)) {
     const lines = items
-      .sort((a, b) => (a.balance / a.alert_threshold) - (b.balance / b.alert_threshold))
+      .sort((a, b) => a.balance / a.alert_threshold - b.balance / b.alert_threshold)
       .map(b => {
         const pct = b.alert_threshold > 0 ? Math.round((b.balance / b.alert_threshold) * 100) : 0;
         const severity = pct < 20 ? '🔴' : pct < 50 ? '🟠' : '🟡';
         return `${severity} **${b.name}** — \`${b.balance}\` / \`${b.alert_threshold}\` (${pct}%)`;
       });
-    embed.addFields({ name: `${EMOJI.MATERIAL} ${cat.toUpperCase()}`, value: lines.join('\n').slice(0, 1024), inline: false });
+    embed.addFields({
+      name: `${EMOJI.MATERIAL} ${cat.toUpperCase()}`,
+      value: lines.join('\n').slice(0, 1024),
+      inline: false,
+    });
   }
 
   await queueMessage(ch.id, { embeds: [embed] }).catch(e => warn(`[STOCK_ALERT] post falhou: ${e.message}`));

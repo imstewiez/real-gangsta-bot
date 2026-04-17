@@ -6,14 +6,19 @@
 const { query } = require('../db');
 
 async function getBySpot(spot) {
-  const res = await query(`SELECT * FROM spot_stats WHERE spot = $1`, [spot]);
+  const res = await query('SELECT * FROM spot_stats WHERE spot = $1', [spot]);
   return res.rows[0] || null;
 }
 
 async function listTop(orderBy = 'total_net_value', limit = 10) {
   const validCols = new Set([
-    'total_net_value', 'total_gross_value', 'total_saidas',
-    'wins', 'losses', 'our_kills', 'our_deaths',
+    'total_net_value',
+    'total_gross_value',
+    'total_saidas',
+    'wins',
+    'losses',
+    'our_kills',
+    'our_deaths',
   ]);
   const col = validCols.has(orderBy) ? orderBy : 'total_net_value';
   const res = await query(
@@ -27,7 +32,7 @@ async function listTop(orderBy = 'total_net_value', limit = 10) {
 }
 
 async function listAll() {
-  const res = await query(`SELECT * FROM spot_stats ORDER BY total_saidas DESC`);
+  const res = await query('SELECT * FROM spot_stats ORDER BY total_saidas DESC');
   return res.rows;
 }
 
@@ -65,9 +70,21 @@ async function applyIncrement({ spot, result, supplied, returned, lost, gross, n
        best_member_id       = COALESCE(EXCLUDED.best_member_id, spot_stats.best_member_id),
        updated_at           = NOW()
      RETURNING *`,
-    [spot, isWin, isLoss, isDraw, noConflict,
-     supplied || 0, returned || 0, lost || 0, gross || 0, net || 0,
-     kills || 0, deaths || 0, bestMemberId || null]
+    [
+      spot,
+      isWin,
+      isLoss,
+      isDraw,
+      noConflict,
+      supplied || 0,
+      returned || 0,
+      lost || 0,
+      gross || 0,
+      net || 0,
+      kills || 0,
+      deaths || 0,
+      bestMemberId || null,
+    ]
   );
   return res.rows[0];
 }

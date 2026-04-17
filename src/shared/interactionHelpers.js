@@ -1,11 +1,16 @@
 'use strict';
-const { MessageFlags, ActionRowBuilder, ButtonBuilder, StringSelectMenuBuilder,
-  UserSelectMenuBuilder, RoleSelectMenuBuilder, ChannelSelectMenuBuilder } = require('discord.js');
+const {
+  MessageFlags,
+  ActionRowBuilder,
+  ButtonBuilder,
+  StringSelectMenuBuilder,
+  UserSelectMenuBuilder,
+  RoleSelectMenuBuilder,
+  ChannelSelectMenuBuilder,
+} = require('discord.js');
 const { warn } = require('../logger');
 const { processedInteractionIds } = require('./sharedState');
-const {
-  MessageClass, ttlForClass, autoDeletes, classFromLegacyOpts,
-} = require('./messagePolicy');
+const { MessageClass, ttlForClass, autoDeletes, classFromLegacyOpts } = require('./messagePolicy');
 
 // Fallback TTL para respostas sem classe explícita (legacy). A mensagem
 // dura 20s — equivalente a BANAL. Handlers novos devem passar messageClass.
@@ -56,10 +61,12 @@ function scheduleDeleteMessage(message, ms = EPHEMERAL_AUTO_DELETE_MS) {
  *   ttlMs: override explícito em ms (usar apenas em casos especiais).
  */
 async function safeReply(interaction, payload, opts = {}) {
-  const cls = opts.messageClass || classFromLegacyOpts({
-    dismissible: opts.dismissible,
-    payload,
-  });
+  const cls =
+    opts.messageClass ||
+    classFromLegacyOpts({
+      dismissible: opts.dismissible,
+      payload,
+    });
   const shouldDelete = autoDeletes(cls);
   const ttl = opts.ttlMs ?? ttlForClass(cls);
 
@@ -97,10 +104,12 @@ async function safeUpdate(interaction, payload, opts = {}) {
   }
   // safeUpdate replaces the message; auto-delete respeita messageClass.
   // Default para updates intermédios de fluxo é FLOW (persistente).
-  const cls = opts.messageClass || classFromLegacyOpts({
-    dismissible: opts.dismissible,
-    payload,
-  });
+  const cls =
+    opts.messageClass ||
+    classFromLegacyOpts({
+      dismissible: opts.dismissible,
+      payload,
+    });
   const shouldDelete = autoDeletes(cls);
   const ttl = opts.ttlMs ?? ttlForClass(cls);
   if (shouldDelete && ttl) scheduleDeleteInteractionReply(interaction, ttl);
@@ -154,7 +163,9 @@ async function safeShowModal(interaction, modal) {
     await interaction.showModal(modal);
     // Lock the originating select menu / button after modal opens.
     if (interaction.message) {
-      setImmediate(() => { lockMessageComponents(interaction); });
+      setImmediate(() => {
+        lockMessageComponents(interaction);
+      });
     }
     return true;
   } catch (e) {
@@ -162,10 +173,12 @@ async function safeShowModal(interaction, modal) {
     if (String(e?.code || '') === '10062' || msg.includes('Unknown interaction')) {
       warn('[MODAL] Interação expirada.');
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({
-          content: 'A interação expirou. Tenta novamente.',
-          flags: MessageFlags.Ephemeral
-        }).catch(() => null);
+        await interaction
+          .reply({
+            content: 'A interação expirou. Tenta novamente.',
+            flags: MessageFlags.Ephemeral,
+          })
+          .catch(() => null);
       }
       return false;
     }

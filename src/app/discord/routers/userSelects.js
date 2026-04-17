@@ -6,11 +6,9 @@
 
 const { handleParticipantUsersSelect } = require('../../../saidas/saidaHandlers');
 
-const prefix = (p, handler) => ({ match: (x) => x.startsWith(p), handler });
+const prefix = (p, handler) => ({ match: x => x.startsWith(p), handler });
 
-const USER_SELECT_ROUTES = [
-  prefix('saida::user_select_participants::', handleParticipantUsersSelect),
-];
+const USER_SELECT_ROUTES = [prefix('saida::user_select_participants::', handleParticipantUsersSelect)];
 
 async function handleUserSelect(interaction) {
   const id = interaction.customId;

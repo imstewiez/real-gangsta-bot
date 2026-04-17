@@ -26,13 +26,15 @@ const eventBus = require('../core/eventBus');
 // ricos no fecho de saída (fire-and-forget). Se não estiver definido,
 // closeSaida funciona na mesma e o publish é no-op silencioso.
 let _client = null;
-function setClient(client) { _client = client; }
+function setClient(client) {
+  _client = client;
+}
 
 // Movement types ligados a saídas (renomeados pela migration #11)
 const MOVEMENT_TYPE_BY_DIRECTION = {
   fornecido: 'fornecimento_org',
   devolvido: 'devolucao_saida',
-  perdido:   'perda_saida',
+  perdido: 'perda_saida',
   consumido: 'consumo_saida',
 };
 
@@ -42,22 +44,49 @@ async function _notifyMovement({ movementType, itemId, quantity, memberId, saida
     const member = memberId ? await memberRepo.findById(memberId).catch(() => null) : null;
     const balanceAfter = await inventoryRepo.getStockForItem(itemId).catch(() => null);
     await notifyMovement({
-      movementType, itemName: item?.name, quantity,
-      memberName: member?.display_name, memberDiscordId: member?.discord_id,
-      actorId, operationId: saidaId, balanceAfter, context: notes,
+      movementType,
+      itemName: item?.name,
+      quantity,
+      memberName: member?.display_name,
+      memberDiscordId: member?.discord_id,
+      actorId,
+      operationId: saidaId,
+      balanceAfter,
+      context: notes,
     });
-  } catch (_) { /* fire-and-forget */ }
+  } catch (_) {
+    /* fire-and-forget */
+  }
 }
 
-async function createSaida({ date, scheduledTime, spot, spotType, saidaType, leaderDiscordId, groupNumber, maxParticipants, notes, createdBy }) {
+async function createSaida({
+  date,
+  scheduledTime,
+  spot,
+  spotType,
+  saidaType,
+  leaderDiscordId,
+  groupNumber,
+  maxParticipants,
+  notes,
+  createdBy,
+}) {
   let leaderId = null;
   if (leaderDiscordId) {
     const leader = await memberRepo.findByDiscordId(leaderDiscordId);
     if (leader) leaderId = leader.id;
   }
   const s = await saidaRepo.create({
-    date, scheduledTime, spot, spotType, saidaType,
-    leaderId, groupNumber, maxParticipants, notes, createdBy,
+    date,
+    scheduledTime,
+    spot,
+    spotType,
+    saidaType,
+    leaderId,
+    groupNumber,
+    maxParticipants,
+    notes,
+    createdBy,
   });
   metrics.operationsCreated.inc();
   await logAudit({
@@ -69,15 +98,22 @@ async function createSaida({ date, scheduledTime, spot, spotType, saidaType, lea
   });
 
   // Event bus — notification routing publica em SAIDAS_EVENTS.
-  eventBus.emitAsync('saida.opened', {
-    saidaId: s.id,
-    date, scheduledTime, spot, spotType, saidaType,
-    leaderId: leaderDiscordId,
-    groupNumber, maxParticipants,
-    actorId: createdBy,
-    notes,
-    at: new Date(),
-  }).catch(e => warn(`[EVENT] saida.opened: ${e.message}`));
+  eventBus
+    .emitAsync('saida.opened', {
+      saidaId: s.id,
+      date,
+      scheduledTime,
+      spot,
+      spotType,
+      saidaType,
+      leaderId: leaderDiscordId,
+      groupNumber,
+      maxParticipants,
+      actorId: createdBy,
+      notes,
+      at: new Date(),
+    })
+    .catch(e => warn(`[EVENT] saida.opened: ${e.message}`));
 
   return s;
 }
@@ -85,12 +121,12 @@ async function createSaida({ date, scheduledTime, spot, spotType, saidaType, lea
 // ── Máquina de estados ─────────────────────────────────────────────────────
 // Transições permitidas. Qualquer outra atira.
 const ALLOWED_TRANSITIONS = {
-  aberta:         new Set(['em_preparacao', 'em_curso', 'em_liquidacao', 'cancelada']),
-  em_preparacao:  new Set(['em_curso', 'em_liquidacao', 'cancelada']),
-  em_curso:       new Set(['em_liquidacao', 'cancelada']),
-  em_liquidacao:  new Set(['concluida', 'cancelada']),
-  concluida:      new Set([]), // terminal — nunca reverter
-  cancelada:      new Set([]), // terminal
+  aberta: new Set(['em_preparacao', 'em_curso', 'em_liquidacao', 'cancelada']),
+  em_preparacao: new Set(['em_curso', 'em_liquidacao', 'cancelada']),
+  em_curso: new Set(['em_liquidacao', 'cancelada']),
+  em_liquidacao: new Set(['concluida', 'cancelada']),
+  concluida: new Set([]), // terminal — nunca reverter
+  cancelada: new Set([]), // terminal
 };
 
 async function _assertTransition(saidaId, toStatus) {
@@ -109,9 +145,13 @@ async function _assertTransition(saidaId, toStatus) {
 async function startSaida(saidaId, actorId) {
   await _assertTransition(saidaId, 'em_curso');
   const r = await saidaRepo.updateStatus(saidaId, 'em_curso', { start_time: new Date() });
-  eventBus.emitAsync('saida.started', {
-    saidaId, actorId, at: new Date(),
-  }).catch(e => warn(`[EVENT] saida.started: ${e.message}`));
+  eventBus
+    .emitAsync('saida.started', {
+      saidaId,
+      actorId,
+      at: new Date(),
+    })
+    .catch(e => warn(`[EVENT] saida.started: ${e.message}`));
   return r;
 }
 
@@ -167,20 +207,23 @@ async function closeSaida(saidaId, resultData, actorId) {
     afterState: {
       result: resultData.result,
       participantsCount: participants.length,
-      characterized_count, workers_count,
+      characterized_count,
+      workers_count,
     },
   });
 
   log(`[SAIDA] Saída #${saidaId} em liquidação. result=${resultData.result} participantes=${participants.length}`);
 
   // Event bus — notifica que a saída entrou em liquidação
-  eventBus.emitAsync('saida.em_liquidacao', {
-    saidaId,
-    result: resultData.result,
-    participantsCount: participants.length,
-    actorId,
-    at: new Date(),
-  }).catch(e => warn(`[EVENT] saida.em_liquidacao: ${e.message}`));
+  eventBus
+    .emitAsync('saida.em_liquidacao', {
+      saidaId,
+      result: resultData.result,
+      participantsCount: participants.length,
+      actorId,
+      at: new Date(),
+    })
+    .catch(e => warn(`[EVENT] saida.em_liquidacao: ${e.message}`));
 
   return { ...closed, participants };
 }
@@ -200,10 +243,10 @@ async function finalizeSaida(saidaId, actorId) {
   // Valores económicos
   const supplied = summary.fornecido?.weightedTotal || 0;
   const returned = summary.devolvido?.weightedTotal || 0;
-  const lost     = summary.perdido?.weightedTotal || 0;
+  const lost = summary.perdido?.weightedTotal || 0;
   const consumed = summary.consumido?.weightedTotal || 0;
-  const gross    = returned;
-  const net      = returned - lost - consumed;
+  const gross = returned;
+  const net = returned - lost - consumed;
   const was_profitable = net > 0;
 
   // Agrega kills/deaths totais dos resultados individuais
@@ -266,35 +309,43 @@ async function finalizeSaida(saidaId, actorId) {
   // Actualiza spot_stats (incremental)
   if (finalized.spot) {
     const mvp = scoredParticipants.find(p => p.mvp_flag);
-    await spotStatsRepo.applyIncrement({
-      spot: finalized.spot,
-      result: finalized.result || 'sem_conflito',
-      supplied, returned, lost, gross, net,
-      kills: totalKills,
-      deaths: totalDeaths,
-      bestMemberId: mvp?.member_id || null,
-    }).catch(e => warn(`[SAIDA] spotStats falhou: ${e.message}`));
+    await spotStatsRepo
+      .applyIncrement({
+        spot: finalized.spot,
+        result: finalized.result || 'sem_conflito',
+        supplied,
+        returned,
+        lost,
+        gross,
+        net,
+        kills: totalKills,
+        deaths: totalDeaths,
+        bestMemberId: mvp?.member_id || null,
+      })
+      .catch(e => warn(`[SAIDA] spotStats falhou: ${e.message}`));
   }
 
   // Actualiza member_saida_stats (incremental, per-participante)
   for (const p of scoredParticipants) {
-    await memberSaidaStatsRepo.applyIncrement({
-      memberId: p.member_id,
-      result: finalized.result || 'sem_conflito',
-      kills: p.kills,
-      deaths: p.deaths_count,
-      profit: p.net_material_delta,
-      returnedValue: p.returned_value,
-      suppliedValue: p.issued_value,
-      survived: !p.died,
-      mvp: p.mvp_flag,
-    }).catch(e => warn(`[SAIDA] memberStats falhou (${p.member_id}): ${e.message}`));
+    await memberSaidaStatsRepo
+      .applyIncrement({
+        memberId: p.member_id,
+        result: finalized.result || 'sem_conflito',
+        kills: p.kills,
+        deaths: p.deaths_count,
+        profit: p.net_material_delta,
+        returnedValue: p.returned_value,
+        suppliedValue: p.issued_value,
+        survived: !p.died,
+        mvp: p.mvp_flag,
+      })
+      .catch(e => warn(`[SAIDA] memberStats falhou (${p.member_id}): ${e.message}`));
   }
 
   const recon = {
     fornecido: summary.fornecido?.total || 0,
     devolvido: summary.devolvido?.total || 0,
-    perdido:   summary.perdido?.total || 0,
+    perdido: summary.perdido?.total || 0,
     consumido: summary.consumido?.total || 0,
   };
   recon.unaccounted = Math.max(0, recon.fornecido - recon.devolvido - recon.perdido - recon.consumido);
@@ -305,17 +356,26 @@ async function finalizeSaida(saidaId, actorId) {
     entityId: String(saidaId),
     actorId,
     afterState: {
-      result: finalized.result, supplied, returned, lost, consumed, gross, net, was_profitable,
+      result: finalized.result,
+      supplied,
+      returned,
+      lost,
+      consumed,
+      gross,
+      net,
+      was_profitable,
       participantsCount: scoredParticipants.length,
-      totalKills, totalDeaths, totalSurvivors,
+      totalKills,
+      totalDeaths,
+      totalSurvivors,
       mvp: scoredParticipants.find(p => p.mvp_flag)?.display_name,
     },
-    context: recon.unaccounted > 0
-      ? `Fechou com ${recon.unaccounted} unidades não contabilizadas.`
-      : undefined,
+    context: recon.unaccounted > 0 ? `Fechou com ${recon.unaccounted} unidades não contabilizadas.` : undefined,
   });
 
-  log(`[SAIDA] Saída #${saidaId} finalizada. result=${finalized.result} kills=${totalKills} deaths=${totalDeaths} net=${net.toFixed(2)}€`);
+  log(
+    `[SAIDA] Saída #${saidaId} finalizada. result=${finalized.result} kills=${totalKills} deaths=${totalDeaths} net=${net.toFixed(2)}€`
+  );
 
   // Publica resultados ricos — fire-and-forget
   if (_client) {
@@ -324,31 +384,44 @@ async function finalizeSaida(saidaId, actorId) {
   }
 
   // Event bus
-  eventBus.emitAsync('saida.closed', {
-    saidaId,
-    spot: finalized.spot,
-    saidaType: finalized.operation_type,
-    result: finalized.result,
-    participantsCount: scoredParticipants.length,
-    suppliedUnits: recon.fornecido,
-    returnedUnits: recon.devolvido,
-    lostUnits: recon.perdido,
-    craftAmount: finalized.craft_amount || 0,
-    supplied, returned, lost, consumed, gross, net, was_profitable,
-    mvp: scoredParticipants.find(p => p.mvp_flag)?.member_id || null,
-    characterized_count, workers_count,
-    totalKills, totalDeaths, totalSurvivors,
-    unaccounted: recon.unaccounted,
-    actorId,
-    at: new Date(),
-  }).catch(e => warn(`[EVENT] saida.closed: ${e.message}`));
+  eventBus
+    .emitAsync('saida.closed', {
+      saidaId,
+      spot: finalized.spot,
+      saidaType: finalized.operation_type,
+      result: finalized.result,
+      participantsCount: scoredParticipants.length,
+      suppliedUnits: recon.fornecido,
+      returnedUnits: recon.devolvido,
+      lostUnits: recon.perdido,
+      craftAmount: finalized.craft_amount || 0,
+      supplied,
+      returned,
+      lost,
+      consumed,
+      gross,
+      net,
+      was_profitable,
+      mvp: scoredParticipants.find(p => p.mvp_flag)?.member_id || null,
+      characterized_count,
+      workers_count,
+      totalKills,
+      totalDeaths,
+      totalSurvivors,
+      unaccounted: recon.unaccounted,
+      actorId,
+      at: new Date(),
+    })
+    .catch(e => warn(`[EVENT] saida.closed: ${e.message}`));
 
   return {
     ...finalized,
     reconciliation: recon,
     participants: scoredParticipants,
     values: { supplied, returned, lost, consumed, gross, net, was_profitable },
-    totalKills, totalDeaths, totalSurvivors,
+    totalKills,
+    totalDeaths,
+    totalSurvivors,
   };
 }
 
@@ -376,7 +449,10 @@ async function reconcileSaidaMaterials(saidaId) {
   const perdido = summary.perdido?.total || 0;
   const consumido = summary.consumido?.total || 0;
   return {
-    fornecido, devolvido, perdido, consumido,
+    fornecido,
+    devolvido,
+    perdido,
+    consumido,
     unaccounted: Math.max(0, fornecido - devolvido - perdido - consumido),
   };
 }
@@ -384,7 +460,8 @@ async function reconcileSaidaMaterials(saidaId) {
 async function _resolveOrCreateMember(discordId, guild = null) {
   let member = await memberRepo.findByDiscordId(discordId);
   if (member) return member;
-  let display = '', username = '';
+  let display = '',
+    username = '';
   if (guild) {
     const gm = await guild.members.fetch(discordId).catch(() => null);
     if (gm) {
@@ -430,7 +507,7 @@ async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
     const currentType = existing.participant_type;
     throw new Error(
       `Já estás inscrito como **${currentType}** nesta saída. ` +
-      `Se queres mudar (tipo ou arma), usa **"Cancelar Registo"** no painel da saída e volta a inscrever-te.`
+        'Se queres mudar (tipo ou arma), usa **"Cancelar Registo"** no painel da saída e volta a inscrever-te.'
     );
   }
 
@@ -457,13 +534,15 @@ async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
   });
 
   // Event bus — dispara projection para sheet 'saidas' (debounce 5s).
-  eventBus.emitAsync('saida.participant_added', {
-    saidaId,
-    memberId: member.id,
-    discordId,
-    participantType,
-    at: new Date(),
-  }).catch(e => warn(`[EVENT] saida.participant_added: ${e.message}`));
+  eventBus
+    .emitAsync('saida.participant_added', {
+      saidaId,
+      memberId: member.id,
+      discordId,
+      participantType,
+      at: new Date(),
+    })
+    .catch(e => warn(`[EVENT] saida.participant_added: ${e.message}`));
 
   return participant;
 }
@@ -551,22 +630,32 @@ async function issueMaterialToParticipant(saidaId, discordId, itemId, quantity, 
   const participants = await saidaRepo.getParticipants(saidaId);
   const existing = participants.find(p => p.member_id === member.id);
   if (existing && (existing.died === true || existing.settled === true)) {
-    throw new Error(`${member.display_name || discordId} já está ${existing.died ? 'marcado como morto' : 'liquidado'} nesta saída.`);
+    throw new Error(
+      `${member.display_name || discordId} já está ${existing.died ? 'marcado como morto' : 'liquidado'} nesta saída.`
+    );
   }
 
   await saidaRepo.addParticipant(saidaId, member.id, {
-    roleInSaida: 'membro', broughtOwn: false, receivedOrg: true, notes,
+    roleInSaida: 'membro',
+    broughtOwn: false,
+    receivedOrg: true,
+    notes,
   });
   await saidaRepo.updateParticipant(saidaId, member.id, { material_source: 'org' });
   await saidaRepo.addMaterial(saidaId, itemId, 'fornecido', quantity, member.id, `Fornecimento a <@${discordId}>`);
 
   await inventoryRepo.recordMovement({
     movementType: 'fornecimento_org',
-    itemId, quantity,
-    memberId: member.id, memberRole: member.role,
-    origin: 'org', destination: `participante:${discordId}`,
-    context: `Saída #${saidaId}`, notes,
-    operationId: saidaId, createdBy: actorId,
+    itemId,
+    quantity,
+    memberId: member.id,
+    memberRole: member.role,
+    origin: 'org',
+    destination: `participante:${discordId}`,
+    context: `Saída #${saidaId}`,
+    notes,
+    operationId: saidaId,
+    createdBy: actorId,
   });
 
   await logAudit({
@@ -580,15 +669,17 @@ async function issueMaterialToParticipant(saidaId, discordId, itemId, quantity, 
   _notifyMovement({ movementType: 'fornecimento_org', itemId, quantity, memberId: member.id, saidaId, actorId, notes });
 
   // Event bus — dispara projection para sheets 'saidas' + 'stock'.
-  eventBus.emitAsync('saida.material_issued', {
-    saidaId,
-    memberId: member.id,
-    discordId,
-    itemId,
-    quantity,
-    actorId,
-    at: new Date(),
-  }).catch(e => warn(`[EVENT] saida.material_issued: ${e.message}`));
+  eventBus
+    .emitAsync('saida.material_issued', {
+      saidaId,
+      memberId: member.id,
+      discordId,
+      itemId,
+      quantity,
+      actorId,
+      at: new Date(),
+    })
+    .catch(e => warn(`[EVENT] saida.material_issued: ${e.message}`));
 
   return { saidaId, member: discordId, itemId, quantity };
 }
@@ -600,20 +691,34 @@ async function settleParticipantCustody(saidaId, discordId, outcome, actorId, gu
   const lost = outcome.lostItems || [];
   const diedWith = outcome.diedWithItems || [];
 
-  let totalReturnedQty = 0, totalLostQty = 0;
+  let totalReturnedQty = 0,
+    totalLostQty = 0;
 
   for (const r of returned) {
     if (!r.itemId || !r.qty || r.qty <= 0) continue;
     totalReturnedQty += r.qty;
     await saidaRepo.addMaterial(saidaId, r.itemId, 'devolvido', r.qty, member.id, `Devolvido por <@${discordId}>`);
     await inventoryRepo.recordMovement({
-      movementType: 'devolucao_saida', itemId: r.itemId, quantity: r.qty,
-      memberId: member.id, memberRole: member.role,
-      origin: `participante:${discordId}`, destination: 'org',
+      movementType: 'devolucao_saida',
+      itemId: r.itemId,
+      quantity: r.qty,
+      memberId: member.id,
+      memberRole: member.role,
+      origin: `participante:${discordId}`,
+      destination: 'org',
       context: `Saída #${saidaId} — devolução`,
-      operationId: saidaId, createdBy: actorId,
+      operationId: saidaId,
+      createdBy: actorId,
     });
-    _notifyMovement({ movementType: 'devolucao_saida', itemId: r.itemId, quantity: r.qty, memberId: member.id, saidaId, actorId, notes: 'devolução' });
+    _notifyMovement({
+      movementType: 'devolucao_saida',
+      itemId: r.itemId,
+      quantity: r.qty,
+      memberId: member.id,
+      saidaId,
+      actorId,
+      notes: 'devolução',
+    });
   }
 
   for (const r of lost) {
@@ -621,27 +726,60 @@ async function settleParticipantCustody(saidaId, discordId, outcome, actorId, gu
     totalLostQty += r.qty;
     await saidaRepo.addMaterial(saidaId, r.itemId, 'perdido', r.qty, member.id, `Perdido por <@${discordId}>`);
     await inventoryRepo.recordMovement({
-      movementType: 'perda_saida', itemId: r.itemId, quantity: r.qty,
-      memberId: member.id, memberRole: member.role,
-      origin: `participante:${discordId}`, destination: 'perdido',
+      movementType: 'perda_saida',
+      itemId: r.itemId,
+      quantity: r.qty,
+      memberId: member.id,
+      memberRole: member.role,
+      origin: `participante:${discordId}`,
+      destination: 'perdido',
       context: `Saída #${saidaId} — perda`,
-      operationId: saidaId, createdBy: actorId,
+      operationId: saidaId,
+      createdBy: actorId,
     });
-    _notifyMovement({ movementType: 'perda_saida', itemId: r.itemId, quantity: r.qty, memberId: member.id, saidaId, actorId, notes: 'perda' });
+    _notifyMovement({
+      movementType: 'perda_saida',
+      itemId: r.itemId,
+      quantity: r.qty,
+      memberId: member.id,
+      saidaId,
+      actorId,
+      notes: 'perda',
+    });
   }
 
   for (const r of diedWith) {
     if (!r.itemId || !r.qty || r.qty <= 0) continue;
     totalLostQty += r.qty;
-    await saidaRepo.addMaterial(saidaId, r.itemId, 'perdido', r.qty, member.id, `Morreu com material (<@${discordId}>)`);
+    await saidaRepo.addMaterial(
+      saidaId,
+      r.itemId,
+      'perdido',
+      r.qty,
+      member.id,
+      `Morreu com material (<@${discordId}>)`
+    );
     await inventoryRepo.recordMovement({
-      movementType: 'perda_saida', itemId: r.itemId, quantity: r.qty,
-      memberId: member.id, memberRole: member.role,
-      origin: `participante:${discordId}`, destination: 'perdido_morte',
+      movementType: 'perda_saida',
+      itemId: r.itemId,
+      quantity: r.qty,
+      memberId: member.id,
+      memberRole: member.role,
+      origin: `participante:${discordId}`,
+      destination: 'perdido_morte',
       context: `Saída #${saidaId} — morto com material`,
-      operationId: saidaId, createdBy: actorId,
+      operationId: saidaId,
+      createdBy: actorId,
     });
-    _notifyMovement({ movementType: 'perda_saida', itemId: r.itemId, quantity: r.qty, memberId: member.id, saidaId, actorId, notes: 'morto com material' });
+    _notifyMovement({
+      movementType: 'perda_saida',
+      itemId: r.itemId,
+      quantity: r.qty,
+      memberId: member.id,
+      saidaId,
+      actorId,
+      notes: 'morto com material',
+    });
   }
 
   await saidaRepo.updateParticipant(saidaId, member.id, {
@@ -666,11 +804,20 @@ async function settleParticipantCustody(saidaId, discordId, outcome, actorId, gu
 
 module.exports = {
   setClient,
-  createSaida, startSaida, closeSaida, finalizeSaida, cancelSaida,
-  addParticipant, updateParticipantResult,
+  createSaida,
+  startSaida,
+  closeSaida,
+  finalizeSaida,
+  cancelSaida,
+  addParticipant,
+  updateParticipantResult,
   registerSaidaMaterial,
-  issueMaterialToParticipant, settleParticipantCustody,
-  getSaidaSummary, reconcileSaidaMaterials, getResultProgress,
+  issueMaterialToParticipant,
+  settleParticipantCustody,
+  getSaidaSummary,
+  reconcileSaidaMaterials,
+  getResultProgress,
   MOVEMENT_TYPE_BY_DIRECTION,
-  ALLOWED_TRANSITIONS, _assertTransition,
+  ALLOWED_TRANSITIONS,
+  _assertTransition,
 };

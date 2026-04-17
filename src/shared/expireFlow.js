@@ -26,7 +26,7 @@ const DEFAULT_EXPIRE_MS = 10 * 60 * 1000; // 10min — mais que suficiente para 
 
 function _expireEmbed(reason) {
   return new EmbedBuilder()
-    .setColor(0x7F8C8D)
+    .setColor(0x7f8c8d)
     .setDescription(`⏱️ ${reason || 'Interacção expirada. Abre novamente pelo painel.'}`);
 }
 
@@ -37,9 +37,7 @@ function _expireEmbed(reason) {
 async function markExpiredNow(interaction, reason) {
   if (!interaction) return;
   try {
-    const components = interaction.message?.components
-      ? disableComponentRows(interaction.message.components)
-      : [];
+    const components = interaction.message?.components ? disableComponentRows(interaction.message.components) : [];
 
     const payload = {
       embeds: [_expireEmbed(reason)],
@@ -79,10 +77,12 @@ async function markMessageExpired(message, reason) {
   if (!message) return;
   try {
     const components = message.components ? disableComponentRows(message.components) : [];
-    await message.edit({
-      embeds: [_expireEmbed(reason)],
-      components,
-    }).catch(() => {});
+    await message
+      .edit({
+        embeds: [_expireEmbed(reason)],
+        components,
+      })
+      .catch(() => {});
   } catch (e) {
     warn(`[EXPIRE] markMessageExpired: ${e.message}`);
   }

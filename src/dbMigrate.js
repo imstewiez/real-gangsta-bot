@@ -237,7 +237,7 @@ const MIGRATIONS = [
         completed_at    TIMESTAMPTZ
       );
       CREATE UNIQUE INDEX IF NOT EXISTS idx_idemp_dedupe ON idempotency_ops(dedupe_key) WHERE status IN ('running', 'completed');
-    `
+    `,
   },
   {
     id: 2,
@@ -245,7 +245,7 @@ const MIGRATIONS = [
     up: `
       ALTER TABLE members ADD COLUMN IF NOT EXISTS tier TEXT DEFAULT 'young_blood';
       CREATE INDEX IF NOT EXISTS idx_members_tier ON members(tier);
-    `
+    `,
   },
   {
     id: 4,
@@ -288,7 +288,7 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_kills_killer ON cemetery_kills(killer_id);
       CREATE INDEX IF NOT EXISTS idx_kills_date ON cemetery_kills(date);
       CREATE INDEX IF NOT EXISTS idx_kills_operation ON cemetery_kills(operation_id);
-    `
+    `,
   },
   {
     id: 3,
@@ -336,7 +336,7 @@ const MIGRATIONS = [
       -- ── Add nickname to members ────────────────────────────────────────────
       ALTER TABLE members ADD COLUMN IF NOT EXISTS nickname TEXT DEFAULT '';
       ALTER TABLE members ADD COLUMN IF NOT EXISTS full_name TEXT DEFAULT '';
-    `
+    `,
   },
   {
     id: 5,
@@ -354,7 +354,7 @@ const MIGRATIONS = [
       );
       CREATE INDEX IF NOT EXISTS idx_bot_instances_started_at ON bot_instances(started_at DESC);
       CREATE INDEX IF NOT EXISTS idx_bot_instances_heartbeat ON bot_instances(last_heartbeat DESC);
-    `
+    `,
   },
   {
     id: 6,
@@ -364,7 +364,7 @@ const MIGRATIONS = [
     // migrados controladamente via /rg-fix-tiers.
     up: `
       ALTER TABLE members ALTER COLUMN tier SET DEFAULT 'o_gunao';
-    `
+    `,
   },
   {
     id: 7,
@@ -415,7 +415,7 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_av_votes_session ON availability_votes(session_id);
       CREATE INDEX IF NOT EXISTS idx_av_votes_slot ON availability_votes(slot_id);
       CREATE INDEX IF NOT EXISTS idx_av_votes_user ON availability_votes(discord_user_id);
-    `
+    `,
   },
   {
     id: 8,
@@ -445,7 +445,7 @@ const MIGRATIONS = [
       );
       CREATE INDEX IF NOT EXISTS idx_radio_hist_type ON radio_history(radio_type);
       CREATE INDEX IF NOT EXISTS idx_radio_hist_created ON radio_history(created_at DESC);
-    `
+    `,
   },
   {
     id: 12,
@@ -456,7 +456,7 @@ const MIGRATIONS = [
     up: `
       ALTER TABLE operations ADD COLUMN IF NOT EXISTS craft_amount INTEGER DEFAULT 0;
       ALTER TABLE operation_participants ADD COLUMN IF NOT EXISTS settled BOOLEAN DEFAULT FALSE;
-    `
+    `,
   },
   {
     id: 14,
@@ -509,7 +509,7 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_all_time_hybrid ON all_time_stats(hybrid_score DESC);
       CREATE INDEX IF NOT EXISTS idx_all_time_kills ON all_time_stats(kills_total DESC);
       CREATE INDEX IF NOT EXISTS idx_all_time_weighted ON all_time_stats(weighted_value DESC);
-    `
+    `,
   },
   {
     id: 13,
@@ -532,7 +532,7 @@ const MIGRATIONS = [
       -- Garante que cada user só tem 1 pedido pendente em paralelo
       CREATE UNIQUE INDEX IF NOT EXISTS uq_tag_requests_pending_per_user
         ON tag_requests(discord_id) WHERE status = 'pending';
-    `
+    `,
   },
   {
     id: 11,
@@ -671,7 +671,7 @@ const MIGRATIONS = [
       ALTER TABLE weekly_rankings ADD COLUMN IF NOT EXISTS performance_score NUMERIC(10,2) NOT NULL DEFAULT 0;
       ALTER TABLE weekly_rankings ADD COLUMN IF NOT EXISTS hybrid_score      NUMERIC(10,2) NOT NULL DEFAULT 0;
       CREATE INDEX IF NOT EXISTS idx_wr_hybrid ON weekly_rankings(hybrid_score DESC);
-    `
+    `,
   },
   {
     id: 10,
@@ -682,7 +682,7 @@ const MIGRATIONS = [
     // Dados existentes não são tocados (/rg-fix-tiers sync existe para alinhar).
     up: `
       ALTER TABLE members ALTER COLUMN tier SET DEFAULT 'young_blood';
-    `
+    `,
   },
   {
     id: 9,
@@ -707,7 +707,7 @@ const MIGRATIONS = [
       );
       CREATE INDEX IF NOT EXISTS idx_sticky_channel ON sticky_messages(channel_id) WHERE active;
       CREATE INDEX IF NOT EXISTS idx_sticky_source ON sticky_messages(source_key) WHERE active;
-    `
+    `,
   },
   {
     id: 15,
@@ -722,7 +722,7 @@ const MIGRATIONS = [
       -- Items: novas categorias adicionadas (acessorios, droga, comida, pesca,
       -- electronica, municoes, utilidade, armas). Sem CHECK constraint para
       -- permitir flexibilidade.
-    `
+    `,
   },
   {
     id: 16,
@@ -776,7 +776,7 @@ const MIGRATIONS = [
         last_data_hash  TEXT,
         updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
-    `
+    `,
   },
   {
     id: 19,
@@ -792,7 +792,7 @@ const MIGRATIONS = [
       ALTER TABLE items ADD COLUMN IF NOT EXISTS alert_threshold INTEGER;
       ALTER TABLE items ADD COLUMN IF NOT EXISTS last_alert_at   TIMESTAMPTZ;
       CREATE INDEX IF NOT EXISTS idx_items_alert_enabled ON items(alert_enabled) WHERE alert_enabled = true;
-    `
+    `,
   },
   {
     id: 18,
@@ -814,7 +814,7 @@ const MIGRATIONS = [
       );
       CREATE INDEX IF NOT EXISTS idx_archival_log_domain ON archival_log(domain);
       CREATE INDEX IF NOT EXISTS idx_archival_log_created ON archival_log(created_at DESC);
-    `
+    `,
   },
   {
     id: 17,
@@ -845,7 +845,7 @@ const MIGRATIONS = [
             )) NOT VALID;
         END IF;
       END $$;
-    `
+    `,
   },
   {
     id: 20,
@@ -890,7 +890,7 @@ const MIGRATIONS = [
 
       -- 5) Default da coluna members.role passa para 'bairrista'.
       ALTER TABLE members ALTER COLUMN role SET DEFAULT 'bairrista';
-    `
+    `,
   },
   {
     id: 21,
@@ -916,7 +916,7 @@ const MIGRATIONS = [
       ALTER TABLE operations ADD COLUMN IF NOT EXISTS allow_workers BOOLEAN DEFAULT TRUE;
       ALTER TABLE operations ADD COLUMN IF NOT EXISTS session_message_id TEXT;
       ALTER TABLE operations ADD COLUMN IF NOT EXISTS session_channel_id TEXT;
-    `
+    `,
   },
   {
     id: 22,
@@ -943,7 +943,7 @@ const MIGRATIONS = [
       ALTER TABLE operation_participants ADD COLUMN IF NOT EXISTS weapon_return_confirmed_at TIMESTAMPTZ;
       CREATE INDEX IF NOT EXISTS idx_op_part_weapon_return ON operation_participants(weapon_return_status);
       CREATE INDEX IF NOT EXISTS idx_op_part_result_submitted ON operation_participants(individual_result_submitted);
-    `
+    `,
   },
   {
     id: 23,
@@ -954,7 +954,7 @@ const MIGRATIONS = [
     up: `
       ALTER TABLE operation_participants ADD COLUMN IF NOT EXISTS weapon_item_id INT REFERENCES items(id);
       CREATE INDEX IF NOT EXISTS idx_op_part_weapon_item ON operation_participants(weapon_item_id);
-    `
+    `,
   },
   {
     id: 26,
@@ -981,7 +981,7 @@ const MIGRATIONS = [
       -- Fix quantity CHECK: permitir negativos para ajuste_manual
       ALTER TABLE inventory_movements DROP CONSTRAINT IF EXISTS chk_qty_positive;
       ALTER TABLE inventory_movements ADD CONSTRAINT chk_qty_nonzero CHECK (quantity <> 0);
-    `
+    `,
   },
   {
     id: 25,
@@ -996,7 +996,7 @@ const MIGRATIONS = [
         CHECK (status IN (
           'aberta', 'em_preparacao', 'em_curso', 'em_liquidacao', 'concluida', 'cancelada'
         ));
-    `
+    `,
   },
   {
     id: 24,
@@ -1019,8 +1019,8 @@ const MIGRATIONS = [
           'quimicos', 'electronica', 'droga', 'comida', 'pesca',
           'texteis', 'utilidade', 'outros'
         )) NOT VALID;
-    `
-  }
+    `,
+  },
 ];
 
 async function runMigrations() {

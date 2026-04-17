@@ -22,7 +22,8 @@ const { computeHybridScore } = require('./rankingEngine');
 const { log, warn } = require('../logger');
 
 async function _memberMonthStats(memberId, monthStart, monthEnd) {
-  const r = await query(`
+  const r = await query(
+    `
     SELECT
       COUNT(DISTINCT op.operation_id)::int AS saidas,
       SUM(COALESCE(op.kills, 0))::int AS kills,
@@ -37,7 +38,8 @@ async function _memberMonthStats(memberId, monthStart, monthEnd) {
     WHERE op.member_id = $1
       AND o.date >= $2::date AND o.date <= $3::date
       AND o.status = 'concluida'`,
-    [memberId, monthStart, monthEnd]);
+    [memberId, monthStart, monthEnd]
+  );
   const row = r.rows[0] || {};
   return {
     saidasCount: Number(row.saidas) || 0,
@@ -52,7 +54,8 @@ async function _memberMonthStats(memberId, monthStart, monthEnd) {
 
 async function _memberMonthDeliveries(memberId, monthStart, monthEnd) {
   // Material em UNIDADES (coerente com a política do projecto).
-  const r = await query(`
+  const r = await query(
+    `
     SELECT
       SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador') THEN quantity ELSE 0 END)::int AS deliveries,
       SUM(CASE WHEN movement_type IN ('venda_bairrista','venda_morador') THEN quantity ELSE 0 END)::int AS sales,
@@ -60,7 +63,8 @@ async function _memberMonthDeliveries(memberId, monthStart, monthEnd) {
           THEN quantity ELSE 0 END)::int AS weighted_qty
     FROM inventory_movements
     WHERE member_id = $1 AND created_at >= $2::date AND created_at <= ($3::date + INTERVAL '1 day')`,
-    [memberId, monthStart, monthEnd]);
+    [memberId, monthStart, monthEnd]
+  );
   const row = r.rows[0] || {};
   return {
     deliveries: Number(row.deliveries) || 0,
@@ -81,11 +85,12 @@ async function computeMonthlyRankings(ref = new Date()) {
       const deliveries = await _memberMonthDeliveries(member.id, start, end);
       const saidaStats = await _memberMonthStats(member.id, start, end);
 
-      const perfRaw = saidaStats.killsCount * 10
-        + saidaStats.winsCount * 20
-        - saidaStats.lossCount * 5
-        + saidaStats.netProfit / 100
-        + saidaStats.saidasCount * 3;
+      const perfRaw =
+        saidaStats.killsCount * 10 +
+        saidaStats.winsCount * 20 -
+        saidaStats.lossCount * 5 +
+        saidaStats.netProfit / 100 +
+        saidaStats.saidasCount * 3;
 
       const hybrid = computeHybridScore({
         weightedValue: deliveries.weightedValue,

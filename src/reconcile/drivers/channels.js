@@ -23,12 +23,18 @@ async function check(guild) {
   for (const row of dbRows.rows) {
     drift.total_checked += 1;
     let ch = null;
-    try { ch = await guild.channels.fetch(row.channel_id).catch(() => null); }
-    catch (e) { warn(`[RECONCILE:channels] fetch falhou ${row.channel_id}: ${e.message}`); }
+    try {
+      ch = await guild.channels.fetch(row.channel_id).catch(() => null);
+    } catch (e) {
+      warn(`[RECONCILE:channels] fetch falhou ${row.channel_id}: ${e.message}`);
+    }
     if (!ch) {
       drift.orphan_in_db.push({
-        id: row.id, discord_id: row.discord_id, channel_id: row.channel_id,
-        channel_name: row.channel_name, status: row.status,
+        id: row.id,
+        discord_id: row.discord_id,
+        channel_id: row.channel_id,
+        channel_name: row.channel_name,
+        status: row.status,
       });
     } else {
       drift.ok += 1;
@@ -54,9 +60,15 @@ async function apply(guild, drift, { actor = 'system:reconcile' } = {}) {
       await query(
         `INSERT INTO archival_log (domain, action, entity_ref, row_count, actor, reason, payload)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        ['resident_channels', 'soft_delete', String(orphan.id), 1, actor,
-         'Channel apagado em Discord — reconcile cleanup',
-         { channel_id: orphan.channel_id, channel_name: orphan.channel_name }]
+        [
+          'resident_channels',
+          'soft_delete',
+          String(orphan.id),
+          1,
+          actor,
+          'Channel apagado em Discord — reconcile cleanup',
+          { channel_id: orphan.channel_id, channel_name: orphan.channel_name },
+        ]
       );
       corrected += 1;
     } catch (e) {

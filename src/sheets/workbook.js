@@ -17,12 +17,12 @@ const { log } = require('../logger');
 // 6 tabs canónicas — compactação máxima. Secções internas substituem
 // tabs separadas para reduzir ruído de navegação.
 const TABS = [
-  { key: 'dashboard', title: '📊 Dashboard',         color: COLOR.RED_DEEP,    order: 0 },
-  { key: 'resumo',    title: '📈 Resumo & Rankings', color: COLOR.RED_BLOOD,   order: 1 },
-  { key: 'membros',   title: '👥 Membros',           color: COLOR.GREEN_DEEP,  order: 2 },
-  { key: 'saidas',    title: '🎯 Saídas & Combate',  color: COLOR.YELLOW_DEEP, order: 3 },
-  { key: 'stock',     title: '📦 Stock',             color: COLOR.BLUE_DEEP,   order: 4 },
-  { key: 'config',    title: '⚙️ Config',            color: COLOR.GRAY_DARK,   order: 5 },
+  { key: 'dashboard', title: '📊 Dashboard', color: COLOR.RED_DEEP, order: 0 },
+  { key: 'resumo', title: '📈 Resumo & Rankings', color: COLOR.RED_BLOOD, order: 1 },
+  { key: 'membros', title: '👥 Membros', color: COLOR.GREEN_DEEP, order: 2 },
+  { key: 'saidas', title: '🎯 Saídas & Combate', color: COLOR.YELLOW_DEEP, order: 3 },
+  { key: 'stock', title: '📦 Stock', color: COLOR.BLUE_DEEP, order: 4 },
+  { key: 'config', title: '⚙️ Config', color: COLOR.GRAY_DARK, order: 5 },
 ];
 
 const TABS_BY_KEY = Object.fromEntries(TABS.map(t => [t.key, t]));
@@ -57,7 +57,8 @@ async function ensureTabs(sheets, spreadsheetId) {
   if (requests.length) {
     log(`[SHEETS] A criar ${requests.length} tabs em falta…`);
     const res = await sheets.spreadsheets.batchUpdate({
-      spreadsheetId, requestBody: { requests },
+      spreadsheetId,
+      requestBody: { requests },
     });
     for (const reply of res.data.replies || []) {
       if (reply.addSheet) {

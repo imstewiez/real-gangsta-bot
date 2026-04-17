@@ -49,7 +49,9 @@ function allow(userId, actionKey, { limit = 5, windowMs = 10_000 } = {}) {
     return true;
   }
   if (bucket.count >= limit) {
-    try { require('../lib/metrics').rateLimitDenialsTotal?.inc(); } catch (_) {}
+    try {
+      require('../lib/metrics').rateLimitDenialsTotal?.inc();
+    } catch (_) {}
     return false;
   }
   bucket.count += 1;
@@ -75,6 +77,8 @@ function denyMessage(retryAfterMs) {
 }
 
 /** Reset explícito (testes). */
-function _reset() { BUCKETS.clear(); }
+function _reset() {
+  BUCKETS.clear();
+}
 
 module.exports = { allow, retryAfter, denyMessage, _reset };

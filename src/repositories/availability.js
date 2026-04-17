@@ -12,7 +12,7 @@ async function getOpenSession(channelId, sessionDate) {
 }
 
 async function getSessionById(id) {
-  const res = await query(`SELECT * FROM availability_sessions WHERE id = $1`, [id]);
+  const res = await query('SELECT * FROM availability_sessions WHERE id = $1', [id]);
   return res.rows[0] || null;
 }
 
@@ -26,17 +26,13 @@ async function getLatestSession(channelId) {
 }
 
 async function createSession({ sessionDate, channelId, createdBy, headerText, mentionRoleIds, slots }) {
-  return queryWithTransaction(async (client) => {
+  return queryWithTransaction(async client => {
     const sess = await client.query(
       `INSERT INTO availability_sessions
          (session_date, channel_id, created_by, header_text, mention_role_ids, slots_json)
         VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *`,
-      [
-        sessionDate, channelId, createdBy, headerText,
-        (mentionRoleIds || []).join(','),
-        JSON.stringify(slots || []),
-      ]
+      [sessionDate, channelId, createdBy, headerText, (mentionRoleIds || []).join(','), JSON.stringify(slots || [])]
     );
     const session = sess.rows[0];
     let pos = 0;
@@ -52,18 +48,15 @@ async function createSession({ sessionDate, channelId, createdBy, headerText, me
 }
 
 async function getSlots(sessionId) {
-  const res = await query(
-    `SELECT * FROM availability_slots WHERE session_id = $1 ORDER BY position`,
-    [sessionId]
-  );
+  const res = await query('SELECT * FROM availability_slots WHERE session_id = $1 ORDER BY position', [sessionId]);
   return res.rows;
 }
 
 async function setMessageId(sessionId, messageId) {
-  await query(
-    `UPDATE availability_sessions SET message_id = $1, updated_at = NOW() WHERE id = $2`,
-    [messageId, sessionId]
-  );
+  await query('UPDATE availability_sessions SET message_id = $1, updated_at = NOW() WHERE id = $2', [
+    messageId,
+    sessionId,
+  ]);
 }
 
 async function closeSession(sessionId) {
@@ -91,11 +84,8 @@ async function upsertVote({ sessionId, slotId, discordUserId, voteState }) {
 
 async function bulkVoteAllSlots({ sessionId, discordUserId, voteState }) {
   // Define o mesmo estado para TODOS os slots da sessão (atalho UX).
-  return queryWithTransaction(async (client) => {
-    const slots = await client.query(
-      `SELECT id FROM availability_slots WHERE session_id = $1`,
-      [sessionId]
-    );
+  return queryWithTransaction(async client => {
+    const slots = await client.query('SELECT id FROM availability_slots WHERE session_id = $1', [sessionId]);
     let count = 0;
     for (const row of slots.rows) {
       await client.query(

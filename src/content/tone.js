@@ -14,37 +14,37 @@
 // Palavras proibidas em copy user-facing. Se aparecer, reescreve.
 // Valores são o motivo — útil em reviews e grep.
 const FORBIDDEN = {
-  operação:     'usa saída',
-  operacao:     'usa saida',
-  sistema:      'usa bot/firma/casa conforme contexto',
-  utilizador:   'usa bairrista/nome/membro',
-  entidade:     'não faz sentido em bairro — reescreve',
-  processado:   'usa guardado/registado',
-  processar:    'usa guardar/registar',
-  corporativo:  'obvio',
-  gestão:       'ok em dashboard/sheet; evita em texto user-facing',
-  reportado:    'usa avisado/registado',
-  efetuado:     'usa feito/registado',
-  submetido:    'usa enviado',
-  validado:     'usa confirmado/aprovado',
+  operação: 'usa saída',
+  operacao: 'usa saida',
+  sistema: 'usa bot/firma/casa conforme contexto',
+  utilizador: 'usa bairrista/nome/membro',
+  entidade: 'não faz sentido em bairro — reescreve',
+  processado: 'usa guardado/registado',
+  processar: 'usa guardar/registar',
+  corporativo: 'obvio',
+  gestão: 'ok em dashboard/sheet; evita em texto user-facing',
+  reportado: 'usa avisado/registado',
+  efetuado: 'usa feito/registado',
+  submetido: 'usa enviado',
+  validado: 'usa confirmado/aprovado',
 };
 
 // Mapa antigo → novo. Se encontrares à esquerda, substitui por direita.
 const PREFERRED = {
-  'operação':           'saída',
-  'operacao':           'saída',
-  'utilizador':         'bairrista',
-  'user':               'bairrista',
-  'membro do grupo':    'bairrista',
-  'processado':         'guardado',
-  'reportado':          'avisado',
-  'efetuado':           'feito',
-  'submetido':          'enviado',
-  'validado':           'confirmado',
-  'informações':        'dados',
-  'registo de':         '',            // só "de" a seguir (registo de X → X)
-  'por favor':          '',            // demasiado corporativo
-  'obrigado':           'fixe',         // raro, e quando apareça é mais natural
+  operação: 'saída',
+  operacao: 'saída',
+  utilizador: 'bairrista',
+  user: 'bairrista',
+  'membro do grupo': 'bairrista',
+  processado: 'guardado',
+  reportado: 'avisado',
+  efetuado: 'feito',
+  submetido: 'enviado',
+  validado: 'confirmado',
+  informações: 'dados',
+  'registo de': '', // só "de" a seguir (registo de X → X)
+  'por favor': '', // demasiado corporativo
+  obrigado: 'fixe', // raro, e quando apareça é mais natural
 };
 
 // Rules em prosa — quando em dúvida.
@@ -63,13 +63,13 @@ const VOICE_NOTES = [
 
 // Templates canónicos — exemplos do que é bom.
 const EXAMPLES = {
-  error_short:    'Esse nome não está na casa.',
+  error_short: 'Esse nome não está na casa.',
   error_with_cta: 'Sessão foi abaixo. Tenta de novo.',
-  success_short:  'Feito. Entrega guardada.',
-  success_data:   'Feito. 15× AK guardada — peso da semana: 18k.',
-  panel_title:    'Casa — Bairrista',
-  audit_title:    'Novo Bairrista — tag aprovada',
-  ranking_title:  'Topo da semana',
+  success_short: 'Feito. Entrega guardada.',
+  success_data: 'Feito. 15× AK guardada — peso da semana: 18k.',
+  panel_title: 'Casa — Bairrista',
+  audit_title: 'Novo Bairrista — tag aprovada',
+  ranking_title: 'Topo da semana',
 };
 
 module.exports = {

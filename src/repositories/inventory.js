@@ -38,14 +38,23 @@ async function updateItem(id, fields) {
     i++;
   }
   values.push(id);
-  const res = await query(
-    `UPDATE items SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`,
-    values
-  );
+  const res = await query(`UPDATE items SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, values);
   return res.rows[0] || null;
 }
 
-async function recordMovement({ movementType, itemId, quantity, memberId = null, memberRole = '', origin = '', destination = '', context = '', notes = '', operationId = null, createdBy }) {
+async function recordMovement({
+  movementType,
+  itemId,
+  quantity,
+  memberId = null,
+  memberRole = '',
+  origin = '',
+  destination = '',
+  context = '',
+  notes = '',
+  operationId = null,
+  createdBy,
+}) {
   const res = await query(
     `INSERT INTO inventory_movements
      (movement_type, item_id, quantity, member_id, member_role, origin, destination, context, notes, saida_id, created_by)
@@ -92,7 +101,8 @@ async function getStock() {
 }
 
 async function getStockForItem(itemId) {
-  const res = await query(`
+  const res = await query(
+    `
     SELECT COALESCE(SUM(
       CASE
         WHEN movement_type IN (
@@ -113,48 +123,63 @@ async function getStockForItem(itemId) {
       END
     ), 0) as balance
     FROM inventory_movements WHERE item_id = $1
-  `, [itemId]);
+  `,
+    [itemId]
+  );
   return parseInt(res.rows[0]?.balance || 0);
 }
 
 async function getMemberMovements(memberId, limit = 50) {
-  const res = await query(`
+  const res = await query(
+    `
     SELECT im.*, i.name as item_name, i.category as item_category
     FROM inventory_movements im
     JOIN items i ON i.id = im.item_id
     WHERE im.member_id = $1
     ORDER BY im.created_at DESC
     LIMIT $2
-  `, [memberId, limit]);
+  `,
+    [memberId, limit]
+  );
   return res.rows;
 }
 
 async function getMovementsByOperation(operationId) {
-  const res = await query(`
+  const res = await query(
+    `
     SELECT im.*, i.name as item_name
     FROM inventory_movements im
     JOIN items i ON i.id = im.item_id
     WHERE im.saida_id = $1
     ORDER BY im.created_at
-  `, [operationId]);
+  `,
+    [operationId]
+  );
   return res.rows;
 }
 
 async function getMemberTotals(memberId) {
-  const res = await query(`
+  const res = await query(
+    `
     SELECT movement_type, SUM(quantity) as total
     FROM inventory_movements
     WHERE member_id = $1
     GROUP BY movement_type
-  `, [memberId]);
-  return res.rows.reduce((acc, r) => { acc[r.movement_type] = parseInt(r.total); return acc; }, {});
+  `,
+    [memberId]
+  );
+  return res.rows.reduce((acc, r) => {
+    acc[r.movement_type] = parseInt(r.total);
+    return acc;
+  }, {});
 }
 
 async function getWeeklyMovements(weekStart, weekEnd) {
   // `weighted_value` aqui conta apenas QUANTIDADE (não multiplica por preço).
   // Semântica alinhada com promoções: 25k itens → O Gunão, 50k → Gangster Fodido.
   // Coluna mantém o nome por compatibilidade com weekly_rankings.weighted_value.
-  const res = await query(`
+  const res = await query(
+    `
     SELECT im.member_id, m.discord_id, m.display_name, m.role as member_role,
       SUM(CASE WHEN im.movement_type IN ('entrega_bairrista', 'entrega_morador', 'entrega_oficial') THEN im.quantity ELSE 0 END) as deliveries,
       SUM(CASE WHEN im.movement_type IN ('venda_bairrista', 'venda_morador') THEN im.quantity ELSE 0 END) as sales,
@@ -167,13 +192,23 @@ async function getWeeklyMovements(weekStart, weekEnd) {
       AND im.movement_type IN ('entrega_bairrista', 'venda_bairrista', 'entrega_oficial', 'entrega_morador', 'venda_morador')
     GROUP BY im.member_id, m.discord_id, m.display_name, m.role
     ORDER BY weighted_value DESC
-  `, [weekStart, weekEnd]);
+  `,
+    [weekStart, weekEnd]
+  );
   return res.rows;
 }
 
 module.exports = {
-  getItems, getItemById, getItemByName, createItem, updateItem,
-  recordMovement, getStock, getStockForItem,
-  getMemberMovements, getMovementsByOperation, getMemberTotals,
+  getItems,
+  getItemById,
+  getItemByName,
+  createItem,
+  updateItem,
+  recordMovement,
+  getStock,
+  getStockForItem,
+  getMemberMovements,
+  getMovementsByOperation,
+  getMemberTotals,
   getWeeklyMovements,
 };

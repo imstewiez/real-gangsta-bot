@@ -5,10 +5,16 @@ async function log({ action, entityType, entityId, actorId, actorName, beforeSta
   const res = await query(
     `INSERT INTO audit_logs (action, entity_type, entity_id, actor_id, actor_name, before_state, after_state, context)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-    [action, entityType, entityId || '', actorId, actorName || '',
-     beforeState ? JSON.stringify(beforeState) : null,
-     afterState ? JSON.stringify(afterState) : null,
-     context || '']
+    [
+      action,
+      entityType,
+      entityId || '',
+      actorId,
+      actorName || '',
+      beforeState ? JSON.stringify(beforeState) : null,
+      afterState ? JSON.stringify(afterState) : null,
+      context || '',
+    ]
   );
   return res.rows[0];
 }

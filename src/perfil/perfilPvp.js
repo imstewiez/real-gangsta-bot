@@ -14,7 +14,7 @@ const { memberAnalyticsRepo } = require('../repositories');
 const { buttonRow, button } = require('../shared/ui/buttons');
 const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
 
-const fmt = (n) => (Number(n) || 0).toLocaleString('pt-PT');
+const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
 
 async function handle(interaction) {
   if (isDuplicate(interaction.id)) return;
@@ -47,7 +47,7 @@ async function handle(interaction) {
     embed.addFields(
       { name: `${EMOJI.VITORIA} Vitórias`, value: `**${fmt(combat.wins)}**`, inline: true },
       { name: `${EMOJI.DERROTA} Derrotas`, value: `**${fmt(combat.losses)}**`, inline: true },
-      { name: `${EMOJI.INFO} Empates`,     value: `**${fmt(combat.draws)}**`, inline: true },
+      { name: `${EMOJI.INFO} Empates`, value: `**${fmt(combat.draws)}**`, inline: true }
     );
 
     // Semana + ranking kills
@@ -92,7 +92,7 @@ async function handle(interaction) {
   }
 
   const navRow = buttonRow(
-    button({ customId: 'perfil::voltar', label: 'Voltar ao Perfil', style: 'Secondary', emoji: EMOJI.VOLTAR }),
+    button({ customId: 'perfil::voltar', label: 'Voltar ao Perfil', style: 'Secondary', emoji: EMOJI.VOLTAR })
   );
 
   return safeReply(interaction, { embeds: [embed], components: [navRow] }, { messageClass: 'COCKPIT' });

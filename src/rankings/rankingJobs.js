@@ -21,9 +21,9 @@ async function _countDiscordRoleMembers(guild, roleIds) {
 
 async function alreadyPublishedSince(jobName, sinceDate) {
   const recent = await jobRepo.getRecent(jobName, 50);
-  return recent.some(r => r.status === 'completed'
-    && r.result && r.result.published === true
-    && new Date(r.started_at) >= sinceDate);
+  return recent.some(
+    r => r.status === 'completed' && r.result && r.result.published === true && new Date(r.started_at) >= sinceDate
+  );
 }
 
 async function publishWeeklyTop(client) {
@@ -54,7 +54,9 @@ async function publishWeeklyTop(client) {
       const { rankingRepo } = require('../repositories');
       const prevRankings = await rankingRepo.getWeekRanking(prevWeekStart, 50);
       previousMap = new Map(prevRankings.map((r, i) => [r.discord_id, i + 1]));
-    } catch (_) { /* sem delta */ }
+    } catch (_) {
+      /* sem delta */
+    }
 
     const embed = rankingEmbed('Topo da Semana', rankings, weekLabel, { previousMap });
 
@@ -62,8 +64,8 @@ async function publishWeeklyTop(client) {
     if (summary) {
       embed.addFields(
         { name: 'Entregas', value: `**${summary.total_deliveries || 0}**`, inline: true },
-        { name: 'Vendas',   value: `**${summary.total_sales || 0}**`,      inline: true },
-        { name: 'Saídas',   value: `**${summary.total_operations || 0}**`, inline: true },
+        { name: 'Vendas', value: `**${summary.total_sales || 0}**`, inline: true },
+        { name: 'Saídas', value: `**${summary.total_operations || 0}**`, inline: true }
       );
     }
 
@@ -98,28 +100,20 @@ async function publishDailySummary(client) {
   try {
     const { saidaRepo } = require('../repositories');
 
-    const guild = CONFIG.DISCORD_GUILD_ID
-      ? client.guilds.cache.get(CONFIG.DISCORD_GUILD_ID)
-      : null;
+    const guild = CONFIG.DISCORD_GUILD_ID ? client.guilds.cache.get(CONFIG.DISCORD_GUILD_ID) : null;
     if (guild) await guild.members.fetch().catch(() => null);
 
     const bairristaCount = await _countDiscordRoleMembers(guild, [
       ...CONFIG.BAIRRISTA_TIER_ROLE_IDS,
       ...CONFIG.PATRAO_DI_ZONA_ROLE_IDS,
     ]);
-    const oficialCount = await _countDiscordRoleMembers(guild, [
-      ...CONFIG.OFICIAL_ROLE_IDS,
-      ...CONFIG.CHEFIA_ROLE_IDS,
-    ]);
+    const oficialCount = await _countDiscordRoleMembers(guild, [...CONFIG.OFICIAL_ROLE_IDS, ...CONFIG.CHEFIA_ROLE_IDS]);
 
     const todayOps = await saidaRepo.findByDate(today);
     const concluidas = todayOps.filter(o => o.status === 'concluida').length;
     const emCurso = todayOps.filter(o => ['aberta', 'em_preparacao', 'em_curso'].includes(o.status)).length;
 
-    const killsRes = await query(
-      `SELECT COUNT(*)::int AS n FROM kill_logs WHERE date = $1`,
-      [today]
-    );
+    const killsRes = await query('SELECT COUNT(*)::int AS n FROM kill_logs WHERE date = $1', [today]);
     const killsToday = killsRes.rows[0]?.n || 0;
 
     const matRes = await query(
@@ -139,8 +133,16 @@ async function publishDailySummary(client) {
         { name: 'Bairristas', value: String(bairristaCount), inline: true },
         { name: 'Oficiais', value: String(oficialCount), inline: true },
         { name: 'Kills Hoje', value: String(killsToday), inline: true },
-        { name: 'Saídas Hoje', value: `${todayOps.length} (${concluidas} fechadas · ${emCurso} em curso)`, inline: false },
-        { name: 'Material p/ Bairristas', value: `${mat.entregas} entregas · ${mat.vendas} vendas · ${mat.qty} unidades`, inline: false },
+        {
+          name: 'Saídas Hoje',
+          value: `${todayOps.length} (${concluidas} fechadas · ${emCurso} em curso)`,
+          inline: false,
+        },
+        {
+          name: 'Material p/ Bairristas',
+          value: `${mat.entregas} entregas · ${mat.vendas} vendas · ${mat.qty} unidades`,
+          inline: false,
+        }
       );
 
     if (todayOps.length > 0) {

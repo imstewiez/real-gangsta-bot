@@ -11,12 +11,16 @@
  *   radio::refresh           botão — re-edita a mensagem com estado actual
  */
 
-const {
-  ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle, MessageFlags,
-} = require('discord.js');
+const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle, MessageFlags } = require('discord.js');
 const { radioRepo } = require('../repositories');
 const {
-  setRadio, setRandom, swapRadios, buildEmbed, buildComponents, historyText, TYPE_META,
+  setRadio,
+  setRandom,
+  swapRadios,
+  buildEmbed,
+  buildComponents,
+  historyText,
+  TYPE_META,
   notifyStickyChange,
 } = require('./radioEngine');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -51,7 +55,7 @@ async function handleRandom(interaction) {
     const meta = TYPE_META[type];
     const embed = successEmbed(
       RADIO.RANDOM_TITLE,
-      `**${meta.label}**\n${RADIO.LABELS.ANTES}: \`${result.previous || '—'}\`\n${RADIO.LABELS.AGORA}: \`${result.value}\``,
+      `**${meta.label}**\n${RADIO.LABELS.ANTES}: \`${result.previous || '—'}\`\n${RADIO.LABELS.AGORA}: \`${result.value}\``
     );
     return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
@@ -75,7 +79,7 @@ async function handleSet(interaction) {
           .setStyle(TextInputStyle.Short)
           .setRequired(M.FIELDS.value.required)
           .setMaxLength(M.FIELDS.value.maxLength)
-          .setPlaceholder(M.FIELDS.value.placeholder),
+          .setPlaceholder(M.FIELDS.value.placeholder)
       ),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
@@ -83,8 +87,8 @@ async function handleSet(interaction) {
           .setLabel('Nota (opcional)')
           .setStyle(TextInputStyle.Short)
           .setRequired(false)
-          .setMaxLength(120),
-      ),
+          .setMaxLength(120)
+      )
     );
   return interaction.showModal(modal);
 }
@@ -102,7 +106,7 @@ async function handleSetModal(interaction) {
     const meta = TYPE_META[type];
     const embed = successEmbed(
       RADIO.SET_TITLE,
-      `**${meta.label}**\n${RADIO.LABELS.ANTES}: \`${result.previous || '—'}\`\n${RADIO.LABELS.AGORA}: \`${result.value}\``,
+      `**${meta.label}**\n${RADIO.LABELS.ANTES}: \`${result.previous || '—'}\`\n${RADIO.LABELS.AGORA}: \`${result.value}\``
     );
     return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
@@ -118,7 +122,7 @@ async function handleSwap(interaction) {
     notifyStickyChange(interaction.client).catch(() => {});
     const embed = successEmbed(
       RADIO.SWAP_TITLE,
-      `${RADIO.LABELS.PRINCIPAL}: \`${swapped.principal}\`\n${RADIO.LABELS.PARCERIA}: \`${swapped.parceria}\``,
+      `${RADIO.LABELS.PRINCIPAL}: \`${swapped.principal}\`\n${RADIO.LABELS.PARCERIA}: \`${swapped.parceria}\``
     );
     return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
@@ -139,5 +143,10 @@ async function handleRefresh(interaction) {
 }
 
 module.exports = {
-  handleRandom, handleSet, handleSetModal, handleSwap, handleHistory, handleRefresh,
+  handleRandom,
+  handleSet,
+  handleSetModal,
+  handleSwap,
+  handleHistory,
+  handleRefresh,
 };

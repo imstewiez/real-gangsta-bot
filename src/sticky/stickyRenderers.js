@@ -15,9 +15,7 @@ function registerBuiltinRenderers() {
   // Renderiza a sessão aberta para hoje neste canal. Se não houver, devolve
   // mensagem informativa (sem componentes).
   registerRenderer('availability:daily', async (client, params) => {
-    const {
-      buildEmbed, buildComponents, todayDateString,
-    } = require('../availability/availabilityEngine');
+    const { buildEmbed, buildComponents, todayDateString } = require('../availability/availabilityEngine');
 
     const channelId = params?.channelId;
     if (!channelId) return { content: '_(sticky availability:daily sem channelId em params)_' };

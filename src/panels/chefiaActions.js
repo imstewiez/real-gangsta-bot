@@ -37,14 +37,22 @@ async function publicarRadio(interaction) {
     ? await client.channels.fetch(CONFIG.RADIO_PUBLISH_CHANNEL_ID).catch(() => null)
     : interaction.channel;
   if (!targetCh?.isTextBased?.()) {
-    return safeReply(interaction, {
-      content: 'Canal de publicação não disponível.',
-    }, { dismissible: true });
+    return safeReply(
+      interaction,
+      {
+        content: 'Canal de publicação não disponível.',
+      },
+      { dismissible: true }
+    );
   }
   await targetCh.send({ embeds: [buildEmbed(states)], components: buildComponents() });
-  return safeReply(interaction, {
-    content: `📻 Painel publicado em <#${targetCh.id}>.`,
-  }, { dismissible: true });
+  return safeReply(
+    interaction,
+    {
+      content: `📻 Painel publicado em <#${targetCh.id}>.`,
+    },
+    { dismissible: true }
+  );
 }
 
 async function listarStickys(interaction) {
@@ -69,10 +77,14 @@ async function verTops(interaction) {
 
 async function verLogs(interaction) {
   if (!isChefia(interaction.member)) {
-    return safeReply(interaction, {
-      content: ERRORS.NO_PERMISSION('ver logs'),
-      flags: MessageFlags.Ephemeral,
-    }, { dismissible: true });
+    return safeReply(
+      interaction,
+      {
+        content: ERRORS.NO_PERMISSION('ver logs'),
+        flags: MessageFlags.Ephemeral,
+      },
+      { dismissible: true }
+    );
   }
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const logs = await getRecentLogs(15);

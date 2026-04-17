@@ -13,7 +13,7 @@ function monthBounds(ref = new Date()) {
   const end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
   return {
     start: start.toISOString().split('T')[0],
-    end:   end.toISOString().split('T')[0],
+    end: end.toISOString().split('T')[0],
   };
 }
 
@@ -26,12 +26,21 @@ function prevMonthBounds(ref = new Date()) {
 // ─── Monthly ────────────────────────────────────────────────────────────────
 async function saveMonthly(row) {
   const {
-    memberId, monthStart, monthEnd,
-    deliveries = 0, sales = 0,
-    operationsCount = 0, weightedValue = 0, returnRate = 0,
-    killsCount = 0, winsCount = 0, lossCount = 0,
-    netProfitGenerated = 0, survivalRate = 0,
-    performanceScore = 0, hybridScore = 0,
+    memberId,
+    monthStart,
+    monthEnd,
+    deliveries = 0,
+    sales = 0,
+    operationsCount = 0,
+    weightedValue = 0,
+    returnRate = 0,
+    killsCount = 0,
+    winsCount = 0,
+    lossCount = 0,
+    netProfitGenerated = 0,
+    survivalRate = 0,
+    performanceScore = 0,
+    hybridScore = 0,
   } = row;
 
   const res = await query(
@@ -58,39 +67,68 @@ async function saveMonthly(row) {
        hybrid_score         = EXCLUDED.hybrid_score,
        updated_at           = NOW()
      RETURNING *`,
-    [memberId, monthStart, monthEnd, deliveries, sales,
-     operationsCount, weightedValue, returnRate,
-     killsCount, winsCount, lossCount,
-     netProfitGenerated, survivalRate,
-     performanceScore, hybridScore]
+    [
+      memberId,
+      monthStart,
+      monthEnd,
+      deliveries,
+      sales,
+      operationsCount,
+      weightedValue,
+      returnRate,
+      killsCount,
+      winsCount,
+      lossCount,
+      netProfitGenerated,
+      survivalRate,
+      performanceScore,
+      hybridScore,
+    ]
   );
   return res.rows[0];
 }
 
 async function getMonthly(monthStart, limit = 50) {
-  const res = await query(`
+  const res = await query(
+    `
     SELECT mr.*, m.discord_id, m.display_name, m.role, m.tier
     FROM monthly_rankings mr
     JOIN members m ON m.id = mr.member_id
     WHERE mr.month_start = $1
     ORDER BY mr.hybrid_score DESC, mr.weighted_value DESC
-    LIMIT $2`, [monthStart, limit]);
+    LIMIT $2`,
+    [monthStart, limit]
+  );
   return res.rows;
 }
 
 async function getMemberMonths(memberId, limit = 12) {
-  const res = await query(`
+  const res = await query(
+    `
     SELECT * FROM monthly_rankings WHERE member_id = $1
-    ORDER BY month_start DESC LIMIT $2`, [memberId, limit]);
+    ORDER BY month_start DESC LIMIT $2`,
+    [memberId, limit]
+  );
   return res.rows;
 }
 
 // ─── All-time snapshot ──────────────────────────────────────────────────────
 async function upsertAllTime(row) {
   const {
-    memberId, deliveries = 0, sales = 0, saidasTotal = 0, wins = 0, losses = 0,
-    killsTotal = 0, deathsTotal = 0, mvpCount = 0, profitGenerated = 0,
-    weightedValue = 0, hybridScore = 0, firstActivity = null, lastActivity = null,
+    memberId,
+    deliveries = 0,
+    sales = 0,
+    saidasTotal = 0,
+    wins = 0,
+    losses = 0,
+    killsTotal = 0,
+    deathsTotal = 0,
+    mvpCount = 0,
+    profitGenerated = 0,
+    weightedValue = 0,
+    hybridScore = 0,
+    firstActivity = null,
+    lastActivity = null,
   } = row;
 
   const res = await query(
@@ -115,32 +153,60 @@ async function upsertAllTime(row) {
        last_activity    = GREATEST(EXCLUDED.last_activity, all_time_stats.last_activity),
        updated_at       = NOW()
      RETURNING *`,
-    [memberId, deliveries, sales, saidasTotal, wins, losses,
-     killsTotal, deathsTotal, mvpCount, profitGenerated,
-     weightedValue, hybridScore, firstActivity, lastActivity]
+    [
+      memberId,
+      deliveries,
+      sales,
+      saidasTotal,
+      wins,
+      losses,
+      killsTotal,
+      deathsTotal,
+      mvpCount,
+      profitGenerated,
+      weightedValue,
+      hybridScore,
+      firstActivity,
+      lastActivity,
+    ]
   );
   return res.rows[0];
 }
 
 async function getAllTimeTop(orderBy = 'hybrid_score', limit = 25) {
-  const valid = new Set(['hybrid_score', 'kills_total', 'weighted_value', 'profit_generated', 'mvp_count', 'saidas_total']);
+  const valid = new Set([
+    'hybrid_score',
+    'kills_total',
+    'weighted_value',
+    'profit_generated',
+    'mvp_count',
+    'saidas_total',
+  ]);
   const col = valid.has(orderBy) ? orderBy : 'hybrid_score';
-  const res = await query(`
+  const res = await query(
+    `
     SELECT ats.*, m.discord_id, m.display_name, m.role, m.tier
     FROM all_time_stats ats
     JOIN members m ON m.id = ats.member_id
     ORDER BY ats.${col} DESC NULLS LAST
-    LIMIT $1`, [limit]);
+    LIMIT $1`,
+    [limit]
+  );
   return res.rows;
 }
 
 async function getAllTimeByMember(memberId) {
-  const res = await query(`SELECT * FROM all_time_stats WHERE member_id = $1`, [memberId]);
+  const res = await query('SELECT * FROM all_time_stats WHERE member_id = $1', [memberId]);
   return res.rows[0] || null;
 }
 
 module.exports = {
-  monthBounds, prevMonthBounds,
-  saveMonthly, getMonthly, getMemberMonths,
-  upsertAllTime, getAllTimeTop, getAllTimeByMember,
+  monthBounds,
+  prevMonthBounds,
+  saveMonthly,
+  getMonthly,
+  getMemberMonths,
+  upsertAllTime,
+  getAllTimeTop,
+  getAllTimeByMember,
 };

@@ -7,7 +7,9 @@ const { log, warn } = require('../logger');
 let _client = null;
 const _bootTime = Date.now();
 
-function setClient(client) { _client = client; }
+function setClient(client) {
+  _client = client;
+}
 
 async function _checkDb() {
   try {
@@ -28,11 +30,13 @@ function createServer(port = 3000) {
     // so platform healthchecks don't flap while we wait on singleton lock etc.
     if (url === '/health' || url === '/live') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: 'ok',
-        bot: CONFIG.BOT_INTERNAL_NAME,
-        uptimeSec: Math.floor((Date.now() - _bootTime) / 1000),
-      }));
+      res.end(
+        JSON.stringify({
+          status: 'ok',
+          bot: CONFIG.BOT_INTERNAL_NAME,
+          uptimeSec: Math.floor((Date.now() - _bootTime) / 1000),
+        })
+      );
       return;
     }
 
@@ -42,12 +46,14 @@ function createServer(port = 3000) {
       const db = await _checkDb();
       const ok = discordOk && db.ok;
       res.writeHead(ok ? 200 : 503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: ok ? 'ready' : 'not_ready',
-        bot: CONFIG.BOT_INTERNAL_NAME,
-        discord: discordOk,
-        db: db.ok ? `ok (${db.latencyMs}ms)` : `down (${db.error})`,
-      }));
+      res.end(
+        JSON.stringify({
+          status: ok ? 'ready' : 'not_ready',
+          bot: CONFIG.BOT_INTERNAL_NAME,
+          discord: discordOk,
+          db: db.ok ? `ok (${db.latencyMs}ms)` : `down (${db.error})`,
+        })
+      );
       return;
     }
 
@@ -58,19 +64,21 @@ function createServer(port = 3000) {
       const sheetsEnabled = Boolean(CONFIG.SPREADSHEET_ID && CONFIG.GOOGLE_SERVICE_ACCOUNT_JSON);
       const status = discordOk && db.ok ? 'healthy' : 'degraded';
       res.writeHead(discordOk && db.ok ? 200 : 503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status,
-        bot: CONFIG.BOT_INTERNAL_NAME,
-        displayName: CONFIG.BOT_DISPLAY_NAME,
-        uptimeSec: Math.floor((Date.now() - _bootTime) / 1000),
-        checks: {
-          discord: { ok: discordOk, guilds: _client?.guilds?.cache?.size || 0 },
-          db,
-          sheets: { ok: sheetsEnabled, enabled: sheetsEnabled },
-        },
-        node: process.version,
-        memMB: Math.round(process.memoryUsage().rss / 1024 / 1024),
-      }));
+      res.end(
+        JSON.stringify({
+          status,
+          bot: CONFIG.BOT_INTERNAL_NAME,
+          displayName: CONFIG.BOT_DISPLAY_NAME,
+          uptimeSec: Math.floor((Date.now() - _bootTime) / 1000),
+          checks: {
+            discord: { ok: discordOk, guilds: _client?.guilds?.cache?.size || 0 },
+            db,
+            sheets: { ok: sheetsEnabled, enabled: sheetsEnabled },
+          },
+          node: process.version,
+          memMB: Math.round(process.memoryUsage().rss / 1024 / 1024),
+        })
+      );
       return;
     }
 
@@ -83,13 +91,15 @@ function createServer(port = 3000) {
     if (url === '/version') {
       const pkg = require('../../package.json');
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        name: pkg.name,
-        version: pkg.version,
-        node: process.version,
-        bot: CONFIG.BOT_INTERNAL_NAME,
-        displayName: CONFIG.BOT_DISPLAY_NAME,
-      }));
+      res.end(
+        JSON.stringify({
+          name: pkg.name,
+          version: pkg.version,
+          node: process.version,
+          bot: CONFIG.BOT_INTERNAL_NAME,
+          displayName: CONFIG.BOT_DISPLAY_NAME,
+        })
+      );
       return;
     }
 
@@ -101,7 +111,7 @@ function createServer(port = 3000) {
     log(`[WEB] Health server listening on port ${port}`);
   });
 
-  server.on('error', (err) => {
+  server.on('error', err => {
     if (err.code === 'EADDRINUSE') {
       warn(`[WEB] Port ${port} already in use, skipping health server.`);
     } else {

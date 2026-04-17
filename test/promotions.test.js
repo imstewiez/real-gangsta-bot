@@ -23,7 +23,7 @@ require.cache[resolvedPath('db.js')] = {
   exports: {
     pool: { connect: async () => ({ query: async () => ({ rows: [] }), release: () => {} }) },
     query: async () => ({ rows: [] }),
-    queryWithTransaction: async (fn) => fn({ query: async () => ({ rows: [] }) }),
+    queryWithTransaction: async fn => fn({ query: async () => ({ rows: [] }) }),
     acquireInstanceLockWithRetry: async () => true,
     releaseInstanceLock: async () => {},
   },

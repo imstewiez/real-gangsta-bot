@@ -10,7 +10,7 @@
 const { bootstrap } = require('./app/bootstrap');
 const { error } = require('./logger');
 
-bootstrap().catch((e) => {
+bootstrap().catch(e => {
   error('[BOOT] Fatal error:', e);
   process.exit(1);
 });

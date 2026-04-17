@@ -54,7 +54,13 @@ class BatchWriter {
   mergeCells(sheetId, startRow, endRow, startCol, endCol) {
     this.requests.push({
       mergeCells: {
-        range: { sheetId, startRowIndex: startRow, endRowIndex: endRow, startColumnIndex: startCol, endColumnIndex: endCol },
+        range: {
+          sheetId,
+          startRowIndex: startRow,
+          endRowIndex: endRow,
+          startColumnIndex: startCol,
+          endColumnIndex: endCol,
+        },
         mergeType: 'MERGE_ALL',
       },
     });
@@ -131,7 +137,13 @@ class BatchWriter {
   /** Bandas alternadas (ímpar/par). */
   banding(sheetId, startRow, endRow, startCol, endCol, firstBand, secondBand, header) {
     const bandedRange = {
-      range: { sheetId, startRowIndex: startRow, endRowIndex: endRow, startColumnIndex: startCol, endColumnIndex: endCol },
+      range: {
+        sheetId,
+        startRowIndex: startRow,
+        endRowIndex: endRow,
+        startColumnIndex: startCol,
+        endColumnIndex: endCol,
+      },
       rowProperties: {
         firstBandColor: firstBand,
         secondBandColor: secondBand,
@@ -146,7 +158,15 @@ class BatchWriter {
   setBasicFilter(sheetId, startRow, endRow, startCol, endCol) {
     this.requests.push({
       setBasicFilter: {
-        filter: { range: { sheetId, startRowIndex: startRow, endRowIndex: endRow, startColumnIndex: startCol, endColumnIndex: endCol } },
+        filter: {
+          range: {
+            sheetId,
+            startRowIndex: startRow,
+            endRowIndex: endRow,
+            startColumnIndex: startCol,
+            endColumnIndex: endCol,
+          },
+        },
       },
     });
     return this;
@@ -205,7 +225,13 @@ class BatchWriter {
     this.requests.push({
       addProtectedRange: {
         protectedRange: {
-          range: { sheetId, startRowIndex: startRow, endRowIndex: endRow, startColumnIndex: startCol, endColumnIndex: endCol },
+          range: {
+            sheetId,
+            startRowIndex: startRow,
+            endRowIndex: endRow,
+            startColumnIndex: startCol,
+            endColumnIndex: endCol,
+          },
           description,
           warningOnly: editorsEmails.length === 0,
           editors: editorsEmails.length ? { users: editorsEmails } : undefined,
@@ -227,7 +253,9 @@ class BatchWriter {
   }
 
   /** Quantas requests pendentes. */
-  size() { return this.requests.length; }
+  size() {
+    return this.requests.length;
+  }
 }
 
 module.exports = { BatchWriter };

@@ -26,7 +26,9 @@ async function handle(interaction) {
       const { collect, formatDiscord } = require('../lib/dataHealth');
       const report = await collect({ guild: interaction.guild });
       lines.push('', formatDiscord(report));
-    } catch { /* silent */ }
+    } catch {
+      /* silent */
+    }
   }
 
   return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });

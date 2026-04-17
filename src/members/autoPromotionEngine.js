@@ -47,7 +47,8 @@ const PROMOTIONS = [
  */
 async function getMemberMaterialQty(memberId) {
   const { query } = require('../db');
-  const res = await query(`
+  const res = await query(
+    `
     SELECT COALESCE(SUM(im.quantity), 0) as total_qty
     FROM inventory_movements im
     WHERE im.member_id = $1
@@ -55,7 +56,9 @@ async function getMemberMaterialQty(memberId) {
         'entrega_bairrista', 'venda_bairrista', 'entrega_oficial',
         'entrega_morador', 'venda_morador'
       )
-  `, [memberId]);
+  `,
+    [memberId]
+  );
   return parseInt(res.rows[0]?.total_qty || 0, 10);
 }
 // Alias legado — quem ainda importar pelo nome antigo continua a funcionar,
@@ -77,7 +80,7 @@ async function checkAndPromote(discordId, guild, client) {
 
   // Determinar tier atual pela DB (aceita role bairrista ou legacy 'morador')
   const isBairristaRole = dbMember.role === 'bairrista' || dbMember.role === 'morador';
-  const currentTier = isBairristaRole ? (dbMember.tier || CONFIG.BAIRRISTA_DEFAULT_TIER) : null;
+  const currentTier = isBairristaRole ? dbMember.tier || CONFIG.BAIRRISTA_DEFAULT_TIER : null;
   if (!currentTier) return null; // Não é bairrista, não aplica
 
   // Ver se há promoção disponível para este tier
@@ -105,9 +108,13 @@ async function checkAndPromote(discordId, guild, client) {
 
     // Remover role anterior e adicionar novo
     if (fromRoleId && guildMember.roles.cache.has(fromRoleId)) {
-      await queueMemberOp(() => guildMember.roles.remove(fromRoleId, `Auto-promoção: ${promotion.from} → ${promotion.to}`));
+      await queueMemberOp(() =>
+        guildMember.roles.remove(fromRoleId, `Auto-promoção: ${promotion.from} → ${promotion.to}`)
+      );
     }
-    await queueMemberOp(() => guildMember.roles.add(toRoleId, `Auto-promoção: atingiu ${threshold.toLocaleString('pt-PT')} itens entregues`));
+    await queueMemberOp(() =>
+      guildMember.roles.add(toRoleId, `Auto-promoção: atingiu ${threshold.toLocaleString('pt-PT')} itens entregues`)
+    );
 
     // Atualizar DB
     await memberRepo.update(dbMember.id, { tier: promotion.to });
@@ -123,7 +130,7 @@ async function checkAndPromote(discordId, guild, client) {
           if (channel.name !== newName) {
             await queueChannelOp(() => channel.setName(newName));
             await dbQuery(
-              `UPDATE resident_channels SET channel_name = $1 WHERE channel_id = $2 AND status = 'active'`,
+              "UPDATE resident_channels SET channel_name = $1 WHERE channel_id = $2 AND status = 'active'",
               [newName, dbMember.channel_id]
             );
             log(`[AUTO-PROMO] Canal de ${dbMember.display_name} renomeado: ${newName}`);
@@ -148,21 +155,23 @@ async function checkAndPromote(discordId, guild, client) {
     await sendAuditToChannel(client, {
       title: 'Promoção Automática!',
       description: `<@${discordId}> subiu de **${formatTierName(promotion.from)}** para **${formatTierName(promotion.to)}**!\n\nMaterial acumulado: **${totalQty.toLocaleString('pt-PT')} itens** (meta: ${threshold.toLocaleString('pt-PT')} itens)`,
-      color: 0xFFD700,
+      color: 0xffd700,
     });
 
     log(`[AUTO-PROMO] ${dbMember.display_name}: ${promotion.from} → ${promotion.to} (${totalQty} itens)`);
 
     // Event — dispara projecção sheets (membros + dashboard + resumo).
-    eventBus.emitAsync('member.tier_changed', {
-      discordId,
-      memberId: dbMember.id,
-      displayName: dbMember.display_name,
-      from: promotion.from,
-      to: promotion.to,
-      qty: totalQty,
-      at: new Date(),
-    }).catch(() => {});
+    eventBus
+      .emitAsync('member.tier_changed', {
+        discordId,
+        memberId: dbMember.id,
+        displayName: dbMember.display_name,
+        from: promotion.from,
+        to: promotion.to,
+        qty: totalQty,
+        at: new Date(),
+      })
+      .catch(() => {});
 
     return { promoted: true, from: promotion.from, to: promotion.to, qty: totalQty };
   } catch (e) {
@@ -231,4 +240,12 @@ async function getPromotionProgress(discordId) {
   };
 }
 
-module.exports = { checkAndPromote, getPromotionProgress, getMemberMaterialQty, getMemberMaterialValue, formatTierName, TIERS, PROMOTIONS };
+module.exports = {
+  checkAndPromote,
+  getPromotionProgress,
+  getMemberMaterialQty,
+  getMemberMaterialValue,
+  formatTierName,
+  TIERS,
+  PROMOTIONS,
+};

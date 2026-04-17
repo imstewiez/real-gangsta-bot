@@ -35,26 +35,41 @@ async function check(guild) {
       continue;
     }
     if (dbRow && !detected) {
-      drift.orphan_in_db.push({ discord_id: gm.id, display_name: dbRow.display_name, db_role: dbRow.role, db_tier: dbRow.tier });
+      drift.orphan_in_db.push({
+        discord_id: gm.id,
+        display_name: dbRow.display_name,
+        db_role: dbRow.role,
+        db_tier: dbRow.tier,
+      });
       continue;
     }
     if (!dbRow && !detected) continue;
 
     let issue = false;
     if (dbRow.role !== detected.role) {
-      drift.role_mismatch.push({ discord_id: gm.id, display_name: dbRow.display_name, db_role: dbRow.role, discord_role: detected.role });
+      drift.role_mismatch.push({
+        discord_id: gm.id,
+        display_name: dbRow.display_name,
+        db_role: dbRow.role,
+        discord_role: detected.role,
+      });
       issue = true;
     }
     if (dbRow.tier !== detected.tier) {
-      drift.tier_mismatch.push({ discord_id: gm.id, display_name: dbRow.display_name, db_tier: dbRow.tier, discord_tier: detected.tier });
+      drift.tier_mismatch.push({
+        discord_id: gm.id,
+        display_name: dbRow.display_name,
+        db_tier: dbRow.tier,
+        discord_tier: detected.tier,
+      });
       issue = true;
     }
     if (!issue) drift.ok += 1;
   }
 
   drift.has_drift =
-    drift.role_mismatch.length + drift.tier_mismatch.length +
-    drift.missing_in_db.length + drift.orphan_in_db.length > 0;
+    drift.role_mismatch.length + drift.tier_mismatch.length + drift.missing_in_db.length + drift.orphan_in_db.length >
+    0;
   return drift;
 }
 

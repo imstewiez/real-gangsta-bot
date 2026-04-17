@@ -13,10 +13,14 @@ const { formatPtDate } = require('../shared/formatPtDate');
 
 async function handle(interaction) {
   if (!isChefia(interaction.member)) {
-    return safeReply(interaction, {
-      content: ERRORS.NO_PERMISSION('ver logs'),
-      flags: MessageFlags.Ephemeral,
-    }, { dismissible: true });
+    return safeReply(
+      interaction,
+      {
+        content: ERRORS.NO_PERMISSION('ver logs'),
+        flags: MessageFlags.Ephemeral,
+      },
+      { dismissible: true }
+    );
   }
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const limit = interaction.options.getInteger('limite') || 20;
@@ -24,8 +28,8 @@ async function handle(interaction) {
   if (!logs.length) {
     return safeReply(interaction, { content: 'Sem logs recentes.' }, { dismissible: true });
   }
-  const lines = logs.map(l =>
-    `\`${formatPtDate(l.created_at)}\` **${l.action}** — ${l.entity_type} — por <@${l.actor_id}>`
+  const lines = logs.map(
+    l => `\`${formatPtDate(l.created_at)}\` **${l.action}** — ${l.entity_type} — por <@${l.actor_id}>`
   );
   const embed = brandEmbed().setTitle('Logs de Auditoria').setDescription(lines.slice(0, 20).join('\n'));
   return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });

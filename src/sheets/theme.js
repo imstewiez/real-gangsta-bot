@@ -13,137 +13,149 @@
  */
 
 // ─── Primitivos ──────────────────────────────────────────────────────────────
-function rgb(r, g, b) { return { red: r / 255, green: g / 255, blue: b / 255 }; }
+function rgb(r, g, b) {
+  return { red: r / 255, green: g / 255, blue: b / 255 };
+}
 
 // ─── Paleta ──────────────────────────────────────────────────────────────────
 const COLOR = {
   // Superfícies (escuras → claras)
-  VOID:            rgb(  8,  8,  8),   // #080808 — bg absoluto (headers)
-  BLACK:           rgb( 15, 15, 15),   // #0F0F0F — bg corpo
-  CHARCOAL:        rgb( 28, 28, 28),   // #1C1C1C — bg zebra / blocos
-  GRAPHITE:        rgb( 45, 45, 45),   // #2D2D2D — blocos secundários
-  IRON:            rgb( 68, 68, 68),   // #444 — elemento sobre charcoal
-  GRAY_DARK:       rgb( 90, 90, 90),   // #5A5A5A — separadores
-  GRAY:            rgb(140,140,140),   // #8C8C8C — labels muted
-  GRAY_LIGHT:      rgb(200,200,200),   // #C8C8C8 — dividers claros
-  OFF_WHITE:       rgb(240,236,232),   // #F0ECE8 — texto principal (tom marfim)
-  WHITE:           rgb(255,255,255),
+  VOID: rgb(8, 8, 8), // #080808 — bg absoluto (headers)
+  BLACK: rgb(15, 15, 15), // #0F0F0F — bg corpo
+  CHARCOAL: rgb(28, 28, 28), // #1C1C1C — bg zebra / blocos
+  GRAPHITE: rgb(45, 45, 45), // #2D2D2D — blocos secundários
+  IRON: rgb(68, 68, 68), // #444 — elemento sobre charcoal
+  GRAY_DARK: rgb(90, 90, 90), // #5A5A5A — separadores
+  GRAY: rgb(140, 140, 140), // #8C8C8C — labels muted
+  GRAY_LIGHT: rgb(200, 200, 200), // #C8C8C8 — dividers claros
+  OFF_WHITE: rgb(240, 236, 232), // #F0ECE8 — texto principal (tom marfim)
+  WHITE: rgb(255, 255, 255),
 
   // Marca RedWood
-  RED_DEEP:        rgb(139,  0,  0),   // #8B0000 — accent primário
-  RED_BLOOD:       rgb(178, 34, 34),   // #B22222 — headers de tabela
-  RED_SIGNAL:      rgb(220, 53, 69),   // #DC3545 — negativo/erro
-  RED_SIGNAL_SOFT: rgb( 55, 24, 28),   // bg suave para negativo em fundo escuro
-  RED_SOFT:        rgb(204, 85,  85),  // #CC5555 — warn suave
+  RED_DEEP: rgb(139, 0, 0), // #8B0000 — accent primário
+  RED_BLOOD: rgb(178, 34, 34), // #B22222 — headers de tabela
+  RED_SIGNAL: rgb(220, 53, 69), // #DC3545 — negativo/erro
+  RED_SIGNAL_SOFT: rgb(55, 24, 28), // bg suave para negativo em fundo escuro
+  RED_SOFT: rgb(204, 85, 85), // #CC5555 — warn suave
 
   // Signals (semantic — sempre sobre fundo escuro)
-  GREEN_DEEP:      rgb( 39,174, 96),   // #27AE60 — positivo forte
-  GREEN_SOFT:      rgb( 22, 55, 35),   // bg suave positivo em dark
-  YELLOW_DEEP:     rgb(230,167, 17),   // #E6A711 — atenção
-  YELLOW_SOFT:     rgb( 58, 44, 14),   // bg suave atenção em dark
-  BLUE_DEEP:       rgb( 66,133,244),   // #4285F4 — info/link (discreto)
-  BLUE_SOFT:       rgb( 24, 42, 70),
+  GREEN_DEEP: rgb(39, 174, 96), // #27AE60 — positivo forte
+  GREEN_SOFT: rgb(22, 55, 35), // bg suave positivo em dark
+  YELLOW_DEEP: rgb(230, 167, 17), // #E6A711 — atenção
+  YELLOW_SOFT: rgb(58, 44, 14), // bg suave atenção em dark
+  BLUE_DEEP: rgb(66, 133, 244), // #4285F4 — info/link (discreto)
+  BLUE_SOFT: rgb(24, 42, 70),
 
   // Destaques pontuais
-  GOLD:            rgb(184,134, 11),   // #B8860B — 1º lugar, MVP
-  SILVER:          rgb(170,170,170),   // 2º
-  BRONZE:          rgb(139, 90, 43),   // 3º
+  GOLD: rgb(184, 134, 11), // #B8860B — 1º lugar, MVP
+  SILVER: rgb(170, 170, 170), // 2º
+  BRONZE: rgb(139, 90, 43), // 3º
 };
 
 // Aliases semânticos — usar estes em código novo
-COLOR.BG_APP          = COLOR.BLACK;
-COLOR.BG_HEADER       = COLOR.VOID;
-COLOR.BG_BLOCK        = COLOR.CHARCOAL;
-COLOR.BG_BLOCK_ALT    = COLOR.GRAPHITE;
-COLOR.BG_TABLE_HEAD   = COLOR.RED_BLOOD;
+COLOR.BG_APP = COLOR.BLACK;
+COLOR.BG_HEADER = COLOR.VOID;
+COLOR.BG_BLOCK = COLOR.CHARCOAL;
+COLOR.BG_BLOCK_ALT = COLOR.GRAPHITE;
+COLOR.BG_TABLE_HEAD = COLOR.RED_BLOOD;
 COLOR.BG_TABLE_ACCENT = COLOR.RED_DEEP;
-COLOR.TEXT_PRIMARY    = COLOR.OFF_WHITE;
-COLOR.TEXT_MUTED      = COLOR.GRAY;
-COLOR.TEXT_INVERTED   = COLOR.WHITE;
+COLOR.TEXT_PRIMARY = COLOR.OFF_WHITE;
+COLOR.TEXT_MUTED = COLOR.GRAY;
+COLOR.TEXT_INVERTED = COLOR.WHITE;
 
 // ─── Tipografia ──────────────────────────────────────────────────────────────
 // Uma só fonte em todo o workbook: Inter (disponível no Google Fonts do Sheets).
 const FONT_FAMILY = 'Inter';
 
-function _font(opts) { return { fontFamily: FONT_FAMILY, ...opts }; }
+function _font(opts) {
+  return { fontFamily: FONT_FAMILY, ...opts };
+}
 
 const FONT = {
-  TITLE:        _font({ fontSize: 18, bold: true,  foregroundColor: COLOR.WHITE }),
-  SUBTITLE:     _font({ fontSize: 10, italic: true, foregroundColor: COLOR.GRAY_LIGHT }),
-  SECTION:      _font({ fontSize: 12, bold: true,  foregroundColor: COLOR.OFF_WHITE }),
-  SECTION_HINT: _font({ fontSize:  9, italic: true, foregroundColor: COLOR.GRAY }),
-  HEADER:       _font({ fontSize: 10, bold: true,  foregroundColor: COLOR.WHITE }),
-  SUBHEAD:      _font({ fontSize:  9, bold: true,  foregroundColor: COLOR.OFF_WHITE }),
-  BODY:         _font({ fontSize: 10, foregroundColor: COLOR.OFF_WHITE }),
-  BODY_BOLD:    _font({ fontSize: 10, bold: true,  foregroundColor: COLOR.OFF_WHITE }),
-  MUTED:        _font({ fontSize:  9, foregroundColor: COLOR.GRAY }),
-  CAPTION:      _font({ fontSize:  8, foregroundColor: COLOR.GRAY }),
-  KPI_LABEL:    _font({ fontSize:  8, bold: true,  foregroundColor: COLOR.GRAY_LIGHT }),
-  KPI_VALUE:    _font({ fontSize: 22, bold: true,  foregroundColor: COLOR.WHITE }),
-  KPI_UNIT:     _font({ fontSize: 10, bold: true,  foregroundColor: COLOR.GRAY_LIGHT }),
-  KPI_DELTA_UP: _font({ fontSize:  9, bold: true,  foregroundColor: COLOR.GREEN_DEEP }),
-  KPI_DELTA_DN: _font({ fontSize:  9, bold: true,  foregroundColor: COLOR.RED_SIGNAL }),
-  KPI_DELTA_FL: _font({ fontSize:  9, bold: true,  foregroundColor: COLOR.GRAY }),
-  SIG:          _font({ fontSize:  9, italic: true, foregroundColor: COLOR.GRAY }),
-  BADGE:        _font({ fontSize:  8, bold: true,  foregroundColor: COLOR.WHITE }),
-  RANK_1:       _font({ fontSize: 10, bold: true,  foregroundColor: COLOR.GOLD }),
-  RANK_2:       _font({ fontSize: 10, bold: true,  foregroundColor: COLOR.SILVER }),
-  RANK_3:       _font({ fontSize: 10, bold: true,  foregroundColor: COLOR.BRONZE }),
+  TITLE: _font({ fontSize: 18, bold: true, foregroundColor: COLOR.WHITE }),
+  SUBTITLE: _font({ fontSize: 10, italic: true, foregroundColor: COLOR.GRAY_LIGHT }),
+  SECTION: _font({ fontSize: 12, bold: true, foregroundColor: COLOR.OFF_WHITE }),
+  SECTION_HINT: _font({ fontSize: 9, italic: true, foregroundColor: COLOR.GRAY }),
+  HEADER: _font({ fontSize: 10, bold: true, foregroundColor: COLOR.WHITE }),
+  SUBHEAD: _font({ fontSize: 9, bold: true, foregroundColor: COLOR.OFF_WHITE }),
+  BODY: _font({ fontSize: 10, foregroundColor: COLOR.OFF_WHITE }),
+  BODY_BOLD: _font({ fontSize: 10, bold: true, foregroundColor: COLOR.OFF_WHITE }),
+  MUTED: _font({ fontSize: 9, foregroundColor: COLOR.GRAY }),
+  CAPTION: _font({ fontSize: 8, foregroundColor: COLOR.GRAY }),
+  KPI_LABEL: _font({ fontSize: 8, bold: true, foregroundColor: COLOR.GRAY_LIGHT }),
+  KPI_VALUE: _font({ fontSize: 22, bold: true, foregroundColor: COLOR.WHITE }),
+  KPI_UNIT: _font({ fontSize: 10, bold: true, foregroundColor: COLOR.GRAY_LIGHT }),
+  KPI_DELTA_UP: _font({ fontSize: 9, bold: true, foregroundColor: COLOR.GREEN_DEEP }),
+  KPI_DELTA_DN: _font({ fontSize: 9, bold: true, foregroundColor: COLOR.RED_SIGNAL }),
+  KPI_DELTA_FL: _font({ fontSize: 9, bold: true, foregroundColor: COLOR.GRAY }),
+  SIG: _font({ fontSize: 9, italic: true, foregroundColor: COLOR.GRAY }),
+  BADGE: _font({ fontSize: 8, bold: true, foregroundColor: COLOR.WHITE }),
+  RANK_1: _font({ fontSize: 10, bold: true, foregroundColor: COLOR.GOLD }),
+  RANK_2: _font({ fontSize: 10, bold: true, foregroundColor: COLOR.SILVER }),
+  RANK_3: _font({ fontSize: 10, bold: true, foregroundColor: COLOR.BRONZE }),
 };
 
 // ─── Spacing / Row heights ───────────────────────────────────────────────────
 const ROW_H = {
-  TITLE:      42,
-  SUBTITLE:   20,
-  SPACER_XS:   6,
-  SPACER_SM:  10,
-  SPACER_MD:  14,
-  SECTION:    26,
-  DIVIDER:     3,
-  KPI:        52,
-  KPI_LABEL:  18,
+  TITLE: 42,
+  SUBTITLE: 20,
+  SPACER_XS: 6,
+  SPACER_SM: 10,
+  SPACER_MD: 14,
+  SECTION: 26,
+  DIVIDER: 3,
+  KPI: 52,
+  KPI_LABEL: 18,
   TABLE_HEAD: 28,
-  TABLE_ROW:  22,
-  FOOTER:     22,
+  TABLE_ROW: 22,
+  FOOTER: 22,
 };
 
 const COL_W = {
-  XXS: 45, XS: 60, SM: 85, MD: 120, LG: 160, XL: 200, XXL: 260,
+  XXS: 45,
+  XS: 60,
+  SM: 85,
+  MD: 120,
+  LG: 160,
+  XL: 200,
+  XXL: 260,
 };
 
 // ─── Number formats ──────────────────────────────────────────────────────────
 const NUM_FMT = {
-  INT:       { type: 'NUMBER',    pattern: '#,##0' },
-  INT_DELTA: { type: 'NUMBER',    pattern: '"+"#,##0;"−"#,##0;"—"' },
-  DEC:       { type: 'NUMBER',    pattern: '#,##0.00' },
-  DEC1:      { type: 'NUMBER',    pattern: '#,##0.0' },
-  EURO:      { type: 'CURRENCY',  pattern: '#,##0 €' },
-  EURO_DEC:  { type: 'CURRENCY',  pattern: '#,##0.00 €' },
-  EURO_DELTA:{ type: 'CURRENCY',  pattern: '"+"#,##0" €";"−"#,##0" €";"—"' },
-  PCT:       { type: 'PERCENT',   pattern: '0.0%' },
-  PCT_INT:   { type: 'PERCENT',   pattern: '0%' },
-  PCT_DELTA: { type: 'PERCENT',   pattern: '"+"0.0%;"−"0.0%;"—"' },
-  DATE:      { type: 'DATE',      pattern: 'yyyy-mm-dd' },
-  DATETIME:  { type: 'DATE_TIME', pattern: 'yyyy-mm-dd hh:mm' },
-  KD:        { type: 'NUMBER',    pattern: '0.00' },
+  INT: { type: 'NUMBER', pattern: '#,##0' },
+  INT_DELTA: { type: 'NUMBER', pattern: '"+"#,##0;"−"#,##0;"—"' },
+  DEC: { type: 'NUMBER', pattern: '#,##0.00' },
+  DEC1: { type: 'NUMBER', pattern: '#,##0.0' },
+  EURO: { type: 'CURRENCY', pattern: '#,##0 €' },
+  EURO_DEC: { type: 'CURRENCY', pattern: '#,##0.00 €' },
+  EURO_DELTA: { type: 'CURRENCY', pattern: '"+"#,##0" €";"−"#,##0" €";"—"' },
+  PCT: { type: 'PERCENT', pattern: '0.0%' },
+  PCT_INT: { type: 'PERCENT', pattern: '0%' },
+  PCT_DELTA: { type: 'PERCENT', pattern: '"+"0.0%;"−"0.0%;"—"' },
+  DATE: { type: 'DATE', pattern: 'yyyy-mm-dd' },
+  DATETIME: { type: 'DATE_TIME', pattern: 'yyyy-mm-dd hh:mm' },
+  KD: { type: 'NUMBER', pattern: '0.00' },
 };
 
 // ─── Borders ─────────────────────────────────────────────────────────────────
-function _border(color, style = 'SOLID') { return { style, width: 1, color }; }
+function _border(color, style = 'SOLID') {
+  return { style, width: 1, color };
+}
 
 const BORDER = {
-  NONE:           {},
-  BOTTOM_HAIR:    { bottom: _border(COLOR.GRAY_DARK) },
-  BOTTOM_ACCENT:  { bottom: _border(COLOR.RED_DEEP)  },
-  TOP_HAIR:       { top:    _border(COLOR.GRAY_DARK) },
-  TOP_ACCENT:     { top:    _border(COLOR.RED_DEEP)  },
-  LEFT_ACCENT:    { left:   { style: 'SOLID_THICK', width: 3, color: COLOR.RED_DEEP } },
-  LEFT_SEPARATOR: { left:   _border(COLOR.IRON) },
-  BOX_SUBTLE:     {
-    top:    _border(COLOR.GRAPHITE),
+  NONE: {},
+  BOTTOM_HAIR: { bottom: _border(COLOR.GRAY_DARK) },
+  BOTTOM_ACCENT: { bottom: _border(COLOR.RED_DEEP) },
+  TOP_HAIR: { top: _border(COLOR.GRAY_DARK) },
+  TOP_ACCENT: { top: _border(COLOR.RED_DEEP) },
+  LEFT_ACCENT: { left: { style: 'SOLID_THICK', width: 3, color: COLOR.RED_DEEP } },
+  LEFT_SEPARATOR: { left: _border(COLOR.IRON) },
+  BOX_SUBTLE: {
+    top: _border(COLOR.GRAPHITE),
     bottom: _border(COLOR.GRAPHITE),
-    left:   _border(COLOR.GRAPHITE),
-    right:  _border(COLOR.GRAPHITE),
+    left: _border(COLOR.GRAPHITE),
+    right: _border(COLOR.GRAPHITE),
   },
 };
 
@@ -154,8 +166,7 @@ function cell(value, opts = {}) {
   else if (typeof value === 'number') {
     if (Number.isFinite(value)) v.userEnteredValue.numberValue = value;
     else v.userEnteredValue.stringValue = '—';
-  }
-  else if (typeof value === 'boolean') v.userEnteredValue.boolValue = value;
+  } else if (typeof value === 'boolean') v.userEnteredValue.boolValue = value;
   else if (typeof value === 'string' && value.startsWith('=')) v.userEnteredValue.formulaValue = value;
   else v.userEnteredValue.stringValue = String(value);
 
@@ -197,8 +208,13 @@ function subtitleCell(value) {
   return cell(value, { bg: COLOR.BG_HEADER, font: FONT.SUBTITLE, align: 'LEFT', vAlign: 'MIDDLE' });
 }
 function sectionCell(value) {
-  return cell(value, { bg: COLOR.BG_BLOCK, font: FONT.SECTION, align: 'LEFT', vAlign: 'MIDDLE',
-    borders: BORDER.LEFT_ACCENT });
+  return cell(value, {
+    bg: COLOR.BG_BLOCK,
+    font: FONT.SECTION,
+    align: 'LEFT',
+    vAlign: 'MIDDLE',
+    borders: BORDER.LEFT_ACCENT,
+  });
 }
 function sectionHintCell(value) {
   return cell(value, { bg: COLOR.BG_BLOCK, font: FONT.SECTION_HINT, align: 'RIGHT', vAlign: 'MIDDLE' });
@@ -225,15 +241,33 @@ function numCell(value, numberFormat, opts = {}) {
   return cell(value, { bg: COLOR.BG_APP, font: FONT.BODY, align: 'RIGHT', vAlign: 'MIDDLE', numberFormat, ...opts });
 }
 function signatureCell(text) {
-  return cell(text || `— ${SIGNATURE}`, { bg: COLOR.BG_HEADER, font: FONT.SIG, align: 'RIGHT', vAlign: 'MIDDLE', brandRed: true });
+  return cell(text || `— ${SIGNATURE}`, {
+    bg: COLOR.BG_HEADER,
+    font: FONT.SIG,
+    align: 'RIGHT',
+    vAlign: 'MIDDLE',
+    brandRed: true,
+  });
 }
 // Kills — bold verde forte, sempre destacado
 function killCell(value) {
-  return cell(value, { bg: COLOR.BG_APP, font: _font({ fontSize: 11, bold: true, foregroundColor: COLOR.GREEN_DEEP }), align: 'RIGHT', vAlign: 'MIDDLE', numberFormat: NUM_FMT.INT });
+  return cell(value, {
+    bg: COLOR.BG_APP,
+    font: _font({ fontSize: 11, bold: true, foregroundColor: COLOR.GREEN_DEEP }),
+    align: 'RIGHT',
+    vAlign: 'MIDDLE',
+    numberFormat: NUM_FMT.INT,
+  });
 }
 // Deaths — bold vermelho signal, sempre destacado
 function deathCell(value) {
-  return cell(value, { bg: COLOR.BG_APP, font: _font({ fontSize: 11, bold: true, foregroundColor: COLOR.RED_SIGNAL }), align: 'RIGHT', vAlign: 'MIDDLE', numberFormat: NUM_FMT.INT });
+  return cell(value, {
+    bg: COLOR.BG_APP,
+    font: _font({ fontSize: 11, bold: true, foregroundColor: COLOR.RED_SIGNAL }),
+    align: 'RIGHT',
+    vAlign: 'MIDDLE',
+    numberFormat: NUM_FMT.INT,
+  });
 }
 
 // ─── Células semânticas (camada 2: KPIs / badges / rankings) ─────────────────
@@ -254,8 +288,10 @@ function kpiDeltaCell(value, direction, numberFormat) {
 
 function badgeCell(label, bgColor, textColor) {
   return cell(label, {
-    bg: bgColor, font: _font({ fontSize: 8, bold: true, foregroundColor: textColor || COLOR.WHITE }),
-    align: 'CENTER', vAlign: 'MIDDLE',
+    bg: bgColor,
+    font: _font({ fontSize: 8, bold: true, foregroundColor: textColor || COLOR.WHITE }),
+    align: 'CENTER',
+    vAlign: 'MIDDLE',
   });
 }
 function pillCell(value, pillColor, textColor) {
@@ -355,16 +391,44 @@ const SIGNATURE = 'Firma RedWood';
 
 module.exports = {
   // Primitivos
-  rgb, cell,
+  rgb,
+  cell,
   // Tokens
-  COLOR, FONT, FONT_FAMILY, ROW_H, COL_W, NUM_FMT, BORDER, SIGNATURE,
+  COLOR,
+  FONT,
+  FONT_FAMILY,
+  ROW_H,
+  COL_W,
+  NUM_FMT,
+  BORDER,
+  SIGNATURE,
   // Células camada 1
-  titleCell, subtitleCell, sectionCell, sectionHintCell,
-  headerCell, subHeaderCell, bodyCell, bodyBoldCell, mutedCell, captionCell, numCell, signatureCell,
-  killCell, deathCell,
+  titleCell,
+  subtitleCell,
+  sectionCell,
+  sectionHintCell,
+  headerCell,
+  subHeaderCell,
+  bodyCell,
+  bodyBoldCell,
+  mutedCell,
+  captionCell,
+  numCell,
+  signatureCell,
+  killCell,
+  deathCell,
   // Células camada 2
-  kpiLabelCell, kpiValueCell, kpiDeltaCell, badgeCell, pillCell, rankCell, formatDelta,
+  kpiLabelCell,
+  kpiValueCell,
+  kpiDeltaCell,
+  badgeCell,
+  pillCell,
+  rankCell,
+  formatDelta,
   // Conditional formatting
-  conditionalGradient, conditionalGreaterThan, conditionalLessThan, conditionalTextEquals,
+  conditionalGradient,
+  conditionalGreaterThan,
+  conditionalLessThan,
+  conditionalTextEquals,
   rangeOf,
 };

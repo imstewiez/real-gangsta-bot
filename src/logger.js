@@ -5,7 +5,7 @@ const LEVELS = { debug: 10, info: 20, warn: 30, error: 40 };
 const currentLevel = LEVELS[(process.env.LOG_LEVEL || 'info').toLowerCase()] || LEVELS.info;
 const sessionStamp = new Date().toISOString().replace(/[:.]/g, '-');
 
-const MAX_LOG_BYTES = parseInt(process.env.LOG_MAX_BYTES, 10) || (10 * 1024 * 1024); // 10MB
+const MAX_LOG_BYTES = parseInt(process.env.LOG_MAX_BYTES, 10) || 10 * 1024 * 1024; // 10MB
 const MAX_LOG_BACKUPS = parseInt(process.env.LOG_MAX_BACKUPS, 10) || 3;
 const SESSION_KEEP_DAYS = parseInt(process.env.LOG_SESSION_KEEP_DAYS, 10) || 7;
 
@@ -54,7 +54,11 @@ function redactObject(obj, depth = 0) {
 function stringifyArg(value) {
   if (value instanceof Error) return value.stack || value.message;
   if (typeof value === 'object') {
-    try { return JSON.stringify(redactObject(value)); } catch { return String(value); }
+    try {
+      return JSON.stringify(redactObject(value));
+    } catch {
+      return String(value);
+    }
   }
   return String(value);
 }
@@ -128,7 +132,7 @@ function audit(event, meta = {}, level = 'info') {
  * This replaces .catch(() => {}) with contextual logging.
  */
 function swallow(context) {
-  return (e) => {
+  return e => {
     warn(`[${context}] ${e?.message || e}`);
   };
 }
@@ -141,20 +145,36 @@ let _rotationsCount = 0;
 
 function rotateIfNeeded(filePath) {
   let st;
-  try { st = fs.statSync(filePath); } catch { return false; }
+  try {
+    st = fs.statSync(filePath);
+  } catch {
+    return false;
+  }
   if (st.size <= MAX_LOG_BYTES) return false;
   // Shift backups: .N → .(N+1), começando do mais alto para não sobrescrever
   for (let i = MAX_LOG_BACKUPS - 1; i >= 1; i--) {
     const src = `${filePath}.${i}`;
     const dst = `${filePath}.${i + 1}`;
     if (fs.existsSync(src)) {
-      try { fs.renameSync(src, dst); } catch (e) { process.stderr.write(`[LOGGER] rotate fail ${src}: ${e.message}\n`); }
+      try {
+        fs.renameSync(src, dst);
+      } catch (e) {
+        process.stderr.write(`[LOGGER] rotate fail ${src}: ${e.message}\n`);
+      }
     }
   }
-  try { fs.renameSync(filePath, `${filePath}.1`); } catch (e) { process.stderr.write(`[LOGGER] rotate fail ${filePath}: ${e.message}\n`); return false; }
+  try {
+    fs.renameSync(filePath, `${filePath}.1`);
+  } catch (e) {
+    process.stderr.write(`[LOGGER] rotate fail ${filePath}: ${e.message}\n`);
+    return false;
+  }
   // Apaga a cópia mais antiga (overflow)
   const overflow = `${filePath}.${MAX_LOG_BACKUPS + 1}`;
-  if (fs.existsSync(overflow)) try { fs.unlinkSync(overflow); } catch {}
+  if (fs.existsSync(overflow))
+    try {
+      fs.unlinkSync(overflow);
+    } catch {}
   _rotationsCount++;
   return true;
 }
@@ -163,12 +183,14 @@ function cleanupOldSessions() {
   let removed = 0;
   try {
     const dir = ensureLogDir();
-    const cutoff = Date.now() - (SESSION_KEEP_DAYS * 24 * 60 * 60 * 1000);
+    const cutoff = Date.now() - SESSION_KEEP_DAYS * 24 * 60 * 60 * 1000;
     const baseFile = process.env.DEBUG_LOG_FILE || 'realgangsta-debug.log';
     const ext = path.extname(baseFile) || '.log';
     const stem = path.basename(baseFile, ext);
     // Match: stem-{ISO timestamp}.log e stem-{ISO timestamp}.jsonl
-    const re = new RegExp(`^${stem.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}-\\d{4}-\\d{2}-\\d{2}T.*\\.(log|jsonl)$`);
+    const re = new RegExp(
+      `^${stem.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}-\\d{4}-\\d{2}-\\d{2}T.*\\.(log|jsonl)$`
+    );
     for (const name of fs.readdirSync(dir)) {
       if (!re.test(name)) continue;
       const full = path.join(dir, name);
@@ -190,30 +212,42 @@ function startLogMaintenance() {
   // Cleanup imediato + rotação se necessário
   const removed = cleanupOldSessions();
   if (removed > 0) {
-    try { console.log(`[LOGGER] Limpas ${removed} session log(s) com >${SESSION_KEEP_DAYS}d.`); } catch {}
+    try {
+      console.log(`[LOGGER] Limpas ${removed} session log(s) com >${SESSION_KEEP_DAYS}d.`);
+    } catch {}
   }
   const paths = getLogPaths();
   rotateIfNeeded(paths.text);
 
   // Verificação periódica a cada 30min
   if (_maintenanceTimer) clearInterval(_maintenanceTimer);
-  _maintenanceTimer = setInterval(() => {
-    try {
-      const p = getLogPaths();
-      if (rotateIfNeeded(p.text)) {
-        try { console.log(`[LOGGER] Rotação efectuada — ${p.text}`); } catch {}
-      }
-    } catch {}
-  }, 30 * 60 * 1000);
+  _maintenanceTimer = setInterval(
+    () => {
+      try {
+        const p = getLogPaths();
+        if (rotateIfNeeded(p.text)) {
+          try {
+            console.log(`[LOGGER] Rotação efectuada — ${p.text}`);
+          } catch {}
+        }
+      } catch {}
+    },
+    30 * 60 * 1000
+  );
   if (_maintenanceTimer.unref) _maintenanceTimer.unref();
   return _maintenanceTimer;
 }
 
 function stopLogMaintenance() {
-  if (_maintenanceTimer) { clearInterval(_maintenanceTimer); _maintenanceTimer = null; }
+  if (_maintenanceTimer) {
+    clearInterval(_maintenanceTimer);
+    _maintenanceTimer = null;
+  }
 }
 
-function getRotationsCount() { return _rotationsCount; }
+function getRotationsCount() {
+  return _rotationsCount;
+}
 
 /** Generate a short correlation ID for request tracing */
 function newCorrelationId() {
@@ -232,7 +266,19 @@ function scopedLogger(correlationId) {
 }
 
 module.exports = {
-  debug, log, warn, error, audit, getLogPaths, sessionStamp,
-  swallow, newCorrelationId, scopedLogger,
-  startLogMaintenance, stopLogMaintenance, rotateIfNeeded, cleanupOldSessions, getRotationsCount,
+  debug,
+  log,
+  warn,
+  error,
+  audit,
+  getLogPaths,
+  sessionStamp,
+  swallow,
+  newCorrelationId,
+  scopedLogger,
+  startLogMaintenance,
+  stopLogMaintenance,
+  rotateIfNeeded,
+  cleanupOldSessions,
+  getRotationsCount,
 };

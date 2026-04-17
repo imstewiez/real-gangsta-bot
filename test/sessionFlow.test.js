@@ -44,12 +44,14 @@ describe('sessão de saída — cobertura Sheets event-driven', () => {
 
   it('mapeamento cobre todos os eventos saida.* emitidos', () => {
     const required = [
-      'saida.opened', 'saida.started', 'saida.closed',
-      'saida.participant_added', 'saida.material_issued',
+      'saida.opened',
+      'saida.started',
+      'saida.closed',
+      'saida.participant_added',
+      'saida.material_issued',
     ];
     for (const e of required) {
-      assert.ok(Array.isArray(EVENT_TO_TABS[e]) && EVENT_TO_TABS[e].length,
-        `evento ${e} deve estar mapeado`);
+      assert.ok(Array.isArray(EVENT_TO_TABS[e]) && EVENT_TO_TABS[e].length, `evento ${e} deve estar mapeado`);
     }
   });
 });
@@ -87,7 +89,10 @@ describe('templates saídas — novos eventos', () => {
     const embed = saidaLifecycleEmbed({
       event: 'closed',
       saidaId: 100,
-      gross: 1000, net: 800, lost: 100, consumed: 100,
+      gross: 1000,
+      net: 800,
+      lost: 100,
+      consumed: 100,
       unaccounted: 0,
     });
     const json = embed.toJSON();
@@ -100,7 +105,8 @@ describe('templates saídas — novos eventos', () => {
     const embed = saidaLifecycleEmbed({
       event: 'closed',
       saidaId: 101,
-      gross: 1000, net: 800,
+      gross: 1000,
+      net: 800,
       unaccounted: 50,
     });
     const json = embed.toJSON();

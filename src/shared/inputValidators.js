@@ -17,9 +17,9 @@ const MAX_DEFAULT_LEN = 500;
 // Removemos mentions tipo <@123>, <#456>, <@&789> e bloqueamos backticks
 // triplicados que podem quebrar blocos de código em embeds.
 const DANGEROUS_PATTERNS = [
-  /<@!?&?\d{15,20}>/g,     // mentions user/role/channel-like
+  /<@!?&?\d{15,20}>/g, // mentions user/role/channel-like
   /<#\d{15,20}>/g,
-  /```/g,                   // triple backtick
+  /```/g, // triple backtick
 ];
 
 function sanitizeText(v, maxLen = MAX_DEFAULT_LEN) {
@@ -41,7 +41,7 @@ function validateText(v, { required = false, minLen = 0, maxLen = MAX_DEFAULT_LE
 }
 
 function validateInt(v, { required = false, min = null, max = null, name = 'número' } = {}) {
-  const raw = (v == null) ? '' : String(v).trim();
+  const raw = v == null ? '' : String(v).trim();
   if (!raw) {
     if (required) return { ok: false, error: `O ${name} é obrigatório.` };
     return { ok: true, value: 0 };
@@ -54,7 +54,7 @@ function validateInt(v, { required = false, min = null, max = null, name = 'núm
 }
 
 function validateFloat(v, { required = false, min = null, max = null, name = 'valor' } = {}) {
-  const raw = (v == null) ? '' : String(v).trim().replace(',', '.');
+  const raw = v == null ? '' : String(v).trim().replace(',', '.');
   if (!raw) {
     if (required) return { ok: false, error: `O ${name} é obrigatório.` };
     return { ok: true, value: 0 };
@@ -67,7 +67,7 @@ function validateFloat(v, { required = false, min = null, max = null, name = 'va
 }
 
 function validateYesNo(v, { required = false, name = 'campo' } = {}) {
-  const s = (v == null) ? '' : String(v).trim().toLowerCase();
+  const s = v == null ? '' : String(v).trim().toLowerCase();
   if (!s) {
     if (required) return { ok: false, error: `${name} é obrigatório (S/N).` };
     return { ok: true, value: false };
@@ -78,7 +78,7 @@ function validateYesNo(v, { required = false, name = 'campo' } = {}) {
 }
 
 function validateDate(v, { required = false, name = 'data' } = {}) {
-  const s = (v == null) ? '' : String(v).trim();
+  const s = v == null ? '' : String(v).trim();
   if (!s) {
     if (required) return { ok: false, error: `${name} obrigatória.` };
     return { ok: true, value: null };
@@ -92,7 +92,7 @@ function validateDate(v, { required = false, name = 'data' } = {}) {
 }
 
 function validateTime(v, { required = false, name = 'hora' } = {}) {
-  const s = (v == null) ? '' : String(v).trim();
+  const s = v == null ? '' : String(v).trim();
   if (!s) {
     if (required) return { ok: false, error: `${name} obrigatória.` };
     return { ok: true, value: null };
@@ -106,7 +106,7 @@ function validateTime(v, { required = false, name = 'hora' } = {}) {
 }
 
 function validateEnum(v, allowed, { required = false, name = 'opção' } = {}) {
-  const s = (v == null) ? '' : String(v).trim().toLowerCase();
+  const s = v == null ? '' : String(v).trim().toLowerCase();
   if (!s) {
     if (required) return { ok: false, error: `${name} obrigatório.` };
     return { ok: true, value: null };
@@ -139,8 +139,14 @@ function runAll(checks) {
 
 module.exports = {
   sanitizeText,
-  validateText, validateInt, validateFloat,
-  validateYesNo, validateDate, validateTime, validateEnum,
+  validateText,
+  validateInt,
+  validateFloat,
+  validateYesNo,
+  validateDate,
+  validateTime,
+  validateEnum,
   runAll,
-  DANGEROUS_PATTERNS, MAX_DEFAULT_LEN,
+  DANGEROUS_PATTERNS,
+  MAX_DEFAULT_LEN,
 };

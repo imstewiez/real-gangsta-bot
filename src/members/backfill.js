@@ -24,16 +24,16 @@ const { logAudit } = require('../audit/auditEngine');
 //   BAIRRISTA:      gangster_fodido > o_gunao > young_blood
 const CHEFIA_TIERS = [
   { key: 'manda_chuva', getId: () => CONFIG.MANDA_CHUVA_ROLE_ID },
-  { key: 'kingpin',     getId: () => CONFIG.KINGPIN_ROLE_ID },
+  { key: 'kingpin', getId: () => CONFIG.KINGPIN_ROLE_ID },
 ];
 const OFICIAL_TIERS = [
-  { key: 'og',            getId: () => CONFIG.OG_ROLE_ID },
+  { key: 'og', getId: () => CONFIG.OG_ROLE_ID },
   { key: 'real_gangster', getId: () => CONFIG.REAL_GANGSTER_ROLE_ID },
 ];
 const BAIRRISTA_TIERS = [
   { key: 'gangster_fodido', getId: () => CONFIG.GANGSTER_FODIDO_ROLE_ID },
-  { key: 'o_gunao',         getId: () => CONFIG.O_GUNAO_ROLE_ID },
-  { key: 'young_blood',     getId: () => CONFIG.YOUNG_BLOOD_ROLE_ID },
+  { key: 'o_gunao', getId: () => CONFIG.O_GUNAO_ROLE_ID },
+  { key: 'young_blood', getId: () => CONFIG.YOUNG_BLOOD_ROLE_ID },
 ];
 
 function _resolveTier(roles, tierList) {
@@ -87,29 +87,42 @@ function detectRoleFromGuildMember(gm) {
  */
 async function backfillMembers(guild, opts = {}) {
   const dryRun = Boolean(opts.dryRun);
-  const actor  = opts.actor || 'system:backfill';
+  const actor = opts.actor || 'system:backfill';
 
   await guild.members.fetch().catch(() => null);
   const report = {
-    scanned: 0, skippedBot: 0, skippedNoRole: 0,
-    created: 0, updated: 0, unchanged: 0,
+    scanned: 0,
+    skippedBot: 0,
+    skippedNoRole: 0,
+    created: 0,
+    updated: 0,
+    unchanged: 0,
     errors: [],
   };
 
   for (const [, gm] of guild.members.cache) {
     report.scanned += 1;
-    if (gm.user.bot) { report.skippedBot += 1; continue; }
+    if (gm.user.bot) {
+      report.skippedBot += 1;
+      continue;
+    }
 
     const detected = detectRoleFromGuildMember(gm);
-    if (!detected) { report.skippedNoRole += 1; continue; }
+    if (!detected) {
+      report.skippedNoRole += 1;
+      continue;
+    }
 
     try {
       const existing = await memberRepo.findByDiscordId(gm.id);
       const displayName = _pickDisplayName(gm);
-      const username    = gm.user.username;
+      const username = gm.user.username;
 
       if (!existing) {
-        if (dryRun) { report.created += 1; continue; }
+        if (dryRun) {
+          report.created += 1;
+          continue;
+        }
         await memberRepo.create({
           discordId: gm.id,
           username,
@@ -143,7 +156,10 @@ async function backfillMembers(guild, opts = {}) {
       if (existing.username !== username) changes.username = username;
       if (existing.status === 'inativo') changes.status = 'ativo'; // reactivar se voltou a ter role
 
-      if (Object.keys(changes).length === 0) { report.unchanged += 1; continue; }
+      if (Object.keys(changes).length === 0) {
+        report.unchanged += 1;
+        continue;
+      }
 
       if (!dryRun) {
         await memberRepo.update(existing.id, changes);
@@ -153,8 +169,10 @@ async function backfillMembers(guild, opts = {}) {
           entityId: gm.id,
           actorId: actor,
           beforeState: {
-            role: existing.role, tier: existing.tier,
-            display_name: existing.display_name, username: existing.username,
+            role: existing.role,
+            tier: existing.tier,
+            display_name: existing.display_name,
+            username: existing.username,
             status: existing.status,
           },
           afterState: changes,
@@ -168,7 +186,9 @@ async function backfillMembers(guild, opts = {}) {
     }
   }
 
-  log(`[BACKFILL] scanned=${report.scanned} bot=${report.skippedBot} no_role=${report.skippedNoRole} created=${report.created} updated=${report.updated} unchanged=${report.unchanged} errors=${report.errors.length} dry=${dryRun}`);
+  log(
+    `[BACKFILL] scanned=${report.scanned} bot=${report.skippedBot} no_role=${report.skippedNoRole} created=${report.created} updated=${report.updated} unchanged=${report.unchanged} errors=${report.errors.length} dry=${dryRun}`
+  );
   return report;
 }
 

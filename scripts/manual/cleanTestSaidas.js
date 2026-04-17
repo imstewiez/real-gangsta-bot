@@ -29,7 +29,7 @@ async function main() {
       SELECT id, date, spot, operation_type, status, result
       FROM operations ORDER BY id
     `);
-    const killsBefore = await client.query(`SELECT COUNT(*)::int AS n FROM kill_logs`);
+    const killsBefore = await client.query('SELECT COUNT(*)::int AS n FROM kill_logs');
 
     if (!before.rows.length && killsBefore.rows[0].n === 0) {
       console.log('Sem saídas nem kills na base de dados. Nada a limpar.');
@@ -46,7 +46,7 @@ async function main() {
     await client.query('BEGIN');
 
     // 1. Movimentos de inventário ligados a saídas (por FK)
-    const r1 = await client.query(`DELETE FROM inventory_movements WHERE saida_id IS NOT NULL`);
+    const r1 = await client.query('DELETE FROM inventory_movements WHERE saida_id IS NOT NULL');
     console.log(`inventory_movements (saida_id):    ${r1.rowCount} apagados`);
 
     // 2. Movimentos de inventário de tipos de saída (sem FK mas semanticamente ligados)
@@ -118,11 +118,11 @@ async function main() {
     console.log(`all_time_stats resetados:          ${r10.rowCount} rows`);
 
     // 10. Reset sequences
-    await client.query(`ALTER SEQUENCE IF EXISTS operations_id_seq RESTART WITH 1`);
-    await client.query(`ALTER SEQUENCE IF EXISTS kill_logs_id_seq RESTART WITH 1`);
-    await client.query(`ALTER SEQUENCE IF EXISTS operation_participants_id_seq RESTART WITH 1`);
-    await client.query(`ALTER SEQUENCE IF EXISTS operation_materials_id_seq RESTART WITH 1`);
-    console.log(`sequences resetadas:               operations, kill_logs, participants, materials`);
+    await client.query('ALTER SEQUENCE IF EXISTS operations_id_seq RESTART WITH 1');
+    await client.query('ALTER SEQUENCE IF EXISTS kill_logs_id_seq RESTART WITH 1');
+    await client.query('ALTER SEQUENCE IF EXISTS operation_participants_id_seq RESTART WITH 1');
+    await client.query('ALTER SEQUENCE IF EXISTS operation_materials_id_seq RESTART WITH 1');
+    console.log('sequences resetadas:               operations, kill_logs, participants, materials');
 
     await client.query('COMMIT');
     console.log('\n✓ Limpeza concluída. Todos os dados de teste de saídas e combate foram removidos.');

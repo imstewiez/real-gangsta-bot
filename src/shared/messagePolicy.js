@@ -21,13 +21,13 @@
  * Qualquer coisa que não seja classificada herda DEFAULT (BANAL).
  */
 const MessageClass = Object.freeze({
-  BANAL:      'BANAL',       // "guardado", "feito", validação OK — 20s
-  WARN:       'WARN',        // input inválido, duplicado — 45s
-  ERROR:      'ERROR',       // falha recuperável, item não encontrado — 60s
-  RESULT:     'RESULT',      // lista, ranking, histórico curto — 60s
-  COCKPIT:    'COCKPIT',     // Movimento no Bairro, perfis, drill-downs — 120s
-  FLOW:       'FLOW',        // wizard multi-step — persiste; desactiva on expire
-  PERSISTENT: 'PERSISTENT',  // painéis, logs — nunca auto-dismiss
+  BANAL: 'BANAL', // "guardado", "feito", validação OK — 20s
+  WARN: 'WARN', // input inválido, duplicado — 45s
+  ERROR: 'ERROR', // falha recuperável, item não encontrado — 60s
+  RESULT: 'RESULT', // lista, ranking, histórico curto — 60s
+  COCKPIT: 'COCKPIT', // Movimento no Bairro, perfis, drill-downs — 120s
+  FLOW: 'FLOW', // wizard multi-step — persiste; desactiva on expire
+  PERSISTENT: 'PERSISTENT', // painéis, logs — nunca auto-dismiss
 });
 
 /**
@@ -35,13 +35,13 @@ const MessageClass = Object.freeze({
  * e densidade típica de informação.
  */
 const TTL_MS = Object.freeze({
-  BANAL:      20_000,
-  WARN:       45_000,
-  ERROR:      60_000,
-  RESULT:     60_000,
-  COCKPIT:    120_000,
-  FLOW:       null,   // sem TTL — gerido pelo fluxo (expira quando acabar)
-  PERSISTENT: null,   // sem TTL — nunca auto-dismiss
+  BANAL: 20_000,
+  WARN: 45_000,
+  ERROR: 60_000,
+  RESULT: 60_000,
+  COCKPIT: 120_000,
+  FLOW: null, // sem TTL — gerido pelo fluxo (expira quando acabar)
+  PERSISTENT: null, // sem TTL — nunca auto-dismiss
 });
 
 /**
@@ -49,12 +49,12 @@ const TTL_MS = Object.freeze({
  * FLOW/PERSISTENT nunca auto-delete.
  */
 const AUTO_DELETE = Object.freeze({
-  BANAL:      true,
-  WARN:       true,
-  ERROR:      true,
-  RESULT:     true,
-  COCKPIT:    true,
-  FLOW:       false,
+  BANAL: true,
+  WARN: true,
+  ERROR: true,
+  RESULT: true,
+  COCKPIT: true,
+  FLOW: false,
   PERSISTENT: false,
 });
 
@@ -84,13 +84,13 @@ function locksOnExpire(cls) {
  */
 function classFromLegacyOpts({ dismissible, messageClass, payload }) {
   if (messageClass && MessageClass[messageClass]) return messageClass;
-  if (dismissible === true)  return MessageClass.BANAL;
+  if (dismissible === true) return MessageClass.BANAL;
   if (dismissible === false) return MessageClass.FLOW;
   // auto — inferir a partir do payload:
   const hasComponents = Array.isArray(payload?.components) && payload.components.length > 0;
-  const hasEmbeds     = Array.isArray(payload?.embeds) && payload.embeds.length > 0;
-  if (hasComponents)  return MessageClass.FLOW;
-  if (hasEmbeds)      return MessageClass.RESULT;
+  const hasEmbeds = Array.isArray(payload?.embeds) && payload.embeds.length > 0;
+  if (hasComponents) return MessageClass.FLOW;
+  if (hasEmbeds) return MessageClass.RESULT;
   return MessageClass.BANAL;
 }
 

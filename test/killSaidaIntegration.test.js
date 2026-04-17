@@ -16,7 +16,9 @@ process.env.DISCORD_BOT_TOKEN ||= 'test-token';
 process.env.DISCORD_GUILD_ID ||= 'test-guild';
 process.env.DATABASE_URL ||= 'postgresql://test:test@localhost:5432/test_db';
 
-function resolved(rel) { return require.resolve(path.join(__dirname, '..', 'src', rel)); }
+function resolved(rel) {
+  return require.resolve(path.join(__dirname, '..', 'src', rel));
+}
 
 const state = {
   members: new Map(), // discord_id -> member
@@ -27,18 +29,22 @@ require.cache[resolved('db.js')] = {
   exports: {
     pool: { connect: async () => ({ query: async () => ({ rows: [] }), release: () => {} }) },
     query: async () => ({ rows: [] }),
-    queryWithTransaction: async (fn) => fn({ query: async () => ({ rows: [] }) }),
+    queryWithTransaction: async fn => fn({ query: async () => ({ rows: [] }) }),
   },
 };
 
 const stubMemberRepo = {
-  findByDiscordId: async (discordId) => state.members.get(discordId) || null,
-  findById: async (id) => [...state.members.values()].find(m => m.id === id) || null,
-  create: async (x) => { const m = { id: state.members.size + 1, ...x }; state.members.set(x.discordId, m); return m; },
+  findByDiscordId: async discordId => state.members.get(discordId) || null,
+  findById: async id => [...state.members.values()].find(m => m.id === id) || null,
+  create: async x => {
+    const m = { id: state.members.size + 1, ...x };
+    state.members.set(x.discordId, m);
+    return m;
+  },
 };
 
 const stubKillRepo = {
-  recordKill: async (data) => {
+  recordKill: async data => {
     const kill = { id: state.kills.length + 1, ...data, created_at: new Date(), date: data.date || new Date() };
     state.kills.push(kill);
     return kill;
@@ -58,10 +64,10 @@ const stubKillRepo = {
         return { killer_id: killerId, kills, display_name: m?.display_name, discord_id: m?.discord_id };
       });
   },
-  getRecent: async (limit) => state.kills.slice(-limit).reverse(),
-  countKillsBySaida: async (sid) => state.kills.filter(k => k.saidaId === sid).length,
-  countKillsByMember: async (memberId) => state.kills.filter(k => k.killerId === memberId).length,
-  totalOrgKills: async (windowDays) => {
+  getRecent: async limit => state.kills.slice(-limit).reverse(),
+  countKillsBySaida: async sid => state.kills.filter(k => k.saidaId === sid).length,
+  countKillsByMember: async memberId => state.kills.filter(k => k.killerId === memberId).length,
+  totalOrgKills: async windowDays => {
     const cutoff = windowDays ? Date.now() - windowDays * 86400000 : 0;
     return state.kills.filter(k => new Date(k.created_at).getTime() >= cutoff).length;
   },
@@ -71,10 +77,18 @@ require.cache[resolved('repositories/index.js')] = {
   exports: {
     memberRepo: stubMemberRepo,
     killRepo: stubKillRepo,
-    inventoryRepo: {}, saidaRepo: {}, operationRepo: {},
-    spotStatsRepo: {}, memberSaidaStatsRepo: {}, memberAnalyticsRepo: {},
-    rankingRepo: {}, auditRepo: {}, jobRepo: {}, availabilityRepo: {},
-    radioRepo: {}, stickyRepo: {},
+    inventoryRepo: {},
+    saidaRepo: {},
+    operationRepo: {},
+    spotStatsRepo: {},
+    memberSaidaStatsRepo: {},
+    memberAnalyticsRepo: {},
+    rankingRepo: {},
+    auditRepo: {},
+    jobRepo: {},
+    availabilityRepo: {},
+    radioRepo: {},
+    stickyRepo: {},
   },
 };
 require.cache[resolved('audit/auditEngine.js')] = {
@@ -118,16 +132,15 @@ describe('killEngine — integração com saídas', () => {
   });
 
   it('rejeita se victimName vazio', async () => {
-    await assert.rejects(
-      recordKill({ killerDiscordId: 'discord-1', victimName: '', createdBy: 'a' }),
-      /obrigatório/i
-    );
+    await assert.rejects(recordKill({ killerDiscordId: 'discord-1', victimName: '', createdBy: 'a' }), /obrigatório/i);
   });
 
   it('kill standalone (sem saidaId) também regista', async () => {
     const kill = await recordKill({
-      killerDiscordId: 'discord-1', victimName: 'Bandido Solto',
-      spot: 'Bairro', createdBy: 'a',
+      killerDiscordId: 'discord-1',
+      victimName: 'Bandido Solto',
+      spot: 'Bairro',
+      createdBy: 'a',
     });
     assert.equal(kill.saidaId, null);
     assert.equal(kill.spot, 'Bairro');

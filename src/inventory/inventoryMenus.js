@@ -1,7 +1,10 @@
 'use strict';
 const {
-  ActionRowBuilder, StringSelectMenuBuilder, ModalBuilder,
-  TextInputBuilder, TextInputStyle,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
 } = require('discord.js');
 const { inventoryRepo } = require('../repositories');
 const { MODALS, INVENTORY } = require('../content');
@@ -10,14 +13,29 @@ const { MODALS, INVENTORY } = require('../content');
 // Inclui nomes do catálogo actual (config/full-inventory.json) + legacy
 const CATEGORY_EMOJI = {
   // Catálogo actual
-  armas_fogo: '🔫', armas_brancas: '🔪', dinheiro: '💵',
-  sucata_industria: '♻️', quimicos_droga: '🧪', comida_pesca: '🍖',
-  equipamento: '🎒', municoes: '🔹', metais: '⛏️',
+  armas_fogo: '🔫',
+  armas_brancas: '🔪',
+  dinheiro: '💵',
+  sucata_industria: '♻️',
+  quimicos_droga: '🧪',
+  comida_pesca: '🍖',
+  equipamento: '🎒',
+  municoes: '🔹',
+  metais: '⛏️',
   // Legacy (ainda pode haver items com estas categorias)
-  armas: '🔫', acessorios: '🎒', reciclagem: '♻️',
-  componentes: '🔧', madeiras: '🪵', quimicos: '🧪',
-  electronica: '💻', droga: '💊', comida: '🍖', pesca: '🐟',
-  texteis: '🧵', utilidade: '🔦', outros: '📦',
+  armas: '🔫',
+  acessorios: '🎒',
+  reciclagem: '♻️',
+  componentes: '🔧',
+  madeiras: '🪵',
+  quimicos: '🧪',
+  electronica: '💻',
+  droga: '💊',
+  comida: '🍖',
+  pesca: '🐟',
+  texteis: '🧵',
+  utilidade: '🔦',
+  outros: '📦',
 };
 
 /**
@@ -64,7 +82,8 @@ async function buildItemSelectMenu(customIdPrefix, placeholder) {
     new StringSelectMenuBuilder()
       .setCustomId(customIdPrefix)
       .setPlaceholder(placeholder || INVENTORY.SELECTS.MATERIAL)
-      .setMinValues(1).setMaxValues(1)
+      .setMinValues(1)
+      .setMaxValues(1)
       .addOptions(options.length ? options : [{ label: 'Sem itens disponíveis', value: 'none' }])
   );
 }
@@ -92,7 +111,7 @@ function buildQuantityModal(title, customId) {
           .setPlaceholder(F.notes.placeholder)
           .setRequired(F.notes.required)
           .setMaxLength(F.notes.maxLength)
-      ),
+      )
     );
 }
 
@@ -119,7 +138,7 @@ function buildOperationMaterialModal(title, customId) {
           .setPlaceholder(F.notes.placeholder)
           .setRequired(F.notes.required)
           .setMaxLength(F.notes.maxLength)
-      ),
+      )
     );
 }
 
@@ -146,7 +165,7 @@ function buildStockAdjustmentModal(customId) {
           .setPlaceholder(F.reason.placeholder)
           .setRequired(F.reason.required)
           .setMaxLength(F.reason.maxLength)
-      ),
+      )
     );
 }
 

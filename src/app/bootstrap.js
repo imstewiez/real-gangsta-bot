@@ -18,8 +18,11 @@ const CONFIG = require('../config');
 const { pool, acquireInstanceLockWithRetry, releaseInstanceLock, warmPool } = require('../db');
 const { runMigrations } = require('../dbMigrate');
 const {
-  ensureInstanceTable, cleanupStaleInstances, registerInstance,
-  startHeartbeat, deregisterInstance,
+  ensureInstanceTable,
+  cleanupStaleInstances,
+  registerInstance,
+  startHeartbeat,
+  deregisterInstance,
 } = require('../instanceCoordinator');
 const { log, warn, error, startLogMaintenance, stopLogMaintenance } = require('../logger');
 const metrics = require('../lib/metrics');
@@ -72,8 +75,10 @@ async function bootstrap() {
     registerSheetProjections();
     log('[SHEETS] Projections registadas (sync event-driven com debounce 5s).');
   } else {
-    warn('[SHEETS] ⚠️ DESACTIVADO — GOOGLE_SERVICE_ACCOUNT_JSON ou SPREADSHEET_ID em falta. ' +
-         'Tabs nunca sincronizam até o env estar configurado no Railway.');
+    warn(
+      '[SHEETS] ⚠️ DESACTIVADO — GOOGLE_SERVICE_ACCOUNT_JSON ou SPREADSHEET_ID em falta. ' +
+        'Tabs nunca sincronizam até o env estar configurado no Railway.'
+    );
   }
   registerNotificationRouting();
 
@@ -82,9 +87,11 @@ async function bootstrap() {
   registerLifecycleListeners(client);
   client.on(Events.InteractionCreate, onInteraction);
 
-  client.once(Events.ClientReady, () => readyHook(client).catch(e => {
-    error('[READY] Falha no ready hook:', e);
-  }));
+  client.once(Events.ClientReady, () =>
+    readyHook(client).catch(e => {
+      error('[READY] Falha no ready hook:', e);
+    })
+  );
 
   await client.login(CONFIG.DISCORD_BOT_TOKEN);
   installShutdownSignals();
@@ -126,12 +133,14 @@ async function readyHook(c) {
   // Fire-and-forget, não bloqueia o ready; delay 20s para dar espaço ao
   // perms-on-boot e evitar rate limit no Google.
   if (CONFIG.isSheetsEnabled && CONFIG.isSheetsEnabled()) {
-    setTimeout(() => { _syncSheetsOnBoot().catch(() => {}); }, 20_000).unref?.();
+    setTimeout(() => {
+      _syncSheetsOnBoot().catch(() => {});
+    }, 20_000).unref?.();
   }
 
-  startHeartbeat((reason) => {
+  startHeartbeat(reason => {
     log(`[INSTANCE] Detectada instância mais recente — shutdown controlado (${reason}).`);
-    shutdown(reason).catch((e) => {
+    shutdown(reason).catch(e => {
       error('[SHUTDOWN] Erro no shutdown por preempção:', e);
       process.exit(0);
     });
@@ -161,9 +170,15 @@ async function shutdown(signal) {
   if (_shuttingDown) return;
   _shuttingDown = true;
   log(`[SHUTDOWN] ${signal} received. Shutting down...`);
-  try { stopScheduler(); } catch (_) {}
-  try { stopLogMaintenance(); } catch (_) {}
-  try { client?.destroy(); } catch (_) {}
+  try {
+    stopScheduler();
+  } catch (_) {}
+  try {
+    stopLogMaintenance();
+  } catch (_) {}
+  try {
+    client?.destroy();
+  } catch (_) {}
   await deregisterInstance(signal).catch(() => {});
   await releaseInstanceLock().catch(() => {});
   await pool.end().catch(() => {});
@@ -171,9 +186,9 @@ async function shutdown(signal) {
 }
 
 function installShutdownSignals() {
-  process.on('SIGINT',  () => shutdown('SIGINT'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('unhandledRejection', (reason) => {
+  process.on('unhandledRejection', reason => {
     error('[UNHANDLED REJECTION]', reason);
   });
 }

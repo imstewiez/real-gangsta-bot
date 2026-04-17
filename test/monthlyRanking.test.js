@@ -7,13 +7,15 @@ process.env.DISCORD_BOT_TOKEN ||= 'test-token';
 process.env.DISCORD_GUILD_ID ||= 'test-guild';
 process.env.DATABASE_URL ||= 'postgresql://test:test@localhost:5432/test_db';
 
-function resolved(rel) { return require.resolve(path.join(__dirname, '..', 'src', rel)); }
+function resolved(rel) {
+  return require.resolve(path.join(__dirname, '..', 'src', rel));
+}
 
 require.cache[resolved('db.js')] = {
   exports: {
     pool: { connect: async () => ({ query: async () => ({ rows: [] }), release: () => {} }) },
     query: async () => ({ rows: [] }),
-    queryWithTransaction: async (fn) => fn({ query: async () => ({ rows: [] }) }),
+    queryWithTransaction: async fn => fn({ query: async () => ({ rows: [] }) }),
   },
 };
 

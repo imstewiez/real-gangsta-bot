@@ -53,7 +53,9 @@ async function postFresh(client, sticky) {
     try {
       const prev = await channel.messages.fetch(sticky.last_message_id).catch(() => null);
       if (prev) await prev.delete().catch(() => {});
-    } catch (_) { /* ignore */ }
+    } catch (_) {
+      /* ignore */
+    }
   }
 
   const message = await channel.send({
@@ -100,7 +102,9 @@ async function setSticky({ channelId, sourceKey, mode, payload, thresholdMsgs, t
   if (!validModes.has(mode)) throw new Error(`Modo inválido: ${mode} (usa update|repost)`);
 
   const sticky = await stickyRepo.upsert({
-    channelId, sourceKey, mode,
+    channelId,
+    sourceKey,
+    mode,
     payload: payload || {},
     thresholdMsgs: thresholdMsgs || 0,
     thresholdMinutes: thresholdMinutes || 0,
@@ -113,7 +117,9 @@ async function setSticky({ channelId, sourceKey, mode, payload, thresholdMsgs, t
     actorId: createdBy,
     afterState: { channelId, sourceKey, mode, thresholdMsgs, thresholdMinutes },
   });
-  log(`[STICKY] Set ${sourceKey} em ${channelId} (${mode}, t_msgs=${thresholdMsgs || 0}, t_min=${thresholdMinutes || 0}).`);
+  log(
+    `[STICKY] Set ${sourceKey} em ${channelId} (${mode}, t_msgs=${thresholdMsgs || 0}, t_min=${thresholdMinutes || 0}).`
+  );
   return sticky;
 }
 
@@ -193,8 +199,11 @@ async function notifyChange(client, sourceKey, { channelId } = {}) {
     const all = await stickyRepo.listActive();
     const targets = all.filter(s => s.source_key === sourceKey && (!channelId || s.channel_id === channelId));
     for (const s of targets) {
-      try { await refresh(client, s); }
-      catch (e) { warn(`[STICKY] notifyChange refresh falhou ${sourceKey}: ${e.message}`); }
+      try {
+        await refresh(client, s);
+      } catch (e) {
+        warn(`[STICKY] notifyChange refresh falhou ${sourceKey}: ${e.message}`);
+      }
     }
   } catch (e) {
     warn(`[STICKY] notifyChange ${sourceKey} falhou: ${e.message}`);

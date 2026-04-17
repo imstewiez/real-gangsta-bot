@@ -40,10 +40,11 @@ async function ensureInstanceTable() {
 
 async function cleanupStaleInstances() {
   const res = await query(
-    `DELETE FROM bot_instances WHERE last_heartbeat < NOW() - ($1 || ' seconds')::interval RETURNING instance_id`,
+    "DELETE FROM bot_instances WHERE last_heartbeat < NOW() - ($1 || ' seconds')::interval RETURNING instance_id",
     [String(STALE_SECONDS)]
   );
-  if (res.rowCount > 0) log(`[INSTANCE] Removidas ${res.rowCount} instâncias stale (>${STALE_SECONDS}s sem heartbeat).`);
+  if (res.rowCount > 0)
+    log(`[INSTANCE] Removidas ${res.rowCount} instâncias stale (>${STALE_SECONDS}s sem heartbeat).`);
   return res.rowCount;
 }
 
@@ -82,10 +83,7 @@ function getCurrentInstance() {
 async function _tick(onPreempted) {
   if (!_state) return;
   try {
-    await query(
-      `UPDATE bot_instances SET last_heartbeat = NOW() WHERE instance_id = $1`,
-      [_state.instanceId]
-    );
+    await query('UPDATE bot_instances SET last_heartbeat = NOW() WHERE instance_id = $1', [_state.instanceId]);
     const res = await query(
       `SELECT instance_id, version, git_sha, started_at
          FROM bot_instances
@@ -96,7 +94,9 @@ async function _tick(onPreempted) {
     );
     if (res.rowCount > 0) {
       const newer = res.rows[0];
-      warn(`[INSTANCE] Preempção: ${newer.instance_id} (started_at=${newer.started_at.toISOString()}) é mais recente. A desligar…`);
+      warn(
+        `[INSTANCE] Preempção: ${newer.instance_id} (started_at=${newer.started_at.toISOString()}) é mais recente. A desligar…`
+      );
       stopHeartbeat();
       if (typeof onPreempted === 'function') onPreempted('preempted');
     }
@@ -124,10 +124,7 @@ async function deregisterInstance(reason = 'shutdown') {
   if (!_state) return;
   stopHeartbeat();
   try {
-    await query(
-      `DELETE FROM bot_instances WHERE instance_id = $1`,
-      [_state.instanceId]
-    );
+    await query('DELETE FROM bot_instances WHERE instance_id = $1', [_state.instanceId]);
     log(`[INSTANCE] Deregistada ${_state.instanceId} (motivo: ${reason}).`);
   } catch (e) {
     warn(`[INSTANCE] Falha a remover registo: ${e.message}`);

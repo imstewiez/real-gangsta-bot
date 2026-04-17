@@ -22,7 +22,7 @@ require.cache[resolvedPath('db.js')] = {
   exports: {
     pool: { connect: async () => ({ query: async () => ({ rows: [] }), release: () => {} }) },
     query: async () => ({ rows: [] }),
-    queryWithTransaction: async (fn) => fn({ query: async () => ({ rows: [] }) }),
+    queryWithTransaction: async fn => fn({ query: async () => ({ rows: [] }) }),
   },
 };
 require.cache[resolvedPath('repositories/index.js')] = {
@@ -41,11 +41,13 @@ require.cache[resolvedPath('audit/auditEngine.js')] = {
 };
 
 const {
-  HEADERS, STATE_META, STATE_ORDER, pickHeader, stateMeta,
+  HEADERS,
+  STATE_META,
+  STATE_ORDER,
+  pickHeader,
+  stateMeta,
 } = require('../src/availability/availabilityTemplates');
-const {
-  buildEmbed, buildComponents, todayDateString,
-} = require('../src/availability/availabilityEngine');
+const { buildEmbed, buildComponents, todayDateString } = require('../src/availability/availabilityEngine');
 
 describe('availabilityTemplates', () => {
   it('tem ≥ 5 cabeçalhos rotativos', () => {
@@ -78,8 +80,10 @@ describe('availabilityTemplates', () => {
 
 describe('availabilityEngine — UI builders', () => {
   const fakeSession = {
-    id: 1, session_date: '2026-04-13',
-    header_text: 'Quem alinha hoje?', status: 'open',
+    id: 1,
+    session_date: '2026-04-13',
+    header_text: 'Quem alinha hoje?',
+    status: 'open',
     mention_role_ids: '',
   };
 

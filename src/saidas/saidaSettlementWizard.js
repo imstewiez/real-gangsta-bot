@@ -21,8 +21,14 @@
  */
 
 const {
-  ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle,
-  ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  MessageFlags,
 } = require('discord.js');
 const { saidaRepo, killRepo, memberRepo } = require('../repositories');
 const { query } = require('../db');
@@ -57,10 +63,7 @@ async function _renderWizardMessage(saidaId) {
     if (settled.length > 10) lines.push(`_… e mais ${settled.length - 10}._`);
   }
 
-  const embed = brandEmbed()
-    .setColor(0x9B59B6)
-    .setTitle(SAIDAS.WIZARD_TITLE)
-    .setDescription(lines.join('\n'));
+  const embed = brandEmbed().setColor(0x9b59b6).setTitle(SAIDAS.WIZARD_TITLE).setDescription(lines.join('\n'));
 
   const components = [];
 
@@ -74,22 +77,27 @@ async function _renderWizardMessage(saidaId) {
         value: p.discord_id,
       };
     });
-    components.push(new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId(`saida::wz_select::${saidaId}`)
-        .setPlaceholder(SAIDAS.WIZARD_SELECT_PLACEHOLDER(pending.length))
-        .setMinValues(1).setMaxValues(1)
-        .addOptions(options)
-    ));
+    components.push(
+      new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId(`saida::wz_select::${saidaId}`)
+          .setPlaceholder(SAIDAS.WIZARD_SELECT_PLACEHOLDER(pending.length))
+          .setMinValues(1)
+          .setMaxValues(1)
+          .addOptions(options)
+      )
+    );
   }
 
-  components.push(new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`saida::wz_finish::${saidaId}`)
-      .setStyle(pending.length ? ButtonStyle.Primary : ButtonStyle.Success)
-      .setLabel(pending.length ? SAIDAS.WIZARD_BTN_FINISH_PENDING : SAIDAS.WIZARD_BTN_FINISH_DONE)
-      .setEmoji(EMOJI.FECHAR)
-  ));
+  components.push(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`saida::wz_finish::${saidaId}`)
+        .setStyle(pending.length ? ButtonStyle.Primary : ButtonStyle.Success)
+        .setLabel(pending.length ? SAIDAS.WIZARD_BTN_FINISH_PENDING : SAIDAS.WIZARD_BTN_FINISH_DONE)
+        .setEmoji(EMOJI.FECHAR)
+    )
+  );
 
   return { embed, components };
 }
@@ -118,14 +126,18 @@ async function handleSelectParticipant(interaction) {
       .setCustomId(`saida::wz_outcome::${saidaId}::${discordId}::dead`)
       .setLabel('Morto')
       .setStyle(ButtonStyle.Danger)
-      .setEmoji(EMOJI.MORTE),
+      .setEmoji(EMOJI.MORTE)
   );
 
-  await safeReply(interaction, {
-    content: `**${name}** — como foi a saída?`,
-    components: [row],
-    flags: MessageFlags.Ephemeral,
-  }, { messageClass: 'FLOW' });
+  await safeReply(
+    interaction,
+    {
+      content: `**${name}** — como foi a saída?`,
+      components: [row],
+      flags: MessageFlags.Ephemeral,
+    },
+    { messageClass: 'FLOW' }
+  );
 }
 
 // STEP 2: clicou Vivo/Morto → se caracterizado+org+vivo, pergunta arma;
@@ -140,7 +152,11 @@ async function handleOutcome(interaction) {
   const participants = await saidaRepo.getParticipants(saidaId);
   const p = participants.find(x => x.discord_id === discordId);
   if (!p) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} Participante não encontrado.`, flags: MessageFlags.Ephemeral }, { messageClass: 'WARN' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} Participante não encontrado.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'WARN' }
+    );
   }
 
   const hadOrgWeapon = p.received_org_material && !p.own_weapon;
@@ -163,10 +179,10 @@ async function handleOutcome(interaction) {
         .setCustomId(`saida::wz_weapon::${saidaId}::${discordId}::alive::lost`)
         .setLabel('Perdeu na rua')
         .setStyle(ButtonStyle.Secondary)
-        .setEmoji(EMOJI.PERDIDO),
+        .setEmoji(EMOJI.PERDIDO)
     );
     return interaction.editReply({
-      content: `E a arma da org?`,
+      content: 'E a arma da org?',
       components: [row],
     });
   }
@@ -182,8 +198,8 @@ async function handleWeaponDecision(interaction) {
   const parts = interaction.customId.split('::');
   const saidaId = parseInt(parts[2]);
   const discordId = parts[3];
-  const outcome = parts[4];         // 'alive'
-  const weaponDecision = parts[5];  // 'returned' | 'not_returned' | 'lost'
+  const outcome = parts[4]; // 'alive'
+  const weaponDecision = parts[5]; // 'returned' | 'not_returned' | 'lost'
   return _openSettleModal(interaction, saidaId, discordId, outcome, weaponDecision);
 }
 
@@ -194,15 +210,23 @@ async function _openSettleModal(interaction, saidaId, discordId, outcome, weapon
     .setTitle(`Liquidar — ${member?.display_name || discordId}`.slice(0, 45))
     .addComponents(
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('kills')
+        new TextInputBuilder()
+          .setCustomId('kills')
           .setLabel(SAIDAS.MODAL.KILLS_LABEL)
           .setStyle(TextInputStyle.Short)
-          .setRequired(false).setMaxLength(4).setPlaceholder('0').setValue('0')),
+          .setRequired(false)
+          .setMaxLength(4)
+          .setPlaceholder('0')
+          .setValue('0')
+      ),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('notes')
+        new TextInputBuilder()
+          .setCustomId('notes')
           .setLabel(SAIDAS.MODAL.NOTES_LABEL)
           .setStyle(TextInputStyle.Paragraph)
-          .setRequired(false).setMaxLength(300)),
+          .setRequired(false)
+          .setMaxLength(300)
+      )
     );
   await safeShowModal(interaction, modal);
 }
@@ -215,7 +239,7 @@ async function handleSettleModal(interaction) {
   const parts = interaction.customId.split('::');
   const saidaId = parseInt(parts[2]);
   const discordId = parts[3];
-  const outcome = parts[4];        // 'alive' | 'dead'
+  const outcome = parts[4]; // 'alive' | 'dead'
   const weaponDecision = parts[5]; // 'returned' | 'not_returned' | 'lost' | 'died_auto' | 'no_org_weapon'
 
   const kills = Math.max(0, Math.min(parseInt(getModalField(interaction, 'kills')) || 0, 100));
@@ -240,24 +264,36 @@ async function handleSettleModal(interaction) {
       WHERE om.operation_id = $1 AND om.direction = 'fornecido' AND om.member_id = $2`,
     [saidaId, member.id]
   );
-  const issuedValue = fornecidoRes.rows.reduce((acc, r) => acc + (r.quantity * (parseFloat(r.estimated_value) || 0)), 0);
+  const issuedValue = fornecidoRes.rows.reduce((acc, r) => acc + r.quantity * (parseFloat(r.estimated_value) || 0), 0);
   const issuedItems = fornecidoRes.rows.map(r => ({ itemId: r.item_id, qty: r.quantity }));
 
   // Decisão de material baseada em weaponDecision (derivado dos botões).
   // Morreu OU sobreviveu e disse "não devolveu"/"perdeu" → material perdido.
   // Sobreviveu e devolveu → material retornado (sem perda).
-  const materialLost = (weaponDecision !== 'returned' && weaponDecision !== 'no_org_weapon');
+  const materialLost = weaponDecision !== 'returned' && weaponDecision !== 'no_org_weapon';
 
-  let lostValue = 0, returnedValue = 0;
+  let lostValue = 0,
+    returnedValue = 0;
   if (materialLost && issuedItems.length) {
     const saidaEngine = require('./saidaEngine');
-    await saidaEngine.settleParticipantCustody(saidaId, discordId, {
-      diedWithItems: issuedItems, died, survived: !died, returned: false,
-    }, interaction.user.id, interaction.guild);
+    await saidaEngine.settleParticipantCustody(
+      saidaId,
+      discordId,
+      {
+        diedWithItems: issuedItems,
+        died,
+        survived: !died,
+        returned: false,
+      },
+      interaction.user.id,
+      interaction.guild
+    );
     lostValue = issuedValue;
   } else {
     await saidaRepo.updateParticipant(saidaId, member.id, {
-      died, survived: !died, returned: !died,
+      died,
+      survived: !died,
+      returned: !died,
     });
     if (!died) returnedValue = issuedValue;
   }
@@ -265,7 +301,8 @@ async function handleSettleModal(interaction) {
   const netDelta = returnedValue - lostValue;
 
   await saidaRepo.updateParticipant(saidaId, member.id, {
-    kills, deaths_count: died ? 1 : 0,
+    kills,
+    deaths_count: died ? 1 : 0,
     issued_value: issuedValue,
     returned_value: returnedValue,
     lost_value: lostValue,
@@ -278,7 +315,9 @@ async function handleSettleModal(interaction) {
 
   // Re-renderiza a mensagem com o estado actualizado
   const { embed, components } = await _renderWizardMessage(saidaId);
-  try { await interaction.editReply({ embeds: [embed], components }); } catch (_) {}
+  try {
+    await interaction.editReply({ embeds: [embed], components });
+  } catch (_) {}
 }
 
 async function handleFinish(interaction) {
@@ -293,9 +332,21 @@ async function handleFinish(interaction) {
   if (currentSaida?.status === 'concluida') {
     const v = { net: currentSaida.net_value || 0, was_profitable: currentSaida.was_profitable };
     const channelId = CONFIG.SAIDA_RESULTS_CHANNEL_ID || CONFIG.AUDIT_CHANNEL_ID || '';
-    return safeReply(interaction, {
-      content: SAIDAS.WIZARD_SUMMARY(saidaId, currentSaida.our_kills || 0, currentSaida.deaths || 0, currentSaida.survivors || 0, v.net, v.was_profitable, channelId),
-    }, { dismissible: true });
+    return safeReply(
+      interaction,
+      {
+        content: SAIDAS.WIZARD_SUMMARY(
+          saidaId,
+          currentSaida.our_kills || 0,
+          currentSaida.deaths || 0,
+          currentSaida.survivors || 0,
+          v.net,
+          v.was_profitable,
+          channelId
+        ),
+      },
+      { dismissible: true }
+    );
   }
 
   // Auto-liquida os que ficaram pendentes como "vivo, sem kills"
@@ -303,10 +354,13 @@ async function handleFinish(interaction) {
   const pending = participants.filter(p => !p.settled);
   for (const p of pending) {
     // Auto-settle: vivo, 0 kills, arma tratada conforme tipo
-    const weaponStatus = (p.own_weapon || !p.received_org_material) ? 'not_applicable' : 'confirmed_returned';
+    const weaponStatus = p.own_weapon || !p.received_org_material ? 'not_applicable' : 'confirmed_returned';
     await saidaRepo.updateParticipant(saidaId, p.member_id, {
-      kills: 0, deaths_count: 0,
-      died: false, survived: true, returned: true,
+      kills: 0,
+      deaths_count: 0,
+      died: false,
+      survived: true,
+      returned: true,
       settled: true,
       individual_result_submitted: true,
       individual_result_at: new Date(),
@@ -317,16 +371,20 @@ async function handleFinish(interaction) {
   // Step 1: closeSaida → em_liquidacao (guarda metadata de resultado)
   const saida = await saidaRepo.findById(saidaId);
   if (!['concluida', 'em_liquidacao'].includes(saida.status)) {
-    await saidaEngine.closeSaida(saidaId, {
-      result: saida.result || 'sem_conflito',
-      had_fight: saida.had_fight,
-      had_craft: saida.had_craft,
-      had_domination: saida.had_domination,
-      enemy_name: saida.enemy_name,
-      enemy_faction: saida.enemy_faction,
-      result_notes: saida.result_notes,
-      craft_amount: saida.craft_amount,
-    }, interaction.user.id);
+    await saidaEngine.closeSaida(
+      saidaId,
+      {
+        result: saida.result || 'sem_conflito',
+        had_fight: saida.had_fight,
+        had_craft: saida.had_craft,
+        had_domination: saida.had_domination,
+        enemy_name: saida.enemy_name,
+        enemy_faction: saida.enemy_faction,
+        result_notes: saida.result_notes,
+        craft_amount: saida.craft_amount,
+      },
+      interaction.user.id
+    );
   }
 
   // Step 2: finalizeSaida → concluida (scoring + stats + publish)
@@ -338,9 +396,21 @@ async function handleFinish(interaction) {
 
   const v = result?.values || {};
   const channelId = CONFIG.SAIDA_RESULTS_CHANNEL_ID || CONFIG.AUDIT_CHANNEL_ID || '';
-  return safeReply(interaction, {
-    content: SAIDAS.WIZARD_SUMMARY(saidaId, result?.totalKills || 0, result?.totalDeaths || 0, result?.totalSurvivors || 0, v.net, v.was_profitable, channelId),
-  }, { dismissible: true });
+  return safeReply(
+    interaction,
+    {
+      content: SAIDAS.WIZARD_SUMMARY(
+        saidaId,
+        result?.totalKills || 0,
+        result?.totalDeaths || 0,
+        result?.totalSurvivors || 0,
+        v.net,
+        v.was_profitable,
+        channelId
+      ),
+    },
+    { dismissible: true }
+  );
 }
 
 module.exports = {

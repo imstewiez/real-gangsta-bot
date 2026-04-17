@@ -25,7 +25,7 @@ const BAIRRISTAS = {
 
   // ── Movimento no Bairro (cockpit pessoal) ────────────────────────────────
   MOVIMENTO: {
-    TITLE: (name) => `${E.FIRMA} Movimento de ${name} no bairro`,
+    TITLE: name => `${E.FIRMA} Movimento de ${name} no bairro`,
     NO_DATA: 'Ainda não tens movimento na casa. Começa a trazer material.',
 
     // Secções
@@ -73,8 +73,8 @@ const BAIRRISTAS = {
 
   // ── Rankings ─────────────────────────────────────────────────────────────
   RANKING: {
-    TITLE_WEEK: (label) => `${E.TOPO} Topo Semanal — ${label}`,
-    TITLE_MONTH: (label) => `${E.TOPO} Topo Mensal — ${label}`,
+    TITLE_WEEK: label => `${E.TOPO} Topo Semanal — ${label}`,
+    TITLE_MONTH: label => `${E.TOPO} Topo Mensal — ${label}`,
     TITLE_ALLTIME: `${E.TOPO} Topo Histórico — Bairristas`,
     EMPTY: 'Sem dados para este período.',
     HEADER_WEEK: 'Quem mexeu mais esta semana.',
@@ -82,8 +82,8 @@ const BAIRRISTAS = {
     HEADER_ALLTIME: 'Os nomes com mais peso na casa.',
     YOUR_POSITION: 'A tua posição',
     SCORE: 'score',
-    DELTA_UP: (n) => `↑ subiste ${n}`,
-    DELTA_DOWN: (n) => `↓ desceste ${n}`,
+    DELTA_UP: n => `↑ subiste ${n}`,
+    DELTA_DOWN: n => `↓ desceste ${n}`,
     DELTA_FLAT: '→ mantiveste',
   },
 
@@ -102,19 +102,19 @@ const BAIRRISTAS = {
 
   // ── Resumos automáticos ──────────────────────────────────────────────────
   SUMMARY: {
-    DAILY_TITLE: (date) => `${E.MATERIAL} Resumo do dia — ${date}`,
+    DAILY_TITLE: date => `${E.MATERIAL} Resumo do dia — ${date}`,
     DAILY_EMPTY: 'Dia calmo. Ninguém trouxe material.',
     DAILY_TOTAL: 'Total do dia',
     DAILY_TOP: 'Top 3',
     DAILY_TOP_ITEM: 'Material mais entregue',
 
-    WEEKLY_TITLE: (label) => `${E.TOPO} Resumo semanal — ${label}`,
+    WEEKLY_TITLE: label => `${E.TOPO} Resumo semanal — ${label}`,
     WEEKLY_TOP: 'Top 5 da semana',
     WEEKLY_TOTAL: 'Total da semana',
     WEEKLY_BEST_STREAK: 'Maior streak',
     WEEKLY_RISING: 'Maior subida',
 
-    MONTHLY_TITLE: (label) => `${E.MEDAL_1} Resumo mensal — ${label}`,
+    MONTHLY_TITLE: label => `${E.MEDAL_1} Resumo mensal — ${label}`,
     MONTHLY_TOP: 'Top do mês',
     MONTHLY_TOTAL: 'Total do mês',
     MONTHLY_BEST: 'Melhor performer',

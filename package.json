@@ -11,12 +11,19 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "db:migrate": "node -e \"require('./src/dbMigrate').runMigrations().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); })\"",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "lint": "eslint src/ test/ scripts/",
+    "format": "prettier --write src/ test/ scripts/",
+    "format:check": "prettier --check src/ test/ scripts/"
   },
   "dependencies": {
     "discord.js": "14.26.3",
     "dotenv": "16.6.1",
     "googleapis": "171.4.0",
     "pg": "8.20.0"
+  },
+  "devDependencies": {
+    "eslint": "8.57.1",
+    "prettier": "3.5.3"
   }
 }

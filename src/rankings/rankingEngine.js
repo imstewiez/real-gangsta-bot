@@ -18,17 +18,25 @@ const { log } = require('../logger');
 // Pesos dos 3 eixos do hybrid_score
 const WEIGHTS = { contribuicao: 0.4, performance: 0.4, fiabilidade: 0.2 };
 
-function computeHybridScore({ weightedValue, killsCount, winsCount, lossCount, netProfit, saidasCount, returnRate, survivalRate }) {
+function computeHybridScore({
+  weightedValue,
+  killsCount,
+  winsCount,
+  lossCount,
+  netProfit,
+  saidasCount,
+  returnRate,
+  survivalRate,
+}) {
   const contribuicao = Number(weightedValue) || 0;
-  const performance = (killsCount || 0) * 10
-    + (winsCount || 0) * 20
-    - (lossCount || 0) * 5
-    + (netProfit || 0) / 100
-    + (saidasCount || 0) * 3;
+  const performance =
+    (killsCount || 0) * 10 +
+    (winsCount || 0) * 20 -
+    (lossCount || 0) * 5 +
+    (netProfit || 0) / 100 +
+    (saidasCount || 0) * 3;
   const fiabilidade = (returnRate || 0) * 0.5 + (survivalRate || 0) * 0.3;
-  return contribuicao * WEIGHTS.contribuicao
-    + performance * WEIGHTS.performance
-    + fiabilidade * WEIGHTS.fiabilidade;
+  return contribuicao * WEIGHTS.contribuicao + performance * WEIGHTS.performance + fiabilidade * WEIGHTS.fiabilidade;
 }
 
 async function _memberWeekStats(memberId, weekStart, weekEnd) {
@@ -83,20 +91,24 @@ async function computeWeeklyRankings(weekDate = new Date()) {
     const weightedValue = parseFloat(movData?.weighted_value || 0);
 
     const stats = await _memberWeekStats(member.id, weekStart, weekEnd);
-    const performanceRaw = (stats.killsCount || 0) * 10
-      + (stats.winsCount || 0) * 20
-      - (stats.lossCount || 0) * 5
-      + (stats.netProfit || 0) / 100
-      + (stats.saidasCount || 0) * 3;
+    const performanceRaw =
+      (stats.killsCount || 0) * 10 +
+      (stats.winsCount || 0) * 20 -
+      (stats.lossCount || 0) * 5 +
+      (stats.netProfit || 0) / 100 +
+      (stats.saidasCount || 0) * 3;
 
     const hybrid = computeHybridScore({
-      weightedValue, ...stats,
+      weightedValue,
+      ...stats,
     });
 
     const saved = await rankingRepo.saveWeeklyRanking({
       memberId: member.id,
-      weekStart, weekEnd,
-      deliveries, sales,
+      weekStart,
+      weekEnd,
+      deliveries,
+      sales,
       saidasCount: stats.saidasCount,
       weightedValue,
       returnRate: stats.returnRate,

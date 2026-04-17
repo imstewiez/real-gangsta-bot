@@ -22,7 +22,7 @@ function weekBounds(ref = new Date()) {
   end.setUTCDate(start.getUTCDate() + 6);
   return {
     start: start.toISOString().split('T')[0],
-    end:   end.toISOString().split('T')[0],
+    end: end.toISOString().split('T')[0],
   };
 }
 
@@ -59,7 +59,7 @@ const ENTREGA_MOVES = `(
   'entrega_bairrista', 'entrega_oficial', 'entrega_morador'
 )`;
 // Movement types de venda (sobrepõem a entrega_bairrista no sentido oposto).
-const VENDA_MOVES = `('venda_bairrista', 'venda_morador')`;
+const VENDA_MOVES = "('venda_bairrista', 'venda_morador')";
 
 const STOCK_BALANCE_CASE = `
   CASE
@@ -73,7 +73,7 @@ const STOCK_BALANCE_CASE = `
 
 // Variantes filtradas por casa — usar em queries que querem balance por casa.
 const STOCK_BALANCE_ARMAZEM = `(CASE WHEN im.location = 'armazem' THEN ${STOCK_BALANCE_CASE} ELSE 0 END)`;
-const STOCK_BALANCE_GRUPO   = `(CASE WHEN im.location = 'grupo'   THEN ${STOCK_BALANCE_CASE} ELSE 0 END)`;
+const STOCK_BALANCE_GRUPO = `(CASE WHEN im.location = 'grupo'   THEN ${STOCK_BALANCE_CASE} ELSE 0 END)`;
 
 // Display name com fallback — se display_name tiver menos de 2 caracteres
 // alfanuméricos (ex: ".", "᲼᲼᲼", " ", ""), usa username. Aplicável a qualquer
@@ -105,23 +105,28 @@ async function getDashboardKPIs() {
     FROM stock_balances`);
 
   // 2) Movimentos da semana (entradas/vendas em UNIDADES, não €)
-  const weekMov = await query(`
+  const weekMov = await query(
+    `
     SELECT
       SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador') THEN quantity ELSE 0 END)::int AS entradas,
       SUM(CASE WHEN movement_type IN ('venda_bairrista','venda_morador') THEN quantity ELSE 0 END)::int AS vendas
     FROM inventory_movements sm
     WHERE sm.created_at >= $1::date`,
-    [w.start]);
+    [w.start]
+  );
 
-  const prevMov = await query(`
+  const prevMov = await query(
+    `
     SELECT
       SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador') THEN quantity ELSE 0 END)::int AS entradas
     FROM inventory_movements sm
     WHERE sm.created_at >= $1::date AND sm.created_at < $2::date`,
-    [pw.start, pw.end]);
+    [pw.start, pw.end]
+  );
 
   // 3) Saídas da semana
-  const saidas = await query(`
+  const saidas = await query(
+    `
     SELECT
       COUNT(*)::int AS total,
       SUM(CASE WHEN result = 'vitoria' THEN 1 ELSE 0 END)::int AS wins,
@@ -132,10 +137,12 @@ async function getDashboardKPIs() {
       SUM(COALESCE(gross_value, 0))::numeric AS gross
     FROM operations
     WHERE date >= $1::date AND status = 'concluida'`,
-    [w.start]);
+    [w.start]
+  );
 
   // Material desta semana em UNIDADES
-  const matWeek = await query(`
+  const matWeek = await query(
+    `
     SELECT
       SUM(CASE WHEN om.direction='fornecido' THEN om.quantity ELSE 0 END)::int AS supplied_units,
       SUM(CASE WHEN om.direction='devolvido' THEN om.quantity ELSE 0 END)::int AS returned_units,
@@ -144,26 +151,31 @@ async function getDashboardKPIs() {
     FROM operation_materials om
     JOIN operations o ON o.id = om.operation_id
     WHERE o.date >= $1::date AND o.status = 'concluida'`,
-    [w.start]);
+    [w.start]
+  );
 
   // Participant type breakdown desta semana
-  const partTypes = await query(`
+  const partTypes = await query(
+    `
     SELECT
       COUNT(*) FILTER (WHERE op.participant_type = 'caracterizado')::int AS characterized,
       COUNT(*) FILTER (WHERE op.participant_type = 'trabalhador')::int AS workers
     FROM operation_participants op
     JOIN operations o ON o.id = op.operation_id
     WHERE o.date >= $1::date AND o.status = 'concluida'`,
-    [w.start]);
+    [w.start]
+  );
 
-  const prevSaidas = await query(`
+  const prevSaidas = await query(
+    `
     SELECT
       COUNT(*)::int AS total,
       SUM(COALESCE(net_value, 0))::numeric AS net,
       SUM(COALESCE(our_kills, 0))::int AS kills
     FROM operations
     WHERE date >= $1::date AND date < $2::date AND status = 'concluida'`,
-    [pw.start, pw.end]);
+    [pw.start, pw.end]
+  );
 
   // 4) Members ativos por role (contagens separadas para UI premium).
   //    'moradores' retornado como agregado legacy; UI nova usa os campos
@@ -178,23 +190,27 @@ async function getDashboardKPIs() {
     FROM members`);
 
   // 5) Top contributor (week) — em UNIDADES de material entregue
-  const topContrib = await query(`
+  const topContrib = await query(
+    `
     SELECT m.discord_id, m.display_name, SUM(sm.quantity)::int AS value
     FROM inventory_movements sm
     JOIN members m ON m.id = sm.member_id
     WHERE sm.created_at >= $1::date AND sm.movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador')
     GROUP BY m.discord_id, m.display_name
     ORDER BY value DESC NULLS LAST LIMIT 1`,
-    [w.start]);
+    [w.start]
+  );
 
-  const topKiller = await query(`
+  const topKiller = await query(
+    `
     SELECT m.discord_id, m.display_name, COUNT(*)::int AS kills
     FROM kill_logs k
     JOIN members m ON m.id = k.killer_id
     WHERE k.created_at >= $1::date
     GROUP BY m.discord_id, m.display_name
     ORDER BY kills DESC LIMIT 1`,
-    [w.start]);
+    [w.start]
+  );
 
   // 6) Spot mais rentável / mais perigoso
   const spotNet = await query(`
@@ -212,41 +228,41 @@ async function getDashboardKPIs() {
   const totalDeaths = saidas.rows[0]?.deaths || 0;
 
   return {
-    stockQty:        Number(stock.rows[0]?.total_qty) || 0,
-    stockValue:      Number(stock.rows[0]?.total_value) || 0,
-    weekEntradas:    Number(weekMov.rows[0]?.entradas) || 0,
-    weekVendas:      Number(weekMov.rows[0]?.vendas) || 0,
-    prevEntradas:    Number(prevMov.rows[0]?.entradas) || 0,
-    saidasTotal:     totalOps,
-    saidasWins:      totalWins,
-    saidasLosses:    saidas.rows[0]?.losses || 0,
-    winRate:         totalOps > 0 ? totalWins / totalOps : 0,
-    netWeek:         Number(saidas.rows[0]?.net) || 0,
-    netPrevWeek:     Number(prevSaidas.rows[0]?.net) || 0,
-    killsWeek:       totalKills,
-    killsPrevWeek:   prevSaidas.rows[0]?.kills || 0,
-    deathsWeek:      totalDeaths,
-    kdOrg:           totalDeaths > 0 ? totalKills / totalDeaths : totalKills,
+    stockQty: Number(stock.rows[0]?.total_qty) || 0,
+    stockValue: Number(stock.rows[0]?.total_value) || 0,
+    weekEntradas: Number(weekMov.rows[0]?.entradas) || 0,
+    weekVendas: Number(weekMov.rows[0]?.vendas) || 0,
+    prevEntradas: Number(prevMov.rows[0]?.entradas) || 0,
+    saidasTotal: totalOps,
+    saidasWins: totalWins,
+    saidasLosses: saidas.rows[0]?.losses || 0,
+    winRate: totalOps > 0 ? totalWins / totalOps : 0,
+    netWeek: Number(saidas.rows[0]?.net) || 0,
+    netPrevWeek: Number(prevSaidas.rows[0]?.net) || 0,
+    killsWeek: totalKills,
+    killsPrevWeek: prevSaidas.rows[0]?.kills || 0,
+    deathsWeek: totalDeaths,
+    kdOrg: totalDeaths > 0 ? totalKills / totalDeaths : totalKills,
     // Material em UNIDADES (fonte de verdade: operation_materials)
-    lostUnitsWeek:    Number(matWeek.rows[0]?.lost_units) || 0,
-    returnedUnitsWeek:Number(matWeek.rows[0]?.returned_units) || 0,
-    suppliedUnitsWeek:Number(matWeek.rows[0]?.supplied_units) || 0,
-    consumedUnitsWeek:Number(matWeek.rows[0]?.consumed_units) || 0,
+    lostUnitsWeek: Number(matWeek.rows[0]?.lost_units) || 0,
+    returnedUnitsWeek: Number(matWeek.rows[0]?.returned_units) || 0,
+    suppliedUnitsWeek: Number(matWeek.rows[0]?.supplied_units) || 0,
+    consumedUnitsWeek: Number(matWeek.rows[0]?.consumed_units) || 0,
     bairristasAtivos: members.rows[0]?.bairristas || 0,
-    patroesAtivos:    members.rows[0]?.patroes    || 0,
-    oficiaisAtivos:   members.rows[0]?.oficiais   || 0,
-    chefiaAtivos:     members.rows[0]?.chefia     || 0,
+    patroesAtivos: members.rows[0]?.patroes || 0,
+    oficiaisAtivos: members.rows[0]?.oficiais || 0,
+    chefiaAtivos: members.rows[0]?.chefia || 0,
     // Legacy alias — soma bairristas + patroes
-    moradoresAtivos:  members.rows[0]?.moradores  || 0,
-    topContributor:  topContrib.rows[0] || null,
-    topKiller:       topKiller.rows[0] || null,
-    topSpotProfit:   spotNet.rows[0] || null,
-    topSpotDanger:   spotDanger.rows[0] || null,
+    moradoresAtivos: members.rows[0]?.moradores || 0,
+    topContributor: topContrib.rows[0] || null,
+    topKiller: topKiller.rows[0] || null,
+    topSpotProfit: spotNet.rows[0] || null,
+    topSpotDanger: spotDanger.rows[0] || null,
     // Participant type breakdown (week)
     weekCharacterized: Number(partTypes.rows[0]?.characterized) || 0,
-    weekWorkers:       Number(partTypes.rows[0]?.workers) || 0,
-    weekBounds:      w,
-    prevWeekBounds:  pw,
+    weekWorkers: Number(partTypes.rows[0]?.workers) || 0,
+    weekBounds: w,
+    prevWeekBounds: pw,
   };
 }
 
@@ -255,7 +271,9 @@ async function getWeeklySummary() {
   const w = weekBounds();
   const pw = prevWeekBounds();
 
-  const sql = (start, end) => query(`
+  const sql = (start, end) =>
+    query(
+      `
     SELECT
       COUNT(DISTINCT o.id)::int AS ops,
       SUM(CASE WHEN o.result='vitoria' THEN 1 ELSE 0 END)::int AS wins,
@@ -269,12 +287,14 @@ async function getWeeklySummary() {
       SUM(COALESCE(o.supplied_value,0))::numeric AS supplied
     FROM operations o
     WHERE o.date >= $1::date ${end ? 'AND o.date < $2::date' : ''} AND o.status = 'concluida'`,
-    end ? [start, end] : [start]);
+      end ? [start, end] : [start]
+    );
 
   const cur = (await sql(w.start)).rows[0] || {};
   const prev = (await sql(pw.start, pw.end)).rows[0] || {};
 
-  const deliveries = await query(`
+  const deliveries = await query(
+    `
     SELECT
       SUM(CASE WHEN sm.movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador') THEN quantity ELSE 0 END)::int AS entregas,
       SUM(CASE WHEN sm.movement_type IN ('venda_bairrista','venda_morador') THEN quantity ELSE 0 END)::int AS vendas,
@@ -282,7 +302,8 @@ async function getWeeklySummary() {
           THEN quantity ELSE 0 END)::int AS weighted
     FROM inventory_movements sm
     WHERE sm.created_at >= $1::date`,
-    [w.start]);
+    [w.start]
+  );
 
   return { current: { ...cur, ...deliveries.rows[0] }, previous: prev, bounds: { current: w, previous: pw } };
 }
@@ -290,7 +311,8 @@ async function getWeeklySummary() {
 // ─── Resumo Diário (últimos 14 dias) ─────────────────────────────────────────
 async function getDailyBreakdown(days = 14) {
   const since = daysAgoISO(days);
-  const r = await query(`
+  const r = await query(
+    `
     SELECT
       d::date AS day,
       COALESCE(ops.total, 0)::int AS ops,
@@ -317,7 +339,8 @@ async function getDailyBreakdown(days = 14) {
       WHERE DATE(sm.created_at) = d::date
     ) mov ON true
     ORDER BY d DESC`,
-    [since]);
+    [since]
+  );
   return r.rows;
 }
 
@@ -373,7 +396,8 @@ async function getMembersFull() {
 // consumed_units) e também disponibilizado em € (gross/net para bottom-line
 // económico). A contabilização de material deve usar sempre unidades.
 async function getSaidasFull(limit = 500) {
-  const r = await query(`
+  const r = await query(
+    `
     SELECT
       o.id, o.date, o.scheduled_time AS hora,
       o.spot, o.operation_type AS tipo,
@@ -407,7 +431,8 @@ async function getSaidasFull(limit = 500) {
     ) omu ON TRUE
     ORDER BY o.date DESC, o.id DESC
     LIMIT $1`,
-    [limit]);
+    [limit]
+  );
   return r.rows;
 }
 
@@ -416,7 +441,8 @@ async function getSaidasFull(limit = 500) {
 // lost_units, consumed_units) via JOIN operation_materials agregado por
 // (operation_id, member_id).
 async function getParticipantsFull(limit = 2000) {
-  const r = await query(`
+  const r = await query(
+    `
     SELECT
       op.operation_id AS saida_id,
       o.date, o.spot,
@@ -451,13 +477,15 @@ async function getParticipantsFull(limit = 2000) {
     ) pmu ON TRUE
     ORDER BY o.date DESC, op.operation_id DESC, m.display_name
     LIMIT $1`,
-    [limit]);
+    [limit]
+  );
   return r.rows;
 }
 
 // ─── Kills full ──────────────────────────────────────────────────────────────
 async function getKillsFull(limit = 1000) {
-  const r = await query(`
+  const r = await query(
+    `
     SELECT
       k.id, k.created_at, k.date,
       km.display_name AS killer_name,
@@ -469,13 +497,14 @@ async function getKillsFull(limit = 1000) {
     LEFT JOIN members cm ON cm.discord_id = k.confirmed_by
     ORDER BY k.created_at DESC
     LIMIT $1`,
-    [limit]);
+    [limit]
+  );
   return r.rows;
 }
 
 async function getKillsKPIs() {
-  const total = await query(`SELECT COUNT(*)::int AS n FROM kill_logs`);
-  const week = await query(`SELECT COUNT(*)::int AS n FROM kill_logs WHERE created_at >= NOW() - INTERVAL '7 days'`);
+  const total = await query('SELECT COUNT(*)::int AS n FROM kill_logs');
+  const week = await query("SELECT COUNT(*)::int AS n FROM kill_logs WHERE created_at >= NOW() - INTERVAL '7 days'");
   const topKiller = await query(`
     SELECT m.display_name, COUNT(*)::int AS kills
     FROM kill_logs k JOIN members m ON m.id = k.killer_id
@@ -565,9 +594,15 @@ async function getRankings() {
     WHERE kills_total + deaths_total >= 3
     ORDER BY kd_ratio DESC LIMIT 25`);
 
-  return { topEntregas: topEntregas.rows, topKills: topKills.rows, topProfit: topProfit.rows,
-           topMVP: topMVP.rows, topSurvival: topSurvival.rows, topDiscipline: topDiscipline.rows,
-           topKD: topKD.rows };
+  return {
+    topEntregas: topEntregas.rows,
+    topKills: topKills.rows,
+    topProfit: topProfit.rows,
+    topMVP: topMVP.rows,
+    topSurvival: topSurvival.rows,
+    topDiscipline: topDiscipline.rows,
+    topKD: topKD.rows,
+  };
 }
 
 // ─── Inventário / movimentos ─────────────────────────────────────────────────
@@ -601,7 +636,8 @@ async function getInventoryFull() {
 }
 
 async function getMovementsFull(limit = 2000) {
-  const r = await query(`
+  const r = await query(
+    `
     SELECT
       sm.created_at, sm.movement_type, sm.location,
       i.name AS item, i.category AS categoria,
@@ -620,7 +656,8 @@ async function getMovementsFull(limit = 2000) {
     LEFT JOIN operations o ON o.id = sm.saida_id
     ORDER BY sm.created_at DESC
     LIMIT $1`,
-    [limit]);
+    [limit]
+  );
   return r.rows;
 }
 
@@ -631,7 +668,8 @@ async function getActiveItemsList() {
 }
 
 async function getAuditFull(limit = 1000) {
-  const r = await query(`
+  const r = await query(
+    `
     SELECT a.id, a.action, a.entity_type, a.entity_id,
            a.actor_id, a.before_state, a.after_state, a.context, a.created_at,
            COALESCE(NULLIF(a.actor_name, ''), m.display_name) AS actor_name
@@ -639,7 +677,8 @@ async function getAuditFull(limit = 1000) {
     LEFT JOIN members m ON m.discord_id = a.actor_id
     ORDER BY a.created_at DESC
     LIMIT $1`,
-    [limit]);
+    [limit]
+  );
   return r.rows;
 }
 
@@ -647,30 +686,39 @@ async function getAuditFull(limit = 1000) {
 async function getTopMovers() {
   const w = weekBounds();
 
-  const topEntregas = await query(`
+  const topEntregas = await query(
+    `
     SELECT m.display_name, SUM(sm.quantity)::int AS value
     FROM inventory_movements sm
     JOIN members m ON m.id = sm.member_id
     WHERE sm.created_at >= $1::date
       AND sm.movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador')
     GROUP BY m.display_name
-    ORDER BY value DESC NULLS LAST LIMIT 3`, [w.start]);
+    ORDER BY value DESC NULLS LAST LIMIT 3`,
+    [w.start]
+  );
 
-  const topKills = await query(`
+  const topKills = await query(
+    `
     SELECT m.display_name, COUNT(*)::int AS value
     FROM kill_logs k
     JOIN members m ON m.id = k.killer_id
     WHERE k.created_at >= $1::date
     GROUP BY m.display_name
-    ORDER BY value DESC NULLS LAST LIMIT 3`, [w.start]);
+    ORDER BY value DESC NULLS LAST LIMIT 3`,
+    [w.start]
+  );
 
-  const topProfit = await query(`
+  const topProfit = await query(
+    `
     SELECT m.display_name, SUM(COALESCE(o.net_value,0))::numeric AS value
     FROM operations o
     LEFT JOIN members m ON m.id = o.leader_id
     WHERE o.date >= $1::date AND o.status = 'concluida'
     GROUP BY m.display_name
-    ORDER BY value DESC NULLS LAST LIMIT 3`, [w.start]);
+    ORDER BY value DESC NULLS LAST LIMIT 3`,
+    [w.start]
+  );
 
   return { topEntregas: topEntregas.rows, topKills: topKills.rows, topProfit: topProfit.rows };
 }
@@ -680,7 +728,9 @@ async function getTrending() {
   const w = weekBounds();
   const pw = prevWeekBounds();
 
-  const sqlSaidas = (s, e) => query(`
+  const sqlSaidas = (s, e) =>
+    query(
+      `
     SELECT
       COUNT(*)::int AS saidas,
       SUM(CASE WHEN result = 'vitoria' THEN 1 ELSE 0 END)::int AS wins,
@@ -689,10 +739,14 @@ async function getTrending() {
       SUM(COALESCE(net_value,0))::numeric AS net,
       SUM(COALESCE(gross_value,0))::numeric AS gross
     FROM operations
-    WHERE date >= $1::date AND date < $2::date AND status = 'concluida'`, [s, e]);
+    WHERE date >= $1::date AND date < $2::date AND status = 'concluida'`,
+      [s, e]
+    );
 
   // Material em UNIDADES (fornecido/devolvido/perdido/consumido)
-  const sqlMatUnits = (s, e) => query(`
+  const sqlMatUnits = (s, e) =>
+    query(
+      `
     SELECT
       SUM(CASE WHEN om.direction='fornecido' THEN om.quantity ELSE 0 END)::int AS supplied,
       SUM(CASE WHEN om.direction='devolvido' THEN om.quantity ELSE 0 END)::int AS returned,
@@ -700,16 +754,26 @@ async function getTrending() {
       SUM(CASE WHEN om.direction='consumido' THEN om.quantity ELSE 0 END)::int AS consumed
     FROM operation_materials om
     JOIN operations o ON o.id = om.operation_id
-    WHERE o.date >= $1::date AND o.date < $2::date AND o.status = 'concluida'`, [s, e]);
+    WHERE o.date >= $1::date AND o.date < $2::date AND o.status = 'concluida'`,
+      [s, e]
+    );
 
-  const sqlMov = (s, e) => query(`
+  const sqlMov = (s, e) =>
+    query(
+      `
     SELECT
       SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador') THEN quantity ELSE 0 END)::int AS entregas,
       SUM(CASE WHEN movement_type IN ('venda_bairrista','venda_morador') THEN quantity ELSE 0 END)::int AS vendas
     FROM inventory_movements
-    WHERE created_at >= $1::date AND created_at < $2::date`, [s, e]);
+    WHERE created_at >= $1::date AND created_at < $2::date`,
+      [s, e]
+    );
 
-  const nextDay = d => { const x = new Date(d); x.setUTCDate(x.getUTCDate() + 1); return x.toISOString().split('T')[0]; };
+  const nextDay = d => {
+    const x = new Date(d);
+    x.setUTCDate(x.getUTCDate() + 1);
+    return x.toISOString().split('T')[0];
+  };
   const curEndExcl = nextDay(w.end);
 
   const [cs, ps, cm, pm, cMat, pMat] = await Promise.all([
@@ -721,24 +785,27 @@ async function getTrending() {
     sqlMatUnits(pw.start, pw.end),
   ]);
 
-  const C = cs.rows[0] || {}; const P = ps.rows[0] || {};
-  const CM = cm.rows[0] || {}; const PM = pm.rows[0] || {};
-  const CT = cMat.rows[0] || {}; const PT = pMat.rows[0] || {};
+  const C = cs.rows[0] || {};
+  const P = ps.rows[0] || {};
+  const CM = cm.rows[0] || {};
+  const PM = pm.rows[0] || {};
+  const CT = cMat.rows[0] || {};
+  const PT = pMat.rows[0] || {};
 
   return {
-    saidas:   { current: Number(C.saidas) || 0, previous: Number(P.saidas) || 0 },
-    wins:     { current: Number(C.wins)   || 0, previous: Number(P.wins)   || 0 },
-    kills:    { current: Number(C.kills)  || 0, previous: Number(P.kills)  || 0 },
-    deaths:   { current: Number(C.deaths) || 0, previous: Number(P.deaths) || 0 },
-    net:      { current: Number(C.net)    || 0, previous: Number(P.net)    || 0 },
-    gross:    { current: Number(C.gross)  || 0, previous: Number(P.gross)  || 0 },
+    saidas: { current: Number(C.saidas) || 0, previous: Number(P.saidas) || 0 },
+    wins: { current: Number(C.wins) || 0, previous: Number(P.wins) || 0 },
+    kills: { current: Number(C.kills) || 0, previous: Number(P.kills) || 0 },
+    deaths: { current: Number(C.deaths) || 0, previous: Number(P.deaths) || 0 },
+    net: { current: Number(C.net) || 0, previous: Number(P.net) || 0 },
+    gross: { current: Number(C.gross) || 0, previous: Number(P.gross) || 0 },
     // Material em UNIDADES (não €)
     supplied_units: { current: Number(CT.supplied) || 0, previous: Number(PT.supplied) || 0 },
     returned_units: { current: Number(CT.returned) || 0, previous: Number(PT.returned) || 0 },
-    lost_units:     { current: Number(CT.lost)     || 0, previous: Number(PT.lost)     || 0 },
+    lost_units: { current: Number(CT.lost) || 0, previous: Number(PT.lost) || 0 },
     consumed_units: { current: Number(CT.consumed) || 0, previous: Number(PT.consumed) || 0 },
     entregas: { current: Number(CM.entregas) || 0, previous: Number(PM.entregas) || 0 },
-    vendas:   { current: Number(CM.vendas)   || 0, previous: Number(PM.vendas)   || 0 },
+    vendas: { current: Number(CM.vendas) || 0, previous: Number(PM.vendas) || 0 },
   };
 }
 
@@ -783,9 +850,12 @@ async function getAlerts() {
 
   // 3) Semana sem saídas concluídas
   const w = weekBounds();
-  const weekOps = await query(`
+  const weekOps = await query(
+    `
     SELECT COUNT(*)::int AS n FROM operations
-    WHERE date >= $1::date AND status = 'concluida'`, [w.start]);
+    WHERE date >= $1::date AND status = 'concluida'`,
+    [w.start]
+  );
   if ((weekOps.rows[0]?.n || 0) === 0) {
     alerts.push({ kind: 'info', message: 'Nenhuma saída concluída esta semana ainda.' });
   }
@@ -822,7 +892,8 @@ async function getStockByCategory() {
 
 // ─── Streaks (wins consecutivas em saídas recentes) ──────────────────────────
 async function getMemberStreaks(limit = 5) {
-  const r = await query(`
+  const r = await query(
+    `
     WITH recent AS (
       SELECT op.member_id, o.date, o.result,
         ROW_NUMBER() OVER (PARTITION BY op.member_id ORDER BY o.date DESC, o.id DESC) AS rn
@@ -841,7 +912,9 @@ async function getMemberStreaks(limit = 5) {
     FROM last5 l
     JOIN members m ON m.id = l.member_id
     WHERE l.total >= 3
-    ORDER BY l.wins DESC, l.total DESC LIMIT $1`, [limit]);
+    ORDER BY l.wins DESC, l.total DESC LIMIT $1`,
+    [limit]
+  );
   return r.rows;
 }
 
@@ -849,13 +922,12 @@ async function getMemberStreaks(limit = 5) {
 async function getBairristaRankings() {
   const w = weekBounds();
   const d = new Date();
-  const monthStart = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1))
-    .toISOString().split('T')[0];
-  const monthEnd = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0))
-    .toISOString().split('T')[0];
+  const monthStart = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString().split('T')[0];
+  const monthEnd = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).toISOString().split('T')[0];
 
   // Top 10 Bairristas semanal
-  const weekly = await query(`
+  const weekly = await query(
+    `
     SELECT wr.*, ${DISPLAY_NAME_EXPR('m')} AS display_name, m.tier,
            ROW_NUMBER() OVER (ORDER BY GREATEST(wr.hybrid_score, wr.weighted_value) DESC) AS pos
     FROM weekly_rankings wr
@@ -863,10 +935,13 @@ async function getBairristaRankings() {
     WHERE wr.week_start = $1 AND m.role = 'bairrista'
     ORDER BY GREATEST(wr.hybrid_score, wr.weighted_value) DESC
     LIMIT 10
-  `, [w.start]);
+  `,
+    [w.start]
+  );
 
   // Top 10 Bairristas mensal
-  const monthly = await query(`
+  const monthly = await query(
+    `
     SELECT mr.*, ${DISPLAY_NAME_EXPR('m')} AS display_name, m.tier,
            ROW_NUMBER() OVER (ORDER BY GREATEST(mr.hybrid_score, mr.weighted_value) DESC) AS pos
     FROM monthly_rankings mr
@@ -874,7 +949,9 @@ async function getBairristaRankings() {
     WHERE mr.month_start = $1 AND m.role = 'bairrista'
     ORDER BY GREATEST(mr.hybrid_score, mr.weighted_value) DESC
     LIMIT 10
-  `, [monthStart]);
+  `,
+    [monthStart]
+  );
 
   // Top 10 Bairristas all-time
   const allTime = await query(`
@@ -928,14 +1005,17 @@ async function getBairristaRankings() {
 }
 
 module.exports = {
-  weekBounds, prevWeekBounds, daysAgoISO,
+  weekBounds,
+  prevWeekBounds,
+  daysAgoISO,
   getDashboardKPIs,
   getWeeklySummary,
   getDailyBreakdown,
   getMembersFull,
   getSaidasFull,
   getParticipantsFull,
-  getKillsFull, getKillsKPIs,
+  getKillsFull,
+  getKillsKPIs,
   getSpotsFull,
   getRankings,
   getInventoryFull,

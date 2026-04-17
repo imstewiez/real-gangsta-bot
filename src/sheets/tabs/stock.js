@@ -7,78 +7,121 @@
  *   Secção 4: Ledger de movimentos (últimos 500)
  */
 
-const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, captionCell, mutedCell, numCell, badgeCell,
-  conditionalGreaterThan, conditionalLessThan } = require('../theme');
 const {
-  headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  totalRow, footerBlock, autoResizeColumns, autoResizeAll, applyRowBanding,
+  COLOR,
+  NUM_FMT,
+  cell,
+  bodyCell,
+  bodyBoldCell,
+  captionCell,
+  mutedCell,
+  numCell,
+  badgeCell,
+  conditionalGreaterThan,
+  conditionalLessThan,
+} = require('../theme');
+const {
+  headerBlock,
+  sectionHeader,
+  spacer,
+  divider,
+  kpiStrip,
+  tableHeader,
+  tableBody,
+  totalRow,
+  footerBlock,
+  autoResizeColumns,
+  autoResizeAll,
+  applyRowBanding,
 } = require('./_common');
 const { getInventoryFull, getStockByCategory, getMovementsFull } = require('../queries');
 const { growSheet } = require('../cleanup');
 
 const MOVS_HEADERS = [
-  'Data/Hora', 'Tipo', 'Casa', 'Item', 'Categoria', 'Qtd',
-  'Valor Unit.', 'Valor Total', 'Actor',
-  'Nome', 'Role', 'Tier',
-  'Saída', 'Spot', 'Contexto', 'Notas',
+  'Data/Hora',
+  'Tipo',
+  'Casa',
+  'Item',
+  'Categoria',
+  'Qtd',
+  'Valor Unit.',
+  'Valor Total',
+  'Actor',
+  'Nome',
+  'Role',
+  'Tier',
+  'Saída',
+  'Spot',
+  'Contexto',
+  'Notas',
 ];
 const INV_HEADERS = [
-  'Item', 'Categoria', 'Un.',
-  'Qtd Armazém', 'Qtd Grupo', 'Qtd Total',
-  'Valor Unit.', 'Valor Total',
-  'Entradas', 'Saídas', 'Última Mov.', 'Estado',
+  'Item',
+  'Categoria',
+  'Un.',
+  'Qtd Armazém',
+  'Qtd Grupo',
+  'Qtd Total',
+  'Valor Unit.',
+  'Valor Total',
+  'Entradas',
+  'Saídas',
+  'Última Mov.',
+  'Estado',
 ];
 const COL_COUNT = MOVS_HEADERS.length; // 16
 
 function casaBadge(loc) {
   if (loc === 'armazem') return badgeCell('ARMAZÉM', COLOR.RED_DEEP);
-  if (loc === 'grupo')   return badgeCell('GRUPO',   COLOR.GRAPHITE);
+  if (loc === 'grupo') return badgeCell('GRUPO', COLOR.GRAPHITE);
   return mutedCell('—', { align: 'CENTER' });
 }
 
 // Display names por categoria (chave DB → rótulo humano premium)
 const CAT_DISPLAY = {
-  armas:            'Armas',
-  armas_fogo:       'Armas de Fogo',
-  armas_brancas:    'Armas Brancas',
-  municoes:         'Munições',
-  acessorios:       'Acessórios',
-  equipamento:      'Equipamento',
-  metais:           'Metais',
+  armas: 'Armas',
+  armas_fogo: 'Armas de Fogo',
+  armas_brancas: 'Armas Brancas',
+  municoes: 'Munições',
+  acessorios: 'Acessórios',
+  equipamento: 'Equipamento',
+  metais: 'Metais',
   sucata_industria: 'Sucata & Indústria',
-  reciclagem:       'Reciclagem',
-  componentes:      'Componentes',
-  madeiras:         'Madeiras',
-  quimicos:         'Químicos',
-  electronica:      'Electrónica',
-  droga:            'Droga',
-  dinheiro:         'Dinheiro',
-  comida:           'Comida',
-  comida_pesca:     'Comida & Pesca',
-  pesca:            'Pesca',
-  texteis:          'Têxteis',
-  utilidade:        'Utilidade',
-  outros:           'Outros',
+  reciclagem: 'Reciclagem',
+  componentes: 'Componentes',
+  madeiras: 'Madeiras',
+  quimicos: 'Químicos',
+  electronica: 'Electrónica',
+  droga: 'Droga',
+  dinheiro: 'Dinheiro',
+  comida: 'Comida',
+  comida_pesca: 'Comida & Pesca',
+  pesca: 'Pesca',
+  texteis: 'Têxteis',
+  utilidade: 'Utilidade',
+  outros: 'Outros',
 };
-function catLabel(cat) { return (CAT_DISPLAY[cat] || cat || '—').toUpperCase(); }
+function catLabel(cat) {
+  return (CAT_DISPLAY[cat] || cat || '—').toUpperCase();
+}
 
 const MOV_PILL = {
-  entrega_bairrista:  { label: 'ENTREGA',   bg: COLOR.GREEN_DEEP },
-  entrega_morador:    { label: 'ENTREGA',   bg: COLOR.GREEN_DEEP }, // legacy
-  entrega_oficial:    { label: 'ENTR.OFIC', bg: COLOR.GREEN_DEEP },
-  venda_bairrista:    { label: 'VENDA',     bg: COLOR.GOLD },
-  venda_morador:      { label: 'VENDA',     bg: COLOR.GOLD },       // legacy
-  ajuste_manual:      { label: 'AJUSTE',    bg: COLOR.GRAY_DARK },
-  fornecimento_org:   { label: 'FORNECIDO', bg: COLOR.RED_BLOOD },
-  devolucao_operacao: { label: 'DEVOL.',    bg: COLOR.GRAPHITE },
-  devolucao_saida:    { label: 'DEVOL.',    bg: COLOR.GRAPHITE },
-  perda_operacao:     { label: 'PERDA',     bg: COLOR.RED_DEEP },
-  perda_saida:        { label: 'PERDA',     bg: COLOR.RED_DEEP },
-  consumo_operacao:   { label: 'CONSUMO',   bg: COLOR.YELLOW_DEEP },
-  consumo_saida:      { label: 'CONSUMO',   bg: COLOR.YELLOW_DEEP },
-  saldo_inicial:      { label: 'SALDO INIC',bg: COLOR.IRON },
-  apreendido:         { label: 'APREEND.',  bg: COLOR.BLUE_DEEP },
-  craftado:           { label: 'CRAFT',     bg: COLOR.GOLD },
+  entrega_bairrista: { label: 'ENTREGA', bg: COLOR.GREEN_DEEP },
+  entrega_morador: { label: 'ENTREGA', bg: COLOR.GREEN_DEEP }, // legacy
+  entrega_oficial: { label: 'ENTR.OFIC', bg: COLOR.GREEN_DEEP },
+  venda_bairrista: { label: 'VENDA', bg: COLOR.GOLD },
+  venda_morador: { label: 'VENDA', bg: COLOR.GOLD }, // legacy
+  ajuste_manual: { label: 'AJUSTE', bg: COLOR.GRAY_DARK },
+  fornecimento_org: { label: 'FORNECIDO', bg: COLOR.RED_BLOOD },
+  devolucao_operacao: { label: 'DEVOL.', bg: COLOR.GRAPHITE },
+  devolucao_saida: { label: 'DEVOL.', bg: COLOR.GRAPHITE },
+  perda_operacao: { label: 'PERDA', bg: COLOR.RED_DEEP },
+  perda_saida: { label: 'PERDA', bg: COLOR.RED_DEEP },
+  consumo_operacao: { label: 'CONSUMO', bg: COLOR.YELLOW_DEEP },
+  consumo_saida: { label: 'CONSUMO', bg: COLOR.YELLOW_DEEP },
+  saldo_inicial: { label: 'SALDO INIC', bg: COLOR.IRON },
+  apreendido: { label: 'APREEND.', bg: COLOR.BLUE_DEEP },
+  craftado: { label: 'CRAFT', bg: COLOR.GOLD },
 };
 
 function typeBadge(type) {
@@ -97,41 +140,49 @@ function stateBadge(balance, item) {
   // Se tem threshold explícito, compara contra ele (mais preciso).
   if (threshold && threshold > 0) {
     if (b <= 0) return badgeCell('ESGOTADO', COLOR.RED_DEEP);
-    if (b < threshold * 0.2) return badgeCell('CRÍTICO',  COLOR.RED_BLOOD);
-    if (b < threshold)       return badgeCell('BAIXO',    COLOR.YELLOW_DEEP);
-    if (b >= threshold * 3)  return badgeCell('ALTO',     COLOR.GREEN_DEEP);
+    if (b < threshold * 0.2) return badgeCell('CRÍTICO', COLOR.RED_BLOOD);
+    if (b < threshold) return badgeCell('BAIXO', COLOR.YELLOW_DEEP);
+    if (b >= threshold * 3) return badgeCell('ALTO', COLOR.GREEN_DEEP);
     return badgeCell('NORMAL', COLOR.GRAPHITE);
   }
 
   // Fallback: thresholds genéricos legacy.
-  if (b <= 0)   return badgeCell('ESGOTADO', COLOR.RED_DEEP);
-  if (b <= 3)   return badgeCell('CRÍTICO',  COLOR.RED_BLOOD);
-  if (b <= 10)  return badgeCell('BAIXO',    COLOR.YELLOW_DEEP);
-  if (b >= 100) return badgeCell('ALTO',     COLOR.GREEN_DEEP);
+  if (b <= 0) return badgeCell('ESGOTADO', COLOR.RED_DEEP);
+  if (b <= 3) return badgeCell('CRÍTICO', COLOR.RED_BLOOD);
+  if (b <= 10) return badgeCell('BAIXO', COLOR.YELLOW_DEEP);
+  if (b >= 100) return badgeCell('ALTO', COLOR.GREEN_DEEP);
   return badgeCell('NORMAL', COLOR.GRAPHITE);
 }
 
 function fmtDT(d) {
   if (!d) return '—';
-  try { return new Date(d).toISOString().replace('T', ' ').slice(0, 16); } catch { return String(d); }
+  try {
+    return new Date(d).toISOString().replace('T', ' ').slice(0, 16);
+  } catch {
+    return String(d);
+  }
 }
 
 async function syncStock(batch, sheetId) {
-  const [inv, byCat, movs] = await Promise.all([
-    getInventoryFull(), getStockByCategory(), getMovementsFull(500),
-  ]);
+  const [inv, byCat, movs] = await Promise.all([getInventoryFull(), getStockByCategory(), getMovementsFull(500)]);
 
-  const totalValue   = inv.reduce((a, r) => a + Number(r.value_total || 0), 0);
-  const totalQty     = inv.reduce((a, r) => a + Number(r.balance || 0), 0);
-  const qtyArmazem   = inv.reduce((a, r) => a + Number(r.balance_armazem || 0), 0);
-  const qtyGrupo     = inv.reduce((a, r) => a + Number(r.balance_grupo || 0), 0);
+  const totalValue = inv.reduce((a, r) => a + Number(r.value_total || 0), 0);
+  const totalQty = inv.reduce((a, r) => a + Number(r.balance || 0), 0);
+  const qtyArmazem = inv.reduce((a, r) => a + Number(r.balance_armazem || 0), 0);
+  const qtyGrupo = inv.reduce((a, r) => a + Number(r.balance_grupo || 0), 0);
   const valueArmazem = inv.reduce((a, r) => a + Number(r.value_armazem || 0), 0);
-  const valueGrupo   = inv.reduce((a, r) => a + Number(r.value_grupo || 0), 0);
-  const critical   = inv.filter(r => (r.balance || 0) <= 3).length;
-  const zeros      = inv.filter(r => (r.balance || 0) <= 0).length;
-  const totalIn    = movs.filter(r => ['entrega_bairrista', 'entrega_oficial', 'entrega_morador'].includes(r.movement_type)).reduce((a, r) => a + Number(r.total_value || 0), 0);
-  const totalSales = movs.filter(r => ['venda_bairrista', 'venda_morador'].includes(r.movement_type)).reduce((a, r) => a + Number(r.total_value || 0), 0);
-  const totalLost  = movs.filter(r => r.movement_type === 'perda_saida' || r.movement_type === 'perda_operacao').reduce((a, r) => a + Number(r.total_value || 0), 0);
+  const valueGrupo = inv.reduce((a, r) => a + Number(r.value_grupo || 0), 0);
+  const critical = inv.filter(r => (r.balance || 0) <= 3).length;
+  const zeros = inv.filter(r => (r.balance || 0) <= 0).length;
+  const totalIn = movs
+    .filter(r => ['entrega_bairrista', 'entrega_oficial', 'entrega_morador'].includes(r.movement_type))
+    .reduce((a, r) => a + Number(r.total_value || 0), 0);
+  const totalSales = movs
+    .filter(r => ['venda_bairrista', 'venda_morador'].includes(r.movement_type))
+    .reduce((a, r) => a + Number(r.total_value || 0), 0);
+  const totalLost = movs
+    .filter(r => r.movement_type === 'perda_saida' || r.movement_type === 'perda_operacao')
+    .reduce((a, r) => a + Number(r.total_value || 0), 0);
 
   growSheet(batch, sheetId, { rows: Math.max(inv.length + movs.length + 80, 200) });
 
@@ -144,44 +195,143 @@ async function syncStock(batch, sheetId) {
 
   // ── Panorama global ──────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '📦 PANORAMA DO STOCK', hint: 'totais consolidados', columnCount: COL_COUNT,
+    title: '📦 PANORAMA DO STOCK',
+    hint: 'totais consolidados',
+    columnCount: COL_COUNT,
   });
-  row = kpiStrip(batch, sheetId, row, [
-    { label: 'Itens',       value: inv.length,   numberFormat: NUM_FMT.INT,  delta: `${byCat.length} categorias`, deltaDirection: 'flat' },
-    { label: 'Quantidade',  value: totalQty,     numberFormat: NUM_FMT.INT,  delta: `${qtyArmazem} armazém · ${qtyGrupo} grupo`, deltaDirection: 'flat' },
-    { label: 'Valor Stock', value: totalValue,   numberFormat: NUM_FMT.EURO, delta: `média ${(totalValue / Math.max(inv.length, 1)).toFixed(0)} €/item`, deltaDirection: 'flat' },
-    { label: 'Críticos',    value: critical,     numberFormat: NUM_FMT.INT,  delta: zeros > 0 ? `${zeros} esgotados` : 'nada esgotado', deltaDirection: critical > 0 ? 'down' : 'up' },
-  ], COL_COUNT);
+  row = kpiStrip(
+    batch,
+    sheetId,
+    row,
+    [
+      {
+        label: 'Itens',
+        value: inv.length,
+        numberFormat: NUM_FMT.INT,
+        delta: `${byCat.length} categorias`,
+        deltaDirection: 'flat',
+      },
+      {
+        label: 'Quantidade',
+        value: totalQty,
+        numberFormat: NUM_FMT.INT,
+        delta: `${qtyArmazem} armazém · ${qtyGrupo} grupo`,
+        deltaDirection: 'flat',
+      },
+      {
+        label: 'Valor Stock',
+        value: totalValue,
+        numberFormat: NUM_FMT.EURO,
+        delta: `média ${(totalValue / Math.max(inv.length, 1)).toFixed(0)} €/item`,
+        deltaDirection: 'flat',
+      },
+      {
+        label: 'Críticos',
+        value: critical,
+        numberFormat: NUM_FMT.INT,
+        delta: zeros > 0 ? `${zeros} esgotados` : 'nada esgotado',
+        deltaDirection: critical > 0 ? 'down' : 'up',
+      },
+    ],
+    COL_COUNT
+  );
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
   // ── Por casa ─────────────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '🏠 STOCK POR CASA', hint: 'armazém (chefes) vs grupo (oficiais)', columnCount: COL_COUNT,
+    title: '🏠 STOCK POR CASA',
+    hint: 'armazém (chefes) vs grupo (oficiais)',
+    columnCount: COL_COUNT,
   });
-  row = kpiStrip(batch, sheetId, row, [
-    { label: 'Armazém Qtd',   value: qtyArmazem,    numberFormat: NUM_FMT.INT,  delta: 'só chefes', deltaDirection: 'flat' },
-    { label: 'Armazém Valor', value: valueArmazem,  numberFormat: NUM_FMT.EURO, delta: `${(valueArmazem / Math.max(totalValue, 1) * 100).toFixed(0)}% do total`, deltaDirection: 'flat' },
-    { label: 'Grupo Qtd',     value: qtyGrupo,      numberFormat: NUM_FMT.INT,  delta: 'oficiais', deltaDirection: 'flat' },
-    { label: 'Grupo Valor',   value: valueGrupo,    numberFormat: NUM_FMT.EURO, delta: `${(valueGrupo / Math.max(totalValue, 1) * 100).toFixed(0)}% do total`, deltaDirection: 'flat' },
-  ], COL_COUNT);
+  row = kpiStrip(
+    batch,
+    sheetId,
+    row,
+    [
+      {
+        label: 'Armazém Qtd',
+        value: qtyArmazem,
+        numberFormat: NUM_FMT.INT,
+        delta: 'só chefes',
+        deltaDirection: 'flat',
+      },
+      {
+        label: 'Armazém Valor',
+        value: valueArmazem,
+        numberFormat: NUM_FMT.EURO,
+        delta: `${((valueArmazem / Math.max(totalValue, 1)) * 100).toFixed(0)}% do total`,
+        deltaDirection: 'flat',
+      },
+      { label: 'Grupo Qtd', value: qtyGrupo, numberFormat: NUM_FMT.INT, delta: 'oficiais', deltaDirection: 'flat' },
+      {
+        label: 'Grupo Valor',
+        value: valueGrupo,
+        numberFormat: NUM_FMT.EURO,
+        delta: `${((valueGrupo / Math.max(totalValue, 1)) * 100).toFixed(0)}% do total`,
+        deltaDirection: 'flat',
+      },
+    ],
+    COL_COUNT
+  );
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
-  row = kpiStrip(batch, sheetId, row, [
-    { label: 'Entradas €',  value: totalIn,     numberFormat: NUM_FMT.EURO, delta: 'entregas recentes', deltaDirection: 'up' },
-    { label: 'Vendas €',    value: totalSales,  numberFormat: NUM_FMT.EURO, delta: 'vendas recentes', deltaDirection: 'up' },
-    { label: 'Perdido €',   value: totalLost,   numberFormat: NUM_FMT.EURO, delta: 'em operações', deltaDirection: totalLost > 0 ? 'down' : 'flat' },
-    { label: 'Movimentos',  value: movs.length, numberFormat: NUM_FMT.INT,  delta: 'últimos registos', deltaDirection: 'flat' },
-  ], COL_COUNT);
+  row = kpiStrip(
+    batch,
+    sheetId,
+    row,
+    [
+      {
+        label: 'Entradas €',
+        value: totalIn,
+        numberFormat: NUM_FMT.EURO,
+        delta: 'entregas recentes',
+        deltaDirection: 'up',
+      },
+      {
+        label: 'Vendas €',
+        value: totalSales,
+        numberFormat: NUM_FMT.EURO,
+        delta: 'vendas recentes',
+        deltaDirection: 'up',
+      },
+      {
+        label: 'Perdido €',
+        value: totalLost,
+        numberFormat: NUM_FMT.EURO,
+        delta: 'em operações',
+        deltaDirection: totalLost > 0 ? 'down' : 'flat',
+      },
+      {
+        label: 'Movimentos',
+        value: movs.length,
+        numberFormat: NUM_FMT.INT,
+        delta: 'últimos registos',
+        deltaDirection: 'flat',
+      },
+    ],
+    COL_COUNT
+  );
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
 
   // ── Breakdown por categoria ──────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '📊 BREAKDOWN POR CATEGORIA', hint: 'qtd + valor por categoria', columnCount: COL_COUNT,
+    title: '📊 BREAKDOWN POR CATEGORIA',
+    hint: 'qtd + valor por categoria',
+    columnCount: COL_COUNT,
   });
-  row = tableHeader(batch, sheetId, row, ['Categoria', 'Nº Itens', 'Qtd Armazém', 'Qtd Grupo', 'Qtd Total', 'Valor (€)', '% do Valor', ...Array(COL_COUNT - 7).fill('')]);
+  row = tableHeader(batch, sheetId, row, [
+    'Categoria',
+    'Nº Itens',
+    'Qtd Armazém',
+    'Qtd Grupo',
+    'Qtd Total',
+    'Valor (€)',
+    '% do Valor',
+    ...Array(COL_COUNT - 7).fill(''),
+  ]);
   const catRows = byCat.map(c => {
     const pct = totalValue > 0 ? Number(c.total_value) / totalValue : 0;
     const cells = [
@@ -199,7 +349,8 @@ async function syncStock(batch, sheetId) {
   row = tableBody(batch, sheetId, row, catRows);
 
   row = totalRow(batch, sheetId, row, {
-    label: 'TOTAL', columnCount: COL_COUNT,
+    label: 'TOTAL',
+    columnCount: COL_COUNT,
     values: [
       { col: 1, value: inv.length, numberFormat: NUM_FMT.INT },
       { col: 2, value: qtyArmazem, numberFormat: NUM_FMT.INT },
@@ -215,7 +366,9 @@ async function syncStock(batch, sheetId) {
 
   // ── Inventário detalhado agrupado por categoria ──────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '📋 INVENTÁRIO DETALHADO', hint: 'agrupado por categoria', columnCount: COL_COUNT,
+    title: '📋 INVENTÁRIO DETALHADO',
+    hint: 'agrupado por categoria',
+    columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, INV_HEADERS.concat(Array(COL_COUNT - INV_HEADERS.length).fill('')));
   batch.freezeRows(sheetId, row);
@@ -281,8 +434,8 @@ async function syncStock(batch, sheetId) {
     // Subtotal — colunas: Item / Cat / Un / QtdAr / QtdGr / QtdTotal / VUnit / VTotal / Entradas / Saídas / UltMov / Estado
     const subQtyAr = items.reduce((a, i) => a + Number(i.balance_armazem || 0), 0);
     const subQtyGr = items.reduce((a, i) => a + Number(i.balance_grupo || 0), 0);
-    const subQty   = items.reduce((a, i) => a + Number(i.balance || 0), 0);
-    const subVal   = items.reduce((a, i) => a + Number(i.value_total || 0), 0);
+    const subQty = items.reduce((a, i) => a + Number(i.balance || 0), 0);
+    const subVal = items.reduce((a, i) => a + Number(i.value_total || 0), 0);
     const boldFont = { fontFamily: 'Inter', fontSize: 10, bold: true, foregroundColor: COLOR.WHITE };
     const subCells = [
       bodyBoldCell(`⎯ subtotal ${CAT_DISPLAY[cat] || cat}`, { bg: COLOR.BG_BLOCK_ALT, align: 'RIGHT' }),
@@ -290,7 +443,7 @@ async function syncStock(batch, sheetId) {
       cell('', { bg: COLOR.BG_BLOCK_ALT }),
       numCell(subQtyAr, NUM_FMT.INT, { bg: COLOR.BG_BLOCK_ALT, font: boldFont }),
       numCell(subQtyGr, NUM_FMT.INT, { bg: COLOR.BG_BLOCK_ALT, font: boldFont }),
-      numCell(subQty,   NUM_FMT.INT, { bg: COLOR.BG_BLOCK_ALT, font: boldFont }),
+      numCell(subQty, NUM_FMT.INT, { bg: COLOR.BG_BLOCK_ALT, font: boldFont }),
       cell('', { bg: COLOR.BG_BLOCK_ALT }),
       numCell(subVal, NUM_FMT.EURO, { bg: COLOR.BG_BLOCK_ALT, font: boldFont }),
       ...Array(COL_COUNT - 8).fill(cell('', { bg: COLOR.BG_BLOCK_ALT })),
@@ -303,7 +456,8 @@ async function syncStock(batch, sheetId) {
 
   // Grand total do inventário
   row = totalRow(batch, sheetId, row, {
-    label: 'GRAND TOTAL', columnCount: COL_COUNT,
+    label: 'GRAND TOTAL',
+    columnCount: COL_COUNT,
     values: [
       { col: 3, value: qtyArmazem, numberFormat: NUM_FMT.INT },
       { col: 4, value: qtyGrupo, numberFormat: NUM_FMT.INT },
@@ -323,7 +477,9 @@ async function syncStock(batch, sheetId) {
 
   // ── Ledger de movimentos ─────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '🔄 LEDGER DE MOVIMENTOS', hint: `últimos ${movs.length} · filtros activos`, columnCount: COL_COUNT,
+    title: '🔄 LEDGER DE MOVIMENTOS',
+    hint: `últimos ${movs.length} · filtros activos`,
+    columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, MOVS_HEADERS);
   const movRows = movs.map(m => [

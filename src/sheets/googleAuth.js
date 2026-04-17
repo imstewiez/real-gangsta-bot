@@ -13,12 +13,14 @@ function _parseCredentials(raw) {
     try {
       return JSON.parse(trimmed);
     } catch (e) {
-      throw new Error(`GOOGLE_SERVICE_ACCOUNT_JSON: JSON inválido (${e.message}). Dica: se colaste no Railway, usa base64 — 'cat key.json | base64 -w0' e cola o resultado. O código aceita base64 automaticamente.`);
+      throw new Error(
+        `GOOGLE_SERVICE_ACCOUNT_JSON: JSON inválido (${e.message}). Dica: se colaste no Railway, usa base64 — 'cat key.json | base64 -w0' e cola o resultado. O código aceita base64 automaticamente.`
+      );
     }
   }
 
   // 2. Base64 (string sem { e sem separador de path)
-  if (!/[\/\\]/.test(trimmed) && /^[A-Za-z0-9+/=]+$/.test(trimmed) && trimmed.length > 100) {
+  if (!/[/\\]/.test(trimmed) && /^[A-Za-z0-9+/=]+$/.test(trimmed) && trimmed.length > 100) {
     try {
       const decoded = Buffer.from(trimmed, 'base64').toString('utf8');
       return JSON.parse(decoded);
@@ -33,7 +35,9 @@ function _parseCredentials(raw) {
   try {
     return JSON.parse(fs.readFileSync(path.resolve(process.cwd(), raw), 'utf8'));
   } catch (e) {
-    throw new Error(`GOOGLE_SERVICE_ACCOUNT_JSON: não consegui ler como path (${e.message}). Usa JSON inline ou base64.`);
+    throw new Error(
+      `GOOGLE_SERVICE_ACCOUNT_JSON: não consegui ler como path (${e.message}). Usa JSON inline ou base64.`
+    );
   }
 }
 

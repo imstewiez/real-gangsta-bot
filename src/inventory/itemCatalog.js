@@ -40,8 +40,17 @@ async function seedFromFullInventory() {
           `INSERT INTO inventory_movements
            (movement_type, item_id, quantity, member_role, origin, destination, context, notes, created_by)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-          ['ajuste_manual', itemId, item.stock, '', 'inventário_inicial', 'org',
-           'Seed inicial', `Stock inicial: ${item.stock} ${item.unit}`, 'system']
+          [
+            'ajuste_manual',
+            itemId,
+            item.stock,
+            '',
+            'inventário_inicial',
+            'org',
+            'Seed inicial',
+            `Stock inicial: ${item.stock} ${item.unit}`,
+            'system',
+          ]
         );
         stockLoaded++;
       }
@@ -62,7 +71,17 @@ function getCategories() {
     const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
     return catalog.categories || [];
   } catch {
-    return ['dinheiro', 'metais', 'sucata_industria', 'quimicos_droga', 'comida_pesca', 'equipamento', 'municoes', 'armas_fogo', 'armas_brancas'];
+    return [
+      'dinheiro',
+      'metais',
+      'sucata_industria',
+      'quimicos_droga',
+      'comida_pesca',
+      'equipamento',
+      'municoes',
+      'armas_fogo',
+      'armas_brancas',
+    ];
   }
 }
 

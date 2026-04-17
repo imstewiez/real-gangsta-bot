@@ -8,7 +8,15 @@ const { weekBounds } = require('../util');
 const { warn } = require('../logger');
 const eventBus = require('../core/eventBus');
 
-async function recordDelivery({ discordId, itemId, quantity, movementType, notes = '', operationId = null, createdBy }) {
+async function recordDelivery({
+  discordId,
+  itemId,
+  quantity,
+  movementType,
+  notes = '',
+  operationId = null,
+  createdBy,
+}) {
   const member = await memberRepo.findByDiscordId(discordId);
   if (!member) throw new Error('Membro não encontrado.');
 
@@ -39,8 +47,11 @@ async function recordDelivery({ discordId, itemId, quantity, movementType, notes
     entityId: String(movement.id),
     actorId: createdBy,
     afterState: {
-      movementType, itemName: item.name, quantity,
-      memberName: member.display_name, operationId,
+      movementType,
+      itemName: item.name,
+      quantity,
+      memberName: member.display_name,
+      operationId,
     },
     context: notes,
   });
@@ -48,9 +59,15 @@ async function recordDelivery({ discordId, itemId, quantity, movementType, notes
   // Fire-and-forget notify nos canais de stock
   const balanceAfter = await inventoryRepo.getStockForItem(itemId).catch(() => null);
   notifyMovement({
-    movementType, itemName: item.name, quantity,
-    memberName: member.display_name, memberDiscordId: member.discord_id,
-    actorId: createdBy, operationId, balanceAfter, context: notes,
+    movementType,
+    itemName: item.name,
+    quantity,
+    memberName: member.display_name,
+    memberDiscordId: member.discord_id,
+    actorId: createdBy,
+    operationId,
+    balanceAfter,
+    context: notes,
   }).catch(() => {});
 
   // Fire-and-forget: log dedicado dos Bairristas (entregas + vendas)
@@ -64,31 +81,38 @@ async function recordDelivery({ discordId, itemId, quantity, movementType, notes
         bairristaStatsRepo.getRankingPosition(member.discord_id, weekStartStr).catch(() => null),
       ]);
       notifyBairristaMovement({
-        movementType, itemName: item.name, quantity,
+        movementType,
+        itemName: item.name,
+        quantity,
         itemPrice: parseFloat(item.estimated_value) || 0,
-        memberName: member.display_name, memberDiscordId: member.discord_id,
-        notes, weekStats, rankPosition,
+        memberName: member.display_name,
+        memberDiscordId: member.discord_id,
+        notes,
+        weekStats,
+        rankPosition,
       });
     })().catch(() => {});
   }
 
   // Event bus — subscribers podem projectar para Sheets / dashboards.
-  eventBus.emitAsync('material.registered', {
-    movementId: movement.id,
-    movementType,
-    itemId,
-    itemName: item.name,
-    itemValue: parseFloat(item.estimated_value) || 0,
-    quantity,
-    memberId: member.id,
-    memberDiscordId: member.discord_id,
-    memberRole: member.role,
-    operationId,
-    actorId: createdBy,
-    balanceAfter,
-    notes,
-    at: new Date(),
-  }).catch(e => warn(`[EVENT] material.registered: ${e.message}`));
+  eventBus
+    .emitAsync('material.registered', {
+      movementId: movement.id,
+      movementType,
+      itemId,
+      itemName: item.name,
+      itemValue: parseFloat(item.estimated_value) || 0,
+      quantity,
+      memberId: member.id,
+      memberDiscordId: member.discord_id,
+      memberRole: member.role,
+      operationId,
+      actorId: createdBy,
+      balanceAfter,
+      notes,
+      at: new Date(),
+    })
+    .catch(e => warn(`[EVENT] material.registered: ${e.message}`));
 
   return { movement, member, item, balanceAfter: Number(balanceAfter ?? 0) };
 }
@@ -109,7 +133,7 @@ async function adjustStock({ itemId, quantity, notes, createdBy }) {
     if (balance + quantity < 0) {
       throw new Error(
         `Stock insuficiente para **${item.name}** — saldo actual ${balance}, ajuste pedido ${quantity}. ` +
-        `Máximo que podes descontar: ${balance}.`
+          `Máximo que podes descontar: ${balance}.`
       );
     }
   }
@@ -132,22 +156,28 @@ async function adjustStock({ itemId, quantity, notes, createdBy }) {
 
   const balanceAfter = await inventoryRepo.getStockForItem(itemId).catch(() => null);
   notifyMovement({
-    movementType: 'ajuste_manual', itemName: item.name, quantity,
-    actorId: createdBy, balanceAfter, context: notes,
-  }).catch(() => {});
-
-  // Event bus — notification routing publica em INVENTORY_EVENTS.
-  eventBus.emitAsync('material.adjusted', {
-    movementId: movement.id,
-    itemId,
+    movementType: 'ajuste_manual',
     itemName: item.name,
-    itemValue: parseFloat(item.estimated_value) || 0,
     quantity,
     actorId: createdBy,
     balanceAfter,
-    notes,
-    at: new Date(),
-  }).catch(e => warn(`[EVENT] material.adjusted: ${e.message}`));
+    context: notes,
+  }).catch(() => {});
+
+  // Event bus — notification routing publica em INVENTORY_EVENTS.
+  eventBus
+    .emitAsync('material.adjusted', {
+      movementId: movement.id,
+      itemId,
+      itemName: item.name,
+      itemValue: parseFloat(item.estimated_value) || 0,
+      quantity,
+      actorId: createdBy,
+      balanceAfter,
+      notes,
+      at: new Date(),
+    })
+    .catch(e => warn(`[EVENT] material.adjusted: ${e.message}`));
 
   return movement;
 }

@@ -4,19 +4,19 @@ const { query, queryWithTransaction } = require('../db');
 const TYPES = ['principal', 'parceria'];
 
 async function getState(type) {
-  const res = await query(`SELECT * FROM radio_state WHERE radio_type = $1`, [type]);
+  const res = await query('SELECT * FROM radio_state WHERE radio_type = $1', [type]);
   return res.rows[0] || null;
 }
 
 async function getAllStates() {
-  const res = await query(`SELECT * FROM radio_state ORDER BY radio_type`);
+  const res = await query('SELECT * FROM radio_state ORDER BY radio_type');
   return res.rows;
 }
 
 async function setState({ type, value, mode, actorId, note }) {
-  return queryWithTransaction(async (client) => {
+  return queryWithTransaction(async client => {
     // Lê o valor antigo (se existir)
-    const cur = await client.query(`SELECT value FROM radio_state WHERE radio_type = $1`, [type]);
+    const cur = await client.query('SELECT value FROM radio_state WHERE radio_type = $1', [type]);
     const oldValue = cur.rows[0]?.value || '';
 
     await client.query(
@@ -44,15 +44,13 @@ async function setState({ type, value, mode, actorId, note }) {
 
 async function listHistory(limit = 10, type = null) {
   if (type) {
-    const res = await query(
-      `SELECT * FROM radio_history WHERE radio_type = $1 ORDER BY created_at DESC LIMIT $2`,
-      [type, limit]
-    );
+    const res = await query('SELECT * FROM radio_history WHERE radio_type = $1 ORDER BY created_at DESC LIMIT $2', [
+      type,
+      limit,
+    ]);
     return res.rows;
   }
-  const res = await query(
-    `SELECT * FROM radio_history ORDER BY created_at DESC LIMIT $1`, [limit]
-  );
+  const res = await query('SELECT * FROM radio_history ORDER BY created_at DESC LIMIT $1', [limit]);
   return res.rows;
 }
 

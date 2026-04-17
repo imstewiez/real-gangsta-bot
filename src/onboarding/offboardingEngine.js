@@ -49,8 +49,12 @@ async function handleMemberLeave(guildMember, client) {
           channelAction = 'deleted';
           log(`[OFFBOARDING] Canal de ${displayName} apagado.`);
         } else if (CONFIG.ARCHIVE_ON_LEAVE && CONFIG.BAIRRISTA_ARQUIVO_CATEGORY_ID) {
-          await queueChannelOp(() => channel.setParent(CONFIG.BAIRRISTA_ARQUIVO_CATEGORY_ID, { lockPermissions: true }));
-          await queueChannelOp(() => channel.send({ content: `🪦 **${displayName}** saiu do servidor — canal arquivado.` }).catch(() => {}));
+          await queueChannelOp(() =>
+            channel.setParent(CONFIG.BAIRRISTA_ARQUIVO_CATEGORY_ID, { lockPermissions: true })
+          );
+          await queueChannelOp(() =>
+            channel.send({ content: `🪦 **${displayName}** saiu do servidor — canal arquivado.` }).catch(() => {})
+          );
           await query(
             `UPDATE resident_channels SET status = 'archived', archived_at = NOW()
               WHERE channel_id = $1 AND status = 'active'`,
@@ -80,11 +84,14 @@ async function handleMemberLeave(guildMember, client) {
 
   await sendAuditToChannel(client, {
     title: '🚪 Morador saiu',
-    description: `**${displayName}** (<@${discordId}>) saiu do servidor.\n`
-      + (channelAction === 'deleted' ? '🗑️ Canal individual apagado.' :
-         channelAction === 'archived' ? '📦 Canal individual arquivado.' :
-         '_(sem canal associado)_'),
-    color: 0x95A5A6,
+    description:
+      `**${displayName}** (<@${discordId}>) saiu do servidor.\n` +
+      (channelAction === 'deleted'
+        ? '🗑️ Canal individual apagado.'
+        : channelAction === 'archived'
+          ? '📦 Canal individual arquivado.'
+          : '_(sem canal associado)_'),
+    color: 0x95a5a6,
   }).catch(() => {});
 
   return { action: 'offboarded', channelAction, wasBairrista, wasMorador: wasBairrista };

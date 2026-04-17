@@ -20,15 +20,23 @@ function resolvedPath(rel) {
 const queueOps = [];
 require.cache[resolvedPath('discordQueue.js')] = {
   exports: {
-    queueMemberOp: async (fn) => { queueOps.push('memberOp'); return fn && fn(); },
-    queueChannelOp: async (fn) => { queueOps.push('channelOp'); return fn && fn(); },
+    queueMemberOp: async fn => {
+      queueOps.push('memberOp');
+      return fn && fn();
+    },
+    queueChannelOp: async fn => {
+      queueOps.push('channelOp');
+      return fn && fn();
+    },
   },
 };
 
 const auditCalls = [];
 require.cache[resolvedPath('audit/auditEngine.js')] = {
   exports: {
-    logAudit: async (entry) => { auditCalls.push(entry); },
+    logAudit: async entry => {
+      auditCalls.push(entry);
+    },
     sendAuditToChannel: async () => {},
     getRecentLogs: async () => [],
   },

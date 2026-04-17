@@ -28,40 +28,45 @@ const POLICIES = [
     domain: 'audit_logs',
     action: 'hard_delete',
     description: 'audit_logs com created_at > 365 dias',
-    countSql: `SELECT COUNT(*)::int AS n FROM audit_logs WHERE created_at < NOW() - INTERVAL '365 days'`,
-    applySql: `DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '365 days' RETURNING id`,
+    countSql: "SELECT COUNT(*)::int AS n FROM audit_logs WHERE created_at < NOW() - INTERVAL '365 days'",
+    applySql: "DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL '365 days' RETURNING id",
   },
   {
     key: 'job_runs_90',
     domain: 'job_runs',
     action: 'hard_delete',
     description: 'job_runs com finished_at (ou started_at) > 90 dias',
-    countSql: `SELECT COUNT(*)::int AS n FROM job_runs WHERE COALESCE(finished_at, started_at) < NOW() - INTERVAL '90 days'`,
-    applySql: `DELETE FROM job_runs WHERE COALESCE(finished_at, started_at) < NOW() - INTERVAL '90 days' RETURNING id`,
+    countSql:
+      "SELECT COUNT(*)::int AS n FROM job_runs WHERE COALESCE(finished_at, started_at) < NOW() - INTERVAL '90 days'",
+    applySql: "DELETE FROM job_runs WHERE COALESCE(finished_at, started_at) < NOW() - INTERVAL '90 days' RETURNING id",
   },
   {
     key: 'availability_180',
     domain: 'availability_sessions',
     action: 'soft_delete',
     description: 'availability_sessions fechadas > 180 dias (soft-delete)',
-    countSql: `SELECT COUNT(*)::int AS n FROM availability_sessions WHERE status='closed' AND deleted_at IS NULL AND created_at < NOW() - INTERVAL '180 days'`,
-    applySql: `UPDATE availability_sessions SET deleted_at = NOW(), deleted_by = 'system:retention', record_version = record_version + 1 WHERE status='closed' AND deleted_at IS NULL AND created_at < NOW() - INTERVAL '180 days' RETURNING id`,
+    countSql:
+      "SELECT COUNT(*)::int AS n FROM availability_sessions WHERE status='closed' AND deleted_at IS NULL AND created_at < NOW() - INTERVAL '180 days'",
+    applySql:
+      "UPDATE availability_sessions SET deleted_at = NOW(), deleted_by = 'system:retention', record_version = record_version + 1 WHERE status='closed' AND deleted_at IS NULL AND created_at < NOW() - INTERVAL '180 days' RETURNING id",
   },
   {
     key: 'radio_history_365',
     domain: 'radio_history',
     action: 'hard_delete',
     description: 'radio_history com created_at > 365 dias',
-    countSql: `SELECT COUNT(*)::int AS n FROM radio_history WHERE created_at < NOW() - INTERVAL '365 days'`,
-    applySql: `DELETE FROM radio_history WHERE created_at < NOW() - INTERVAL '365 days' RETURNING id`,
+    countSql: "SELECT COUNT(*)::int AS n FROM radio_history WHERE created_at < NOW() - INTERVAL '365 days'",
+    applySql: "DELETE FROM radio_history WHERE created_at < NOW() - INTERVAL '365 days' RETURNING id",
   },
   {
     key: 'sticky_inactive_30',
     domain: 'sticky_messages',
     action: 'hard_delete',
     description: 'sticky_messages inactive com updated_at > 30 dias',
-    countSql: `SELECT COUNT(*)::int AS n FROM sticky_messages WHERE active = false AND updated_at < NOW() - INTERVAL '30 days'`,
-    applySql: `DELETE FROM sticky_messages WHERE active = false AND updated_at < NOW() - INTERVAL '30 days' RETURNING id`,
+    countSql:
+      "SELECT COUNT(*)::int AS n FROM sticky_messages WHERE active = false AND updated_at < NOW() - INTERVAL '30 days'",
+    applySql:
+      "DELETE FROM sticky_messages WHERE active = false AND updated_at < NOW() - INTERVAL '30 days' RETURNING id",
   },
 ];
 
@@ -100,7 +105,7 @@ async function runRetention({ dryRun = true, actor = 'system:retention' } = {}) 
 
     try {
       const res = await query(p.applySql);
-      const affected = res.rowCount || (res.rows?.length || 0);
+      const affected = res.rowCount || res.rows?.length || 0;
       await _recordArchival({
         domain: p.domain,
         action: p.action,
@@ -117,13 +122,21 @@ async function runRetention({ dryRun = true, actor = 'system:retention' } = {}) 
   }
 
   const ms = Date.now() - t0;
-  const summary = actions.reduce((a, x) => {
-    if (x.error) a.errors += 1;
-    else if (x.applied) { a.appliedCount += 1; a.totalRows += x.count || 0; }
-    return a;
-  }, { errors: 0, appliedCount: 0, totalRows: 0 });
+  const summary = actions.reduce(
+    (a, x) => {
+      if (x.error) a.errors += 1;
+      else if (x.applied) {
+        a.appliedCount += 1;
+        a.totalRows += x.count || 0;
+      }
+      return a;
+    },
+    { errors: 0, appliedCount: 0, totalRows: 0 }
+  );
 
-  log(`[RETENTION] dry=${dryRun} · ${actions.length} políticas · ${summary.totalRows} rows afectados · ${summary.errors} erros · ${ms}ms`);
+  log(
+    `[RETENTION] dry=${dryRun} · ${actions.length} políticas · ${summary.totalRows} rows afectados · ${summary.errors} erros · ${ms}ms`
+  );
   return { dryRun, actions, summary, ms };
 }
 

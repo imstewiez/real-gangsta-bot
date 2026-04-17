@@ -15,7 +15,19 @@ const { warn } = require('../logger');
 // Estados de saída em que é coerente registar kills.
 const KILL_ALLOWED_SAIDA_STATUSES = new Set(['em_preparacao', 'em_curso', 'em_liquidacao', 'concluida']);
 
-async function recordKill({ killerDiscordId, victimName, victimDiscordId = null, victimFaction = '', spot = '', context = '', saidaId = null, date = null, notes = '', confirmedBy = null, createdBy }) {
+async function recordKill({
+  killerDiscordId,
+  victimName,
+  victimDiscordId = null,
+  victimFaction = '',
+  spot = '',
+  context = '',
+  saidaId = null,
+  date = null,
+  notes = '',
+  confirmedBy = null,
+  createdBy,
+}) {
   if (!victimName?.trim()) throw new Error('Nome da vítima obrigatório.');
 
   const killer = await memberRepo.findByDiscordId(killerDiscordId);
@@ -37,7 +49,9 @@ async function recordKill({ killerDiscordId, victimName, victimDiscordId = null,
     const participants = await saidaRepo.getParticipants(saidaId);
     const isParticipant = participants.some(p => p.member_id === killer.id);
     if (!isParticipant) {
-      throw new Error(`${killer.display_name || 'Membro'} não é participante da saída #${saidaId}. Inscreve-te primeiro ou regista o kill sem saída.`);
+      throw new Error(
+        `${killer.display_name || 'Membro'} não é participante da saída #${saidaId}. Inscreve-te primeiro ou regista o kill sem saída.`
+      );
     }
   }
 
@@ -64,16 +78,18 @@ async function recordKill({ killerDiscordId, victimName, victimDiscordId = null,
   });
 
   // Event bus — subscribers projectam para Sheets (Saídas & Combate).
-  eventBus.emitAsync('kill.registered', {
-    killId: kill.id,
-    killerId: killer.id,
-    killerDiscordId,
-    victimName: victimName.trim(),
-    victimDiscordId,
-    victimFaction,
-    spot,
-    saidaId,
-  }).catch(e => warn(`[EVENT] kill.registered: ${e.message}`));
+  eventBus
+    .emitAsync('kill.registered', {
+      killId: kill.id,
+      killerId: killer.id,
+      killerDiscordId,
+      victimName: victimName.trim(),
+      victimDiscordId,
+      victimFaction,
+      spot,
+      saidaId,
+    })
+    .catch(e => warn(`[EVENT] kill.registered: ${e.message}`));
 
   return { ...kill, killer };
 }
@@ -95,18 +111,20 @@ async function publishKillToChannel(client, kill) {
   const { brandEmbed } = require('../shared/embedBuilders');
   const { EMOJI, KILLS } = require('../content');
 
-  const killerMention = kill.killer?.discord_id ? `<@${kill.killer.discord_id}>` : kill.killer?.display_name || 'alguém';
+  const killerMention = kill.killer?.discord_id
+    ? `<@${kill.killer.discord_id}>`
+    : kill.killer?.display_name || 'alguém';
   const victimStr = kill.victim_discord_id ? `<@${kill.victim_discord_id}>` : `**${kill.victim_name}**`;
 
   const fields = [];
   if (kill.victim_faction) fields.push({ name: KILLS.LABELS.FACCAO, value: kill.victim_faction, inline: true });
-  if (kill.spot)           fields.push({ name: KILLS.LABELS.SPOT,   value: kill.spot, inline: true });
-  if (kill.saida_id)       fields.push({ name: KILLS.LABELS.SAIDA,  value: `#${kill.saida_id}`, inline: true });
-  if (kill.context)        fields.push({ name: 'Contexto',          value: kill.context, inline: false });
+  if (kill.spot) fields.push({ name: KILLS.LABELS.SPOT, value: kill.spot, inline: true });
+  if (kill.saida_id) fields.push({ name: KILLS.LABELS.SAIDA, value: `#${kill.saida_id}`, inline: true });
+  if (kill.context) fields.push({ name: 'Contexto', value: kill.context, inline: false });
   fields.push({ name: KILLS.LABELS.QUANDO, value: String(kill.date).split('T')[0], inline: true });
 
   const embed = brandEmbed('STREET')
-    .setColor(0x2C2F33)
+    .setColor(0x2c2f33)
     .setTitle(`${EMOJI.MORTE} Nova entrada no cemitério`)
     .setDescription(`${killerMention} abateu ${victimStr}`)
     .addFields(fields);
@@ -123,24 +141,29 @@ async function getKillerStats(killerDiscordId) {
   if (!member) return null;
 
   const [totalRow, weeklyRow, streakRow, leaderboard] = await Promise.all([
-    query(`SELECT COUNT(*)::int AS n FROM kill_logs WHERE killer_id = $1`, [member.id]),
-    query(`SELECT COUNT(*)::int AS n FROM kill_logs WHERE killer_id = $1 AND created_at >= NOW() - INTERVAL '7 days'`, [member.id]),
+    query('SELECT COUNT(*)::int AS n FROM kill_logs WHERE killer_id = $1', [member.id]),
+    query("SELECT COUNT(*)::int AS n FROM kill_logs WHERE killer_id = $1 AND created_at >= NOW() - INTERVAL '7 days'", [
+      member.id,
+    ]),
     // Streak: contagem de kills consecutivas desde a última morte (death_logs).
     // Se não houver death_logs, retorna total. Graceful se tabela não existir.
-    query(`
+    query(
+      `
       SELECT COUNT(*)::int AS n FROM kill_logs
        WHERE killer_id = $1
          AND created_at > COALESCE((
            SELECT MAX(created_at) FROM kill_logs WHERE victim_discord_id = $2
          ), '1970-01-01'::timestamptz)
-    `, [member.id, killerDiscordId]).catch(() => ({ rows: [{ n: 0 }] })),
+    `,
+      [member.id, killerDiscordId]
+    ).catch(() => ({ rows: [{ n: 0 }] })),
     killRepo.getLeaderboard(100, null).catch(() => []),
   ]);
 
-  const total   = totalRow.rows[0]?.n || 0;
-  const weekly  = weeklyRow.rows[0]?.n || 0;
-  const streak  = streakRow.rows[0]?.n || 0;
-  const rank    = (leaderboard.findIndex(r => r.discord_id === killerDiscordId) + 1) || 0;
+  const total = totalRow.rows[0]?.n || 0;
+  const weekly = weeklyRow.rows[0]?.n || 0;
+  const streak = streakRow.rows[0]?.n || 0;
+  const rank = leaderboard.findIndex(r => r.discord_id === killerDiscordId) + 1 || 0;
 
   return { total, weekly, streak, rank };
 }

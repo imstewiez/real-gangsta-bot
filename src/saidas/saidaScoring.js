@@ -33,9 +33,9 @@ function computeSaidaScores({ participants, result, suppliedTotal }) {
     const died = Boolean(p.died);
     const survived = p.survived !== false && !died;
 
-    const issued_value   = Number(p.issued_value   || 0);
+    const issued_value = Number(p.issued_value || 0);
     const returned_value = Number(p.returned_value || 0);
-    const lost_value     = Number(p.lost_value     || 0);
+    const lost_value = Number(p.lost_value || 0);
     const consumed_value = Number(p.consumed_value || 0);
 
     const net_material_delta = returned_value - lost_value - consumed_value;
@@ -59,8 +59,14 @@ function computeSaidaScores({ participants, result, suppliedTotal }) {
 
     return {
       ...p,
-      kills, deaths_count, died, survived,
-      issued_value, returned_value, lost_value, consumed_value,
+      kills,
+      deaths_count,
+      died,
+      survived,
+      issued_value,
+      returned_value,
+      lost_value,
+      consumed_value,
       net_material_delta,
       performance_score,
       discipline_score,

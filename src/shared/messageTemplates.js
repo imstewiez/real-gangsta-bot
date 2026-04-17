@@ -11,20 +11,14 @@
  */
 
 const AVAILABILITY = {
-  SESSION_OPENED: (id, channelId) =>
-    `✅ Sessão #${id} publicada em <#${channelId}>.`,
-  SESSION_ALREADY_OPEN: (id) =>
+  SESSION_OPENED: (id, channelId) => `✅ Sessão #${id} publicada em <#${channelId}>.`,
+  SESSION_ALREADY_OPEN: id =>
     `⚠️ Já existe uma sessão aberta hoje (#${id}). Fecha-a primeiro com \`/rg-availability-close\`.`,
-  SESSION_CLOSED: (id) =>
-    `🔒 Sessão #${id} fechada.`,
-  SESSION_NOT_FOUND: () =>
-    'Sessão não encontrada.',
-  NO_RECENT: () =>
-    'Sem sessão recente neste canal.',
-  VOTE_RECORDED: (slot, stateLabel, stateEmoji) =>
-    `${stateEmoji} Voto registado: **${slot}** → **${stateLabel}**`,
-  VOTE_BULK_RECORDED: (n, stateLabel, stateEmoji) =>
-    `${stateEmoji} ${n} slot(s) marcados como **${stateLabel}**.`,
+  SESSION_CLOSED: id => `🔒 Sessão #${id} fechada.`,
+  SESSION_NOT_FOUND: () => 'Sessão não encontrada.',
+  NO_RECENT: () => 'Sem sessão recente neste canal.',
+  VOTE_RECORDED: (slot, stateLabel, stateEmoji) => `${stateEmoji} Voto registado: **${slot}** → **${stateLabel}**`,
+  VOTE_BULK_RECORDED: (n, stateLabel, stateEmoji) => `${stateEmoji} ${n} slot(s) marcados como **${stateLabel}**.`,
   REASON: {
     session_not_found: 'Sessão não encontrada.',
     session_closed: 'Sessão fechada — votos congelados.',
@@ -33,29 +27,20 @@ const AVAILABILITY = {
 };
 
 const RADIO = {
-  SET: (typeLabel, typeEmoji, prev, next) =>
-    `${typeEmoji} ${typeLabel}: \`${prev || '∅'}\` → \`${next}\`.`,
+  SET: (typeLabel, typeEmoji, prev, next) => `${typeEmoji} ${typeLabel}: \`${prev || '∅'}\` → \`${next}\`.`,
   RANDOM: (typeLabel, typeEmoji, prev, next) =>
     `🎲 ${typeLabel}: \`${prev || '∅'}\` → \`${next}\` (era \`${prev || '∅'}\`).`,
-  SWAPPED: (principal, parceria) =>
-    `🔁 Trocadas: 📻 \`${principal}\` • 🤝 \`${parceria}\`.`,
-  PUBLISHED: (channelId) =>
-    `📻 Painel publicado em <#${channelId}>.`,
-  HISTORY_EMPTY: () =>
-    '_Sem histórico ainda._',
+  SWAPPED: (principal, parceria) => `🔁 Trocadas: 📻 \`${principal}\` • 🤝 \`${parceria}\`.`,
+  PUBLISHED: channelId => `📻 Painel publicado em <#${channelId}>.`,
+  HISTORY_EMPTY: () => '_Sem histórico ainda._',
 };
 
 const STICKY = {
-  SET: (sourceKey, channelId, mode) =>
-    `📌 Sticky \`${sourceKey}\` activa em <#${channelId}> (modo ${mode}).`,
-  REMOVED: (sourceKey, channelId) =>
-    `🗑️ Sticky \`${sourceKey}\` removida de <#${channelId}>.`,
-  REFRESHED: (sourceKey) =>
-    `🔄 Sticky \`${sourceKey}\` refrescada.`,
-  NOT_FOUND: () =>
-    'Sticky não encontrada / inactiva.',
-  EMPTY_LIST: () =>
-    'Sem stickys activas.',
+  SET: (sourceKey, channelId, mode) => `📌 Sticky \`${sourceKey}\` activa em <#${channelId}> (modo ${mode}).`,
+  REMOVED: (sourceKey, channelId) => `🗑️ Sticky \`${sourceKey}\` removida de <#${channelId}>.`,
+  REFRESHED: sourceKey => `🔄 Sticky \`${sourceKey}\` refrescada.`,
+  NOT_FOUND: () => 'Sticky não encontrada / inactiva.',
+  EMPTY_LIST: () => 'Sem stickys activas.',
 };
 
 const TIERS = {

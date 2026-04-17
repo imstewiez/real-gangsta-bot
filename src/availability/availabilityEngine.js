@@ -13,9 +13,7 @@
  * ao votante é ephemeral.
  */
 
-const {
-  EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle,
-} = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const CONFIG = require('../config');
 const { availabilityRepo } = require('../repositories');
 const { logAudit } = require('../audit/auditEngine');
@@ -34,8 +32,8 @@ function todayDateString() {
 function _stackedBar(counts, width = 10) {
   const total = Object.values(counts).reduce((a, b) => a + (b || 0), 0);
   if (total === 0) return '·'.repeat(width);
-  const y = Math.round(((counts.disponivel   || 0) / total) * width);
-  const m = Math.round(((counts.talvez       || 0) / total) * width);
+  const y = Math.round(((counts.disponivel || 0) / total) * width);
+  const m = Math.round(((counts.talvez || 0) / total) * width);
   const n = width - y - m;
   return '█'.repeat(Math.max(0, y)) + '▒'.repeat(Math.max(0, m)) + '░'.repeat(Math.max(0, n));
 }
@@ -44,13 +42,15 @@ function buildEmbed(session, tallies, totalVoters) {
   const { EMOJI } = require('../content');
   const embed = brandEmbed('HOUSE')
     .setTitle(`${EMOJI.PRESENCA} Presença — ${session.session_date.toString().split('T')[0]}`)
-    .setDescription([
-      `**${session.header_text || pickHeader()}**`,
-      '',
-      session.status === 'closed'
-        ? `${EMOJI.BLOQUEADO} _Sessão fechada — votos congelados._`
-        : 'Vota no menu abaixo. Podes mudar a qualquer momento.',
-    ].join('\n'));
+    .setDescription(
+      [
+        `**${session.header_text || pickHeader()}**`,
+        '',
+        session.status === 'closed'
+          ? `${EMOJI.BLOQUEADO} _Sessão fechada — votos congelados._`
+          : 'Vota no menu abaixo. Podes mudar a qualquer momento.',
+      ].join('\n')
+    );
 
   // Um field por slot, contagens dos 3 estados + barra empilhada.
   for (const t of tallies) {
@@ -79,7 +79,8 @@ function buildComponents(session, slots) {
   const select = new StringSelectMenuBuilder()
     .setCustomId(`avail::vote_select::${session.id}`)
     .setPlaceholder('Marca a tua presença')
-    .setMinValues(1).setMaxValues(1);
+    .setMinValues(1)
+    .setMaxValues(1);
 
   // Discord limita a 25 opções por select. Cada slot gera 3 opções (×estado).
   // Truncar a 8 slots (8 × 3 = 24 opções) para caber com margem.
@@ -99,20 +100,43 @@ function buildComponents(session, slots) {
 
   // Atalhos: aplicar mesmo estado a TODOS os slots.
   const allRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`avail::all::${session.id}::disponivel`).setStyle(ButtonStyle.Success).setLabel('Apareço').setEmoji('✅'),
-    new ButtonBuilder().setCustomId(`avail::all::${session.id}::talvez`).setStyle(ButtonStyle.Secondary).setLabel('Talvez').setEmoji('⏰'),
-    new ButtonBuilder().setCustomId(`avail::all::${session.id}::indisponivel`).setStyle(ButtonStyle.Danger).setLabel('Não dá').setEmoji('❌'),
+    new ButtonBuilder()
+      .setCustomId(`avail::all::${session.id}::disponivel`)
+      .setStyle(ButtonStyle.Success)
+      .setLabel('Apareço')
+      .setEmoji('✅'),
+    new ButtonBuilder()
+      .setCustomId(`avail::all::${session.id}::talvez`)
+      .setStyle(ButtonStyle.Secondary)
+      .setLabel('Talvez')
+      .setEmoji('⏰'),
+    new ButtonBuilder()
+      .setCustomId(`avail::all::${session.id}::indisponivel`)
+      .setStyle(ButtonStyle.Danger)
+      .setLabel('Não dá')
+      .setEmoji('❌')
   );
   const utilRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`avail::summary::${session.id}`).setStyle(ButtonStyle.Primary).setLabel('Resumo').setEmoji('📊'),
-    new ButtonBuilder().setCustomId(`avail::refresh::${session.id}`).setStyle(ButtonStyle.Secondary).setLabel('Atualizar').setEmoji('🔁'),
+    new ButtonBuilder()
+      .setCustomId(`avail::summary::${session.id}`)
+      .setStyle(ButtonStyle.Primary)
+      .setLabel('Resumo')
+      .setEmoji('📊'),
+    new ButtonBuilder()
+      .setCustomId(`avail::refresh::${session.id}`)
+      .setStyle(ButtonStyle.Secondary)
+      .setLabel('Atualizar')
+      .setEmoji('🔁')
   );
 
   return [new ActionRowBuilder().addComponents(select), allRow, utilRow];
 }
 
 function buildContent(session) {
-  const ids = (session.mention_role_ids || '').split(',').map(s => s.trim()).filter(Boolean);
+  const ids = (session.mention_role_ids || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
   if (!ids.length) return undefined;
   return ids.map(id => `<@&${id}>`).join(' ');
 }
@@ -136,7 +160,12 @@ async function publishSession(client, session) {
     content,
     embeds: [embed],
     components,
-    allowedMentions: { roles: (session.mention_role_ids || '').split(',').map(s => s.trim()).filter(Boolean) },
+    allowedMentions: {
+      roles: (session.mention_role_ids || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean),
+    },
   });
   await availabilityRepo.setMessageId(session.id, message.id);
   return message;
@@ -144,7 +173,7 @@ async function publishSession(client, session) {
 
 async function createSession({ client, channelId, createdBy, headerText, mentionRoleIds, slots, sessionDate }) {
   const date = sessionDate || todayDateString();
-  const slotLabels = (slots && slots.length) ? slots : CONFIG.AVAILABILITY_SLOTS;
+  const slotLabels = slots && slots.length ? slots : CONFIG.AVAILABILITY_SLOTS;
   if (!slotLabels.length) throw new Error('Sem slots configurados — define AVAILABILITY_SLOTS.');
 
   // Não permite duplicar sessão aberta no mesmo canal/dia (índice único trata, mas
@@ -160,7 +189,9 @@ async function createSession({ client, channelId, createdBy, headerText, mention
   if (!resolvedMentions || !resolvedMentions.length) {
     resolvedMentions = CONFIG.AVAILABILITY_MENTION_ROLE_IDS.length
       ? CONFIG.AVAILABILITY_MENTION_ROLE_IDS
-      : (CONFIG.BAIRRISTAS_BASE_ROLE_ID ? [CONFIG.BAIRRISTAS_BASE_ROLE_ID] : []);
+      : CONFIG.BAIRRISTAS_BASE_ROLE_ID
+        ? [CONFIG.BAIRRISTAS_BASE_ROLE_ID]
+        : [];
   }
 
   const session = await availabilityRepo.createSession({
@@ -263,7 +294,12 @@ async function getSummaryText(sessionId) {
   const voters = await availabilityRepo.getVoters(sessionId);
   const total = await availabilityRepo.getDistinctVoterCount(sessionId);
 
-  const bySlot = new Map(slots.map(s => [s.id, { label: s.slot_label, position: s.position, votes: { disponivel: [], talvez: [], indisponivel: [] } }]));
+  const bySlot = new Map(
+    slots.map(s => [
+      s.id,
+      { label: s.slot_label, position: s.position, votes: { disponivel: [], talvez: [], indisponivel: [] } },
+    ])
+  );
   // Reconstruir slot_id a partir de slot_label (voters traz label, não id)
   const slotByLabel = new Map(slots.map(s => [s.slot_label, s]));
   for (const v of voters) {
@@ -272,8 +308,11 @@ async function getSummaryText(sessionId) {
     bySlot.get(slot.id).votes[v.vote_state].push(v.discord_user_id);
   }
 
-  const lines = [`**Sessão #${session.id}** — ${session.session_date.toString().split('T')[0]}`,
-    `Total de votantes: **${total}**`, ''];
+  const lines = [
+    `**Sessão #${session.id}** — ${session.session_date.toString().split('T')[0]}`,
+    `Total de votantes: **${total}**`,
+    '',
+  ];
   for (const slot of [...bySlot.values()].sort((a, b) => a.position - b.position)) {
     lines.push(`**🕒 ${slot.label}**`);
     for (const state of STATE_ORDER) {

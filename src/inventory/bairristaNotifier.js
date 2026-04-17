@@ -21,7 +21,9 @@ const { log, warn } = require('../logger');
 let _client = null;
 let _channelId = null;
 
-function setClient(client) { _client = client; }
+function setClient(client) {
+  _client = client;
+}
 
 const CHANNEL_DEF = { emoji: '📦', slug: 'log-bairristas' };
 
@@ -45,13 +47,10 @@ async function _findOrCreateChannel() {
   // Procurar por slug na categoria alvo ou em qualquer lado.
   // Fallback: GUETTO (moradia/tópicos) → COMANDO (chefia) se BAIRRISTAS não existir.
   const catKey = CONFIG.BAIRRISTA_LOG_CATEGORY_KEY || 'BAIRRISTAS';
-  const targetCat = CATEGORY_BY_KEY[catKey]
-    || CATEGORY_BY_KEY['GUETTO']
-    || CATEGORY_BY_KEY['COMANDO'];
+  const targetCat = CATEGORY_BY_KEY[catKey] || CATEGORY_BY_KEY['GUETTO'] || CATEGORY_BY_KEY['COMANDO'];
   const slugRe = /log.bairrista|movimento.bairrista/i;
 
-  const textChannels = Array.from(guild.channels.cache.values())
-    .filter(c => c.type === ChannelType.GuildText);
+  const textChannels = Array.from(guild.channels.cache.values()).filter(c => c.type === ChannelType.GuildText);
 
   // Primeiro na categoria alvo
   let channel = null;
@@ -107,7 +106,7 @@ async function notifyBairristaMovement(opts) {
     const isVenda = opts.movementType === 'venda_bairrista' || opts.movementType === 'venda_morador';
     const L = BAIRRISTAS.LOG;
     const title = isVenda ? L.VENDA_TITLE : L.ENTREGA_TITLE;
-    const color = isVenda ? 0xF1C40F : 0x2ECC71;
+    const color = isVenda ? 0xf1c40f : 0x2ecc71;
     const movValue = opts.quantity * (opts.itemPrice || 0);
 
     const fields = [
@@ -145,10 +144,7 @@ async function notifyBairristaMovement(opts) {
       fields.push({ name: L.NOTES, value: opts.notes.slice(0, 200), inline: false });
     }
 
-    const embed = brandEmbed('MOVEMENT')
-      .setColor(color)
-      .setTitle(title)
-      .addFields(fields);
+    const embed = brandEmbed('MOVEMENT').setColor(color).setTitle(title).addFields(fields);
 
     await channel.send({ embeds: [embed], allowedMentions: { parse: [] } });
   } catch (e) {

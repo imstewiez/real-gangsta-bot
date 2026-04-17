@@ -26,14 +26,16 @@ describe('sessionStore', () => {
   it('size devolve número de entradas', () => {
     const s = createSessionStore('t3', { ttlMs: 60_000 });
     assert.equal(s.size(), 0);
-    s.set('a', {}); s.set('b', {});
+    s.set('a', {});
+    s.set('b', {});
     assert.equal(s.size(), 2);
     s._stopSweeper();
   });
 
   it('clear remove tudo', () => {
     const s = createSessionStore('t4', { ttlMs: 60_000 });
-    s.set('a', {}); s.set('b', {});
+    s.set('a', {});
+    s.set('b', {});
     s.clear();
     assert.equal(s.size(), 0);
     s._stopSweeper();

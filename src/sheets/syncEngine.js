@@ -26,11 +26,11 @@ const PRE_SYNC_MIN_COLS = 30;
 
 const TAB_SYNCERS = {
   dashboard: () => require('./tabs/dashboard').syncDashboard,
-  resumo:    () => require('./tabs/resumo').syncResumo,
-  membros:   () => require('./tabs/membros').syncMembros,
-  saidas:    () => require('./tabs/saidas').syncSaidas,
-  stock:     () => require('./tabs/stock').syncStock,
-  config:    () => require('./tabs/config').syncConfig,
+  resumo: () => require('./tabs/resumo').syncResumo,
+  membros: () => require('./tabs/membros').syncMembros,
+  saidas: () => require('./tabs/saidas').syncSaidas,
+  stock: () => require('./tabs/stock').syncStock,
+  config: () => require('./tabs/config').syncConfig,
 };
 
 function getSpreadsheetId() {
@@ -107,7 +107,8 @@ async function syncOne(key) {
     const { recordSheetSync } = require('../repositories/_meta');
     await recordSheetSync(key, {
       result: syncErr ? 'error' : 'ok',
-      ops, ms,
+      ops,
+      ms,
       error: syncErr ? syncErr.message.slice(0, 500) : null,
     });
   } catch (e) {

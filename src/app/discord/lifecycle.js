@@ -15,7 +15,7 @@ const eventBus = require('../../core/eventBus');
 
 function registerLifecycleListeners(client) {
   // ── Sticky messages — listener para modo `repost` ─────────────────────────
-  client.on(Events.MessageCreate, async (message) => {
+  client.on(Events.MessageCreate, async message => {
     try {
       await stickyOnMessage(client, message);
     } catch (e) {
@@ -25,7 +25,7 @@ function registerLifecycleListeners(client) {
 
   // ── Newcomer joins — auto-atribuir role Pendente ──────────────────────────
   // Pendente é o único role que vê boas-vindas; removido ao aprovar tag.
-  client.on(Events.GuildMemberAdd, async (member) => {
+  client.on(Events.GuildMemberAdd, async member => {
     try {
       if (member.user.bot) return;
       if (CONFIG.AUTO_ASSIGN_PENDENTE && CONFIG.PENDENTE_ROLE_ID) {
@@ -38,28 +38,32 @@ function registerLifecycleListeners(client) {
       }
 
       // Event — vida da org
-      eventBus.emitAsync('member.joined', {
-        discordId: member.id,
-        displayName: member.displayName || member.user.username,
-        at: new Date(),
-      }).catch(() => {});
+      eventBus
+        .emitAsync('member.joined', {
+          discordId: member.id,
+          displayName: member.displayName || member.user.username,
+          at: new Date(),
+        })
+        .catch(() => {});
     } catch (e) {
       error(`[MEMBER_ADD] ${e.message}`, e);
     }
   });
 
   // ── Member leaves — offboarding (arquivar/apagar canal + marcar inactivo) ─
-  client.on(Events.GuildMemberRemove, async (member) => {
+  client.on(Events.GuildMemberRemove, async member => {
     try {
       const { handleMemberLeave } = require('../../onboarding/offboardingEngine');
       await handleMemberLeave(member, client);
 
       // Event — vida da org
-      eventBus.emitAsync('member.left', {
-        discordId: member.id,
-        displayName: member.displayName || member.user?.username || 'Desconhecido',
-        at: new Date(),
-      }).catch(() => {});
+      eventBus
+        .emitAsync('member.left', {
+          discordId: member.id,
+          displayName: member.displayName || member.user?.username || 'Desconhecido',
+          at: new Date(),
+        })
+        .catch(() => {});
     } catch (e) {
       error(`[MEMBER_REMOVE] ${e.message}`, e);
     }
@@ -106,15 +110,15 @@ async function _handleBairristaTierRoleChange(oldMember, newMember) {
   const newRoles = newMember.roles.cache;
   const tierIds = CONFIG.BAIRRISTA_TIER_ROLE_IDS;
 
-  const added   = tierIds.some(id => id && !oldRoles.has(id) && newRoles.has(id));
+  const added = tierIds.some(id => id && !oldRoles.has(id) && newRoles.has(id));
   const removed = tierIds.some(id => id && oldRoles.has(id) && !newRoles.has(id));
   if (!added && !removed) return;
 
   // Tier actual = role mais alto presente (topo da hierarquia vence).
   const TIER_PRIORITY = [
     { roleId: CONFIG.GANGSTER_FODIDO_ROLE_ID, tier: 'gangster_fodido' },
-    { roleId: CONFIG.O_GUNAO_ROLE_ID,         tier: 'o_gunao' },
-    { roleId: CONFIG.YOUNG_BLOOD_ROLE_ID,     tier: 'young_blood' },
+    { roleId: CONFIG.O_GUNAO_ROLE_ID, tier: 'o_gunao' },
+    { roleId: CONFIG.YOUNG_BLOOD_ROLE_ID, tier: 'young_blood' },
   ];
   const current = TIER_PRIORITY.find(t => t.roleId && newRoles.has(t.roleId));
   if (!current) return; // Ficou sem tier role — não é tier change, é saída do ramo
@@ -146,14 +150,16 @@ async function _handleBairristaTierRoleChange(oldMember, newMember) {
   }
 
   // Dispara projecção sheet (membros + resumo + dashboard)
-  eventBus.emitAsync('member.tier_changed', {
-    discordId: newMember.id,
-    memberId: dbMember.id,
-    displayName: dbMember.display_name,
-    from: fromTier,
-    to: current.tier,
-    at: new Date(),
-  }).catch(() => {});
+  eventBus
+    .emitAsync('member.tier_changed', {
+      discordId: newMember.id,
+      memberId: dbMember.id,
+      displayName: dbMember.display_name,
+      from: fromTier,
+      to: current.tier,
+      at: new Date(),
+    })
+    .catch(() => {});
 }
 
 module.exports = { registerLifecycleListeners };

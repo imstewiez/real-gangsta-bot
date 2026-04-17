@@ -21,11 +21,7 @@ const POSITIVE_TYPES = new Set([
   'apreendido',
   'craftado',
 ]);
-const NEGATIVE_TYPES = new Set([
-  'fornecimento_org',
-  'consumo_operacao',
-  'perda_operacao',
-]);
+const NEGATIVE_TYPES = new Set(['fornecimento_org', 'consumo_operacao', 'perda_operacao']);
 
 function signedQuantity(movementType, quantity) {
   if (POSITIVE_TYPES.has(movementType)) return quantity;
@@ -74,11 +70,11 @@ describe('inventoryLedger — sinais por movement_type', () => {
 describe('inventoryLedger — fluxo end-to-end', () => {
   it('bootstrap + entrega + fornecimento + devolução = balance correcto', () => {
     const movs = [
-      { type: 'saldo_inicial', qty: 100 },     // +100
-      { type: 'entrega_morador', qty: 50 },    // +50  → 150
-      { type: 'fornecimento_org', qty: 30 },   // -30  → 120
+      { type: 'saldo_inicial', qty: 100 }, // +100
+      { type: 'entrega_morador', qty: 50 }, // +50  → 150
+      { type: 'fornecimento_org', qty: 30 }, // -30  → 120
       { type: 'devolucao_operacao', qty: 20 }, // +20  → 140
-      { type: 'perda_operacao', qty: 5 },      //  -5  → 135
+      { type: 'perda_operacao', qty: 5 }, //  -5  → 135
     ];
     assert.equal(computeBalance(movs), 135);
   });

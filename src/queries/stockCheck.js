@@ -17,20 +17,28 @@ async function handle(interaction) {
   const sm = require('../inventory/stockManager');
   const item = await sm.findItemByName(itemName);
   if (!item) {
-    return safeReply(interaction, {
-      content: `${EMOJI.ERRO} Item não encontrado: \`${itemName}\``,
-    }, { dismissible: true });
+    return safeReply(
+      interaction,
+      {
+        content: `${EMOJI.ERRO} Item não encontrado: \`${itemName}\``,
+      },
+      { dismissible: true }
+    );
   }
   const ar = await sm.getCurrentStock(item.id, 'armazem');
   const gr = await sm.getCurrentStock(item.id, 'grupo');
   const total = ar + gr;
   const value = (Number(item.estimated_value) || 0) * total;
-  return safeReply(interaction, {
-    content:
-      `${EMOJI.MATERIAL} **${item.name}** _${item.category}_\n` +
-      `${EMOJI.CASA} Armazém: \`${ar}\` · Grupo: \`${gr}\`\n` +
-      `▸ Total: **${total}** un. (≈ ${value.toLocaleString('pt-PT')} €)`,
-  }, { dismissible: true });
+  return safeReply(
+    interaction,
+    {
+      content:
+        `${EMOJI.MATERIAL} **${item.name}** _${item.category}_\n` +
+        `${EMOJI.CASA} Armazém: \`${ar}\` · Grupo: \`${gr}\`\n` +
+        `▸ Total: **${total}** un. (≈ ${value.toLocaleString('pt-PT')} €)`,
+    },
+    { dismissible: true }
+  );
 }
 
 module.exports = { handle };

@@ -21,10 +21,34 @@
  */
 
 const {
-  COLOR, FONT, FONT_FAMILY, NUM_FMT, ROW_H, COL_W, BORDER, SIGNATURE,
-  cell, titleCell, subtitleCell, sectionCell, sectionHintCell,
-  headerCell, subHeaderCell, bodyCell, bodyBoldCell, mutedCell, captionCell, numCell, signatureCell,
-  kpiLabelCell, kpiValueCell, kpiDeltaCell, badgeCell, rankCell, formatDelta, rgb,
+  COLOR,
+  FONT,
+  FONT_FAMILY,
+  NUM_FMT,
+  ROW_H,
+  COL_W,
+  BORDER,
+  SIGNATURE,
+  cell,
+  titleCell,
+  subtitleCell,
+  sectionCell,
+  sectionHintCell,
+  headerCell,
+  subHeaderCell,
+  bodyCell,
+  bodyBoldCell,
+  mutedCell,
+  captionCell,
+  numCell,
+  signatureCell,
+  kpiLabelCell,
+  kpiValueCell,
+  kpiDeltaCell,
+  badgeCell,
+  rankCell,
+  formatDelta,
+  rgb,
 } = require('../theme');
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -50,7 +74,9 @@ function headerBlock(batch, sheetId, { title, subtitle, columnCount, freezeAt = 
     const ts = lastUpdated || _fmtNowPT();
     const subRow = [subtitleCell(sub)];
     for (let i = 1; i < columnCount - 1; i++) subRow.push(cell('', { bg: COLOR.BG_HEADER }));
-    subRow.push(cell(`actualizado ${ts}`, { bg: COLOR.BG_HEADER, font: FONT.CAPTION, align: 'RIGHT', vAlign: 'MIDDLE' }));
+    subRow.push(
+      cell(`actualizado ${ts}`, { bg: COLOR.BG_HEADER, font: FONT.CAPTION, align: 'RIGHT', vAlign: 'MIDDLE' })
+    );
     batch.updateCells(sheetId, 1, 0, [subRow]);
     _mergeRowAroundFreeze(batch, sheetId, 1, columnCount, freezeAt);
     batch.setRowHeight(sheetId, 1, ROW_H.SUBTITLE);
@@ -106,7 +132,7 @@ function sectionHeader(batch, sheetId, row, { title, hint = null, columnCount, f
 
   const mergeEnd = hint ? columnCount - 1 : columnCount;
   if (freezeAt > 0 && freezeAt < mergeEnd) {
-    if (freezeAt >= 2)           batch.mergeCells(sheetId, row, row + 1, 0, freezeAt);
+    if (freezeAt >= 2) batch.mergeCells(sheetId, row, row + 1, 0, freezeAt);
     if (mergeEnd - freezeAt >= 2) batch.mergeCells(sheetId, row, row + 1, freezeAt, mergeEnd);
   } else {
     batch.mergeCells(sheetId, row, row + 1, 0, mergeEnd);
@@ -125,7 +151,7 @@ function sectionHeader(batch, sheetId, row, { title, hint = null, columnCount, f
 // Retorna próxima row disponível.
 // ─────────────────────────────────────────────────────────────────────────────
 function kpiStrip(batch, sheetId, row, cards, columnCount, opts = {}) {
-  const freezeAt = typeof opts === 'number' ? opts : (opts.freezeAt || 0);
+  const freezeAt = typeof opts === 'number' ? opts : opts.freezeAt || 0;
   const startCol = freezeAt;
   const availCols = columnCount - startCol;
   const n = cards.length;
@@ -134,18 +160,24 @@ function kpiStrip(batch, sheetId, row, cards, columnCount, opts = {}) {
   const remainder = availCols - span * n;
 
   // Pré-aloca cada row com empty cells em bg_block
-  const labelRow = Array(columnCount).fill(null).map(() => cell('', { bg: COLOR.BG_BLOCK }));
-  const valueRow = Array(columnCount).fill(null).map(() => cell('', { bg: COLOR.BG_BLOCK }));
-  const deltaRow = Array(columnCount).fill(null).map(() => cell('', { bg: COLOR.BG_BLOCK }));
+  const labelRow = Array(columnCount)
+    .fill(null)
+    .map(() => cell('', { bg: COLOR.BG_BLOCK }));
+  const valueRow = Array(columnCount)
+    .fill(null)
+    .map(() => cell('', { bg: COLOR.BG_BLOCK }));
+  const deltaRow = Array(columnCount)
+    .fill(null)
+    .map(() => cell('', { bg: COLOR.BG_BLOCK }));
 
   let col = startCol;
   cards.forEach((c, i) => {
     const w = span + (i < remainder ? 1 : 0);
     // Separador vertical sutil entre cards (excepto o primeiro)
-    const sep = (i > 0) ? BORDER.LEFT_SEPARATOR : undefined;
+    const sep = i > 0 ? BORDER.LEFT_SEPARATOR : undefined;
     labelRow[col] = kpiLabelCell(c.label);
     valueRow[col] = kpiValueCell(c.value, c.numberFormat);
-    const deltaText = c.delta !== undefined ? c.delta : (c.hint || '');
+    const deltaText = c.delta !== undefined ? c.delta : c.hint || '';
     deltaRow[col] = kpiDeltaCell(deltaText, c.deltaDirection, c.deltaFormat);
     if (sep) {
       if (!labelRow[col].userEnteredFormat) labelRow[col].userEnteredFormat = {};
@@ -158,11 +190,11 @@ function kpiStrip(batch, sheetId, row, cards, columnCount, opts = {}) {
     col += w;
   });
 
-  batch.updateCells(sheetId, row,     0, [labelRow]);
+  batch.updateCells(sheetId, row, 0, [labelRow]);
   batch.updateCells(sheetId, row + 1, 0, [valueRow]);
   batch.updateCells(sheetId, row + 2, 0, [deltaRow]);
 
-  batch.setRowHeight(sheetId, row,     ROW_H.KPI_LABEL);
+  batch.setRowHeight(sheetId, row, ROW_H.KPI_LABEL);
   batch.setRowHeight(sheetId, row + 1, ROW_H.KPI);
   batch.setRowHeight(sheetId, row + 2, ROW_H.KPI_LABEL);
 
@@ -171,7 +203,7 @@ function kpiStrip(batch, sheetId, row, cards, columnCount, opts = {}) {
   cards.forEach((c, i) => {
     const w = span + (i < remainder ? 1 : 0);
     if (w >= 2) {
-      batch.mergeCells(sheetId, row,     row + 1, col, col + w);
+      batch.mergeCells(sheetId, row, row + 1, col, col + w);
       batch.mergeCells(sheetId, row + 1, row + 2, col, col + w);
       batch.mergeCells(sheetId, row + 2, row + 3, col, col + w);
     }
@@ -221,11 +253,11 @@ function tableBody(batch, sheetId, row, dataRows, { basicFilter = false, columnC
 function rankingBlock(batch, sheetId, row, items, columnCount, { labelCol = 1, valueCol = 2 } = {}) {
   items.forEach((it, i) => {
     const line = Array(columnCount).fill(cell('', { bg: COLOR.BG_APP }));
-    line[0] = rankCell(it.rank || (i + 1));
-    line[labelCol] = (it.rank <= 3) ? bodyBoldCell(it.label || '—') : bodyCell(it.label || '—');
+    line[0] = rankCell(it.rank || i + 1);
+    line[labelCol] = it.rank <= 3 ? bodyBoldCell(it.label || '—') : bodyCell(it.label || '—');
     if (it.sub) line[labelCol + 1] = captionCell(it.sub);
     line[valueCol] = numCell(it.value, it.valueFormat || NUM_FMT.INT, {
-      font: (it.rank <= 3) ? FONT.BODY_BOLD : FONT.BODY,
+      font: it.rank <= 3 ? FONT.BODY_BOLD : FONT.BODY,
     });
     batch.updateCells(sheetId, row + i, 0, [line]);
     batch.setRowHeight(sheetId, row + i, ROW_H.TABLE_ROW);
@@ -238,16 +270,17 @@ function rankingBlock(batch, sheetId, row, items, columnCount, { labelCol = 1, v
 // ─────────────────────────────────────────────────────────────────────────────
 function alertBox(batch, sheetId, row, { message, kind = 'info', columnCount }) {
   const palette = {
-    info:    { bg: COLOR.BLUE_SOFT,       fg: COLOR.BLUE_DEEP,   icon: 'ⓘ' },
-    warn:    { bg: COLOR.YELLOW_SOFT,     fg: COLOR.YELLOW_DEEP, icon: '⚠' },
-    danger:  { bg: COLOR.RED_SIGNAL_SOFT, fg: COLOR.RED_SIGNAL,  icon: '✖' },
-    success: { bg: COLOR.GREEN_SOFT,      fg: COLOR.GREEN_DEEP,  icon: '✓' },
+    info: { bg: COLOR.BLUE_SOFT, fg: COLOR.BLUE_DEEP, icon: 'ⓘ' },
+    warn: { bg: COLOR.YELLOW_SOFT, fg: COLOR.YELLOW_DEEP, icon: '⚠' },
+    danger: { bg: COLOR.RED_SIGNAL_SOFT, fg: COLOR.RED_SIGNAL, icon: '✖' },
+    success: { bg: COLOR.GREEN_SOFT, fg: COLOR.GREEN_DEEP, icon: '✓' },
   };
   const p = palette[kind] || palette.info;
   const c = cell(`${p.icon}  ${message}`, {
     bg: p.bg,
     font: { fontFamily: FONT_FAMILY, fontSize: 10, bold: true, foregroundColor: p.fg },
-    align: 'LEFT', vAlign: 'MIDDLE',
+    align: 'LEFT',
+    vAlign: 'MIDDLE',
     borders: { left: { style: 'SOLID_THICK', width: 3, color: p.fg } },
   });
   const fill = Array(columnCount - 1).fill(cell('', { bg: p.bg }));
@@ -262,10 +295,17 @@ function alertBox(batch, sheetId, row, { message, kind = 'info', columnCount }) 
 // ─────────────────────────────────────────────────────────────────────────────
 function footerBlock(batch, sheetId, row, columnCount, freezeAt = 0, context = '') {
   const left = cell(context ? `${SIGNATURE} · ${context}` : SIGNATURE, {
-    bg: COLOR.BG_HEADER, font: FONT.SIG, align: 'LEFT', vAlign: 'MIDDLE', brandRed: true,
+    bg: COLOR.BG_HEADER,
+    font: FONT.SIG,
+    align: 'LEFT',
+    vAlign: 'MIDDLE',
+    brandRed: true,
   });
   const right = cell(`gerado ${_fmtNowPT()}`, {
-    bg: COLOR.BG_HEADER, font: FONT.CAPTION, align: 'RIGHT', vAlign: 'MIDDLE',
+    bg: COLOR.BG_HEADER,
+    font: FONT.CAPTION,
+    align: 'RIGHT',
+    vAlign: 'MIDDLE',
   });
   const middle = Array(columnCount - 2).fill(cell('', { bg: COLOR.BG_HEADER }));
   const rowData = columnCount >= 2 ? [left, ...middle, right] : [left];
@@ -328,17 +368,25 @@ function autoResizeAll(batch, sheetId, rowCount, columnCount) {
 function totalRow(batch, sheetId, row, { label = 'TOTAL', values = [], columnCount }) {
   const boldWhite = { fontFamily: FONT_FAMILY, fontSize: 10, bold: true, foregroundColor: COLOR.WHITE };
   const topBorder = { top: { style: 'SOLID', width: 1, color: COLOR.RED_DEEP } };
-  const cells = Array(columnCount).fill(null).map(() =>
-    cell('', { bg: COLOR.BG_BLOCK_ALT, borders: topBorder })
-  );
+  const cells = Array(columnCount)
+    .fill(null)
+    .map(() => cell('', { bg: COLOR.BG_BLOCK_ALT, borders: topBorder }));
   cells[0] = cell(label, {
-    bg: COLOR.BG_BLOCK_ALT, font: boldWhite, align: 'RIGHT', vAlign: 'MIDDLE', borders: topBorder,
+    bg: COLOR.BG_BLOCK_ALT,
+    font: boldWhite,
+    align: 'RIGHT',
+    vAlign: 'MIDDLE',
+    borders: topBorder,
   });
   for (const v of values) {
     if (v.col >= 0 && v.col < columnCount) {
       cells[v.col] = cell(v.value, {
-        bg: COLOR.BG_BLOCK_ALT, font: boldWhite, align: 'RIGHT', vAlign: 'MIDDLE',
-        numberFormat: v.numberFormat, borders: topBorder,
+        bg: COLOR.BG_BLOCK_ALT,
+        font: boldWhite,
+        align: 'RIGHT',
+        vAlign: 'MIDDLE',
+        numberFormat: v.numberFormat,
+        borders: topBorder,
       });
     }
   }
@@ -361,14 +409,24 @@ const writeHeader = (batch, sheetId, title, columnCount, freezeAt = 0) =>
   headerBlock(batch, sheetId, { title, subtitle: null, columnCount, freezeAt });
 
 const writeKpiBar = (batch, sheetId, row, kpis, columnCount) =>
-  kpiStrip(batch, sheetId, row, kpis.map(k => ({
-    label: k.label, value: k.value, numberFormat: k.fmt, hint: '',
-  })), columnCount);
+  kpiStrip(
+    batch,
+    sheetId,
+    row,
+    kpis.map(k => ({
+      label: k.label,
+      value: k.value,
+      numberFormat: k.fmt,
+      hint: '',
+    })),
+    columnCount
+  );
 
 const writeTableHeader = tableHeader;
 
 const writeDivider = (batch, sheetId, row, columnCount, color) => {
-  const variant = (color && color.red !== undefined && Math.abs(color.red - COLOR.RED_DEEP.red) > 0.1) ? 'hair' : 'accent';
+  const variant =
+    color && color.red !== undefined && Math.abs(color.red - COLOR.RED_DEEP.red) > 0.1 ? 'hair' : 'accent';
   return divider(batch, sheetId, row, columnCount, variant);
 };
 
@@ -380,9 +438,27 @@ const writeFooter = (batch, sheetId, row, columnCount, freezeAt = 0) =>
 
 module.exports = {
   // API nova
-  headerBlock, sectionHeader, spacer, divider, kpiStrip, tableHeader, tableBody,
-  rankingBlock, alertBox, footerBlock, totalRow, setWidths,
-  autoResizeColumns, autoResizeRows, autoResizeAll, applyRowBanding,
+  headerBlock,
+  sectionHeader,
+  spacer,
+  divider,
+  kpiStrip,
+  tableHeader,
+  tableBody,
+  rankingBlock,
+  alertBox,
+  footerBlock,
+  totalRow,
+  setWidths,
+  autoResizeColumns,
+  autoResizeRows,
+  autoResizeAll,
+  applyRowBanding,
   // API antiga (shims)
-  writeHeader, writeKpiBar, writeTableHeader, writeDivider, writeSection, writeFooter,
+  writeHeader,
+  writeKpiBar,
+  writeTableHeader,
+  writeDivider,
+  writeSection,
+  writeFooter,
 };

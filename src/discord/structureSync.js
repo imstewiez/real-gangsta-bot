@@ -59,10 +59,11 @@ function _resolvePanelChannelId(guild, panelDef) {
 
   const acceptedNames = [panelDef.autoName, ...(panelDef.autoAltNames || [])];
   const slugs = acceptedNames.map(n => n.split('・')[1]).filter(Boolean);
-  const found = guild.channels.cache.find(c =>
-    c.type === ChannelType.GuildText &&
-    c.parentId === cat.id &&
-    (acceptedNames.includes(c.name) || slugs.some(s => c.name.includes(s)))
+  const found = guild.channels.cache.find(
+    c =>
+      c.type === ChannelType.GuildText &&
+      c.parentId === cat.id &&
+      (acceptedNames.includes(c.name) || slugs.some(s => c.name.includes(s)))
   );
   return found ? { channelId: found.id, source: 'auto-discover' } : null;
 }
@@ -113,8 +114,14 @@ function buildOverwrites(guild, permConfig) {
 async function runPermsOnly(guild, opts = {}) {
   const apply = Boolean(opts.apply);
   const report = { mode: apply ? 'apply' : 'dry-run', actions: [], errors: [], counts: {} };
-  const act = (type, detail) => { report.actions.push({ type, detail }); report.counts[type] = (report.counts[type] || 0) + 1; };
-  const errored = (stage, e) => { report.errors.push({ stage, message: e?.message || String(e) }); warn(`[PERMS-SYNC] ${stage}: ${e?.message || e}`); };
+  const act = (type, detail) => {
+    report.actions.push({ type, detail });
+    report.counts[type] = (report.counts[type] || 0) + 1;
+  };
+  const errored = (stage, e) => {
+    report.errors.push({ stage, message: e?.message || String(e) });
+    warn(`[PERMS-SYNC] ${stage}: ${e?.message || e}`);
+  };
 
   await guild.channels.fetch().catch(() => null);
   await guild.roles.fetch().catch(() => null);
@@ -127,14 +134,16 @@ async function runPermsOnly(guild, opts = {}) {
         try {
           pendente = await guild.roles.create({
             name: 'Pendente',
-            color: 0x95A5A6,
+            color: 0x95a5a6,
             hoist: true,
             mentionable: false,
             permissions: [],
             reason: 'Bot — onboarding requer role Pendente',
           });
           act('CREATE_ROLE_PENDENTE', { id: pendente.id });
-        } catch (e) { errored('CREATE_ROLE_PENDENTE', e); }
+        } catch (e) {
+          errored('CREATE_ROLE_PENDENTE', e);
+        }
       } else {
         act('CREATE_ROLE_PENDENTE', { dry: true });
       }
@@ -153,14 +162,24 @@ async function runPermsOnly(guild, opts = {}) {
       const roleId = CONFIG[idKey];
       if (!roleId) continue;
       const role = guild.roles.cache.get(roleId);
-      if (!role) { act('SKIP_ROLE_PERMS_MISSING', { idKey, roleId }); continue; }
+      if (!role) {
+        act('SKIP_ROLE_PERMS_MISSING', { idKey, roleId });
+        continue;
+      }
       const currentBits = role.permissions.bitfield;
       const expectedBits = bits.reduce((acc, b) => acc | BigInt(b), 0n);
-      if (currentBits === expectedBits) { act('SKIP_ROLE_PERMS_OK', { role: role.name }); continue; }
+      if (currentBits === expectedBits) {
+        act('SKIP_ROLE_PERMS_OK', { role: role.name });
+        continue;
+      }
       act('ROLE_PERMS', { role: role.name, idKey });
       if (apply) {
-        try { await role.setPermissions(bits, 'Bot — perms sync'); await new Promise(r => setTimeout(r, 200)); }
-        catch (e) { errored(`ROLE_PERMS:${role.name}`, e); }
+        try {
+          await role.setPermissions(bits, 'Bot — perms sync');
+          await new Promise(r => setTimeout(r, 200));
+        } catch (e) {
+          errored(`ROLE_PERMS:${role.name}`, e);
+        }
       }
     }
   }
@@ -173,8 +192,12 @@ async function runPermsOnly(guild, opts = {}) {
     const overwrites = buildOverwrites(guild, permCfg);
     act('PERM_CATEGORY', { category: cat.name });
     if (apply) {
-      try { await cat.permissionOverwrites.set(overwrites); await new Promise(r => setTimeout(r, 300)); }
-      catch (e) { errored(`PERM_CATEGORY:${cat.name}`, e); }
+      try {
+        await cat.permissionOverwrites.set(overwrites);
+        await new Promise(r => setTimeout(r, 300));
+      } catch (e) {
+        errored(`PERM_CATEGORY:${cat.name}`, e);
+      }
     }
   }
 
@@ -185,8 +208,11 @@ async function runPermsOnly(guild, opts = {}) {
     const overwrites = buildOverwrites(guild, permCfg);
     act('PERM_CHANNEL_BY_ID', { channel: ch.name, reason: permCfg.reason });
     if (apply) {
-      try { await ch.permissionOverwrites.set(overwrites); }
-      catch (e) { errored(`PERM_CHANNEL:${ch.name}`, e); }
+      try {
+        await ch.permissionOverwrites.set(overwrites);
+      } catch (e) {
+        errored(`PERM_CHANNEL:${ch.name}`, e);
+      }
     }
   }
 
@@ -197,8 +223,11 @@ async function runPermsOnly(guild, opts = {}) {
     const overwrites = buildOverwrites(guild, permCfg);
     act('PERM_CHANNEL_BY_NAME', { channel: ch.name, reason: permCfg.reason });
     if (apply) {
-      try { await ch.permissionOverwrites.set(overwrites); }
-      catch (e) { errored(`PERM_CHANNEL_BY_NAME:${ch.name}`, e); }
+      try {
+        await ch.permissionOverwrites.set(overwrites);
+      } catch (e) {
+        errored(`PERM_CHANNEL_BY_NAME:${ch.name}`, e);
+      }
     }
   }
 
@@ -211,7 +240,10 @@ async function runPermsOnly(guild, opts = {}) {
     for (const panelDef of PANELS) {
       const resolved = _resolvePanelChannelId(guild, panelDef);
       if (!resolved) {
-        act('SKIP_PANEL_NOT_FOUND', { panel: panelDef.key, reason: `sem env var e auto-discover em ${panelDef.autoCategoryKey} falhou` });
+        act('SKIP_PANEL_NOT_FOUND', {
+          panel: panelDef.key,
+          reason: `sem env var e auto-discover em ${panelDef.autoCategoryKey} falhou`,
+        });
         continue;
       }
       const permCfg = PANEL_PERM_BY_KEY[panelDef.key];
@@ -225,8 +257,11 @@ async function runPermsOnly(guild, opts = {}) {
       const overwrites = buildOverwrites(guild, permCfg);
       act('PERM_PANEL', { panel: panelDef.key, channel: ch.name, source: resolved.source, reason: permCfg.reason });
       if (apply) {
-        try { await ch.permissionOverwrites.set(overwrites); }
-        catch (e) { errored(`PERM_PANEL:${ch.name}`, e); }
+        try {
+          await ch.permissionOverwrites.set(overwrites);
+        } catch (e) {
+          errored(`PERM_PANEL:${ch.name}`, e);
+        }
       }
     }
   } catch (e) {
@@ -244,7 +279,7 @@ async function runPermsOnly(guild, opts = {}) {
     if (!tpl || !tpl.id) continue;
     for (const [chId, ch] of guild.channels.cache) {
       if (ch.parentId !== tpl.id) continue;
-      if (CHANNEL_PERM_OVERRIDES[chId]) continue;           // já tem override por ID
+      if (CHANNEL_PERM_OVERRIDES[chId]) continue; // já tem override por ID
       if (CHANNEL_PERM_OVERRIDES_BY_NAME[ch.name]) continue; // já tem override por nome
       if (panelChannelIdsHandled.has(chId)) continue;
 
@@ -252,8 +287,11 @@ async function runPermsOnly(guild, opts = {}) {
       const overwrites = buildOverwrites(guild, permCfg);
       act('PERM_FORCE_CHILD', { category: catKey, channel: ch.name, reason: permCfg.reason });
       if (apply) {
-        try { await ch.permissionOverwrites.set(overwrites); }
-        catch (e) { errored(`PERM_FORCE_CHILD:${ch.name}`, e); }
+        try {
+          await ch.permissionOverwrites.set(overwrites);
+        } catch (e) {
+          errored(`PERM_FORCE_CHILD:${ch.name}`, e);
+        }
       }
     }
   }
@@ -275,8 +313,13 @@ async function runPermsOnly(guild, opts = {}) {
       // Canal com overrides user-specific (canal individual de morador) — não tocar
       if (ch.permissionOverwrites.cache.some(o => o.type === 1)) continue;
       if (apply) {
-        try { await ch.lockPermissions(); act('LOCK_TO_CATEGORY', { channel: ch.name, category: tpl.name }); await new Promise(r => setTimeout(r, 150)); }
-        catch (e) { errored(`LOCK_TO_CATEGORY:${ch.name}`, e); }
+        try {
+          await ch.lockPermissions();
+          act('LOCK_TO_CATEGORY', { channel: ch.name, category: tpl.name });
+          await new Promise(r => setTimeout(r, 150));
+        } catch (e) {
+          errored(`LOCK_TO_CATEGORY:${ch.name}`, e);
+        }
       } else {
         act('LOCK_TO_CATEGORY', { channel: ch.name, category: tpl.name });
       }

@@ -13,9 +13,13 @@ async function handle(interaction) {
   const itemName = interaction.options.getString('item');
   const item = await sm.findItemByName(itemName);
   if (!item) {
-    return safeReply(interaction, {
-      content: `${EMOJI.ERRO} Item não encontrado: \`${itemName}\``,
-    }, { dismissible: true });
+    return safeReply(
+      interaction,
+      {
+        content: `${EMOJI.ERRO} Item não encontrado: \`${itemName}\``,
+      },
+      { dismissible: true }
+    );
   }
   try {
     const qty = interaction.options.getInteger('quantidade');
@@ -26,9 +30,13 @@ async function handle(interaction) {
     await sm.transferStock({ itemId: item.id, quantity: qty, fromLocation: de, toLocation: para, actor, notes: nota });
     const ar = await sm.getCurrentStock(item.id, 'armazem');
     const gr = await sm.getCurrentStock(item.id, 'grupo');
-    return safeReply(interaction, {
-      content: `${EMOJI.REFRESH} Transferido **${qty}× ${item.name}**: ${de} → ${para}\nArmazém: \`${ar}\` · Grupo: \`${gr}\``,
-    }, { dismissible: true });
+    return safeReply(
+      interaction,
+      {
+        content: `${EMOJI.REFRESH} Transferido **${qty}× ${item.name}**: ${de} → ${para}\nArmazém: \`${ar}\` · Grupo: \`${gr}\``,
+      },
+      { dismissible: true }
+    );
   } catch (e) {
     return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
   }

@@ -11,20 +11,31 @@ process.env.DISCORD_BOT_TOKEN ||= 'test-token';
 process.env.DISCORD_GUILD_ID ||= 'test-guild';
 process.env.DATABASE_URL ||= 'postgresql://test:test@localhost:5432/test_db';
 
-function resolvedPath(rel) { return require.resolve(path.join(__dirname, '..', 'src', rel)); }
+function resolvedPath(rel) {
+  return require.resolve(path.join(__dirname, '..', 'src', rel));
+}
 require.cache[resolvedPath('db.js')] = {
   exports: {
     pool: { connect: async () => ({ query: async () => ({ rows: [] }), release: () => {} }) },
     query: async () => ({ rows: [] }),
-    queryWithTransaction: async (fn) => fn({ query: async () => ({ rows: [] }) }),
+    queryWithTransaction: async fn => fn({ query: async () => ({ rows: [] }) }),
   },
 };
 require.cache[resolvedPath('repositories/index.js')] = {
   exports: {
-    memberRepo: {}, inventoryRepo: {}, saidaRepo: {}, operationRepo: {},
-    killRepo: {}, spotStatsRepo: {}, memberSaidaStatsRepo: {},
-    rankingRepo: {}, auditRepo: {}, jobRepo: {}, availabilityRepo: {},
-    radioRepo: {}, stickyRepo: {},
+    memberRepo: {},
+    inventoryRepo: {},
+    saidaRepo: {},
+    operationRepo: {},
+    killRepo: {},
+    spotStatsRepo: {},
+    memberSaidaStatsRepo: {},
+    rankingRepo: {},
+    auditRepo: {},
+    jobRepo: {},
+    availabilityRepo: {},
+    radioRepo: {},
+    stickyRepo: {},
   },
 };
 
@@ -38,8 +49,14 @@ describe('rankingEngine — hybrid_score', () => {
 
   it('só contribuição produz score positivo', () => {
     const s = computeHybridScore({
-      weightedValue: 10000, killsCount: 0, winsCount: 0, lossCount: 0,
-      netProfit: 0, saidasCount: 0, returnRate: 0, survivalRate: 0,
+      weightedValue: 10000,
+      killsCount: 0,
+      winsCount: 0,
+      lossCount: 0,
+      netProfit: 0,
+      saidasCount: 0,
+      returnRate: 0,
+      survivalRate: 0,
     });
     assert.ok(s > 0);
     // 10000 * 0.4 = 4000
@@ -48,8 +65,14 @@ describe('rankingEngine — hybrid_score', () => {
 
   it('só kills produz performance positiva', () => {
     const s = computeHybridScore({
-      weightedValue: 0, killsCount: 5, winsCount: 0, lossCount: 0,
-      netProfit: 0, saidasCount: 0, returnRate: 0, survivalRate: 0,
+      weightedValue: 0,
+      killsCount: 5,
+      winsCount: 0,
+      lossCount: 0,
+      netProfit: 0,
+      saidasCount: 0,
+      returnRate: 0,
+      survivalRate: 0,
     });
     // performance = 5*10 = 50 → 50 * 0.4 = 20
     assert.equal(s, 20);
@@ -57,12 +80,24 @@ describe('rankingEngine — hybrid_score', () => {
 
   it('wins e losses têm sinal correcto', () => {
     const wins = computeHybridScore({
-      weightedValue: 0, killsCount: 0, winsCount: 3, lossCount: 0,
-      netProfit: 0, saidasCount: 0, returnRate: 0, survivalRate: 0,
+      weightedValue: 0,
+      killsCount: 0,
+      winsCount: 3,
+      lossCount: 0,
+      netProfit: 0,
+      saidasCount: 0,
+      returnRate: 0,
+      survivalRate: 0,
     });
     const losses = computeHybridScore({
-      weightedValue: 0, killsCount: 0, winsCount: 0, lossCount: 3,
-      netProfit: 0, saidasCount: 0, returnRate: 0, survivalRate: 0,
+      weightedValue: 0,
+      killsCount: 0,
+      winsCount: 0,
+      lossCount: 3,
+      netProfit: 0,
+      saidasCount: 0,
+      returnRate: 0,
+      survivalRate: 0,
     });
     assert.ok(wins > losses);
     assert.ok(losses < 0);
@@ -70,8 +105,14 @@ describe('rankingEngine — hybrid_score', () => {
 
   it('fiabilidade soma à escala correcta', () => {
     const s = computeHybridScore({
-      weightedValue: 0, killsCount: 0, winsCount: 0, lossCount: 0,
-      netProfit: 0, saidasCount: 0, returnRate: 100, survivalRate: 100,
+      weightedValue: 0,
+      killsCount: 0,
+      winsCount: 0,
+      lossCount: 0,
+      netProfit: 0,
+      saidasCount: 0,
+      returnRate: 100,
+      survivalRate: 100,
     });
     // fiabilidade = 100*0.5 + 100*0.3 = 80 → 80 * 0.2 = 16
     assert.equal(s, 16);
@@ -79,12 +120,24 @@ describe('rankingEngine — hybrid_score', () => {
 
   it('membro com perfil equilibrado > membro só de contribuição', () => {
     const balanced = computeHybridScore({
-      weightedValue: 5000, killsCount: 5, winsCount: 2, lossCount: 0,
-      netProfit: 500, saidasCount: 3, returnRate: 80, survivalRate: 90,
+      weightedValue: 5000,
+      killsCount: 5,
+      winsCount: 2,
+      lossCount: 0,
+      netProfit: 500,
+      saidasCount: 3,
+      returnRate: 80,
+      survivalRate: 90,
     });
     const onlyContrib = computeHybridScore({
-      weightedValue: 5000, killsCount: 0, winsCount: 0, lossCount: 0,
-      netProfit: 0, saidasCount: 0, returnRate: 0, survivalRate: 0,
+      weightedValue: 5000,
+      killsCount: 0,
+      winsCount: 0,
+      lossCount: 0,
+      netProfit: 0,
+      saidasCount: 0,
+      returnRate: 0,
+      survivalRate: 0,
     });
     assert.ok(balanced > onlyContrib);
   });

@@ -3,22 +3,37 @@ const { query } = require('../db');
 const { warn, log } = require('../logger');
 const CONFIG = require('../config');
 
-async function logAudit({ action, entityType, entityId, actorId, actorName = '', beforeState = null, afterState = null, context = '' }) {
+async function logAudit({
+  action,
+  entityType,
+  entityId,
+  actorId,
+  actorName = '',
+  beforeState = null,
+  afterState = null,
+  context = '',
+}) {
   try {
     await query(
       `INSERT INTO audit_logs (action, entity_type, entity_id, actor_id, actor_name, before_state, after_state, context)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [action, entityType, entityId || '', actorId, actorName,
-       beforeState ? JSON.stringify(beforeState) : null,
-       afterState ? JSON.stringify(afterState) : null,
-       context]
+      [
+        action,
+        entityType,
+        entityId || '',
+        actorId,
+        actorName,
+        beforeState ? JSON.stringify(beforeState) : null,
+        afterState ? JSON.stringify(afterState) : null,
+        context,
+      ]
     );
   } catch (e) {
     warn(`[AUDIT] Falha ao registar: ${action} — ${e.message}`);
   }
 }
 
-async function sendAuditToChannel(client, { title, description, fields = [], color = 0x2F3136 }) {
+async function sendAuditToChannel(client, { title, description, fields = [], color = 0x2f3136 }) {
   if (!CONFIG.AUDIT_LOG_CHANNEL_ID) return;
   try {
     const channel = await client.channels.fetch(CONFIG.AUDIT_LOG_CHANNEL_ID);

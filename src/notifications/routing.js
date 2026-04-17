@@ -25,7 +25,9 @@ const { resolveChannel } = require('./channels');
 const templates = require('./templates');
 
 let _client = null;
-function setClient(client) { _client = client; }
+function setClient(client) {
+  _client = client;
+}
 
 async function _publish(family, payload) {
   if (!_client) return;
@@ -126,31 +128,31 @@ function _onWeaponDecided(evt, decision) {
 function registerNotificationRouting() {
   // Inventory
   eventBus.on('material.registered', _onMaterialRegistered);
-  eventBus.on('material.adjusted',   _onMaterialAdjusted);
+  eventBus.on('material.adjusted', _onMaterialAdjusted);
   eventBus.on('material.transferred', _onMaterialTransferred);
   // Orders (encomendas)
-  eventBus.on('order.created',   _onOrderEvent);
-  eventBus.on('order.approved',  _onOrderEvent);
+  eventBus.on('order.created', _onOrderEvent);
+  eventBus.on('order.approved', _onOrderEvent);
   eventBus.on('order.fulfilled', _onOrderEvent);
-  eventBus.on('order.denied',    _onOrderEvent);
+  eventBus.on('order.denied', _onOrderEvent);
   eventBus.on('order.cancelled', _onOrderEvent);
   // Members
-  eventBus.on('member.joined',            _onMemberJoined);
-  eventBus.on('member.left',              _onMemberLeft);
-  eventBus.on('member.promoted',          _onMemberPromoted);
-  eventBus.on('member.tier_changed',      _onMemberTierChanged);
-  eventBus.on('member.nickname_changed',  _onMemberNicknameChanged);
+  eventBus.on('member.joined', _onMemberJoined);
+  eventBus.on('member.left', _onMemberLeft);
+  eventBus.on('member.promoted', _onMemberPromoted);
+  eventBus.on('member.tier_changed', _onMemberTierChanged);
+  eventBus.on('member.nickname_changed', _onMemberNicknameChanged);
   // Saídas — opened + participant_added suprimidos (redundantes com session
   // panel que é o painel vivo interactivo da saída).
-  eventBus.on('saida.started',            _onSaidaStarted);
-  eventBus.on('saida.closed',             _onSaidaClosed);
-  eventBus.on('saida.material_issued',    _onSaidaMaterialIssued);
+  eventBus.on('saida.started', _onSaidaStarted);
+  eventBus.on('saida.closed', _onSaidaClosed);
+  eventBus.on('saida.material_issued', _onSaidaMaterialIssued);
   // Kills (delegado)
   eventBus.on('kill.registered', _onKillRegistered);
 
   // Weapon return decisions
-  eventBus.on('weapon.return_confirmed',    evt => _onWeaponDecided(evt, 'confirmada'));
-  eventBus.on('weapon.return_rejected',     evt => _onWeaponDecided(evt, 'rejeitada'));
+  eventBus.on('weapon.return_confirmed', evt => _onWeaponDecided(evt, 'confirmada'));
+  eventBus.on('weapon.return_rejected', evt => _onWeaponDecided(evt, 'rejeitada'));
   eventBus.on('weapon.return_inconclusive', evt => _onWeaponDecided(evt, 'inconclusiva'));
 
   log('[NOTIF] Routing subscribers registados (3 famílias consolidadas).');

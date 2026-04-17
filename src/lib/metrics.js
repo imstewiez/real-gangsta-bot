@@ -14,19 +14,33 @@ function _ensureGauge(name, help) {
 function counter(name, help) {
   _ensureCounter(name, help);
   return {
-    inc(n = 1) { _counters.get(name).value += n; },
-    get() { return _counters.get(name).value; },
-    reset() { _counters.get(name).value = 0; },
+    inc(n = 1) {
+      _counters.get(name).value += n;
+    },
+    get() {
+      return _counters.get(name).value;
+    },
+    reset() {
+      _counters.get(name).value = 0;
+    },
   };
 }
 
 function gauge(name, help) {
   _ensureGauge(name, help);
   return {
-    set(v) { _gauges.get(name).value = v; },
-    inc(n = 1) { _gauges.get(name).value += n; },
-    dec(n = 1) { _gauges.get(name).value -= n; },
-    get() { return _gauges.get(name).value; },
+    set(v) {
+      _gauges.get(name).value = v;
+    },
+    inc(n = 1) {
+      _gauges.get(name).value += n;
+    },
+    dec(n = 1) {
+      _gauges.get(name).value -= n;
+    },
+    get() {
+      return _gauges.get(name).value;
+    },
   };
 }
 
@@ -38,7 +52,9 @@ function _snapshotPoolStats() {
     dbPoolTotal.set(pool.totalCount || 0);
     dbPoolIdle.set(pool.idleCount || 0);
     dbPoolWaiting.set(pool.waitingCount || 0);
-  } catch { /* db ainda não carregado */ }
+  } catch {
+    /* db ainda não carregado */
+  }
 }
 
 function toPrometheusText() {
@@ -101,26 +117,46 @@ const dbPoolIdle = gauge('rg_db_pool_idle', 'DB connections currently idle');
 const dbPoolWaiting = gauge('rg_db_pool_waiting', 'Queries waiting for DB connection');
 
 // ── Data lifecycle / health gauges ────────────────────────────────────────────
-const sheetStaleTabs        = gauge('rg_sheet_stale_tabs', 'Sheet tabs com last_synced_at > 2× interval');
-const sheetErrorTabs        = gauge('rg_sheet_error_tabs', 'Sheet tabs com last_result=error');
-const driftedMembers        = gauge('rg_drifted_members', 'Members com role/tier divergente do Discord');
-const orphanChannels        = gauge('rg_orphan_channels', 'Resident channels em DB mas apagados em Discord');
-const staleJobRuns          = gauge('rg_stale_job_runs', 'Jobs em running > 2h (suspeita de stuck)');
-const pendingRetentionRows  = gauge('rg_pending_retention_rows', 'Rows elegíveis para retention');
+const sheetStaleTabs = gauge('rg_sheet_stale_tabs', 'Sheet tabs com last_synced_at > 2× interval');
+const sheetErrorTabs = gauge('rg_sheet_error_tabs', 'Sheet tabs com last_result=error');
+const driftedMembers = gauge('rg_drifted_members', 'Members com role/tier divergente do Discord');
+const orphanChannels = gauge('rg_orphan_channels', 'Resident channels em DB mas apagados em Discord');
+const staleJobRuns = gauge('rg_stale_job_runs', 'Jobs em running > 2h (suspeita de stuck)');
+const pendingRetentionRows = gauge('rg_pending_retention_rows', 'Rows elegíveis para retention');
 
 module.exports = {
-  counter, gauge, toPrometheusText, toJson,
-  commandInvocationsTotal, discordEventsTotal,
-  jobRunsTotal, jobErrorsTotal,
-  panelRefreshSuccess, panelRefreshFail,
-  inventoryMovements, operationsCreated, operationsClosed, membersOnboarded,
-  advisoryLockAcquired, advisoryLockTimeout,
-  interactionErrorsTotal, logRotationsTotal,
-  permDenialsTotal, rateLimitDenialsTotal,
-  sheetsSyncTotal, sheetsSyncErrorsTotal,
-  membersActive, discordPingMs,
-  dbPoolTotal, dbPoolIdle, dbPoolWaiting,
+  counter,
+  gauge,
+  toPrometheusText,
+  toJson,
+  commandInvocationsTotal,
+  discordEventsTotal,
+  jobRunsTotal,
+  jobErrorsTotal,
+  panelRefreshSuccess,
+  panelRefreshFail,
+  inventoryMovements,
+  operationsCreated,
+  operationsClosed,
+  membersOnboarded,
+  advisoryLockAcquired,
+  advisoryLockTimeout,
+  interactionErrorsTotal,
+  logRotationsTotal,
+  permDenialsTotal,
+  rateLimitDenialsTotal,
+  sheetsSyncTotal,
+  sheetsSyncErrorsTotal,
+  membersActive,
+  discordPingMs,
+  dbPoolTotal,
+  dbPoolIdle,
+  dbPoolWaiting,
   // Data lifecycle
-  sheetStaleTabs, sheetErrorTabs, driftedMembers, orphanChannels,
-  staleJobRuns, pendingRetentionRows,
+  sheetStaleTabs,
+  sheetErrorTabs,
+  driftedMembers,
+  orphanChannels,
+  staleJobRuns,
+  pendingRetentionRows,
 };

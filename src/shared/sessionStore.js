@@ -63,7 +63,9 @@ function createSessionStore(name, { ttlMs } = {}) {
     },
     // Para testes — expõe o map interno e permite parar o sweeper.
     _internal: data,
-    _stopSweeper() { clearInterval(sweeper); },
+    _stopSweeper() {
+      clearInterval(sweeper);
+    },
   };
 }
 

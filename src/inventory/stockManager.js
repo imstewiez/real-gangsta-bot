@@ -18,7 +18,8 @@ const VALID_LOCATIONS = ['armazem', 'grupo'];
 function norm(s) {
   return (s || '')
     .toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -26,7 +27,10 @@ function norm(s) {
 async function findItemByName(name) {
   if (!name) return null;
   // Tenta match exacto primeiro
-  let r = await query('SELECT id, name, category, unit, estimated_value FROM items WHERE name ILIKE $1 AND active = true', [name]);
+  const r = await query(
+    'SELECT id, name, category, unit, estimated_value FROM items WHERE name ILIKE $1 AND active = true',
+    [name]
+  );
   if (r.rows.length === 1) return r.rows[0];
   if (r.rows.length > 1) return r.rows[0]; // primeiro match
   // Fuzzy: por nome normalizado
@@ -39,7 +43,8 @@ async function findItemByName(name) {
 }
 
 async function getCurrentStock(itemId, location = null) {
-  const r = await query(`
+  const r = await query(
+    `
     SELECT COALESCE(SUM(
       CASE
         WHEN movement_type IN ('saldo_inicial','entrega_bairrista','venda_bairrista','entrega_oficial','entrega_morador','venda_morador','devolucao_saida','devolucao_operacao','apreendido','craftado')
@@ -52,14 +57,27 @@ async function getCurrentStock(itemId, location = null) {
     ), 0)::int AS balance
     FROM inventory_movements
     WHERE item_id = $1 ${location ? 'AND location = $2' : ''}
-  `, location ? [itemId, location] : [itemId]);
+  `,
+    location ? [itemId, location] : [itemId]
+  );
   return r.rows[0]?.balance || 0;
 }
 
 async function addStock({ itemId, quantity, location, type = 'apreendido', actor, memberId = null, notes = '' }) {
-  if (!VALID_LOCATIONS.includes(location)) throw new Error(`Casa inválida: ${location} (deve ser 'armazem' ou 'grupo')`);
+  if (!VALID_LOCATIONS.includes(location))
+    throw new Error(`Casa inválida: ${location} (deve ser 'armazem' ou 'grupo')`);
   if (!Number.isInteger(quantity) || quantity <= 0) throw new Error('Quantidade tem de ser inteiro positivo');
-  if (!['apreendido', 'craftado', 'entrega_bairrista', 'entrega_morador', 'entrega_oficial', 'devolucao_saida', 'devolucao_operacao'].includes(type)) {
+  if (
+    ![
+      'apreendido',
+      'craftado',
+      'entrega_bairrista',
+      'entrega_morador',
+      'entrega_oficial',
+      'devolucao_saida',
+      'devolucao_operacao',
+    ].includes(type)
+  ) {
     throw new Error(`Tipo de entrada inválido: ${type}`);
   }
   const r = await query(
@@ -69,16 +87,38 @@ async function addStock({ itemId, quantity, location, type = 'apreendido', actor
     [type, itemId, quantity, location, memberId, actor, 'add manual', notes]
   );
   await logAudit({
-    action: 'stock_add', entityType: 'inventory', entityId: String(itemId),
-    actorId: actor, afterState: { quantity, location, type }, context: notes,
+    action: 'stock_add',
+    entityType: 'inventory',
+    entityId: String(itemId),
+    actorId: actor,
+    afterState: { quantity, location, type },
+    context: notes,
   }).catch(() => {});
   return { id: r.rows[0].id };
 }
 
-async function removeStock({ itemId, quantity, location, type = 'venda_bairrista', actor, memberId = null, notes = '' }) {
+async function removeStock({
+  itemId,
+  quantity,
+  location,
+  type = 'venda_bairrista',
+  actor,
+  memberId = null,
+  notes = '',
+}) {
   if (!VALID_LOCATIONS.includes(location)) throw new Error(`Casa inválida: ${location}`);
   if (!Number.isInteger(quantity) || quantity <= 0) throw new Error('Quantidade tem de ser inteiro positivo');
-  if (!['venda_bairrista', 'venda_morador', 'fornecimento_org', 'consumo_saida', 'consumo_operacao', 'perda_saida', 'perda_operacao'].includes(type)) {
+  if (
+    ![
+      'venda_bairrista',
+      'venda_morador',
+      'fornecimento_org',
+      'consumo_saida',
+      'consumo_operacao',
+      'perda_saida',
+      'perda_operacao',
+    ].includes(type)
+  ) {
     throw new Error(`Tipo de saída inválido: ${type}`);
   }
   // Aviso se vai a negativo
@@ -93,15 +133,19 @@ async function removeStock({ itemId, quantity, location, type = 'venda_bairrista
     [type, itemId, quantity, location, memberId, actor, 'remove manual', notes]
   );
   await logAudit({
-    action: 'stock_remove', entityType: 'inventory', entityId: String(itemId),
-    actorId: actor, afterState: { quantity, location, type }, context: notes,
+    action: 'stock_remove',
+    entityType: 'inventory',
+    entityId: String(itemId),
+    actorId: actor,
+    afterState: { quantity, location, type },
+    context: notes,
   }).catch(() => {});
   return { id: r.rows[0].id };
 }
 
 async function transferStock({ itemId, quantity, fromLocation, toLocation, actor, notes = '' }) {
   if (!VALID_LOCATIONS.includes(fromLocation)) throw new Error(`Casa origem inválida: ${fromLocation}`);
-  if (!VALID_LOCATIONS.includes(toLocation))   throw new Error(`Casa destino inválida: ${toLocation}`);
+  if (!VALID_LOCATIONS.includes(toLocation)) throw new Error(`Casa destino inválida: ${toLocation}`);
   if (fromLocation === toLocation) throw new Error('Origem e destino não podem ser iguais');
   if (!Number.isInteger(quantity) || quantity <= 0) throw new Error('Quantidade tem de ser inteiro positivo');
 
@@ -125,8 +169,11 @@ async function transferStock({ itemId, quantity, fromLocation, toLocation, actor
     [itemId, quantity, toLocation, actor, ctx, notes]
   );
   await logAudit({
-    action: 'stock_transfer', entityType: 'inventory', entityId: String(itemId),
-    actorId: actor, afterState: { quantity, fromLocation, toLocation },
+    action: 'stock_transfer',
+    entityType: 'inventory',
+    entityId: String(itemId),
+    actorId: actor,
+    afterState: { quantity, fromLocation, toLocation },
     context: notes,
   }).catch(() => {});
   return { outId: out.rows[0].id, inId: inv.rows[0].id };
@@ -145,7 +192,9 @@ async function adjustStock({ itemId, newTotal, location, actor, reason = 'contag
     [itemId, delta, location, actor, 'adjust manual', reason]
   );
   await logAudit({
-    action: 'stock_adjust', entityType: 'inventory', entityId: String(itemId),
+    action: 'stock_adjust',
+    entityType: 'inventory',
+    entityId: String(itemId),
     actorId: actor,
     beforeState: { balance: current },
     afterState: { balance: newTotal, delta },
@@ -155,7 +204,11 @@ async function adjustStock({ itemId, newTotal, location, actor, reason = 'contag
 }
 
 module.exports = {
-  findItemByName, getCurrentStock,
-  addStock, removeStock, transferStock, adjustStock,
+  findItemByName,
+  getCurrentStock,
+  addStock,
+  removeStock,
+  transferStock,
+  adjustStock,
   VALID_LOCATIONS,
 };

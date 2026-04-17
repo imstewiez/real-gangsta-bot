@@ -11,7 +11,7 @@ function hashKey(key) {
   let hash = 0;
   for (let i = 0; i < key.length; i++) {
     const ch = key.charCodeAt(i);
-    hash = ((hash << 5) - hash) + ch;
+    hash = (hash << 5) - hash + ch;
     hash |= 0; // Convert to 32-bit integer
   }
   return hash;
@@ -29,7 +29,7 @@ function hashKey(key) {
 async function withAdvisoryLock(lockKey, fn, timeoutMs = 10000) {
   const lockId = hashKey(lockKey);
 
-  return queryWithTransaction(async (client) => {
+  return queryWithTransaction(async client => {
     // Set lock timeout
     await client.query(`SET LOCAL lock_timeout = '${timeoutMs}ms'`);
 
@@ -38,7 +38,8 @@ async function withAdvisoryLock(lockKey, fn, timeoutMs = 10000) {
       await client.query('SELECT pg_advisory_xact_lock($1)', [lockId]);
       metrics.advisoryLockAcquired.inc();
     } catch (e) {
-      if (e.code === '55P03') { // lock_not_available
+      if (e.code === '55P03') {
+        // lock_not_available
         metrics.advisoryLockTimeout.inc();
         warn(`[AdvisoryLock] Timeout on '${lockKey}' (id=${lockId}) — another operation is in progress`);
         throw new Error(`Lock timeout on '${lockKey}' — another operation is in progress`);

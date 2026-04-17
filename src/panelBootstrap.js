@@ -14,14 +14,54 @@ const { CATEGORY_BY_KEY, bold } = require('./discord/structureTemplate');
 // dedicado pelo nome canónico na categoria esperada. A função acepta uma lista
 // de nomes (para incluir o antigo `painel-entrada` enquanto não é renomeado
 // para `boas-vindas`).
-function autoName(slug, emoji = '📋') { return `${emoji}・${bold(slug)}`; }
+function autoName(slug, emoji = '📋') {
+  return `${emoji}・${bold(slug)}`;
+}
 
 const PANELS = [
-  { key: 'panel_entrada',         channelKey: 'PANEL_ENTRADA_CHANNEL_ID',         autoName: autoName('boas-vindas', '👋'),         autoAltNames: [autoName('painel-entrada')], autoCategoryKey: 'ENTRADA',  build: buildEntradaPanel,         stickySource: 'panel:entrada' },
-  { key: 'panel_bairristas',      channelKey: 'PANEL_BAIRRISTAS_CHANNEL_ID',      autoName: autoName('painel-bairristas'),         autoAltNames: [autoName('painel-moradores')], autoCategoryKey: 'GUETTO',   build: buildBairristaPanel,       stickySource: 'panel:bairristas' },
-  { key: 'panel_oficiais',        channelKey: 'PANEL_OFICIAIS_CHANNEL_ID',        autoName: autoName('painel-oficiais'),           autoCategoryKey: 'OFICIAIS', build: buildOficialPanel,         stickySource: 'panel:oficiais' },
-  { key: 'panel_chefia',          channelKey: 'PANEL_CHEFIA_CHANNEL_ID',          autoName: autoName('painel-chefia'),             autoCategoryKey: 'COMANDO',  build: buildChefiaPanel,          stickySource: 'panel:chefia' },
-  { key: 'panel_patrao_di_zona',  channelKey: 'PANEL_PATRAO_DI_ZONA_CHANNEL_ID',  autoName: autoName('painel-patrao-di-zona'),     autoAltNames: [autoName('painel-chefe-moradores')], autoCategoryKey: 'GUETTO',   build: buildPatraoDiZonaPanel,    stickySource: 'panel:patrao_di_zona' },
+  {
+    key: 'panel_entrada',
+    channelKey: 'PANEL_ENTRADA_CHANNEL_ID',
+    autoName: autoName('boas-vindas', '👋'),
+    autoAltNames: [autoName('painel-entrada')],
+    autoCategoryKey: 'ENTRADA',
+    build: buildEntradaPanel,
+    stickySource: 'panel:entrada',
+  },
+  {
+    key: 'panel_bairristas',
+    channelKey: 'PANEL_BAIRRISTAS_CHANNEL_ID',
+    autoName: autoName('painel-bairristas'),
+    autoAltNames: [autoName('painel-moradores')],
+    autoCategoryKey: 'GUETTO',
+    build: buildBairristaPanel,
+    stickySource: 'panel:bairristas',
+  },
+  {
+    key: 'panel_oficiais',
+    channelKey: 'PANEL_OFICIAIS_CHANNEL_ID',
+    autoName: autoName('painel-oficiais'),
+    autoCategoryKey: 'OFICIAIS',
+    build: buildOficialPanel,
+    stickySource: 'panel:oficiais',
+  },
+  {
+    key: 'panel_chefia',
+    channelKey: 'PANEL_CHEFIA_CHANNEL_ID',
+    autoName: autoName('painel-chefia'),
+    autoCategoryKey: 'COMANDO',
+    build: buildChefiaPanel,
+    stickySource: 'panel:chefia',
+  },
+  {
+    key: 'panel_patrao_di_zona',
+    channelKey: 'PANEL_PATRAO_DI_ZONA_CHANNEL_ID',
+    autoName: autoName('painel-patrao-di-zona'),
+    autoAltNames: [autoName('painel-chefe-moradores')],
+    autoCategoryKey: 'GUETTO',
+    build: buildPatraoDiZonaPanel,
+    stickySource: 'panel:patrao_di_zona',
+  },
 ];
 
 /**
@@ -46,10 +86,11 @@ async function resolveChannelId(client, panelDef) {
   // antigos antes do rename, e.g. painel-entrada → boas-vindas).
   const acceptedNames = [panelDef.autoName, ...(panelDef.autoAltNames || [])];
   const slugs = acceptedNames.map(n => n.split('・')[1]).filter(Boolean);
-  const found = guild.channels.cache.find(c =>
-    c.type === ChannelType.GuildText &&
-    c.parentId === cat.id &&
-    (acceptedNames.includes(c.name) || slugs.some(s => c.name.includes(s)))
+  const found = guild.channels.cache.find(
+    c =>
+      c.type === ChannelType.GuildText &&
+      c.parentId === cat.id &&
+      (acceptedNames.includes(c.name) || slugs.some(s => c.name.includes(s)))
   );
   if (found) return { channelId: found.id, source: 'auto-discover' };
 
@@ -132,7 +173,9 @@ async function upsertPanelSticky(panelDef, channelId, actorId = 'system:panel-bo
       thresholdMinutes: 0,
       createdBy: actorId,
     });
-    log(`[PANELS] Sticky activa para '${panelDef.stickySource}' em ${channelId} (${mode}, thr=${CONFIG.PANELS_STICKY_THRESHOLD_MSGS}).`);
+    log(
+      `[PANELS] Sticky activa para '${panelDef.stickySource}' em ${channelId} (${mode}, thr=${CONFIG.PANELS_STICKY_THRESHOLD_MSGS}).`
+    );
   } catch (e) {
     warn(`[PANELS] Falha a registar sticky de '${panelDef.key}': ${e.message}`);
   }
@@ -168,15 +211,21 @@ async function bootstrapAll(client) {
       await upsertPanelSticky(panel, r.channelId);
     }
   }
-  const counts = results.reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
+  const counts = results.reduce((acc, r) => {
+    acc[r.status] = (acc[r.status] || 0) + 1;
+    return acc;
+  }, {});
   log(`[PANELS] Painéis inicializados — ${JSON.stringify(counts)}.`);
 
   // Backfill — garante que todos os canais individuais de morador têm o
   // painel morador (welcome + botões). Necessário para canais criados antes
   // de o painel existir, ou para canais onde a mensagem foi apagada.
   const backfill = await backfillResidentPanels(client);
-  results.push({ key: 'backfill_resident_panels', status: 'info',
-    channelId: null, reason: `${backfill.posted} posted, ${backfill.skipped} já OK, ${backfill.failed} falhas (total ${backfill.total})`,
+  results.push({
+    key: 'backfill_resident_panels',
+    status: 'info',
+    channelId: null,
+    reason: `${backfill.posted} posted, ${backfill.skipped} já OK, ${backfill.failed} falhas (total ${backfill.total})`,
   });
   log(`[PANELS] Backfill residentes — ${JSON.stringify(backfill)}.`);
 
@@ -202,20 +251,29 @@ async function backfillResidentPanels(client) {
       WHERE rc.status = 'active'`
   );
 
-  let posted = 0, skipped = 0, failed = 0;
+  let posted = 0,
+    skipped = 0,
+    failed = 0;
   for (const row of res.rows) {
     try {
       const ch = await client.channels.fetch(row.channel_id).catch(() => null);
-      if (!ch || !ch.isTextBased?.()) { failed++; continue; }
+      if (!ch || !ch.isTextBased?.()) {
+        failed++;
+        continue;
+      }
 
       // Procura mensagem existente do bot que seja o painel
       const messages = await ch.messages.fetch({ limit: 30 }).catch(() => null);
-      const existing = messages?.find(m =>
-        m.author?.id === client.user.id &&
-        m.components?.length &&
-        m.components.some(row => row.components?.some(c => c.customId?.startsWith('bairrista::')))
+      const existing = messages?.find(
+        m =>
+          m.author?.id === client.user.id &&
+          m.components?.length &&
+          m.components.some(row => row.components?.some(c => c.customId?.startsWith('bairrista::')))
       );
-      if (existing) { skipped++; continue; }
+      if (existing) {
+        skipped++;
+        continue;
+      }
 
       const name = row.full_name || row.display_name || row.nickname || 'bairrista';
       await ch.send({

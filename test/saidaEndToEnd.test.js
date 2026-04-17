@@ -16,7 +16,9 @@ process.env.DISCORD_BOT_TOKEN ||= 'test-token';
 process.env.DISCORD_GUILD_ID ||= 'test-guild';
 process.env.DATABASE_URL ||= 'postgresql://test:test@localhost:5432/test_db';
 
-function resolved(rel) { return require.resolve(path.join(__dirname, '..', 'src', rel)); }
+function resolved(rel) {
+  return require.resolve(path.join(__dirname, '..', 'src', rel));
+}
 
 // Estado mutável partilhado pelos stubs — simula tabelas em memória.
 const state = {
@@ -33,7 +35,7 @@ require.cache[resolved('db.js')] = {
   exports: {
     pool: { connect: async () => ({ query: async () => ({ rows: [] }), release: () => {} }) },
     query: async () => ({ rows: [] }),
-    queryWithTransaction: async (fn) => fn({ query: async () => ({ rows: [] }) }),
+    queryWithTransaction: async fn => fn({ query: async () => ({ rows: [] }) }),
   },
 };
 
@@ -42,7 +44,7 @@ const stubSaidaRepo = {
   getParticipants: async () => state.participants,
   // findById — devolve saída em status 'em_curso' por default (permite closeSaida).
   // Testes podem override state.saidaStatus para testar outros caminhos.
-  findById: async (id) => ({ id, status: state.saidaStatus || 'em_curso', result: null, spot: null }),
+  findById: async id => ({ id, status: state.saidaStatus || 'em_curso', result: null, spot: null }),
   closeSaida: async (id, data) => {
     state.closedPayload = { id, ...data };
     return { id, status: 'concluida', ...data };
@@ -54,29 +56,46 @@ const stubSaidaRepo = {
     if (idx >= 0) Object.assign(state.participants[idx], fields);
     return { id: mid, ...fields };
   },
-  addMaterial: async () => ({}), addParticipant: async () => ({}),
-  findOpen: async () => [], findRecent: async () => [],
+  addMaterial: async () => ({}),
+  addParticipant: async () => ({}),
+  findOpen: async () => [],
+  findRecent: async () => [],
 };
 
 const stubSpotStatsRepo = {
-  applyIncrement: async (delta) => { state.spotIncrements.push(delta); return {}; },
+  applyIncrement: async delta => {
+    state.spotIncrements.push(delta);
+    return {};
+  },
 };
 
 const stubMemberSaidaStatsRepo = {
-  applyIncrement: async (delta) => { state.memberIncrements.push(delta); return {}; },
+  applyIncrement: async delta => {
+    state.memberIncrements.push(delta);
+    return {};
+  },
 };
 
 require.cache[resolved('repositories/index.js')] = {
   exports: {
-    memberRepo: { findByDiscordId: async () => null, findById: async () => null, create: async (x) => ({ id: 1, ...x }) },
-    inventoryRepo: { recordMovement: async () => ({}), getItemById: async () => ({ id: 1, name: 'mock', estimated_value: 100 }), getStockForItem: async () => 0 },
-    saidaRepo: stubSaidaRepo, operationRepo: stubSaidaRepo,
+    memberRepo: { findByDiscordId: async () => null, findById: async () => null, create: async x => ({ id: 1, ...x }) },
+    inventoryRepo: {
+      recordMovement: async () => ({}),
+      getItemById: async () => ({ id: 1, name: 'mock', estimated_value: 100 }),
+      getStockForItem: async () => 0,
+    },
+    saidaRepo: stubSaidaRepo,
+    operationRepo: stubSaidaRepo,
     killRepo: {},
     spotStatsRepo: stubSpotStatsRepo,
     memberSaidaStatsRepo: stubMemberSaidaStatsRepo,
     memberAnalyticsRepo: {},
-    rankingRepo: {}, auditRepo: {}, jobRepo: {}, availabilityRepo: {},
-    radioRepo: {}, stickyRepo: {},
+    rankingRepo: {},
+    auditRepo: {},
+    jobRepo: {},
+    availabilityRepo: {},
+    radioRepo: {},
+    stickyRepo: {},
   },
 };
 require.cache[resolved('audit/auditEngine.js')] = {
@@ -105,22 +124,56 @@ describe('saida end-to-end — vitória com 3 participantes', () => {
     state.summary = {
       fornecido: { total: 6, weightedTotal: 600 },
       devolvido: { total: 4, weightedTotal: 400 },
-      perdido:   { total: 1, weightedTotal: 100 },
+      perdido: { total: 1, weightedTotal: 100 },
       consumido: { total: 1, weightedTotal: 50 },
     };
     state.participants = [
-      { member_id: 10, display_name: 'Killer',  kills: 4, survived: true,  died: false, issued_value: 200, returned_value: 200, lost_value: 0,   consumed_value: 0 },
-      { member_id: 20, display_name: 'Vivo',    kills: 1, survived: true,  died: false, issued_value: 200, returned_value: 150, lost_value: 0,   consumed_value: 50 },
-      { member_id: 30, display_name: 'Morto',   kills: 0, survived: false, died: true,  issued_value: 200, returned_value: 50,  lost_value: 100, consumed_value: 0 },
+      {
+        member_id: 10,
+        display_name: 'Killer',
+        kills: 4,
+        survived: true,
+        died: false,
+        issued_value: 200,
+        returned_value: 200,
+        lost_value: 0,
+        consumed_value: 0,
+      },
+      {
+        member_id: 20,
+        display_name: 'Vivo',
+        kills: 1,
+        survived: true,
+        died: false,
+        issued_value: 200,
+        returned_value: 150,
+        lost_value: 0,
+        consumed_value: 50,
+      },
+      {
+        member_id: 30,
+        display_name: 'Morto',
+        kills: 0,
+        survived: false,
+        died: true,
+        issued_value: 200,
+        returned_value: 50,
+        lost_value: 100,
+        consumed_value: 0,
+      },
     ];
 
-    const result = await closeSaida(123, {
-      result: 'vitoria',
-      had_fight: true,
-      spot: 'Docks',
-      our_kills: 5,
-      deaths: 1,
-    }, 'actor-1');
+    const result = await closeSaida(
+      123,
+      {
+        result: 'vitoria',
+        had_fight: true,
+        spot: 'Docks',
+        our_kills: 5,
+        deaths: 1,
+      },
+      'actor-1'
+    );
 
     // Valores económicos na saída fechada
     assert.equal(result.values.supplied, 600);
@@ -164,9 +217,9 @@ describe('saida end-to-end — vitória com 3 participantes', () => {
   it('reconciliação detecta material unaccounted no resultado', async () => {
     state.summary = {
       fornecido: { total: 10, weightedTotal: 1000 },
-      devolvido: { total: 5,  weightedTotal: 500 },
-      perdido:   { total: 2,  weightedTotal: 200 },
-      consumido: { total: 0,  weightedTotal: 0 },
+      devolvido: { total: 5, weightedTotal: 500 },
+      perdido: { total: 2, weightedTotal: 200 },
+      consumido: { total: 0, weightedTotal: 0 },
     };
     state.participants = [];
     const closed = await closeSaida(300, { result: 'empate', spot: 'Warehouse' }, 'a');
@@ -177,7 +230,7 @@ describe('saida end-to-end — vitória com 3 participantes', () => {
     state.summary = {
       fornecido: { weightedTotal: 500 },
       devolvido: { weightedTotal: 100 },
-      perdido:   { weightedTotal: 400 },
+      perdido: { weightedTotal: 400 },
       consumido: { weightedTotal: 0 },
     };
     state.participants = [
@@ -196,8 +249,8 @@ describe('saida end-to-end — vitória com 3 participantes', () => {
     // Dois nomes com mesma performance bruta, mas um sobreviveu.
     state.summary = { fornecido: { weightedTotal: 200 }, devolvido: { weightedTotal: 200 } };
     state.participants = [
-      { member_id: 1, kills: 2, survived: false, died: true,  issued_value: 100, returned_value: 0,   lost_value: 100 },
-      { member_id: 2, kills: 2, survived: true,  died: false, issued_value: 100, returned_value: 100 },
+      { member_id: 1, kills: 2, survived: false, died: true, issued_value: 100, returned_value: 0, lost_value: 100 },
+      { member_id: 2, kills: 2, survived: true, died: false, issued_value: 100, returned_value: 100 },
     ];
     const closed = await closeSaida(500, { result: 'vitoria', spot: 'Plaza' }, 'a');
     const mvpUpdate = state.participantUpdates.find(u => u.fields.mvp_flag);
@@ -210,8 +263,8 @@ describe('saida end-to-end — vitória com 3 participantes', () => {
     // Morto com 10 kills é lenda — supera vivo passivo. O bot regista-o.
     state.summary = { fornecido: { weightedTotal: 200 }, devolvido: { weightedTotal: 100 } };
     state.participants = [
-      { member_id: 1, kills: 10, survived: false, died: true, issued_value: 100, returned_value: 0,   lost_value: 100 },
-      { member_id: 2, kills: 0,  survived: true,  died: false, issued_value: 100, returned_value: 100 },
+      { member_id: 1, kills: 10, survived: false, died: true, issued_value: 100, returned_value: 0, lost_value: 100 },
+      { member_id: 2, kills: 0, survived: true, died: false, issued_value: 100, returned_value: 100 },
     ];
     const closed = await closeSaida(510, { result: 'vitoria', spot: 'Plaza2' }, 'a');
     const mvpUpdate = state.participantUpdates.find(u => u.fields.mvp_flag);

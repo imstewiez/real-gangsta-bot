@@ -2,23 +2,20 @@
 const { query } = require('../db');
 
 async function listActive() {
-  const res = await query(`SELECT * FROM sticky_messages WHERE active = TRUE ORDER BY id`);
+  const res = await query('SELECT * FROM sticky_messages WHERE active = TRUE ORDER BY id');
   return res.rows;
 }
 
 async function listForChannel(channelId) {
-  const res = await query(
-    `SELECT * FROM sticky_messages WHERE channel_id = $1 AND active = TRUE`,
-    [channelId]
-  );
+  const res = await query('SELECT * FROM sticky_messages WHERE channel_id = $1 AND active = TRUE', [channelId]);
   return res.rows;
 }
 
 async function getByChannelSource(channelId, sourceKey) {
-  const res = await query(
-    `SELECT * FROM sticky_messages WHERE channel_id = $1 AND source_key = $2`,
-    [channelId, sourceKey]
-  );
+  const res = await query('SELECT * FROM sticky_messages WHERE channel_id = $1 AND source_key = $2', [
+    channelId,
+    sourceKey,
+  ]);
   return res.rows[0] || null;
 }
 
@@ -62,10 +59,15 @@ async function incrementCounter(id) {
 }
 
 async function deactivate(id) {
-  await query(`UPDATE sticky_messages SET active = FALSE, updated_at = NOW() WHERE id = $1`, [id]);
+  await query('UPDATE sticky_messages SET active = FALSE, updated_at = NOW() WHERE id = $1', [id]);
 }
 
 module.exports = {
-  listActive, listForChannel, getByChannelSource,
-  upsert, setLastMessage, incrementCounter, deactivate,
+  listActive,
+  listForChannel,
+  getByChannelSource,
+  upsert,
+  setLastMessage,
+  incrementCounter,
+  deactivate,
 };

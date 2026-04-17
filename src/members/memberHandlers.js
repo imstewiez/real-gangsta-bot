@@ -2,43 +2,41 @@
 const { MessageFlags } = require('discord.js');
 const { memberRepo, inventoryRepo } = require('../repositories');
 const { safeReply } = require('../shared/interactionHelpers');
-const {
-  memberProfileEmbed, brandEmbed, progressBar, rankBadge,
-} = require('../shared/embedBuilders');
+const { memberProfileEmbed, brandEmbed, progressBar, rankBadge } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS, RANKINGS } = require('../content');
 const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
 
 // Mapping canónico de tipos de movimento → label para histórico/totais.
 const MOVEMENT_LABELS = {
   entrega_bairrista: 'Entrega',
-  venda_bairrista:   'Venda',
-  entrega_morador:   'Entrega',  // legacy
-  venda_morador:     'Venda',    // legacy
-  entrega_oficial:   'Entrega (oficial)',
-  devolucao_operacao:'Devolução',
-  fornecimento_org:  'Fornecido',
-  consumo_operacao:  'Consumo',
-  perda_operacao:    'Perda',
-  ajuste_manual:     'Ajuste',
-  apreendido:        'Apreendido',
-  craftado:          'Craftado',
-  saldo_inicial:     'Saldo Inicial',
+  venda_bairrista: 'Venda',
+  entrega_morador: 'Entrega', // legacy
+  venda_morador: 'Venda', // legacy
+  entrega_oficial: 'Entrega (oficial)',
+  devolucao_operacao: 'Devolução',
+  fornecimento_org: 'Fornecido',
+  consumo_operacao: 'Consumo',
+  perda_operacao: 'Perda',
+  ajuste_manual: 'Ajuste',
+  apreendido: 'Apreendido',
+  craftado: 'Craftado',
+  saldo_inicial: 'Saldo Inicial',
 };
 
 // Emoji por tipo (para histórico visual)
 const MOVEMENT_EMOJI = {
   entrega_bairrista: EMOJI.MATERIAL,
-  venda_bairrista:   EMOJI.LUCRO,
-  entrega_morador:   EMOJI.MATERIAL,
-  venda_morador:     EMOJI.LUCRO,
-  entrega_oficial:   EMOJI.MATERIAL,
-  devolucao_operacao:EMOJI.DEVOLVER,
-  fornecimento_org:  EMOJI.FORNECER,
-  consumo_operacao:  EMOJI.CRAFT,
-  perda_operacao:    EMOJI.PERDIDO,
-  ajuste_manual:     EMOJI.AJUSTAR,
-  apreendido:        EMOJI.MATERIAL,
-  craftado:          EMOJI.CRAFT,
+  venda_bairrista: EMOJI.LUCRO,
+  entrega_morador: EMOJI.MATERIAL,
+  venda_morador: EMOJI.LUCRO,
+  entrega_oficial: EMOJI.MATERIAL,
+  devolucao_operacao: EMOJI.DEVOLVER,
+  fornecimento_org: EMOJI.FORNECER,
+  consumo_operacao: EMOJI.CRAFT,
+  perda_operacao: EMOJI.PERDIDO,
+  ajuste_manual: EMOJI.AJUSTAR,
+  apreendido: EMOJI.MATERIAL,
+  craftado: EMOJI.CRAFT,
 };
 
 async function handleMemberCommand(interaction) {
@@ -46,23 +44,29 @@ async function handleMemberCommand(interaction) {
   const member = await memberRepo.findByDiscordId(targetUser.id);
 
   if (!member) {
-    return safeReply(interaction, { content: ERRORS.MEMBER_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(
+      interaction,
+      { content: ERRORS.MEMBER_NOT_FOUND(), flags: MessageFlags.Ephemeral },
+      { dismissible: true }
+    );
   }
 
   const embed = memberProfileEmbed(member);
 
   const totals = await inventoryRepo.getMemberTotals(member.id);
   const totalEntregas = (totals.entrega_bairrista || 0) + (totals.entrega_morador || 0);
-  const totalVendas   = (totals.venda_bairrista   || 0) + (totals.venda_morador   || 0);
-  const totalOficial  = totals.entrega_oficial || 0;
+  const totalVendas = (totals.venda_bairrista || 0) + (totals.venda_morador || 0);
+  const totalOficial = totals.entrega_oficial || 0;
   if (totalEntregas || totalVendas || totalOficial) {
     embed.addFields({
       name: 'Material',
       value: [
         totalEntregas ? `${EMOJI.MATERIAL} Entregas: **${totalEntregas}**` : null,
-        totalVendas   ? `${EMOJI.LUCRO} Vendas: **${totalVendas}**`       : null,
-        totalOficial  ? `${EMOJI.MATERIAL} Oficial: **${totalOficial}**`  : null,
-      ].filter(Boolean).join('\n'),
+        totalVendas ? `${EMOJI.LUCRO} Vendas: **${totalVendas}**` : null,
+        totalOficial ? `${EMOJI.MATERIAL} Oficial: **${totalOficial}**` : null,
+      ]
+        .filter(Boolean)
+        .join('\n'),
       inline: false,
     });
   }
@@ -73,12 +77,20 @@ async function handleMemberCommand(interaction) {
 async function handleMemberHistoryButton(interaction) {
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {
-    return safeReply(interaction, { content: ERRORS.MEMBER_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(
+      interaction,
+      { content: ERRORS.MEMBER_NOT_FOUND(), flags: MessageFlags.Ephemeral },
+      { dismissible: true }
+    );
   }
 
   const movements = await inventoryRepo.getMemberMovements(member.id, 20);
   if (!movements.length) {
-    return safeReply(interaction, { content: `${EMOJI.AUDIT} Sem histórico ainda — mete mão à rua.`, flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.AUDIT} Sem histórico ainda — mete mão à rua.`, flags: MessageFlags.Ephemeral },
+      { dismissible: true }
+    );
   }
 
   const lines = movements.map(m => {
@@ -98,24 +110,28 @@ async function handleMemberHistoryButton(interaction) {
 async function handleMemberTotalsButton(interaction) {
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {
-    return safeReply(interaction, { content: ERRORS.MEMBER_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(
+      interaction,
+      { content: ERRORS.MEMBER_NOT_FOUND(), flags: MessageFlags.Ephemeral },
+      { dismissible: true }
+    );
   }
 
   const totals = await inventoryRepo.getMemberTotals(member.id);
   const agg = {
     entregas: (totals.entrega_bairrista || 0) + (totals.entrega_morador || 0),
-    vendas:   (totals.venda_bairrista   || 0) + (totals.venda_morador   || 0),
-    oficial:  totals.entrega_oficial    || 0,
-    devolvido:totals.devolucao_operacao || 0,
+    vendas: (totals.venda_bairrista || 0) + (totals.venda_morador || 0),
+    oficial: totals.entrega_oficial || 0,
+    devolvido: totals.devolucao_operacao || 0,
   };
 
   const embed = brandEmbed('MOVEMENT')
     .setTitle(`${EMOJI.TOPO} Os teus totais`)
     .addFields(
       { name: `${EMOJI.MATERIAL} Entregas`, value: `**${agg.entregas.toLocaleString('pt-PT')}**`, inline: true },
-      { name: `${EMOJI.LUCRO} Vendas`,      value: `**${agg.vendas.toLocaleString('pt-PT')}**`,   inline: true },
-      { name: `${EMOJI.MATERIAL} Oficial`,  value: `**${agg.oficial.toLocaleString('pt-PT')}**`,  inline: true },
-      { name: `${EMOJI.DEVOLVER} Devolvido`, value: `**${agg.devolvido.toLocaleString('pt-PT')}**`, inline: true },
+      { name: `${EMOJI.LUCRO} Vendas`, value: `**${agg.vendas.toLocaleString('pt-PT')}**`, inline: true },
+      { name: `${EMOJI.MATERIAL} Oficial`, value: `**${agg.oficial.toLocaleString('pt-PT')}**`, inline: true },
+      { name: `${EMOJI.DEVOLVER} Devolvido`, value: `**${agg.devolvido.toLocaleString('pt-PT')}**`, inline: true }
     );
 
   // Progress to next tier — bar visual
@@ -151,13 +167,14 @@ async function handleProgressButton(interaction) {
 
   const { getPromotionProgress } = require('./autoPromotionEngine');
   const progress = await getPromotionProgress(interaction.user.id);
-  if (!progress) return safeReply(interaction, { content: `${EMOJI.INFO} Ainda sem dados de progresso.` }, { dismissible: true });
+  if (!progress)
+    return safeReply(interaction, { content: `${EMOJI.INFO} Ainda sem dados de progresso.` }, { dismissible: true });
 
   const embed = brandEmbed('MOVEMENT')
     .setTitle(`${EMOJI.TOPO} Progresso — ${member.display_name || member.full_name}`)
     .addFields(
-      { name: 'Rank actual',   value: `**${progress.currentTierName}**`, inline: true },
-      { name: 'Material total',value: `**${(progress.totalQty || 0).toLocaleString('pt-PT')}**`, inline: true },
+      { name: 'Rank actual', value: `**${progress.currentTierName}**`, inline: true },
+      { name: 'Material total', value: `**${(progress.totalQty || 0).toLocaleString('pt-PT')}**`, inline: true }
     );
 
   if (!progress.maxedOut) {
@@ -204,11 +221,16 @@ async function handleTopSemanalButton(interaction) {
   const { rankingRepo } = require('../repositories');
   const rankings = await rankingRepo.getWeekRanking(weekStart, 10);
 
-  if (!rankings.length) return safeReply(interaction, { content: `${EMOJI.INFO} Sem dados de ranking esta semana.` }, { dismissible: true });
+  if (!rankings.length)
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.INFO} Sem dados de ranking esta semana.` },
+      { dismissible: true }
+    );
 
   const lines = rankings.map((r, i) => {
     const prefix = rankBadge(i + 1);
-    const isMe = r.discord_id === interaction.user.id ? ` ← **tu**` : '';
+    const isMe = r.discord_id === interaction.user.id ? ' ← **tu**' : '';
     return `${prefix} <@${r.discord_id}> — **${parseFloat(r.weighted_value).toLocaleString('pt-PT')}** · ${r.deliveries} entregas · ${r.sales} vendas${isMe}`;
   });
 
@@ -219,7 +241,9 @@ async function handleTopSemanalButton(interaction) {
     const myPos = allRankings.findIndex(r => r.discord_id === interaction.user.id);
     if (myPos >= 0) {
       lines.push('─────');
-      lines.push(`**#${myPos + 1}.** <@${interaction.user.id}> — **${parseFloat(allRankings[myPos].weighted_value).toLocaleString('pt-PT')}** ← **tu**`);
+      lines.push(
+        `**#${myPos + 1}.** <@${interaction.user.id}> — **${parseFloat(allRankings[myPos].weighted_value).toLocaleString('pt-PT')}** ← **tu**`
+      );
     }
   }
 
@@ -232,6 +256,9 @@ async function handleTopSemanalButton(interaction) {
 }
 
 module.exports = {
-  handleMemberCommand, handleMemberHistoryButton, handleMemberTotalsButton,
-  handleProgressButton, handleTopSemanalButton,
+  handleMemberCommand,
+  handleMemberHistoryButton,
+  handleMemberTotalsButton,
+  handleProgressButton,
+  handleTopSemanalButton,
 };

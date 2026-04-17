@@ -26,9 +26,7 @@ async function handle(interaction) {
       lines.push(`  ${item.name} — ${item.unit}${price}`);
     }
   }
-  const embed = brandEmbed()
-    .setTitle('Catálogo de Materiais')
-    .setDescription(lines.join('\n').slice(0, 4000));
+  const embed = brandEmbed().setTitle('Catálogo de Materiais').setDescription(lines.join('\n').slice(0, 4000));
   return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
 }
 

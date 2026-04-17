@@ -1,7 +1,9 @@
 'use strict';
 const { publishWeeklyTop, publishDailySummary } = require('../rankings/rankingJobs');
 const {
-  publishBairristaDailySummary, publishBairristaWeeklySummary, publishBairristaMonthlySummary,
+  publishBairristaDailySummary,
+  publishBairristaWeeklySummary,
+  publishBairristaMonthlySummary,
 } = require('../rankings/bairristaSummaryJobs');
 const { jobRepo } = require('../repositories');
 const { log, warn } = require('../logger');
@@ -43,7 +45,7 @@ function startAll(client) {
   registerJob('daily_summary', 30 * 60 * 1000, publishDailySummary);
 
   // Reconciliação de invariantes de roles (diário, 4h da manhã aprox)
-  registerJob('role_invariants', 24 * 60 * 60 * 1000, async (client) => {
+  registerJob('role_invariants', 24 * 60 * 60 * 1000, async client => {
     try {
       const guild = client.guilds.cache.get(CONFIG.DISCORD_GUILD_ID);
       if (!guild) return;
@@ -73,7 +75,7 @@ function startAll(client) {
   // Reconcile drift Discord↔DB — corre 1x por dia (dry-run). Os fixes
   // aplicam-se diariamente via `role_invariants` acima. Este job existe
   // para gauges Prometheus + relatório de drift em /versao (data health).
-  registerJob('reconcile_daily', 24 * 60 * 60 * 1000, async (client) => {
+  registerJob('reconcile_daily', 24 * 60 * 60 * 1000, async client => {
     const guild = client?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
     if (!guild) return { skipped: 'no_guild' };
     const { runReconcile } = require('../reconcile');
@@ -82,12 +84,13 @@ function startAll(client) {
 
   // Data health — actualiza gauges Prometheus (stale tabs, drift, retention
   // pending, stuck jobs). Corre a cada 5 min, barato.
-  registerJob('data_health_collect', 5 * 60 * 1000, async (client) => {
+  registerJob('data_health_collect', 5 * 60 * 1000, async client => {
     const guild = client?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
     const { collect } = require('../lib/dataHealth');
     const r = await collect({ guild });
     return {
-      stale: r.sheet?.stale, errors: r.sheet?.errors,
+      stale: r.sheet?.stale,
+      errors: r.sheet?.errors,
       members_drift: (r.members?.role_mismatch || 0) + (r.members?.tier_mismatch || 0),
       stuck_jobs: r.stuck_jobs?.length || 0,
     };
@@ -95,7 +98,7 @@ function startAll(client) {
 
   // Stock alerts — corre hourly. Verifica items com alert_threshold definido
   // e posta no canal alertas-stock se balance < threshold. Throttle 24h.
-  registerJob('stock_alerts', 60 * 60 * 1000, async (client) => {
+  registerJob('stock_alerts', 60 * 60 * 1000, async client => {
     const { setClient, checkAndAlert } = require('../inventory/stockAlertEngine');
     setClient(client);
     return await checkAndAlert({ dryRun: false });
@@ -119,7 +122,7 @@ function startAll(client) {
   });
 
   // Sticky messages — refresh time-based (modo repost com threshold_minutes)
-  registerJob('sticky_time_refresh', 60 * 1000, async (client) => {
+  registerJob('sticky_time_refresh', 60 * 1000, async client => {
     const { runTimeBasedRefresh } = require('../sticky/stickyEngine');
     return await runTimeBasedRefresh(client);
   });
@@ -138,7 +141,7 @@ function startAll(client) {
   if (CONFIG.AVAILABILITY_AUTO_PUBLISH_ENABLED && CONFIG.AVAILABILITY_CHANNEL_ID) {
     const { availabilityRepo } = require('../repositories');
     const { createSession, todayDateString } = require('../availability/availabilityEngine');
-    registerJob('availability_auto_publish', 5 * 60 * 1000, async (client) => {
+    registerJob('availability_auto_publish', 5 * 60 * 1000, async client => {
       const now = new Date();
       if (now.getHours() !== CONFIG.AVAILABILITY_AUTO_PUBLISH_HOUR) return { skipped: 'wrong_hour' };
       const date = todayDateString();

@@ -29,12 +29,18 @@ function toDate(input) {
 // quando em DST/WEST). Intl.DateTimeFormat com timeZone resolve.
 const _dtFull = new Intl.DateTimeFormat('pt-PT', {
   timeZone: TZ,
-  day: '2-digit', month: '2-digit', year: 'numeric',
-  hour: '2-digit', minute: '2-digit', hour12: false,
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
 });
 const _dtOnly = new Intl.DateTimeFormat('pt-PT', {
   timeZone: TZ,
-  day: '2-digit', month: '2-digit', year: 'numeric',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
 });
 
 function _extract(d, formatter) {

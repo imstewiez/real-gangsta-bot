@@ -23,26 +23,26 @@
  *   sticky.js      — stickys
  */
 
-const voice        = require('./voice');
-const EMOJI        = require('./emojis');
-const footers      = require('./footers');
-const TONE         = require('./tone');
-const ERRORS       = require('./errors');
-const SUCCESS      = require('./success');
-const PANELS       = require('./panels');
+const voice = require('./voice');
+const EMOJI = require('./emojis');
+const footers = require('./footers');
+const TONE = require('./tone');
+const ERRORS = require('./errors');
+const SUCCESS = require('./success');
+const PANELS = require('./panels');
 const { BUTTONS, STYLE } = require('./buttons');
-const MODALS       = require('./modals');
-const ONBOARDING   = require('./onboarding');
+const MODALS = require('./modals');
+const ONBOARDING = require('./onboarding');
 const { SAIDAS, RESULT_LABEL } = require('./saidas');
-const STATS        = require('./stats');
-const KILLS        = require('./kills');
+const STATS = require('./stats');
+const KILLS = require('./kills');
 const AVAILABILITY = require('./availability');
-const RADIO        = require('./radio');
-const INVENTORY    = require('./inventory');
-const RANKINGS     = require('./rankings');
-const STICKY       = require('./sticky');
+const RADIO = require('./radio');
+const INVENTORY = require('./inventory');
+const RANKINGS = require('./rankings');
+const STICKY = require('./sticky');
 const MEMBER_STATS = require('./memberStats');
-const BAIRRISTAS   = require('./bairristas');
+const BAIRRISTAS = require('./bairristas');
 
 module.exports = {
   ...voice,

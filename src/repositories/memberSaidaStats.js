@@ -6,14 +6,20 @@
 const { query } = require('../db');
 
 async function getByMember(memberId) {
-  const res = await query(`SELECT * FROM member_saida_stats WHERE member_id = $1`, [memberId]);
+  const res = await query('SELECT * FROM member_saida_stats WHERE member_id = $1', [memberId]);
   return res.rows[0] || null;
 }
 
 async function listTop(orderBy = 'kills_total', limit = 10) {
   const validCols = new Set([
-    'saidas_total', 'wins', 'kills_total', 'deaths_total',
-    'kd_ratio', 'profit_generated', 'survival_rate', 'mvp_count',
+    'saidas_total',
+    'wins',
+    'kills_total',
+    'deaths_total',
+    'kd_ratio',
+    'profit_generated',
+    'survival_rate',
+    'mvp_count',
     'material_return_rate',
   ]);
   const col = validCols.has(orderBy) ? orderBy : 'kills_total';
@@ -32,7 +38,17 @@ async function listTop(orderBy = 'kills_total', limit = 10) {
  * Aplica delta a um membro. Ratios (kd, survival, material return) são
  * recalculados no final a partir dos totais, não acumulados.
  */
-async function applyIncrement({ memberId, result, kills, deaths, profit, returnedValue, suppliedValue, survived, mvp }) {
+async function applyIncrement({
+  memberId,
+  result,
+  kills,
+  deaths,
+  profit,
+  returnedValue,
+  suppliedValue,
+  survived,
+  mvp,
+}) {
   if (!memberId) return null;
   const isWin = result === 'vitoria' ? 1 : 0;
   const isLoss = result === 'derrota' ? 1 : 0;

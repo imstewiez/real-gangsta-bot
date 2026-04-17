@@ -54,9 +54,7 @@ async function collect({ guild = null } = {}) {
         missing_in_db: c.missing_in_db?.length || 0,
         orphan_in_db: c.orphan_in_db?.length || 0,
       };
-      metrics.driftedMembers.set(
-        report.members.role_mismatch + report.members.tier_mismatch
-      );
+      metrics.driftedMembers.set(report.members.role_mismatch + report.members.tier_mismatch);
     } catch (e) {
       report.members = { error: e.message };
     }
@@ -140,7 +138,9 @@ function formatDiscord(report) {
   if (report.sheet && !report.sheet.error) {
     const s = report.sheet;
     const status = s.has_drift ? '⚠️' : '✅';
-    lines.push(`${status} **Sheet** · ${s.ok}/${s.total_checked} ok · stale:${s.stale} · error:${s.errors} · never:${s.never_synced}`);
+    lines.push(
+      `${status} **Sheet** · ${s.ok}/${s.total_checked} ok · stale:${s.stale} · error:${s.errors} · never:${s.never_synced}`
+    );
   } else if (report.sheet?.error) {
     lines.push(`❌ **Sheet**: ${report.sheet.error}`);
   }
@@ -149,7 +149,9 @@ function formatDiscord(report) {
     const m = report.members;
     const drift = m.role_mismatch + m.tier_mismatch + m.missing_in_db + m.orphan_in_db;
     const status = drift > 0 ? '⚠️' : '✅';
-    lines.push(`${status} **Members** · ${m.ok}/${m.total_checked} ok · role:${m.role_mismatch} · tier:${m.tier_mismatch} · missing:${m.missing_in_db} · orphan:${m.orphan_in_db}`);
+    lines.push(
+      `${status} **Members** · ${m.ok}/${m.total_checked} ok · role:${m.role_mismatch} · tier:${m.tier_mismatch} · missing:${m.missing_in_db} · orphan:${m.orphan_in_db}`
+    );
   }
 
   if (report.channels && !report.channels.error) {
@@ -159,13 +161,19 @@ function formatDiscord(report) {
   }
 
   const stuck = report.stuck_jobs?.length || 0;
-  lines.push(stuck > 0 ? `⚠️ **Stuck Jobs**: ${stuck}  (${report.stuck_jobs.map(j => j.job_name).join(', ')})` : `✅ **Jobs** sem stucks`);
+  lines.push(
+    stuck > 0
+      ? `⚠️ **Stuck Jobs**: ${stuck}  (${report.stuck_jobs.map(j => j.job_name).join(', ')})`
+      : '✅ **Jobs** sem stucks'
+  );
 
   if (report.retention && !report.retention.error) {
     const r = report.retention;
-    lines.push(r.total_eligible > 0
-      ? `🗑 **Retention** · ${r.total_eligible} rows elegíveis para purge`
-      : `✅ **Retention** · nada para purgar`);
+    lines.push(
+      r.total_eligible > 0
+        ? `🗑 **Retention** · ${r.total_eligible} rows elegíveis para purge`
+        : '✅ **Retention** · nada para purgar'
+    );
   }
 
   if (report.table_sizes?.length) {

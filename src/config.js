@@ -11,7 +11,9 @@ require('dotenv').config({ path: envPath });
 let _guildDefaults = { roles: {}, categories: {}, channels: {} };
 try {
   _guildDefaults = require('../config/guild-defaults.json');
-} catch { /* ficheiro opcional — sem ele, tudo vem do env */ }
+} catch {
+  /* ficheiro opcional — sem ele, tudo vem do env */
+}
 function guildId(name, section = 'roles') {
   return process.env[name] || (_guildDefaults[section] && _guildDefaults[section][name]) || '';
 }
@@ -183,14 +185,18 @@ const CONFIG = {
   AVAILABILITY_CHANNEL_ID: optId('AVAILABILITY_CHANNEL_ID'),
   // Slots default — 12:00 → 02:00 com saltos de 2h. Máximo 8 (limite do select
   // Discord = 25 opções e usamos 3 estados por slot).
-  AVAILABILITY_SLOTS: (process.env.AVAILABILITY_SLOTS ||
-    '12:00,14:00,16:00,18:00,20:00,22:00,00:00,02:00')
-    .split(',').map(s => s.trim()).filter(Boolean).slice(0, 8),
+  AVAILABILITY_SLOTS: (process.env.AVAILABILITY_SLOTS || '12:00,14:00,16:00,18:00,20:00,22:00,00:00,02:00')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .slice(0, 8),
   // Roles a mencionar ao publicar (separadas por vírgula). Se vazio, o engine
   // faz fallback para [BAIRRISTAS_BASE_ROLE_ID] automaticamente — todos os
   // bairristas são alertados.
   AVAILABILITY_MENTION_ROLE_IDS: (process.env.AVAILABILITY_MENTION_ROLE_IDS || '')
-    .split(',').map(s => s.trim()).filter(Boolean),
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean),
   // Job auto-publish — default ligado, dispara à meia-noite local do servidor.
   // O job corre de 5 em 5 min e age só na hora indicada (idempotente via uq
   // index). Se o bot reiniciar entre 00:00-00:59 publica na mesma.

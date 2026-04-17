@@ -44,13 +44,25 @@ function buildBairristaChannelOverwrites(guild, ownerId, botId, opts = {}) {
 
   const overwrites = [
     { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
-    { id: botId,    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.ManageMessages] },
+    {
+      id: botId,
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ManageChannels,
+        PermissionFlagsBits.ManageMessages,
+      ],
+    },
   ];
 
   if (ownerPresent) {
     overwrites.push({
       id: ownerId,
-      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+      ],
     });
   }
 
@@ -59,8 +71,10 @@ function buildBairristaChannelOverwrites(guild, ownerId, botId, opts = {}) {
     overwrites.push({
       id: roleId,
       allow: [
-        PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages,
-        PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageMessages,
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+        PermissionFlagsBits.ManageMessages,
         PermissionFlagsBits.ManageChannels,
       ],
     });
@@ -69,14 +83,23 @@ function buildBairristaChannelOverwrites(guild, ownerId, botId, opts = {}) {
   for (const roleId of CONFIG.SUPERVISOR_ROLE_IDS) {
     overwrites.push({
       id: roleId,
-      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory],
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+      ],
     });
   }
   // Patrão di Zona — gestão do bairro
   for (const roleId of CONFIG.PATRAO_DI_ZONA_ROLE_IDS) {
     overwrites.push({
       id: roleId,
-      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageMessages],
+      allow: [
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.ReadMessageHistory,
+        PermissionFlagsBits.ManageMessages,
+      ],
     });
   }
 
@@ -158,7 +181,9 @@ async function reconcileBairristaChannels(guild, opts = {}) {
       continue;
     }
     try {
-      await queueChannelOp(() => channel.permissionOverwrites.set(overwrites, 'reconcileBairristaChannels — deny bairrista peers'));
+      await queueChannelOp(() =>
+        channel.permissionOverwrites.set(overwrites, 'reconcileBairristaChannels — deny bairrista peers')
+      );
       report.fixed++;
     } catch (e) {
       warn(`[CHANNEL-INV] Perms falha em ${row.display_name} (${row.channel_id}): ${e.message}`);
@@ -189,7 +214,10 @@ async function reconcileBairristaChannels(guild, opts = {}) {
       if (processedChannelIds.has(chId)) continue;
       const newName = normalizeChannelNameToShort(ch.name);
       if (!newName) continue;
-      if (dryRun) { report.drift_renamed++; continue; }
+      if (dryRun) {
+        report.drift_renamed++;
+        continue;
+      }
       try {
         const oldName = ch.name;
         await queueChannelOp(() => ch.setName(newName, 'reconcileBairristaChannels — drift rename'));
@@ -202,7 +230,9 @@ async function reconcileBairristaChannels(guild, opts = {}) {
     }
   }
 
-  log(`[CHANNEL-INV] scanned=${report.scanned} fixed=${report.fixed} renamed=${report.renamed} drift=${report.drift_renamed} missing=${report.missing} errors=${report.errors.length} dry=${dryRun}`);
+  log(
+    `[CHANNEL-INV] scanned=${report.scanned} fixed=${report.fixed} renamed=${report.renamed} drift=${report.drift_renamed} missing=${report.missing} errors=${report.errors.length} dry=${dryRun}`
+  );
   return report;
 }
 

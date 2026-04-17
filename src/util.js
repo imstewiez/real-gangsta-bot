@@ -23,10 +23,12 @@ function formatPersonName(str = '') {
   return cleaned
     .split(' ')
     .filter(Boolean)
-    .map(part => part
-      .split('-')
-      .map(p => p ? `${p.charAt(0).toUpperCase()}${p.slice(1)}` : p)
-      .join('-'))
+    .map(part =>
+      part
+        .split('-')
+        .map(p => (p ? `${p.charAt(0).toUpperCase()}${p.slice(1)}` : p))
+        .join('-')
+    )
     .join(' ');
 }
 
@@ -48,11 +50,17 @@ function chunkStringByLimit(items = [], maxLen = 1800) {
 
 function nowPT() {
   const d = new Date();
-  return String(d.getDate()).padStart(2, '0') + '/' +
-    String(d.getMonth() + 1).padStart(2, '0') + '/' +
-    d.getFullYear() + ' ' +
-    String(d.getHours()).padStart(2, '0') + ':' +
-    String(d.getMinutes()).padStart(2, '0');
+  return (
+    String(d.getDate()).padStart(2, '0') +
+    '/' +
+    String(d.getMonth() + 1).padStart(2, '0') +
+    '/' +
+    d.getFullYear() +
+    ' ' +
+    String(d.getHours()).padStart(2, '0') +
+    ':' +
+    String(d.getMinutes()).padStart(2, '0')
+  );
 }
 
 function truncate(str, max = 100) {

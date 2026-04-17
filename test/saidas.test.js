@@ -23,16 +23,19 @@ require.cache[resolvedPath('db.js')] = {
   exports: {
     pool: { connect: async () => ({ query: async () => ({ rows: [] }), release: () => {} }) },
     query: async () => ({ rows: [] }),
-    queryWithTransaction: async (fn) => fn({ query: async () => ({ rows: [] }) }),
+    queryWithTransaction: async fn => fn({ query: async () => ({ rows: [] }) }),
   },
 };
 
 const stubSaidaRepo = {
   getMaterialSummary: async () => repoState.summary,
   getParticipants: async () => repoState.participants,
-  findById: async (id) => ({ id, status: 'em_curso', result: null, spot: null }),
+  findById: async id => ({ id, status: 'em_curso', result: null, spot: null }),
   closeSaida: async (id, data) => ({ id, status: 'concluida', ...data }),
-  updateParticipant: async (id, mid, fields) => { repoState.updates.push({ mid, fields }); return { id: mid, ...fields }; },
+  updateParticipant: async (id, mid, fields) => {
+    repoState.updates.push({ mid, fields });
+    return { id: mid, ...fields };
+  },
   addMaterial: async () => ({}),
   addParticipant: async () => ({}),
   findOpen: async () => [],
@@ -41,15 +44,23 @@ const stubSaidaRepo = {
 
 require.cache[resolvedPath('repositories/index.js')] = {
   exports: {
-    memberRepo: { findByDiscordId: async () => null, create: async (x) => ({ id: 1, ...x }), findById: async () => null },
-    inventoryRepo: { recordMovement: async () => ({}), getItemById: async () => ({ id: 1, name: 'mock', estimated_value: 100 }), getStockForItem: async () => 0 },
+    memberRepo: { findByDiscordId: async () => null, create: async x => ({ id: 1, ...x }), findById: async () => null },
+    inventoryRepo: {
+      recordMovement: async () => ({}),
+      getItemById: async () => ({ id: 1, name: 'mock', estimated_value: 100 }),
+      getStockForItem: async () => 0,
+    },
     saidaRepo: stubSaidaRepo,
     operationRepo: stubSaidaRepo, // alias legado
     killRepo: {},
     spotStatsRepo: { applyIncrement: async () => ({}) },
     memberSaidaStatsRepo: { applyIncrement: async () => ({}) },
-    rankingRepo: {}, auditRepo: {}, jobRepo: {}, availabilityRepo: {},
-    radioRepo: {}, stickyRepo: {},
+    rankingRepo: {},
+    auditRepo: {},
+    jobRepo: {},
+    availabilityRepo: {},
+    radioRepo: {},
+    stickyRepo: {},
   },
 };
 require.cache[resolvedPath('audit/auditEngine.js')] = {
@@ -68,7 +79,8 @@ const { computeSaidaScores } = require('../src/saidas/saidaScoring');
 describe('saidaEngine — reconcileSaidaMaterials', () => {
   it('soma zero quando tudo bate certo', async () => {
     repoState.summary = {
-      fornecido: { total: 10 }, devolvido: { total: 10 },
+      fornecido: { total: 10 },
+      devolvido: { total: 10 },
     };
     const r = await reconcileSaidaMaterials(99);
     assert.equal(r.fornecido, 10);
@@ -78,8 +90,10 @@ describe('saidaEngine — reconcileSaidaMaterials', () => {
 
   it('detecta material não contabilizado', async () => {
     repoState.summary = {
-      fornecido: { total: 50 }, devolvido: { total: 30 },
-      perdido: { total: 5 }, consumido: { total: 5 },
+      fornecido: { total: 50 },
+      devolvido: { total: 30 },
+      perdido: { total: 5 },
+      consumido: { total: 5 },
     };
     const r = await reconcileSaidaMaterials(99);
     assert.equal(r.unaccounted, 10);
@@ -104,7 +118,7 @@ describe('saidaEngine — closeSaida com valores económicos', () => {
     repoState.summary = {
       fornecido: { total: 5, weightedTotal: 500 },
       devolvido: { total: 3, weightedTotal: 300 },
-      perdido:   { total: 1, weightedTotal: 100 },
+      perdido: { total: 1, weightedTotal: 100 },
       consumido: { total: 1, weightedTotal: 50 },
     };
     repoState.participants = [];
@@ -124,7 +138,7 @@ describe('saidaEngine — closeSaida com valores económicos', () => {
     repoState.summary = {
       fornecido: { total: 10, weightedTotal: 1000 },
       devolvido: { total: 1, weightedTotal: 100 },
-      perdido:   { total: 8, weightedTotal: 800 },
+      perdido: { total: 8, weightedTotal: 800 },
     };
     repoState.participants = [];
     const closed = await closeSaida(124, { result: 'derrota' }, 'actor-1');
@@ -137,7 +151,15 @@ describe('saidaScoring — performance, discipline, MVP', () => {
   it('sobrevivente com kills tem performance > 0', () => {
     const scored = computeSaidaScores({
       participants: [
-        { member_id: 1, display_name: 'A', kills: 2, survived: true, died: false, issued_value: 100, returned_value: 80 },
+        {
+          member_id: 1,
+          display_name: 'A',
+          kills: 2,
+          survived: true,
+          died: false,
+          issued_value: 100,
+          returned_value: 80,
+        },
         { member_id: 2, display_name: 'B', kills: 0, survived: true, died: false, issued_value: 0, returned_value: 0 },
       ],
       result: 'vitoria',
@@ -170,8 +192,24 @@ describe('saidaScoring — performance, discipline, MVP', () => {
   it('MVP vai para quem tem maior performance_score e kills', () => {
     const scored = computeSaidaScores({
       participants: [
-        { member_id: 1, display_name: 'Killer', kills: 5, survived: true, died: false, issued_value: 100, returned_value: 100 },
-        { member_id: 2, display_name: 'Passivo', kills: 0, survived: true, died: false, issued_value: 100, returned_value: 100 },
+        {
+          member_id: 1,
+          display_name: 'Killer',
+          kills: 5,
+          survived: true,
+          died: false,
+          issued_value: 100,
+          returned_value: 100,
+        },
+        {
+          member_id: 2,
+          display_name: 'Passivo',
+          kills: 0,
+          survived: true,
+          died: false,
+          issued_value: 100,
+          returned_value: 100,
+        },
       ],
       result: 'vitoria',
     });

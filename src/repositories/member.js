@@ -17,7 +17,10 @@ async function findAll(status = 'ativo') {
 }
 
 async function findByRole(role) {
-  const res = await query('SELECT * FROM members WHERE role = $1 AND status = $2 ORDER BY display_name', [role, 'ativo']);
+  const res = await query('SELECT * FROM members WHERE role = $1 AND status = $2 ORDER BY display_name', [
+    role,
+    'ativo',
+  ]);
   return res.rows;
 }
 
@@ -39,17 +42,14 @@ async function update(id, fields) {
     values.push(value);
     i++;
   }
-  sets.push(`updated_at = NOW()`);
+  sets.push('updated_at = NOW()');
   values.push(id);
-  const res = await query(
-    `UPDATE members SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`,
-    values
-  );
+  const res = await query(`UPDATE members SET ${sets.join(', ')} WHERE id = $${i} RETURNING *`, values);
   return res.rows[0] || null;
 }
 
 async function promote(id, newRole, changedBy, reason = '') {
-  return queryWithTransaction(async (client) => {
+  return queryWithTransaction(async client => {
     const current = await client.query('SELECT * FROM members WHERE id = $1', [id]);
     const member = current.rows[0];
     if (!member) return null;
@@ -61,7 +61,7 @@ async function promote(id, newRole, changedBy, reason = '') {
     );
 
     const result = await client.query(
-      `UPDATE members SET role = $1, promoted_at = NOW(), updated_at = NOW() WHERE id = $2 RETURNING *`,
+      'UPDATE members SET role = $1, promoted_at = NOW(), updated_at = NOW() WHERE id = $2 RETURNING *',
       [newRole, id]
     );
     return result.rows[0];
@@ -69,10 +69,11 @@ async function promote(id, newRole, changedBy, reason = '') {
 }
 
 async function countByRole() {
-  const res = await query(
-    `SELECT role, COUNT(*) as count FROM members WHERE status = 'ativo' GROUP BY role`
-  );
-  return res.rows.reduce((acc, r) => { acc[r.role] = parseInt(r.count); return acc; }, {});
+  const res = await query("SELECT role, COUNT(*) as count FROM members WHERE status = 'ativo' GROUP BY role");
+  return res.rows.reduce((acc, r) => {
+    acc[r.role] = parseInt(r.count);
+    return acc;
+  }, {});
 }
 
 async function search(term) {
@@ -86,6 +87,13 @@ async function search(term) {
 }
 
 module.exports = {
-  findByDiscordId, findById, findAll, findByRole,
-  create, update, promote, countByRole, search,
+  findByDiscordId,
+  findById,
+  findAll,
+  findByRole,
+  create,
+  update,
+  promote,
+  countByRole,
+  search,
 };
