@@ -68,11 +68,15 @@ async function getStock() {
           WHEN im.movement_type IN (
             'saldo_inicial',
             'entrega_bairrista', 'venda_bairrista', 'entrega_oficial',
-            'entrega_morador', 'venda_morador',  -- legacy
-            'devolucao_operacao', 'apreendido', 'craftado'
+            'entrega_morador', 'venda_morador',
+            'devolucao_saida', 'devolucao_operacao',
+            'apreendido', 'craftado'
           ) THEN im.quantity
-          WHEN im.movement_type IN ('fornecimento_org', 'consumo_operacao', 'perda_operacao')
-            THEN -im.quantity
+          WHEN im.movement_type IN (
+            'fornecimento_org',
+            'consumo_saida', 'consumo_operacao',
+            'perda_saida', 'perda_operacao'
+          ) THEN -im.quantity
           WHEN im.movement_type = 'ajuste_manual'
             THEN im.quantity
           ELSE 0
@@ -94,11 +98,15 @@ async function getStockForItem(itemId) {
         WHEN movement_type IN (
           'saldo_inicial',
           'entrega_bairrista', 'venda_bairrista', 'entrega_oficial',
-          'entrega_morador', 'venda_morador',  -- legacy
-          'devolucao_operacao', 'apreendido', 'craftado'
+          'entrega_morador', 'venda_morador',
+          'devolucao_saida', 'devolucao_operacao',
+          'apreendido', 'craftado'
         ) THEN quantity
-        WHEN movement_type IN ('fornecimento_org', 'consumo_operacao', 'perda_operacao')
-          THEN -quantity
+        WHEN movement_type IN (
+          'fornecimento_org',
+          'consumo_saida', 'consumo_operacao',
+          'perda_saida', 'perda_operacao'
+        ) THEN -quantity
         WHEN movement_type = 'ajuste_manual'
           THEN quantity
         ELSE 0
