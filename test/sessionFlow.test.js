@@ -85,20 +85,20 @@ describe('templates saídas — novos eventos', () => {
     assert.ok(fieldNames.includes('Líder'));
   });
 
-  it('event=closed inclui stats económicos', () => {
+  it('event=closed inclui stats de material em unidades', () => {
     const embed = saidaLifecycleEmbed({
       event: 'closed',
       saidaId: 100,
-      gross: 1000,
-      net: 800,
-      lost: 100,
-      consumed: 100,
+      suppliedUnits: 10,
+      returnedUnits: 8,
+      lostUnits: 1,
       unaccounted: 0,
     });
     const json = embed.toJSON();
     const fieldNames = (json.fields || []).map(f => f.name);
-    assert.ok(fieldNames.includes('Bruto'));
-    assert.ok(fieldNames.includes('Líquido'));
+    assert.ok(fieldNames.some(n => /Fornecido/i.test(n)), 'deve mostrar field de Fornecido');
+    assert.ok(fieldNames.some(n => /Devolvido/i.test(n)), 'deve mostrar field de Devolvido');
+    assert.ok(fieldNames.some(n => /Perdido/i.test(n)), 'deve mostrar field de Perdido');
   });
 
   it('unaccounted > 0 gera field de warning', () => {

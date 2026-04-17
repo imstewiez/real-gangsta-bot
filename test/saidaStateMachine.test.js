@@ -75,7 +75,9 @@ describe('saida state machine — transições', () => {
   it('ALLOWED_TRANSITIONS mapeia estados corretamente', () => {
     assert.ok(ALLOWED_TRANSITIONS.aberta.has('em_curso'));
     assert.ok(ALLOWED_TRANSITIONS.aberta.has('cancelada'));
-    assert.ok(ALLOWED_TRANSITIONS.em_curso.has('concluida'));
+    assert.ok(ALLOWED_TRANSITIONS.em_curso.has('em_liquidacao'));
+    assert.ok(ALLOWED_TRANSITIONS.em_liquidacao.has('concluida'));
+    assert.ok(ALLOWED_TRANSITIONS.em_liquidacao.has('cancelada'));
     assert.equal(ALLOWED_TRANSITIONS.concluida.size, 0);
     assert.equal(ALLOWED_TRANSITIONS.cancelada.size, 0);
   });

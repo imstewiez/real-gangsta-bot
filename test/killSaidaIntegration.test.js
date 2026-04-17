@@ -78,7 +78,10 @@ require.cache[resolved('repositories/index.js')] = {
     memberRepo: stubMemberRepo,
     killRepo: stubKillRepo,
     inventoryRepo: {},
-    saidaRepo: {},
+    saidaRepo: {
+      findById: async id => ({ id, status: 'em_curso' }),
+      getParticipants: async () => [...state.members.values()].map(m => ({ member_id: m.id })),
+    },
     operationRepo: {},
     spotStatsRepo: {},
     memberSaidaStatsRepo: {},

@@ -42,12 +42,13 @@ require.cache[resolved('db.js')] = {
 const stubSaidaRepo = {
   getMaterialSummary: async () => state.summary,
   getParticipants: async () => state.participants,
-  // findById — devolve saída em status 'em_curso' por default (permite closeSaida).
-  // Testes podem override state.saidaStatus para testar outros caminhos.
-  findById: async id => ({ id, status: state.saidaStatus || 'em_curso', result: null, spot: null }),
+  // findById — devolve saída em status 'em_liquidacao' por default (permite finalizeSaida).
+  // Testes podem override state.saidaStatus e state.saidaFields para testar outros caminhos.
+  findById: async id => ({ id, status: state.saidaStatus || 'em_liquidacao', result: null, spot: null, ...state.saidaFields }),
   closeSaida: async (id, data) => {
     state.closedPayload = { id, ...data };
-    return { id, status: 'concluida', ...data };
+    // Simula retorno da row completa (inclui campos pré-existentes como spot).
+    return { id, status: 'concluida', ...state.saidaFields, ...data };
   },
   updateParticipant: async (id, mid, fields) => {
     state.participantUpdates.push({ saidaId: id, memberId: mid, fields });
@@ -108,7 +109,7 @@ require.cache[resolved('inventory/stockNotifier.js')] = {
   exports: { notifyMovement: async () => {}, setClient: () => {}, publishStockSummary: async () => {} },
 };
 
-const { closeSaida } = require('../src/saidas/saidaEngine');
+const { finalizeSaida } = require('../src/saidas/saidaEngine');
 
 describe('saida end-to-end — vitória com 3 participantes', () => {
   beforeEach(() => {
@@ -118,6 +119,8 @@ describe('saida end-to-end — vitória com 3 participantes', () => {
     state.closedPayload = null;
     state.spotIncrements = [];
     state.memberIncrements = [];
+    state.saidaStatus = 'em_liquidacao';
+    state.saidaFields = {};
   });
 
   it('calcula valores, scores, MVP, e dispara os 2 projections', async () => {
@@ -163,17 +166,15 @@ describe('saida end-to-end — vitória com 3 participantes', () => {
       },
     ];
 
-    const result = await closeSaida(
-      123,
-      {
-        result: 'vitoria',
-        had_fight: true,
-        spot: 'Docks',
-        our_kills: 5,
-        deaths: 1,
-      },
-      'actor-1'
-    );
+    state.saidaFields = {
+      result: 'vitoria',
+      had_fight: true,
+      spot: 'Docks',
+      our_kills: 5,
+      deaths: 1,
+    };
+
+    const result = await finalizeSaida(123, 'actor-1');
 
     // Valores económicos na saída fechada
     assert.equal(result.values.supplied, 600);
@@ -208,7 +209,8 @@ describe('saida end-to-end — vitória com 3 participantes', () => {
   it('fecho sem spot não incrementa spot_stats', async () => {
     state.summary = { fornecido: { weightedTotal: 100 }, devolvido: { weightedTotal: 100 } };
     state.participants = [{ member_id: 1, kills: 0, survived: true, died: false }];
-    const closed = await closeSaida(200, { result: 'sem_conflito' }, 'a');
+    state.saidaFields = { result: 'sem_conflito' };
+    const closed = await finalizeSaida(200, 'a');
     assert.equal(closed.values.net, 100);
     assert.equal(state.spotIncrements.length, 0, 'sem spot → no-op');
     assert.equal(state.memberIncrements.length, 1, 'member stats sempre');
@@ -222,7 +224,8 @@ describe('saida end-to-end — vitória com 3 participantes', () => {
       consumido: { total: 0, weightedTotal: 0 },
     };
     state.participants = [];
-    const closed = await closeSaida(300, { result: 'empate', spot: 'Warehouse' }, 'a');
+    state.saidaFields = { result: 'empate', spot: 'Warehouse' };
+    const closed = await finalizeSaida(300, 'a');
     assert.equal(closed.reconciliation.unaccounted, 3, '10-5-2-0=3 unaccounted');
   });
 
@@ -237,7 +240,8 @@ describe('saida end-to-end — vitória com 3 participantes', () => {
       { member_id: 1, kills: 0, survived: false, died: true, issued_value: 250, returned_value: 0, lost_value: 250 },
       { member_id: 2, kills: 0, survived: false, died: true, issued_value: 250, returned_value: 0, lost_value: 150 },
     ];
-    const closed = await closeSaida(400, { result: 'derrota', spot: 'Ambush' }, 'a');
+    state.saidaFields = { result: 'derrota', spot: 'Ambush' };
+    const closed = await finalizeSaida(400, 'a');
     assert.equal(closed.values.net, 100 - 400 - 0);
     assert.equal(closed.values.was_profitable, false);
     // member stats incrementados com survived=false
@@ -252,7 +256,8 @@ describe('saida end-to-end — vitória com 3 participantes', () => {
       { member_id: 1, kills: 2, survived: false, died: true, issued_value: 100, returned_value: 0, lost_value: 100 },
       { member_id: 2, kills: 2, survived: true, died: false, issued_value: 100, returned_value: 100 },
     ];
-    const closed = await closeSaida(500, { result: 'vitoria', spot: 'Plaza' }, 'a');
+    state.saidaFields = { result: 'vitoria', spot: 'Plaza' };
+    const closed = await finalizeSaida(500, 'a');
     const mvpUpdate = state.participantUpdates.find(u => u.fields.mvp_flag);
     assert.ok(mvpUpdate, 'há MVP');
     assert.equal(mvpUpdate.memberId, 2, 'empate de kills → vivo com disciplina 100% ganha');
@@ -266,7 +271,8 @@ describe('saida end-to-end — vitória com 3 participantes', () => {
       { member_id: 1, kills: 10, survived: false, died: true, issued_value: 100, returned_value: 0, lost_value: 100 },
       { member_id: 2, kills: 0, survived: true, died: false, issued_value: 100, returned_value: 100 },
     ];
-    const closed = await closeSaida(510, { result: 'vitoria', spot: 'Plaza2' }, 'a');
+    state.saidaFields = { result: 'vitoria', spot: 'Plaza2' };
+    const closed = await finalizeSaida(510, 'a');
     const mvpUpdate = state.participantUpdates.find(u => u.fields.mvp_flag);
     assert.ok(mvpUpdate, 'há MVP');
     assert.equal(mvpUpdate.memberId, 1, 'morto com 10 kills > vivo sem kills');

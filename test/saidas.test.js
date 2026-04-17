@@ -30,7 +30,7 @@ require.cache[resolvedPath('db.js')] = {
 const stubSaidaRepo = {
   getMaterialSummary: async () => repoState.summary,
   getParticipants: async () => repoState.participants,
-  findById: async id => ({ id, status: 'em_curso', result: null, spot: null }),
+  findById: async id => ({ id, status: 'em_liquidacao', result: null, spot: null }),
   closeSaida: async (id, data) => ({ id, status: 'concluida', ...data }),
   updateParticipant: async (id, mid, fields) => {
     repoState.updates.push({ mid, fields });
@@ -73,7 +73,7 @@ require.cache[resolvedPath('inventory/stockNotifier.js')] = {
   exports: { notifyMovement: async () => {}, setClient: () => {}, publishStockSummary: async () => {} },
 };
 
-const { reconcileSaidaMaterials, closeSaida } = require('../src/saidas/saidaEngine');
+const { reconcileSaidaMaterials, finalizeSaida } = require('../src/saidas/saidaEngine');
 const { computeSaidaScores } = require('../src/saidas/saidaScoring');
 
 describe('saidaEngine — reconcileSaidaMaterials', () => {
@@ -113,7 +113,7 @@ describe('saidaEngine — reconcileSaidaMaterials', () => {
   });
 });
 
-describe('saidaEngine — closeSaida com valores económicos', () => {
+describe('saidaEngine — finalizeSaida com valores económicos', () => {
   it('calcula supplied/returned/lost/consumed/gross/net e was_profitable', async () => {
     repoState.summary = {
       fornecido: { total: 5, weightedTotal: 500 },
@@ -124,14 +124,14 @@ describe('saidaEngine — closeSaida com valores económicos', () => {
     repoState.participants = [];
     repoState.updates = [];
 
-    const closed = await closeSaida(123, { result: 'vitoria' }, 'actor-1');
-    assert.equal(closed.supplied_value, 500);
-    assert.equal(closed.returned_value, 300);
-    assert.equal(closed.lost_value, 100);
-    assert.equal(closed.consumed_value, 50);
-    assert.equal(closed.gross_value, 300);
-    assert.equal(closed.net_value, 300 - 100 - 50); // 150
-    assert.equal(closed.was_profitable, true);
+    const closed = await finalizeSaida(123, 'actor-1');
+    assert.equal(closed.values.supplied, 500);
+    assert.equal(closed.values.returned, 300);
+    assert.equal(closed.values.lost, 100);
+    assert.equal(closed.values.consumed, 50);
+    assert.equal(closed.values.gross, 300);
+    assert.equal(closed.values.net, 300 - 100 - 50); // 150
+    assert.equal(closed.values.was_profitable, true);
   });
 
   it('marca was_profitable=false quando net < 0', async () => {
@@ -141,9 +141,9 @@ describe('saidaEngine — closeSaida com valores económicos', () => {
       perdido: { total: 8, weightedTotal: 800 },
     };
     repoState.participants = [];
-    const closed = await closeSaida(124, { result: 'derrota' }, 'actor-1');
-    assert.equal(closed.net_value, 100 - 800 - 0);
-    assert.equal(closed.was_profitable, false);
+    const closed = await finalizeSaida(124, 'actor-1');
+    assert.equal(closed.values.net, 100 - 800 - 0);
+    assert.equal(closed.values.was_profitable, false);
   });
 });
 
