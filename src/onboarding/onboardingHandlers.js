@@ -308,7 +308,7 @@ async function handleApproveButton(interaction, requestId) {
   }
 
   const body =
-    ONBOARDING.TAG_APPROVED_BODY(
+    ONBOARDING.TAG_APPROVED_STAFF_BODY(
       `<@${tagReq.discord_id}>`,
       tagReq.nickname,
       result.channelId ? `<#${result.channelId}>` : null
