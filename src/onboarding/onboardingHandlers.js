@@ -252,13 +252,15 @@ async function handleApproveButton(interaction, requestId) {
   }
 
   // Update the original message to show approved + lock buttons
-  if (tagReq.message_id) {
-    const approvedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-      .setColor(0x2ECC71)
-      .setTitle(ONBOARDING.TAG_APPROVED_TITLE)
-      .addFields({ name: 'Aprovado por', value: `<@${interaction.user.id}>`, inline: true });
+  if (tagReq.message_id && interaction.message?.embeds?.[0]) {
+    try {
+      const approvedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+        .setColor(0x2ECC71)
+        .setTitle(ONBOARDING.TAG_APPROVED_TITLE)
+        .addFields({ name: 'Aprovado por', value: `<@${interaction.user.id}>`, inline: true });
 
-    await interaction.message.edit({ embeds: [approvedEmbed], components: [] }).catch(() => {});
+      await interaction.message.edit({ embeds: [approvedEmbed], components: [] });
+    } catch (_) { /* message may have been deleted */ }
   }
 
   const body = ONBOARDING.TAG_APPROVED_BODY(
@@ -298,13 +300,15 @@ async function handleDenyButton(interaction, requestId) {
   });
 
   // Update original message
-  if (tagReq.message_id) {
-    const deniedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-      .setColor(0xE74C3C)
-      .setTitle(ONBOARDING.TAG_DENIED_TITLE)
-      .addFields({ name: 'Negado por', value: `<@${interaction.user.id}>`, inline: true });
+  if (tagReq.message_id && interaction.message?.embeds?.[0]) {
+    try {
+      const deniedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
+        .setColor(0xE74C3C)
+        .setTitle(ONBOARDING.TAG_DENIED_TITLE)
+        .addFields({ name: 'Negado por', value: `<@${interaction.user.id}>`, inline: true });
 
-    await interaction.message.edit({ embeds: [deniedEmbed], components: [] }).catch(() => {});
+      await interaction.message.edit({ embeds: [deniedEmbed], components: [] });
+    } catch (_) { /* message may have been deleted */ }
   }
 
   return safeReply(interaction, {

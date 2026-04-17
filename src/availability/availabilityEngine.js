@@ -24,12 +24,9 @@ const { pickHeader, stateMeta, STATE_ORDER, STATE_META } = require('./availabili
 const { log, warn } = require('../logger');
 
 function todayDateString() {
-  // Data local YYYY-MM-DD (sem TZ) — coincide com session_date DATE.
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  // Data em Europe/Lisbon YYYY-MM-DD — coincide com session_date DATE.
+  // Usa timezone explícito para evitar drift se o servidor estiver noutra TZ.
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Lisbon' }).format(new Date());
 }
 
 // Barra empilhada para visualizar distribuição de votos por slot.

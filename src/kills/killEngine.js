@@ -13,7 +13,7 @@ const eventBus = require('../core/eventBus');
 const { warn } = require('../logger');
 
 // Estados de saída em que é coerente registar kills.
-const KILL_ALLOWED_SAIDA_STATUSES = new Set(['em_preparacao', 'em_curso', 'concluida']);
+const KILL_ALLOWED_SAIDA_STATUSES = new Set(['em_preparacao', 'em_curso', 'em_liquidacao', 'concluida']);
 
 async function recordKill({ killerDiscordId, victimName, victimDiscordId = null, victimFaction = '', spot = '', context = '', saidaId = null, date = null, notes = '', confirmedBy = null, createdBy }) {
   if (!victimName?.trim()) throw new Error('Nome da vítima obrigatório.');

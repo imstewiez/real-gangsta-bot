@@ -146,6 +146,7 @@ async function recomputeAllTimeStats() {
         SUM(CASE WHEN op.died = true THEN 1 ELSE 0 END)::int AS deaths_total,
         SUM(CASE WHEN op.mvp_flag = true THEN 1 ELSE 0 END)::int AS mvp_count,
         SUM(COALESCE(op.net_material_delta, 0))::numeric AS profit_generated,
+        AVG(COALESCE(op.discipline_score, 0))::numeric AS avg_discipline,
         MAX(o.date) AS last_saida
       FROM operation_participants op
       JOIN operations o ON o.id = op.operation_id
@@ -165,7 +166,11 @@ async function recomputeAllTimeStats() {
       COALESCE(sai.profit_generated, 0) AS profit_generated,
       COALESCE(inv.weighted_value, 0) AS weighted_value,
       COALESCE(inv.first_activity, m.joined_at::date) AS first_activity,
-      GREATEST(inv.last_activity, sai.last_saida) AS last_activity
+      GREATEST(inv.last_activity, sai.last_saida) AS last_activity,
+      COALESCE(sai.avg_discipline, 0) AS avg_discipline,
+      CASE WHEN COALESCE(sai.saidas_total, 0) > 0
+        THEN ((COALESCE(sai.saidas_total, 0) - COALESCE(sai.deaths_total, 0))::numeric / sai.saidas_total) * 100
+        ELSE 0 END AS survival_rate
     FROM members m
     LEFT JOIN inv ON inv.member_id = m.id
     LEFT JOIN sai ON sai.member_id = m.id
@@ -179,8 +184,8 @@ async function recomputeAllTimeStats() {
       lossCount: Number(row.losses) || 0,
       netProfit: Number(row.profit_generated) || 0,
       saidasCount: Number(row.saidas_total) || 0,
-      returnRate: 0,     // all-time rates são complicados — deixamos 0 por agora
-      survivalRate: 0,
+      returnRate: Number(row.avg_discipline) || 0,
+      survivalRate: Number(row.survival_rate) || 0,
     });
     await monthlyRankingRepo.upsertAllTime({
       memberId: row.member_id,
