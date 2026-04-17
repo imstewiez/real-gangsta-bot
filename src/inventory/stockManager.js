@@ -72,10 +72,8 @@ async function addStock({ itemId, quantity, location, type = 'apreendido', actor
       'apreendido',
       'craftado',
       'entrega_bairrista',
-      'entrega_morador',
       'entrega_oficial',
       'devolucao_saida',
-      'devolucao_operacao',
     ].includes(type)
   ) {
     throw new Error(`Tipo de entrada inválido: ${type}`);
@@ -111,12 +109,9 @@ async function removeStock({
   if (
     ![
       'venda_bairrista',
-      'venda_morador',
       'fornecimento_org',
       'consumo_saida',
-      'consumo_operacao',
       'perda_saida',
-      'perda_operacao',
     ].includes(type)
   ) {
     throw new Error(`Tipo de saída inválido: ${type}`);

@@ -65,10 +65,6 @@ function rolePill(role) {
     oficial: { label: 'OFICIAL', bg: COLOR.RED_BLOOD },
     patrao_di_zona: { label: 'PATRÃO', bg: COLOR.GOLD },
     bairrista: { label: 'BAIRRISTA', bg: COLOR.GRAPHITE },
-    // Legacy (rows antigas ainda com estes valores)
-    chefe_moradores: { label: 'PATRÃO', bg: COLOR.GOLD },
-    morador: { label: 'BAIRRISTA', bg: COLOR.GRAPHITE },
-    inativo: { label: 'INACTIVO', bg: COLOR.GRAY_DARK },
   };
   const m = map[role];
   return m ? badgeCell(m.label, m.bg) : bodyCell(role || '—');
@@ -108,9 +104,8 @@ function fmtDate(d) {
   }
 }
 
-// Aceita role novo ('bairrista', 'patrao_di_zona') e legacy ('morador', 'chefe_moradores').
-const BAIRRISTA_ROLES = new Set(['bairrista', 'morador']);
-const PATRAO_ROLES = new Set(['patrao_di_zona', 'chefe_moradores']);
+const BAIRRISTA_ROLES = new Set(['bairrista']);
+const PATRAO_ROLES = new Set(['patrao_di_zona']);
 const OFICIAL_ROLES = new Set(['oficial', 'chefia']);
 
 async function syncMembros(batch, sheetId) {
@@ -340,10 +335,7 @@ async function syncMembros(batch, sheetId) {
     chefia: 4,
     oficial: 3,
     patrao_di_zona: 2,
-    chefe_moradores: 2,
     bairrista: 1,
-    morador: 1,
-    inativo: 0,
   };
   const tierRank = {
     manda_chuva: 2,
