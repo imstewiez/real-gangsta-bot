@@ -153,7 +153,6 @@ async function syncSaidas(batch, sheetId) {
   });
   row = tableHeader(batch, sheetId, row, SAIDAS_HEADERS);
   batch.freezeRows(sheetId, row);
-  batch.freezeCols(sheetId, 4);
   const saidasFirstRow = row;
   const saidasRows = rows.map(s => [
     bodyBoldCell(`#${s.id}`),

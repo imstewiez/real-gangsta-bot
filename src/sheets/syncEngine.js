@@ -75,12 +75,28 @@ async function syncOne(key) {
     if (result && Number.isFinite(result.lastRow) && Number.isFinite(result.lastCol)) {
       trimSheet(batch, sheetId, result.lastRow, result.lastCol);
     }
-    // Proteger tab (warning-only) e esconder config
-    batch.protectSheet(sheetId, 'Firma RedWood — gerido pelo bot');
-    if (key === 'config') batch.hideSheet(sheetId);
     flushed = await batch.flush();
   } catch (e) {
     syncErr = e;
+  }
+
+  // Protecção + hide em batch separado (não falha o sync se já existe protecção)
+  if (!syncErr) {
+    try {
+      const meta = await sheets.spreadsheets.get({ spreadsheetId, fields: 'sheets.properties,sheets.protectedRanges' });
+      const sheetMeta = (meta.data.sheets || []).find(s => s.properties.sheetId === sheetId);
+      const existingProtections = sheetMeta?.protectedRanges || [];
+      const postBatch = new BatchWriter(sheets, spreadsheetId);
+      // Remover protecções existentes antes de adicionar nova
+      for (const p of existingProtections) {
+        postBatch.requests.push({ deleteProtectedRange: { protectedRangeId: p.protectedRangeId } });
+      }
+      postBatch.protectSheet(sheetId, 'Firma RedWood — gerido pelo bot');
+      if (key === 'config') postBatch.hideSheet(sheetId);
+      await postBatch.flush();
+    } catch (e) {
+      warn(`[SHEETS] protect/hide '${key}' falhou (non-fatal): ${e.message}`);
+    }
   }
 
   const ms = Date.now() - t0;

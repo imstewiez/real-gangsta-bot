@@ -189,7 +189,6 @@ async function syncMembros(batch, sheetId) {
   });
   row = tableHeader(batch, sheetId, row, HEADERS);
   batch.freezeRows(sheetId, row);
-  batch.freezeCols(sheetId, 1);
   const firstDataRow = row;
 
   // Ordenar por hierarquia: Chefia > Oficiais > Patrão di Zona > Bairristas.
