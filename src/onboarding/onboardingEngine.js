@@ -27,7 +27,16 @@ async function processApproval(tagRequest, approverMember, client) {
   const nickname = tagRequest.nickname;
   const displayNickname = `${fullName} (${nickname})`;
 
-  const result = { rolesAdded: false, nicknameSet: false, channelCreated: false, channelId: null };
+  const result = {
+    rolesAdded: false,
+    nicknameSet: false,
+    channelCreated: false,
+    channelId: null,
+    // errors[] contém falhas explícitas por fase para o handler surfaçar ao
+    // staff no reply. Exemplos: 'roles_failed', 'nickname_failed',
+    // 'channel_failed_after_retries'.
+    errors: [],
+  };
 
   const guildMember = await guild.members.fetch(discordId).catch(() => null);
   if (!guildMember) {
@@ -63,6 +72,7 @@ async function processApproval(tagRequest, approverMember, client) {
     log(`[ONBOARDING] Roles adicionadas a ${fullName} (${discordId}).`);
   } catch (e) {
     warn(`[ONBOARDING] Falha ao adicionar roles: ${e.message}`);
+    result.errors.push({ phase: 'roles', message: e.message });
   }
 
   // ── 2b. Enforce invariantes (uma vez aplicadas as roles) ───────────────
@@ -80,7 +90,8 @@ async function processApproval(tagRequest, approverMember, client) {
     log(`[ONBOARDING] Nickname de ${discordId} alterado para "${displayNickname}".`);
   } catch (e) {
     warn(`[ONBOARDING] Não foi possível mudar o nickname de ${discordId}: ${e.message}`);
-    // Continue — user said to proceed without nickname
+    result.errors.push({ phase: 'nickname', message: e.message });
+    // Non-fatal — continua o onboarding. Staff pode ver nickname warn no reply.
   }
 
   // ── 4. Create/update member in DB ──────────────────────────────────────
@@ -105,49 +116,87 @@ async function processApproval(tagRequest, approverMember, client) {
   const channelName = formatResidentChannelName(entryTier, nickname);
 
   if (CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID) {
-    try {
-      const botMember = guild.members.me;
-      const { buildBairristaChannelOverwrites } = require('../members/channelInvariants');
-      const permissionOverwrites = buildBairristaChannelOverwrites(guild, discordId, botMember.id);
+    // Retry com backoff: 0ms / 1s / 2s (total worst-case 3s).
+    // Discord API pode dar transient rate limit, category full, etc. —
+    // em vez de falhar silenciosamente, tentamos 3× antes de desistir.
+    const BACKOFFS = [0, 1000, 2000];
+    let lastError = null;
+    let attempts = 0;
+    for (const delay of BACKOFFS) {
+      if (delay > 0) await new Promise(r => setTimeout(r, delay));
+      attempts++;
+      try {
+        const botMember = guild.members.me;
+        const { buildBairristaChannelOverwrites } = require('../members/channelInvariants');
+        const permissionOverwrites = buildBairristaChannelOverwrites(guild, discordId, botMember.id);
 
-      const channel = await queueChannelOp(() =>
-        guild.channels.create({
-          name: channelName,
-          type: ChannelType.GuildText,
-          parent: CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID,
-          permissionOverwrites,
-          topic: `Canal individual de ${fullName} (${nickname})`,
-        })
-      );
+        const channel = await queueChannelOp(() =>
+          guild.channels.create({
+            name: channelName,
+            type: ChannelType.GuildText,
+            parent: CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID,
+            permissionOverwrites,
+            topic: `Canal individual de ${fullName} (${nickname})`,
+          })
+        );
 
-      await memberRepo.update(dbMember.id, { channel_id: channel.id });
+        await memberRepo.update(dbMember.id, { channel_id: channel.id });
 
-      await query(
-        `INSERT INTO resident_channels (member_id, discord_id, channel_id, channel_name, category_id)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [dbMember.id, discordId, channel.id, channelName, CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID]
-      );
+        await query(
+          `INSERT INTO resident_channels (member_id, discord_id, channel_id, channel_name, category_id)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [dbMember.id, discordId, channel.id, channelName, CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID]
+        );
 
-      // Send welcome embed + enhanced panel
-      const welcomeEmbed = welcomeChannelEmbed(fullName);
-      const panelRows = buildBairristaChannelPanel();
-      await channel.send({ embeds: [welcomeEmbed], components: panelRows });
+        // Welcome embed + painel (errors aqui não falham o onboarding —
+        // canal existe, user pode ver o painel no próximo boot via backfill).
+        const welcomeEmbed = welcomeChannelEmbed(fullName);
+        const panelRows = buildBairristaChannelPanel();
+        await channel
+          .send({ embeds: [welcomeEmbed], components: panelRows })
+          .catch(e => warn(`[ONBOARDING] Welcome embed falhou em ${channel.id}: ${e.message}`));
 
-      result.channelCreated = true;
-      result.channelId = channel.id;
-      metrics.membersOnboarded.inc();
+        result.channelCreated = true;
+        result.channelId = channel.id;
+        metrics.membersOnboarded.inc();
 
-      log(`[ONBOARDING] Canal "${channelName}" criado para ${fullName}.`);
-    } catch (e) {
-      warn(`[ONBOARDING] Falha ao criar canal para ${fullName}: ${e.message}`);
+        log(`[ONBOARDING] Canal "${channelName}" criado para ${fullName} (tentativa ${attempts}).`);
+        lastError = null;
+        break;
+      } catch (e) {
+        lastError = e;
+        warn(`[ONBOARDING] Canal tentativa ${attempts}/${BACKOFFS.length} falhou: ${e.message}`);
+      }
+    }
+
+    // Regista retry_count + flag se todas falharam, para staff poder ver +
+    // ferramenta de retry (via /rg-sync-structure ou equivalente).
+    await query(
+      `UPDATE tag_requests
+          SET retry_count = $1,
+              channel_create_failed = $2
+        WHERE id = $3`,
+      [attempts, !result.channelCreated, tagRequest.id]
+    ).catch(() => {});
+
+    if (!result.channelCreated) {
+      result.errors.push({
+        phase: 'channel',
+        message: `falhou após ${BACKOFFS.length} tentativas: ${lastError?.message || 'erro desconhecido'}`,
+      });
     }
   }
 
   // ── 6. Update tag request ──────────────────────────────────────────────
-  await query("UPDATE tag_requests SET status = 'approved', approved_by = $1, resolved_at = NOW() WHERE id = $2", [
-    approverMember.id,
-    tagRequest.id,
-  ]);
+  await query(
+    `UPDATE tag_requests
+        SET status = 'approved',
+            approved_by = $1,
+            resolved_at = NOW(),
+            processed_at = NOW()
+      WHERE id = $2`,
+    [approverMember.id, tagRequest.id]
+  );
 
   // ── 7. Audit ───────────────────────────────────────────────────────────
   await logAudit({
@@ -161,10 +210,36 @@ async function processApproval(tagRequest, approverMember, client) {
 
   const { EMOJI, ONBOARDING } = require('../content');
   await sendAuditToChannel(client, {
-    title: `${EMOJI.TAG} ${ONBOARDING.TAG_APPROVED_TITLE.replace(EMOJI.TAG + ' ', '')}`,
+    title: ONBOARDING.TAG_APPROVED_TITLE,
     description: `<@${discordId}> entra como **${TIER_LABEL[entryTier] || entryTier}** *(tier 1)*\nNome: **${fullName}** *(${nickname})*${result.channelCreated ? `\nCanal: <#${result.channelId}>` : ''}`,
     color: 0x2ecc71,
   });
+
+  // ── 7b. DM ao user (ou fallback) — notificação pessoal celebratória ──
+  try {
+    const { tryDmOrFallback } = require('../shared/dm');
+    const { brandEmbed, applyLogo } = require('../shared/embedBuilders');
+    const guildName = guild.name || CONFIG.BOT_DISPLAY_NAME;
+    const channelMention = result.channelId ? `<#${result.channelId}>` : null;
+    const dmEmbed = applyLogo(
+      brandEmbed('HOUSE')
+        .setColor(0x2ecc71)
+        .setTitle(`${EMOJI.SANGUE} Entraste, ${fullName}`)
+        .setDescription(ONBOARDING.DM_APPROVED_BODY(nickname, guildName, channelMention))
+    );
+    const entradaChannel = CONFIG.PANEL_ENTRADA_CHANNEL_ID
+      ? await client.channels.fetch(CONFIG.PANEL_ENTRADA_CHANNEL_ID).catch(() => null)
+      : null;
+    result.dmDelivery = await tryDmOrFallback({
+      user: guildMember.user,
+      payload: { embeds: [dmEmbed] },
+      fallbackChannel: entradaChannel,
+      fallbackMention: true,
+    });
+  } catch (e) {
+    warn(`[ONBOARDING] DM approval falhou em ${discordId}: ${e.message}`);
+    result.errors.push({ phase: 'dm', message: e.message });
+  }
 
   // ── 8. Event — member onboarded (tag aprovada, entrou como bairrista) ──
   // Dispara a projecção para a sheet 'membros' + dashboard. Sem isto, a

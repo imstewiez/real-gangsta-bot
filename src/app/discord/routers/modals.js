@@ -4,7 +4,7 @@
  * Um customId canónico por modal (`saida::*`) — sem aliases legacy.
  */
 
-const { handleTagModal } = require('../../../onboarding/onboardingHandlers');
+const { handleTagModal, handleDenyModalSubmit } = require('../../../onboarding/onboardingHandlers');
 const {
   handleQuantityModal,
   handleAdjustModal,
@@ -29,6 +29,7 @@ const prefix = (p, handler) => ({ match: x => x.startsWith(p), handler });
 const MODAL_ROUTES = [
   // Onboarding
   exact('onboard::modal_tag', handleTagModal),
+  prefix('onboard::modal_deny::', handleDenyModalSubmit),
 
   // Inventory
   exact('inv::modal_entrega_bairrista', handleQuantityModal),

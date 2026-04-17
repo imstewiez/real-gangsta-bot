@@ -16,6 +16,7 @@ const {
   handleApproveButton,
   handleDenyButton,
 } = require('../../../onboarding/onboardingHandlers');
+const { handleMeuPedido } = require('../../../onboarding/meuPedido');
 const {
   handleMemberHistoryButton,
   handleMemberTotalsButton,
@@ -114,6 +115,7 @@ const BUTTON_ROUTES = [
 
   // Onboarding
   exact('onboard::pedir_tag', handlePedirTagButton),
+  exact('onboard::meu_pedido', handleMeuPedido),
   prefix('onboard::approve::', approveHandler),
   prefix('onboard::deny::', denyHandler),
 
