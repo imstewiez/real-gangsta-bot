@@ -294,17 +294,17 @@ async function handleCloseSaidaModal(interaction) {
   const result = ctx.result || 'sem_conflito';
   const enemyRaw = getModalField(interaction, 'enemy') || '';
   const enemy_name = enemyRaw.trim();
-  const enemy_faction = enemy_name; // Guardar como faction também para compat
+  const enemy_faction = enemy_name;
 
   const craft_amount = Math.max(0, Math.min(parseInt(getModalField(interaction, 'craft_amount')) || 0, 999999));
   const result_notes = getModalField(interaction, 'result_notes') || '';
   const had_craft = craft_amount > 0;
   const had_fight = result === 'vitoria' || result === 'derrota';
 
+  let closedData;
   try {
-    // Admin fecha → vai directo para 'concluida'. Sem settlement wizard.
-    // Cada participante preenche o seu resultado via "Preencher o meu Resultado".
-    await saidaEngine.closeSaida(ctx.saidaId, {
+    // Transita para em_liquidacao — participantes preenchem resultados depois.
+    closedData = await saidaEngine.closeSaida(ctx.saidaId, {
       result, had_fight, had_craft,
       enemy_name, enemy_faction,
       craft_amount,
@@ -316,14 +316,135 @@ async function handleCloseSaidaModal(interaction) {
 
   pendingSaidaContext.delete(interaction.user.id);
 
-  // Refresh o session embed para mostrar "Concluída" + botão "Preencher Resultado"
+  // Refresh session embed para mostrar estado de liquidação + botões
   const saidaSession = require('./saidaSession');
   saidaSession.refreshSessionEmbed(interaction.client, ctx.saidaId).catch(() => {});
 
-  const { SAIDA_TYPE } = require('../content');
+  // Ping participantes no canal da sessão para preencherem resultados
+  _pingParticipantsForResults(interaction.client, ctx.saidaId, result, closedData?.participants || []).catch(() => {});
+
+  const resultLabel = { vitoria: 'Vitória', derrota: 'Derrota', empate: 'Empate', sem_conflito: 'Sem conflito', abortada: 'Abortada' }[result] || result;
   return safeReply(interaction, {
-    content: `${EMOJI.OK} **Saída #${ctx.saidaId}** fechada como **${result}**${enemy_name ? ` contra **${enemy_name}**` : ''}.\n\nParticipantes — usem o botão **"Preencher o meu Resultado"** no painel da saída.`,
+    content: `${EMOJI.OK} **Saída #${ctx.saidaId}** em liquidação — resultado: **${resultLabel}**${enemy_name ? ` contra **${enemy_name}**` : ''}.\n\n${EMOJI.PENDENTE} Os participantes foram notificados para preencherem o resultado individual.\nQuando todos preencherem (ou quando quiseres forçar), usa **"Finalizar e Publicar"** no painel da sessão.`,
   }, { dismissible: true });
+}
+
+/**
+ * Ping participantes no canal da sessão para preencherem os resultados.
+ * Mensagem personalizada — lista cada participante com o que precisa preencher.
+ */
+async function _pingParticipantsForResults(client, saidaId, result, participants) {
+  const saida = await saidaRepo.findById(saidaId);
+  const channelId = saida?.session_channel_id;
+  if (!channelId || !client) return;
+
+  const channel = await client.channels.fetch(channelId).catch(() => null);
+  if (!channel?.isTextBased?.()) return;
+
+  const discordIds = participants.map(p => p.discord_id).filter(Boolean);
+  if (!discordIds.length) return;
+
+  const mentions = discordIds.map(id => `<@${id}>`).join(' ');
+  const resultLabel = { vitoria: 'Vitória', derrota: 'Derrota', empate: 'Empate', sem_conflito: 'Sem conflito', abortada: 'Abortada' }[result] || result;
+
+  // Lista personalizada por participante
+  const participantLines = participants.map(p => {
+    const typeTag = p.participant_type === 'trabalhador' ? '🔧 trabalhador' : '🔫 caracterizado';
+    const needsWeapon = p.received_org_material && !p.own_weapon;
+    const weaponTag = needsWeapon ? ' · 📦 **arma da org** (precisas dizer se devolveste)' : '';
+    return `⏳ <@${p.discord_id}> — ${typeTag}${weaponTag}`;
+  });
+
+  const { brandEmbed } = require('../shared/embedBuilders');
+  const embed = brandEmbed('MOVEMENT')
+    .setColor(0xE67E22)
+    .setTitle(`${EMOJI.SAIDA} Saída #${saidaId} — ${resultLabel}`)
+    .setDescription(
+      `**A chefia fechou a saída.** Cada um preenche o resultado ↑\n\n` +
+      `Cliquem no botão **"${EMOJI.OK} Preencher o meu Resultado"** no painel acima.\n` +
+      `O modal pede: **sobreviveste?**, **kills**, **arma devolvida?** (se aplicável).\n\n` +
+      participantLines.join('\n') +
+      `\n\n${EMOJI.PENDENTE} **${discordIds.length}** resultado(s) por preencher — a sessão só fecha com dados de todos.`
+    );
+
+  await channel.send({
+    content: mentions,
+    embeds: [embed],
+    allowedMentions: { users: discordIds },
+  }).catch(() => {});
+}
+
+/**
+ * Handler do botão "Finalizar e Publicar" — transita de em_liquidacao → concluida.
+ * Corre scoring com dados reais, actualiza stats, publica resultados.
+ */
+async function handleFinalizeSaidaButton(interaction) {
+  if (isDuplicate(interaction.id)) return;
+
+  if (!isChefia(interaction.member)) {
+    return safeReply(interaction, { content: ERRORS.NO_PERMISSION('finalizar saídas'), flags: MessageFlags.Ephemeral }, { dismissible: true });
+  }
+
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const saidaId = parseInt(interaction.customId.split('::')[2], 10);
+
+  // Verificar estado
+  const saida = await saidaRepo.findById(saidaId);
+  if (!saida || saida.status !== 'em_liquidacao') {
+    return safeReply(interaction, {
+      content: `${EMOJI.WARN} Saída #${saidaId} não está em liquidação (estado: ${saida?.status || 'não encontrada'}).`,
+    }, { dismissible: true });
+  }
+
+  // Mostrar progresso antes de finalizar
+  const progress = await saidaEngine.getResultProgress(saidaId);
+
+  try {
+    // Auto-preencher participantes que não submeteram resultado como "sobreviveu, 0 kills"
+    if (progress.pending > 0) {
+      const { query: dbQuery } = require('../db');
+      await dbQuery(`
+        UPDATE operation_participants
+           SET individual_result_submitted = TRUE,
+               individual_result_at = NOW(),
+               survived = CASE WHEN died = TRUE THEN FALSE ELSE TRUE END,
+               weapon_return_status = CASE
+                 WHEN own_weapon = TRUE THEN 'not_applicable'
+                 WHEN received_org_material = FALSE THEN 'not_applicable'
+                 WHEN died = TRUE THEN 'confirmed_not_returned'
+                 ELSE 'not_applicable'
+               END
+         WHERE operation_id = $1 AND individual_result_submitted = FALSE
+      `, [saidaId]);
+    }
+
+    const result = await saidaEngine.finalizeSaida(saidaId, interaction.user.id);
+
+    // Refresh session embed (mostra concluída)
+    const saidaSession = require('./saidaSession');
+    saidaSession.refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
+
+    const { SAIDAS: S } = require('../content');
+    const mvp = result?.participants?.find(p => p.mvp_flag);
+    const mvpLine = mvp ? `\n${EMOJI.MVP} MVP: **${mvp.display_name || 'Participante'}** (${mvp.kills || 0} kills, peso ${Math.round(mvp.performance_score || 0)})` : '';
+    const v = result?.values || {};
+    const profitLabel = v.was_profitable ? `${EMOJI.LUCRO} Lucro` : `${EMOJI.WARN} Prejuízo`;
+
+    let pendingNote = '';
+    if (progress.pending > 0) {
+      pendingNote = `\n\n${EMOJI.INFO} _${progress.pending} participante(s) não preencheram resultado — auto-liquidados como vivos, 0 kills._`;
+    }
+
+    return safeReply(interaction, {
+      content: S.LIQUIDACAO.FINALIZED(saidaId, result?.totalKills || 0, result?.totalDeaths || 0, result?.totalSurvivors || 0) +
+        mvpLine +
+        `\n${profitLabel}: **${(v.net || 0).toLocaleString('pt-PT')} €**` +
+        pendingNote,
+    }, { dismissible: true });
+  } catch (e) {
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -373,11 +494,11 @@ async function handleViewSaidasButton(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const list = await saidaRepo.findRecent(10);
   if (!list.length) return safeReply(interaction, { content: `${EMOJI.INFO} Sem saídas registadas.` }, { dismissible: true });
-  const statusEmoji = { aberta: '🟢', em_preparacao: '🟡', em_curso: '🟠', concluida: EMOJI.OK, cancelada: EMOJI.ERRO };
+  const statusEmoji = { aberta: '🟢', em_preparacao: '🟡', em_curso: '🟠', em_liquidacao: '🔶', concluida: EMOJI.OK, cancelada: EMOJI.ERRO };
   const resultEmoji = { vitoria: EMOJI.VITORIA, derrota: EMOJI.DERROTA, empate: EMOJI.EMPATE, sem_conflito: EMOJI.INFO, abortada: EMOJI.WARN };
   const lines = list.map(s => {
     const em = statusEmoji[s.status] || '⬜';
-    const re = s.status === 'concluida' && s.result ? ` ${resultEmoji[s.result] || ''}` : '';
+    const re = ['concluida', 'em_liquidacao'].includes(s.status) && s.result ? ` ${resultEmoji[s.result] || ''}` : '';
     // Data no formato dd/mm/yyyy. Se houver hora marcada, inclui.
     let when = formatPtDateOnly(s.date);
     if (s.scheduled_time) {
@@ -647,6 +768,7 @@ async function handleIssueQtyModal(interaction) {
 module.exports = {
   handleCreateSaidaButton, handleCreateTypeSelect, handleCreateSpotSelect, handleCreateSaidaModal,
   handleCloseSaidaButton, handleCloseSaidaSelect, handleCloseResultSelect, handleCloseSaidaModal,
+  handleFinalizeSaidaButton,
   handleMarkDeadSelect,
   handleViewSaidasButton,
   handleAddParticipantButton, handleAddParticipantSelect, handleParticipantUsersSelect,

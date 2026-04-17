@@ -82,6 +82,29 @@ const SAIDAS = {
     `${E.LUCRO} Líquido: **${(net || 0).toLocaleString('pt-PT')} €** (${profitable ? 'lucro' : 'prejuízo'})\n` +
     `${E.INFO} Resultados publicados em <#${channel}>.`,
 
+  // ── Liquidação (novo estado intermédio) ─────────────────────────────
+  LIQUIDACAO: {
+    STATUS_LABEL: 'Em liquidação',
+    PING_HEADER: (saidaId, result) =>
+      `${E.SAIDA} **Saída #${saidaId}** fechada — resultado: **${result}**`,
+    PING_BODY:
+      `Preencham o vosso resultado individual ↓\n` +
+      `Cliquem no botão **"Preencher o meu Resultado"** no painel da saída.`,
+    PING_FOOTER: `${E.PENDENTE} A sessão fica em espera até todos preencherem.`,
+    PROGRESS: (submitted, total) =>
+      `${E.INFO} **${submitted}/${total}** resultado(s) preenchido(s)`,
+    ALL_DONE:
+      `${E.OK} **Todos os participantes preencheram!** Staff pode finalizar e publicar.`,
+    FINALIZE_BTN: 'Finalizar e Publicar',
+    FINALIZE_BTN_FORCE: 'Forçar Fecho (faltam resultados)',
+    FINALIZED: (id, kills, deaths, survivors) =>
+      `${E.FECHAR} Saída **#${id}** finalizada!\n` +
+      `${E.KILL} **${kills}** kills · ${E.MORTE} **${deaths}** mortes · ${E.OK} **${survivors}** vivos`,
+    STAFF_NOTIFY_ALL_DONE: (saidaId) =>
+      `${E.OK} **Saída #${saidaId}** — todos os participantes preencheram o resultado!\n` +
+      `Carrega em **"Finalizar e Publicar"** no painel da sessão para fechar com dados reais.`,
+  },
+
   // Resultados
   RESUMO_TITLE: (id) => `${E.SAIDA} Saída #${id} — Resumo`,
   DESTAQUES_TITLE: `${E.MVP} Destaques`,

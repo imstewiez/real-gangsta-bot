@@ -85,11 +85,12 @@ async function createSaida({ date, scheduledTime, spot, spotType, saidaType, lea
 // ── Máquina de estados ─────────────────────────────────────────────────────
 // Transições permitidas. Qualquer outra atira.
 const ALLOWED_TRANSITIONS = {
-  aberta:        new Set(['em_preparacao', 'em_curso', 'cancelada', 'concluida']),
-  em_preparacao: new Set(['em_curso', 'cancelada', 'concluida']),
-  em_curso:      new Set(['concluida', 'cancelada']),
-  concluida:     new Set([]), // terminal — nunca reverter
-  cancelada:     new Set([]), // terminal
+  aberta:         new Set(['em_preparacao', 'em_curso', 'em_liquidacao', 'cancelada']),
+  em_preparacao:  new Set(['em_curso', 'em_liquidacao', 'cancelada']),
+  em_curso:       new Set(['em_liquidacao', 'cancelada']),
+  em_liquidacao:  new Set(['concluida', 'cancelada']),
+  concluida:      new Set([]), // terminal — nunca reverter
+  cancelada:      new Set([]), // terminal
 };
 
 async function _assertTransition(saidaId, toStatus) {
@@ -127,35 +128,99 @@ async function cancelSaida(saidaId, actorId) {
 }
 
 /**
- * Fecha saída com cálculo rico: valores económicos, scores, MVP, atualização
- * de projections (spot_stats, member_saida_stats).
+ * Fecha saída — transita para 'em_liquidacao'. Guarda metadata de resultado
+ * (enemy, had_fight, craft, etc.) mas NÃO faz scoring, NÃO publica, NÃO
+ * actualiza stats. Os participantes preenchem os seus resultados individuais
+ * neste estado. Quando staff finaliza, finalizeSaida() faz o resto.
  */
 async function closeSaida(saidaId, resultData, actorId) {
+  await _assertTransition(saidaId, 'em_liquidacao');
+  const participants = await saidaRepo.getParticipants(saidaId);
+
+  // Contagem de tipos de participante
+  const characterized_count = participants.filter(p => p.participant_type === 'caracterizado').length;
+  const workers_count = participants.filter(p => p.participant_type === 'trabalhador').length;
+
+  // Guarda metadata de resultado + transita para em_liquidacao
+  const closed = await saidaRepo.updateStatus(saidaId, 'em_liquidacao', {
+    result: resultData.result || 'sem_conflito',
+    had_fight: resultData.had_fight || false,
+    had_craft: resultData.had_craft || false,
+    had_domination: resultData.had_domination || false,
+    enemy_name: resultData.enemy_name || '',
+    enemy_faction: resultData.enemy_faction || '',
+    craft_amount: resultData.craft_amount || 0,
+    result_notes: resultData.result_notes || '',
+    our_kills: resultData.our_kills || 0,
+    deaths: resultData.deaths || 0,
+    survivors: resultData.survivors || 0,
+    characterized_count,
+    workers_count,
+    updated_at: new Date(),
+  });
+
+  await logAudit({
+    action: 'saida_em_liquidacao',
+    entityType: 'saida',
+    entityId: String(saidaId),
+    actorId,
+    afterState: {
+      result: resultData.result,
+      participantsCount: participants.length,
+      characterized_count, workers_count,
+    },
+  });
+
+  log(`[SAIDA] Saída #${saidaId} em liquidação. result=${resultData.result} participantes=${participants.length}`);
+
+  // Event bus — notifica que a saída entrou em liquidação
+  eventBus.emitAsync('saida.em_liquidacao', {
+    saidaId,
+    result: resultData.result,
+    participantsCount: participants.length,
+    actorId,
+    at: new Date(),
+  }).catch(e => warn(`[EVENT] saida.em_liquidacao: ${e.message}`));
+
+  return { ...closed, participants };
+}
+
+/**
+ * Finaliza saída — transita de 'em_liquidacao' para 'concluida'.
+ * Calcula scores com dados reais dos participantes (kills, deaths, weapon
+ * return), actualiza projections (spot_stats, member_saida_stats) e publica
+ * resultados ricos.
+ */
+async function finalizeSaida(saidaId, actorId) {
   await _assertTransition(saidaId, 'concluida');
   const summary = await saidaRepo.getMaterialSummary(saidaId);
   const participants = await saidaRepo.getParticipants(saidaId);
+  const saida = await saidaRepo.findById(saidaId);
 
   // Valores económicos
   const supplied = summary.fornecido?.weightedTotal || 0;
   const returned = summary.devolvido?.weightedTotal || 0;
   const lost     = summary.perdido?.weightedTotal || 0;
   const consumed = summary.consumido?.weightedTotal || 0;
-  const gross    = returned; // org recupera material devolvido
-  const net      = returned - lost - consumed; // ignora fornecido (saiu e voltou)
+  const gross    = returned;
+  const net      = returned - lost - consumed;
   const was_profitable = net > 0;
 
-  // Scores + MVP (delegado a saidaScoring)
+  // Agrega kills/deaths totais dos resultados individuais
+  const totalKills = participants.reduce((a, p) => a + (p.kills || 0), 0);
+  const totalDeaths = participants.filter(p => p.died).length;
+  const totalSurvivors = participants.filter(p => !p.died).length;
+
+  // Scores + MVP (delegado a saidaScoring) — agora com dados REAIS
   const scoredParticipants = computeSaidaScores({
     participants,
-    result: resultData.result,
+    result: saida.result || 'sem_conflito',
     suppliedTotal: supplied,
   });
-  // Persiste scores/kills/deaths/valores per-participant
+
+  // Persiste scores per-participant
   for (const p of scoredParticipants) {
     await saidaRepo.updateParticipant(saidaId, p.member_id, {
-      kills: p.kills,
-      deaths_count: p.deaths_count,
-      downs: p.downs,
       issued_value: p.issued_value,
       returned_value: p.returned_value,
       lost_value: p.lost_value,
@@ -167,13 +232,23 @@ async function closeSaida(saidaId, resultData, actorId) {
     });
   }
 
-  // Contagem de tipos de participante
+  // Contagem de tipos
   const characterized_count = participants.filter(p => p.participant_type === 'caracterizado').length;
   const workers_count = participants.filter(p => p.participant_type === 'trabalhador').length;
 
-  // Fecha a saída com valores calculados
-  const closed = await saidaRepo.closeSaida(saidaId, {
-    ...resultData,
+  // Transita para concluida com valores calculados
+  const finalized = await saidaRepo.closeSaida(saidaId, {
+    result: saida.result,
+    had_fight: saida.had_fight,
+    had_craft: saida.had_craft,
+    had_domination: saida.had_domination,
+    enemy_name: saida.enemy_name,
+    enemy_faction: saida.enemy_faction,
+    craft_amount: saida.craft_amount,
+    result_notes: saida.result_notes,
+    our_kills: totalKills,
+    deaths: totalDeaths,
+    survivors: totalSurvivors,
     supplied_value: supplied,
     returned_value: returned,
     lost_value: lost,
@@ -184,19 +259,19 @@ async function closeSaida(saidaId, resultData, actorId) {
     characterized_count,
     workers_count,
   });
-  if (!closed) return null;
+  if (!finalized) return null;
 
   metrics.operationsClosed.inc();
 
   // Actualiza spot_stats (incremental)
-  if (closed.spot) {
+  if (finalized.spot) {
     const mvp = scoredParticipants.find(p => p.mvp_flag);
     await spotStatsRepo.applyIncrement({
-      spot: closed.spot,
-      result: closed.result || 'sem_conflito',
+      spot: finalized.spot,
+      result: finalized.result || 'sem_conflito',
       supplied, returned, lost, gross, net,
-      kills: closed.our_kills || 0,
-      deaths: closed.deaths || 0,
+      kills: totalKills,
+      deaths: totalDeaths,
       bestMemberId: mvp?.member_id || null,
     }).catch(e => warn(`[SAIDA] spotStats falhou: ${e.message}`));
   }
@@ -205,10 +280,10 @@ async function closeSaida(saidaId, resultData, actorId) {
   for (const p of scoredParticipants) {
     await memberSaidaStatsRepo.applyIncrement({
       memberId: p.member_id,
-      result: closed.result || 'sem_conflito',
+      result: finalized.result || 'sem_conflito',
       kills: p.kills,
       deaths: p.deaths_count,
-      profit: p.net_material_delta, // aproximação — usa delta individual
+      profit: p.net_material_delta,
       returnedValue: p.returned_value,
       suppliedValue: p.issued_value,
       survived: !p.died,
@@ -225,13 +300,14 @@ async function closeSaida(saidaId, resultData, actorId) {
   recon.unaccounted = Math.max(0, recon.fornecido - recon.devolvido - recon.perdido - recon.consumido);
 
   await logAudit({
-    action: 'saida_closed',
+    action: 'saida_finalized',
     entityType: 'saida',
     entityId: String(saidaId),
     actorId,
     afterState: {
-      result: closed.result, supplied, returned, lost, consumed, gross, net, was_profitable,
+      result: finalized.result, supplied, returned, lost, consumed, gross, net, was_profitable,
       participantsCount: scoredParticipants.length,
+      totalKills, totalDeaths, totalSurvivors,
       mvp: scoredParticipants.find(p => p.mvp_flag)?.display_name,
     },
     context: recon.unaccounted > 0
@@ -239,41 +315,57 @@ async function closeSaida(saidaId, resultData, actorId) {
       : undefined,
   });
 
-  log(`[SAIDA] Saída #${saidaId} fechada. result=${closed.result} net=${net.toFixed(2)}€ unaccounted=${recon.unaccounted}`);
+  log(`[SAIDA] Saída #${saidaId} finalizada. result=${finalized.result} kills=${totalKills} deaths=${totalDeaths} net=${net.toFixed(2)}€`);
 
-  // Publica resultados ricos (3 embeds) — fire-and-forget, não bloqueia.
+  // Publica resultados ricos — fire-and-forget
   if (_client) {
     const { publishResults } = require('./saidaResultsPublisher');
     publishResults(_client, saidaId).catch(e => warn(`[SAIDA] publishResults: ${e.message}`));
   }
 
-  // Event bus — permite projecções Sheets + subscribers não acoplados.
-  // Material em UNIDADES (não €) para notificações user-facing.
+  // Event bus
   eventBus.emitAsync('saida.closed', {
     saidaId,
-    spot: closed.spot,
-    saidaType: closed.operation_type,
-    result: closed.result,
+    spot: finalized.spot,
+    saidaType: finalized.operation_type,
+    result: finalized.result,
     participantsCount: scoredParticipants.length,
-    // Unidades (para notificações)
     suppliedUnits: recon.fornecido,
     returnedUnits: recon.devolvido,
     lostUnits: recon.perdido,
-    craftAmount: closed.craft_amount || 0,
-    // Valores em € (para sheets/analytics)
+    craftAmount: finalized.craft_amount || 0,
     supplied, returned, lost, consumed, gross, net, was_profitable,
     mvp: scoredParticipants.find(p => p.mvp_flag)?.member_id || null,
     characterized_count, workers_count,
+    totalKills, totalDeaths, totalSurvivors,
     unaccounted: recon.unaccounted,
     actorId,
     at: new Date(),
   }).catch(e => warn(`[EVENT] saida.closed: ${e.message}`));
 
   return {
-    ...closed,
+    ...finalized,
     reconciliation: recon,
     participants: scoredParticipants,
     values: { supplied, returned, lost, consumed, gross, net, was_profitable },
+    totalKills, totalDeaths, totalSurvivors,
+  };
+}
+
+/**
+ * Verifica quantos participantes já preencheram resultado individual.
+ * Retorna { total, submitted, pending, allDone }.
+ */
+async function getResultProgress(saidaId) {
+  const participants = await saidaRepo.getParticipants(saidaId);
+  const submitted = participants.filter(p => p.individual_result_submitted).length;
+  const total = participants.length;
+  return {
+    total,
+    submitted,
+    pending: total - submitted,
+    allDone: submitted >= total && total > 0,
+    participants,
   };
 }
 
@@ -574,11 +666,11 @@ async function settleParticipantCustody(saidaId, discordId, outcome, actorId, gu
 
 module.exports = {
   setClient,
-  createSaida, startSaida, closeSaida, cancelSaida,
+  createSaida, startSaida, closeSaida, finalizeSaida, cancelSaida,
   addParticipant, updateParticipantResult,
   registerSaidaMaterial,
   issueMaterialToParticipant, settleParticipantCustody,
-  getSaidaSummary, reconcileSaidaMaterials,
+  getSaidaSummary, reconcileSaidaMaterials, getResultProgress,
   MOVEMENT_TYPE_BY_DIRECTION,
   ALLOWED_TRANSITIONS, _assertTransition,
 };

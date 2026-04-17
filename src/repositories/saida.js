@@ -56,6 +56,30 @@ async function findOpen() {
   return res.rows;
 }
 
+/** Saídas em liquidação — participantes a preencher resultados. */
+async function findInLiquidacao() {
+  const res = await query(`
+    SELECT o.*, m.display_name as leader_name, m.discord_id as leader_discord_id
+    FROM operations o
+    LEFT JOIN members m ON m.id = o.leader_id
+    WHERE o.status = 'em_liquidacao'
+    ORDER BY o.date DESC, o.group_number
+  `);
+  return res.rows;
+}
+
+/** Saídas activas (abertas + em liquidação) — para listagens de gestão. */
+async function findActive() {
+  const res = await query(`
+    SELECT o.*, m.display_name as leader_name, m.discord_id as leader_discord_id
+    FROM operations o
+    LEFT JOIN members m ON m.id = o.leader_id
+    WHERE o.status IN ('aberta', 'em_preparacao', 'em_curso', 'em_liquidacao')
+    ORDER BY o.date DESC, o.group_number
+  `);
+  return res.rows;
+}
+
 async function updateStatus(id, status, extras = {}) {
   const sets = ['status = $1', 'updated_at = NOW()'];
   const values = [status];
@@ -240,7 +264,7 @@ async function updateSessionMessage(saidaId, messageId, channelId) {
 }
 
 module.exports = {
-  create, findById, findByDate, findRecent, findOpen,
+  create, findById, findByDate, findRecent, findOpen, findInLiquidacao, findActive,
   updateStatus, closeSaida,
   addParticipant, updateParticipant, getParticipants,
   countCharacterized, updateSessionMessage,

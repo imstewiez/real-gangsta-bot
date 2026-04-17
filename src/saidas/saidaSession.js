@@ -69,10 +69,11 @@ async function buildSessionEmbed(saidaId) {
 
   const isClosed = saida.status === 'cancelada';
   const isConcluded = saida.status === 'concluida';
-  const isOpen = !isClosed && !isConcluded;
+  const isInLiquidacao = saida.status === 'em_liquidacao';
+  const isOpen = !isClosed && !isConcluded && !isInLiquidacao;
 
-  const statusEmoji = isClosed ? '⛔' : isConcluded ? '🏁' : slotsLeft === 0 ? '🔴' : '🟢';
-  const statusLabel = isClosed ? 'Cancelada' : isConcluded ? 'Concluída' : slotsLeft === 0 ? 'Cheio' : 'Inscrições abertas';
+  const statusEmoji = isClosed ? '⛔' : isConcluded ? '🏁' : isInLiquidacao ? '🔶' : slotsLeft === 0 ? '🔴' : '🟢';
+  const statusLabel = isClosed ? 'Cancelada' : isConcluded ? 'Concluída' : isInLiquidacao ? 'Em liquidação' : slotsLeft === 0 ? 'Cheio' : 'Inscrições abertas';
 
   const lines = [
     `# ${EMOJI.SAIDA} Saída #${saida.id} — ${type}`,
@@ -96,6 +97,9 @@ async function buildSessionEmbed(saidaId) {
     }
   }
 
+  // Indicador de resultado individual (para estados em_liquidacao e concluida)
+  const showResultStatus = isInLiquidacao || isConcluded;
+
   if (characterized.length) {
     lines.push('', `**── Caracterizados ──**`);
     for (const p of characterized) {
@@ -105,29 +109,65 @@ async function buildSessionEmbed(saidaId) {
       const weaponFull = weaponName
         ? `${srcIcon} ${weaponName} (${srcLabel})`
         : `${srcIcon} ${srcLabel}`;
-      const resultMark = p.individual_result_submitted ? ' ✅' : (isConcluded ? ' ⏳ resultado' : '');
+      let resultMark = '';
+      if (showResultStatus && p.individual_result_submitted) {
+        const killsTag = p.kills > 0 ? ` · ${p.kills}k` : '';
+        const diedTag = p.died ? ` · ${EMOJI.MORTE}` : '';
+        resultMark = ` ✅${killsTag}${diedTag}`;
+      } else if (showResultStatus) {
+        resultMark = ' ⏳';
+      }
       lines.push(`• <@${p.discord_id}> · ${weaponFull}${resultMark}`);
     }
   }
   if (workers.length) {
     lines.push('', `**── Trabalhadores ──**`);
     for (const p of workers) {
-      const resultMark = p.individual_result_submitted ? ' ✅' : (isConcluded ? ' ⏳ resultado' : '');
+      let resultMark = '';
+      if (showResultStatus && p.individual_result_submitted) {
+        const killsTag = p.kills > 0 ? ` · ${p.kills}k` : '';
+        const diedTag = p.died ? ` · ${EMOJI.MORTE}` : '';
+        resultMark = ` ✅${killsTag}${diedTag}`;
+      } else if (showResultStatus) {
+        resultMark = ' ⏳';
+      }
       lines.push(`• <@${p.discord_id}>${resultMark}`);
     }
   }
 
   if (isClosed) {
     lines.push('', `${EMOJI.FECHAR} _Saída ${saida.status}. Registo encerrado._`);
-  } else if (isConcluded) {
-    const pendingResult = participants.filter(p => !p.individual_result_submitted).length;
+  } else if (isInLiquidacao) {
+    const submittedCount = participants.filter(p => p.individual_result_submitted).length;
+    const totalCount = participants.length;
     const pendingWeapon = characterized.filter(p => p.weapon_return_status === 'declared_returned').length;
-    lines.push('', `${EMOJI.FECHAR} _Sessão concluída. Participantes — preencham o vosso resultado ↓_`);
-    if (pendingResult > 0) lines.push(`⏳ **${pendingResult}** resultado(s) por preencher`);
-    if (pendingWeapon > 0) lines.push(`${EMOJI.WARN} **${pendingWeapon}** devolução(ões) de arma pendente(s) de confirmação`);
+    const resultLabel = { vitoria: 'Vitória', derrota: 'Derrota', empate: 'Empate', sem_conflito: 'Sem conflito', abortada: 'Abortada' }[saida.result] || saida.result;
+
+    lines.push('');
+    lines.push(`🔶 **Em liquidação** — resultado: **${resultLabel}**`);
+    if (saida.enemy_name) lines.push(`${EMOJI.COMBATE} Contra: **${saida.enemy_name}**`);
+    lines.push(`${EMOJI.PENDENTE} **${submittedCount}/${totalCount}** resultado(s) preenchido(s)`);
+    if (submittedCount >= totalCount && totalCount > 0) {
+      lines.push(`${EMOJI.OK} **Todos preencheram!** Staff pode finalizar ↓`);
+    } else {
+      lines.push(`_Participantes — cliquem em **"Preencher o meu Resultado"** ↓_`);
+    }
+    if (pendingWeapon > 0) lines.push(`${EMOJI.WARN} **${pendingWeapon}** devolução(ões) de arma pendente(s)`);
+  } else if (isConcluded) {
+    const pendingWeapon = characterized.filter(p => p.weapon_return_status === 'declared_returned').length;
+    const resultLabel = { vitoria: 'Vitória', derrota: 'Derrota', empate: 'Empate', sem_conflito: 'Sem conflito', abortada: 'Abortada' }[saida.result] || saida.result;
+    const totalKills = participants.reduce((a, p) => a + (p.kills || 0), 0);
+    const totalDeaths = participants.filter(p => p.died).length;
+    const mvp = participants.find(p => p.mvp_flag);
+
+    lines.push('');
+    lines.push(`${EMOJI.FECHAR} **Concluída** — resultado: **${resultLabel}**`);
+    lines.push(`${EMOJI.KILL} **${totalKills}** kills · ${EMOJI.MORTE} **${totalDeaths}** mortes · ${EMOJI.OK} **${participants.length - totalDeaths}** vivos`);
+    if (mvp) lines.push(`${EMOJI.MVP} MVP: **${mvp.display_name || 'Participante'}** (${mvp.kills || 0} kills)`);
+    if (pendingWeapon > 0) lines.push(`${EMOJI.WARN} **${pendingWeapon}** devolução(ões) de arma pendente(s)`);
   }
 
-  const embedColor = isClosed ? 0x95A5A6 : (isConcluded ? 0xF39C12 : 0x3498DB);
+  const embedColor = isClosed ? 0x95A5A6 : isConcluded ? 0x2ECC71 : isInLiquidacao ? 0xE67E22 : 0x3498DB;
   const embed = brandEmbed('MOVEMENT')
     .setColor(embedColor)
     .setDescription(lines.join('\n'));
@@ -153,8 +193,7 @@ async function buildSessionEmbed(saidaId) {
         .setEmoji(EMOJI.APAGAR),
     ));
 
-    // Row 2 — staff: só fechar (fornecer arma foi removido: participante
-    // escolhe arma no registo de self-serve). Permissão verificada no handler.
+    // Row 2 — staff: fechar sessão
     components.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`session::close::${saidaId}`)
@@ -162,24 +201,58 @@ async function buildSessionEmbed(saidaId) {
         .setStyle(ButtonStyle.Danger)
         .setEmoji(EMOJI.FECHAR),
     ));
-  } else if (isConcluded) {
-    // Row 1 — resultado individual (self-service pós-fecho)
+  } else if (isInLiquidacao) {
+    const submittedCount = participants.filter(p => p.individual_result_submitted).length;
+    const totalCount = participants.length;
+    const pendingCount = totalCount - submittedCount;
+    const allDone = submittedCount >= totalCount && totalCount > 0;
+
+    // Row 1 — resultado individual (self-service)
     components.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`saida::submit_result::${saidaId}`)
-        .setLabel('Preencher o meu Resultado')
+        .setLabel(`Preencher o meu Resultado (${submittedCount}/${totalCount})`)
         .setStyle(ButtonStyle.Success)
         .setEmoji(EMOJI.OK),
     ));
 
-    // Row 2 — staff OG+ confirma devoluções
-    components.push(new ActionRowBuilder().addComponents(
+    // Row 2 — staff: finalizar + confirmar armas
+    const finalizeRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`saida::finalize::${saidaId}`)
+        .setLabel(allDone ? 'Finalizar e Publicar' : `Forçar Fecho (${pendingCount} sem resultado)`)
+        .setStyle(allDone ? ButtonStyle.Success : ButtonStyle.Danger)
+        .setEmoji(EMOJI.FECHAR),
       new ButtonBuilder()
         .setCustomId(`saida::weapon_queue::${saidaId}`)
-        .setLabel('Staff: Confirmar Devoluções de Arma')
+        .setLabel('Confirmar Armas')
         .setStyle(ButtonStyle.Primary)
         .setEmoji('🔫'),
-    ));
+    );
+    components.push(finalizeRow);
+
+    // Row 3 — staff: lembrar pendentes (só aparece se há pendentes)
+    if (pendingCount > 0) {
+      components.push(new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`saida::reping::${saidaId}`)
+          .setLabel(`Lembrar ${pendingCount} Pendente(s)`)
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji(EMOJI.CONVOCAR),
+      ));
+    }
+  } else if (isConcluded) {
+    // Sessão concluída — armas pendentes pode ainda precisar de confirmação
+    const pendingWeapon = characterized.filter(p => p.weapon_return_status === 'declared_returned').length;
+    if (pendingWeapon > 0) {
+      components.push(new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`saida::weapon_queue::${saidaId}`)
+          .setLabel(`Confirmar Armas (${pendingWeapon} pendentes)`)
+          .setStyle(ButtonStyle.Primary)
+          .setEmoji('🔫'),
+      ));
+    }
   }
 
   return { embed, components };

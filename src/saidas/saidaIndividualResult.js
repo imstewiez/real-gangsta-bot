@@ -50,15 +50,18 @@ const eventBus = require('../core/eventBus');
 const { warn, log } = require('../logger');
 
 // ═══════════════════════════════════════════════════════════════════════════
-// A. RESULTADO INDIVIDUAL (participante)
+// A. RESULTADO INDIVIDUAL (participante) — 1 STEP: botão → modal directo
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Normalizador S/N para campos de texto do modal
+function _parseSN(value) {
+  const v = (value || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return ['s', 'sim', 'yes', '1', 'y', 'true'].includes(v);
+}
+
 /**
- * Handler do botão "Preencher o meu Resultado" no painel da sessão.
- * Verifica:
- *   - user é participante desta saída
- *   - saida está concluida
- *   - ainda não submeteu resultado
+ * Handler do botão "Preencher o meu Resultado" — abre modal DIRECTO.
+ * Sem botões intermediários. Tudo num só modal de 3-5 campos.
  */
 async function handleOpenSubmitResult(interaction) {
   if (isDuplicate(interaction.id)) return;
@@ -82,7 +85,7 @@ async function handleOpenSubmitResult(interaction) {
   }
 
   const saida = await saidaRepo.findById(saidaId);
-  if (saida?.status !== 'concluida') {
+  if (!saida || !['em_liquidacao', 'concluida'].includes(saida.status)) {
     return safeReply(interaction, {
       content: `${EMOJI.BLOQUEADO} A sessão ainda não foi fechada pela staff.`,
       flags: MessageFlags.Ephemeral,
@@ -96,114 +99,59 @@ async function handleOpenSubmitResult(interaction) {
     }, { messageClass: 'BANAL' });
   }
 
-  // STEP 1 — ephemeral: escolhe Sobrevivi / Morri via botão.
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(`saida::res_outcome::${saidaId}::survived`)
-      .setLabel('Sobrevivi')
-      .setStyle(ButtonStyle.Success)
-      .setEmoji(EMOJI.OK),
-    new ButtonBuilder()
-      .setCustomId(`saida::res_outcome::${saidaId}::died`)
-      .setLabel('Morri')
-      .setStyle(ButtonStyle.Danger)
-      .setEmoji(EMOJI.MORTE),
-  );
+  // Determinar se precisa da pergunta da arma
+  const needsWeaponQ = me.received_org_material && !me.own_weapon;
+  // Flag no customId: 'w' = needs weapon question, 'n' = no weapon question
+  const wFlag = needsWeaponQ ? 'w' : 'n';
 
-  return safeReply(interaction, {
-    content: `**Saída #${saidaId}** — o que te aconteceu?`,
-    components: [row],
-    flags: MessageFlags.Ephemeral,
-  }, { messageClass: 'FLOW' });
-}
+  const fields = [
+    new ActionRowBuilder().addComponents(
+      new TextInputBuilder().setCustomId('survived')
+        .setLabel('Sobreviveste? (S ou N)')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true).setMaxLength(3)
+        .setPlaceholder('S ou N')),
+    new ActionRowBuilder().addComponents(
+      new TextInputBuilder().setCustomId('kills')
+        .setLabel('Quantos kills fizeste?')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true).setMaxLength(3)
+        .setPlaceholder('0').setValue('0')),
+    new ActionRowBuilder().addComponents(
+      new TextInputBuilder().setCustomId('downs')
+        .setLabel('Quantos downs? (opcional)')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(false).setMaxLength(3)
+        .setPlaceholder('0')),
+  ];
 
-// STEP 2 — clicou Sobrevivi/Morri. Se era caracterizado com arma da org
-// e sobreviveu, vai para step 3 (perguntar devolução). Caso contrário,
-// salta para o modal de kills/notes.
-async function handleResOutcome(interaction) {
-  if (isDuplicate(interaction.id)) return;
-  const parts = interaction.customId.split('::');
-  const saidaId = parseInt(parts[2], 10);
-  const outcome = parts[3]; // 'survived' | 'died'
-
-  const member = await memberRepo.findByDiscordId(interaction.user.id);
-  const participants = await saidaRepo.getParticipants(saidaId);
-  const me = participants.find(p => p.member_id === member?.id);
-  if (!me) {
-    return safeReply(interaction, {
-      content: `${EMOJI.ERRO} Não és participante desta saída.`,
-      flags: MessageFlags.Ephemeral,
-    }, { messageClass: 'WARN' });
+  if (needsWeaponQ) {
+    fields.push(new ActionRowBuilder().addComponents(
+      new TextInputBuilder().setCustomId('weapon_returned')
+        .setLabel('Devolveste a arma da org? (S ou N)')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true).setMaxLength(3)
+        .setPlaceholder('S ou N')));
   }
 
-  const hadOrgWeapon = me.received_org_material && !me.own_weapon;
-  const needsWeaponQuestion = outcome === 'survived' && hadOrgWeapon;
+  fields.push(new ActionRowBuilder().addComponents(
+    new TextInputBuilder().setCustomId('notes')
+      .setLabel('Notas (opcional)')
+      .setStyle(TextInputStyle.Paragraph)
+      .setRequired(false).setMaxLength(300)));
 
-  if (needsWeaponQuestion) {
-    // STEP 3 — ephemeral: devolveste a arma?
-    await interaction.deferUpdate();
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId(`saida::res_weapon::${saidaId}::survived::returned`)
-        .setLabel('Devolvi a arma')
-        .setStyle(ButtonStyle.Success)
-        .setEmoji(EMOJI.DEVOLVER),
-      new ButtonBuilder()
-        .setCustomId(`saida::res_weapon::${saidaId}::survived::not_returned`)
-        .setLabel('Não devolvi')
-        .setStyle(ButtonStyle.Danger)
-        .setEmoji(EMOJI.ERRO),
-      new ButtonBuilder()
-        .setCustomId(`saida::res_weapon::${saidaId}::survived::lost`)
-        .setLabel('Perdi na rua')
-        .setStyle(ButtonStyle.Secondary)
-        .setEmoji(EMOJI.PERDIDO),
-    );
-    return interaction.editReply({
-      content: `**Saída #${saidaId}** — e a arma da org que levaste?`,
-      components: [row],
-    });
-  }
-
-  // Saltou o passo da arma (morreu ou não tinha arma da org).
-  // Abrir modal directamente — weapon decision encoded como "skip".
-  const weaponDecision = outcome === 'died' ? 'died_auto' : 'no_org_weapon';
-  return _openResultModal(interaction, saidaId, outcome, weaponDecision);
-}
-
-// STEP 3 — clicou decisão da arma. Abre modal para kills + notes.
-async function handleResWeapon(interaction) {
-  if (isDuplicate(interaction.id)) return;
-  const parts = interaction.customId.split('::');
-  const saidaId = parseInt(parts[2], 10);
-  const outcome = parts[3]; // 'survived' (morri não chega aqui)
-  const weaponDecision = parts[4]; // 'returned' | 'not_returned' | 'lost'
-  return _openResultModal(interaction, saidaId, outcome, weaponDecision);
-}
-
-async function _openResultModal(interaction, saidaId, outcome, weaponDecision) {
   const modal = new ModalBuilder()
-    .setCustomId(`saida::submit_result_modal::${saidaId}::${outcome}::${weaponDecision}`)
+    .setCustomId(`saida::submit_result_modal::${saidaId}::${wFlag}`)
     .setTitle(`Resultado — Saída #${saidaId}`)
-    .addComponents(
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('kills')
-          .setLabel('Kills que fiz')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(true).setMaxLength(3).setPlaceholder('0').setValue('0')),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('notes')
-          .setLabel('Notas (opcional)')
-          .setStyle(TextInputStyle.Paragraph)
-          .setRequired(false).setMaxLength(300)),
-    );
+    .addComponents(...fields);
+
   await safeShowModal(interaction, modal);
 }
 
 /**
- * Handler do submit do modal. CustomId encoda outcome + weaponDecision
- * que vieram dos botões dos steps 2 e 3 (sem S/N text).
- * Formato: saida::submit_result_modal::<saidaId>::<outcome>::<weaponDecision>
+ * Handler do submit do modal unificado.
+ * Formato: saida::submit_result_modal::<saidaId>::<wFlag>
+ * wFlag: 'w' = had weapon question, 'n' = no weapon question
  */
 async function handleSubmitResultModal(interaction) {
   if (isDuplicate(interaction.id)) return;
@@ -211,8 +159,7 @@ async function handleSubmitResultModal(interaction) {
 
   const parts = interaction.customId.split('::');
   const saidaId = parseInt(parts[2], 10);
-  const outcome = parts[3];          // 'survived' | 'died'
-  const weaponDecision = parts[4];   // 'returned' | 'not_returned' | 'lost' | 'died_auto' | 'no_org_weapon'
+  const wFlag = parts[3]; // 'w' ou 'n'
 
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {
@@ -229,31 +176,37 @@ async function handleSubmitResultModal(interaction) {
     }, { messageClass: 'WARN' });
   }
 
-  const survived = outcome === 'survived';
+  // Parse dos campos do modal
+  const survived = _parseSN(getModalField(interaction, 'survived'));
   const died = !survived;
   const killsRaw = String(getModalField(interaction, 'kills') || '0').trim();
   const kills = Math.max(0, Math.min(99, parseInt(killsRaw, 10) || 0));
+  const downsRaw = String(getModalField(interaction, 'downs') || '0').trim();
+  const downs = Math.max(0, Math.min(99, parseInt(downsRaw, 10) || 0));
   const notes = String(getModalField(interaction, 'notes') || '').slice(0, 300);
 
-  // ── Regras de weapon_return_status ─────────────────────────────────────
-  // Decisão vem directa dos botões (no text parse).
-  const WEAPON_STATUS_MAP = {
-    died_auto:       'confirmed_not_returned', // morreu → arma perdida auto
-    no_org_weapon:   'not_applicable',          // trabalhador ou arma própria
-    returned:        'declared_returned',       // pendente confirmação OG+
-    not_returned:    'confirmed_not_returned',  // admissão definitiva
-    lost:            'confirmed_not_returned',  // perdida na rua = não devolvida
-  };
-  const weaponReturnStatus = WEAPON_STATUS_MAP[weaponDecision] || 'not_applicable';
+  // Weapon return status
+  let weaponReturnStatus = 'not_applicable';
+  if (wFlag === 'w') {
+    // Tinham arma da org
+    if (died) {
+      weaponReturnStatus = 'confirmed_not_returned'; // morreu → arma perdida
+    } else {
+      const returned = _parseSN(getModalField(interaction, 'weapon_returned'));
+      weaponReturnStatus = returned ? 'declared_returned' : 'confirmed_not_returned';
+    }
+  } else if (me.own_weapon) {
+    weaponReturnStatus = 'not_applicable';
+  }
 
-  // Persiste — UPDATE idempotente: só aceita se `individual_result_submitted`
-  // ainda é FALSE. Duplo-clique / race condition não sobrepõe o resultado
-  // já submetido.
+  // Persiste — UPDATE idempotente
   const upd = await query(`
     UPDATE operation_participants
        SET kills = $3,
+           downs = $8,
            died  = $4,
            survived = $5,
+           deaths_count = CASE WHEN $4 = TRUE THEN 1 ELSE 0 END,
            notes = COALESCE(NULLIF($6, ''), notes),
            individual_result_submitted = TRUE,
            individual_result_at = NOW(),
@@ -261,7 +214,7 @@ async function handleSubmitResultModal(interaction) {
      WHERE operation_id = $1 AND member_id = $2
        AND individual_result_submitted = FALSE
      RETURNING id
-  `, [saidaId, member.id, kills, died, survived, notes, weaponReturnStatus]);
+  `, [saidaId, member.id, kills, died, survived, notes, weaponReturnStatus, downs]);
 
   if (upd.rowCount === 0) {
     return safeReply(interaction, {
@@ -275,34 +228,111 @@ async function handleSubmitResultModal(interaction) {
     entityType: 'saida',
     entityId: String(saidaId),
     actorId: interaction.user.id,
-    afterState: { memberId: member.id, kills, died, weaponReturnStatus, notes },
+    afterState: { memberId: member.id, kills, downs, died, weaponReturnStatus, notes },
   });
 
-  // Event — invalida tabs Sheets + potencial routing
   eventBus.emitAsync('saida.individual_result', {
     saidaId, memberId: member.id, discordId: interaction.user.id,
-    kills, died, weaponReturnStatus, at: new Date(),
+    kills, downs, died, weaponReturnStatus, at: new Date(),
   }).catch(() => {});
 
-  // Refresh da session embed
+  // Refresh session embed
   const saidaSession = require('./saidaSession');
   saidaSession.refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
 
+  // Feedback ao participante
   const lines = [
     `${EMOJI.OK} Resultado registado na **Saída #${saidaId}**.`,
     '',
     `• ${died ? `${EMOJI.MORTE} Morreste` : `${EMOJI.OK} Sobreviveste`}`,
-    `• ${EMOJI.KILL} **${kills}** kill(s)`,
+    `• ${EMOJI.KILL} **${kills}** kill(s)${downs > 0 ? ` · ${EMOJI.DOWN} **${downs}** down(s)` : ''}`,
   ];
   if (weaponReturnStatus === 'declared_returned') {
-    lines.push(`• 🔫 Declaraste que devolveste a arma — **pendente de confirmação OG+**`);
+    lines.push(`• 🔫 Declaraste que devolveste a arma — **pendente de confirmação staff**`);
   } else if (weaponReturnStatus === 'confirmed_not_returned') {
-    lines.push(`• 🔫 Arma não devolvida (${died ? 'morreste' : 'declaraste'})`);
-  } else if (weaponReturnStatus === 'not_applicable') {
-    lines.push(`• 🔫 Arma própria — sem devolução à casa`);
+    lines.push(`• 🔫 Arma não devolvida (${died ? 'morreste com ela' : 'declaraste'})`);
   }
 
+  // Auto-check: se todos preencheram, notificar staff
+  _checkAllResultsSubmitted(interaction.client, saidaId).catch(() => {});
+
   return safeReply(interaction, { content: lines.join('\n') }, { messageClass: 'RESULT' });
+}
+
+/**
+ * Handler do botão "Lembrar Pendentes" — re-pinga participantes que faltam.
+ */
+async function handleRepingPendentes(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  if (!isChefia(interaction.member) && !isOficial(interaction.member)) {
+    return safeReply(interaction, {
+      content: `${EMOJI.BLOQUEADO} Apenas staff pode lembrar pendentes.`,
+      flags: MessageFlags.Ephemeral,
+    }, { messageClass: 'WARN' });
+  }
+
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const saidaId = parseInt(interaction.customId.split('::')[2], 10);
+
+  const saida = await saidaRepo.findById(saidaId);
+  if (!saida || saida.status !== 'em_liquidacao') {
+    return safeReply(interaction, {
+      content: `${EMOJI.WARN} Saída não está em liquidação.`,
+    }, { dismissible: true });
+  }
+
+  const participants = await saidaRepo.getParticipants(saidaId);
+  const pending = participants.filter(p => !p.individual_result_submitted);
+
+  if (!pending.length) {
+    return safeReply(interaction, {
+      content: `${EMOJI.OK} Todos os participantes já preencheram!`,
+    }, { dismissible: true });
+  }
+
+  // Enviar nova mensagem no canal da sessão com @ dos pendentes
+  const channelId = saida.session_channel_id;
+  if (!channelId) {
+    return safeReply(interaction, {
+      content: `${EMOJI.WARN} Canal de sessão não configurado.`,
+    }, { dismissible: true });
+  }
+
+  const channel = await interaction.client.channels.fetch(channelId).catch(() => null);
+  if (!channel?.isTextBased?.()) {
+    return safeReply(interaction, {
+      content: `${EMOJI.WARN} Canal de sessão não acessível.`,
+    }, { dismissible: true });
+  }
+
+  const discordIds = pending.map(p => p.discord_id).filter(Boolean);
+  const mentions = discordIds.map(id => `<@${id}>`).join(' ');
+
+  const pendingLines = pending.map(p => {
+    const typeTag = p.participant_type === 'trabalhador' ? '🔧 trabalhador' : '🔫 caracterizado';
+    const weaponTag = (!p.own_weapon && p.received_org_material) ? ' · 📦 arma da org' : '';
+    return `• ⏳ <@${p.discord_id}> — ${typeTag}${weaponTag}`;
+  });
+
+  const { brandEmbed: bEmbed } = require('../shared/embedBuilders');
+  const embed = bEmbed('MOVEMENT')
+    .setColor(0xE74C3C)
+    .setTitle(`${EMOJI.WARN} Saída #${saidaId} — Faltam ${pending.length} resultado(s)!`)
+    .setDescription(
+      `**Preencham o vosso resultado!** Cliquem no botão **"${EMOJI.OK} Preencher o meu Resultado"** acima ↑\n\n` +
+      pendingLines.join('\n') +
+      `\n\n_A sessão não fecha sem os vossos dados._`
+    );
+
+  await channel.send({
+    content: `${EMOJI.WARN} **Lembrete** — ${mentions}`,
+    embeds: [embed],
+    allowedMentions: { users: discordIds },
+  }).catch(() => {});
+
+  return safeReply(interaction, {
+    content: `${EMOJI.OK} Lembrete enviado para **${pending.length}** participante(s) pendente(s).`,
+  }, { dismissible: true });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -517,11 +547,41 @@ async function handleWeaponDecide(interaction) {
   }, { messageClass: 'BANAL' });
 }
 
+/**
+ * Verifica se todos os participantes já preencheram resultado. Se sim,
+ * envia notificação no canal da sessão para staff finalizar.
+ */
+async function _checkAllResultsSubmitted(client, saidaId) {
+  const saida = await saidaRepo.findById(saidaId);
+  if (!saida || saida.status !== 'em_liquidacao') return;
+
+  const saidaEngine = require('./saidaEngine');
+  const progress = await saidaEngine.getResultProgress(saidaId);
+  if (!progress.allDone) return;
+
+  // Todos preencheram — notificar no canal da sessão
+  const channelId = saida.session_channel_id;
+  if (!channelId || !client) return;
+
+  const channel = await client.channels.fetch(channelId).catch(() => null);
+  if (!channel?.isTextBased?.()) return;
+
+  const { brandEmbed } = require('../shared/embedBuilders');
+  const embed = brandEmbed('MOVEMENT')
+    .setColor(0x2ECC71)
+    .setTitle(`${EMOJI.OK} Saída #${saidaId} — Todos preencheram!`)
+    .setDescription(
+      `**${progress.submitted}/${progress.total}** participantes submeteram o resultado.\n\n` +
+      `Staff — carrega em **"Finalizar e Publicar"** no painel da sessão ↑ para calcular scores, MVP e publicar os resultados finais.`
+    );
+
+  await channel.send({ embeds: [embed] }).catch(() => {});
+}
+
 module.exports = {
   handleOpenSubmitResult,
-  handleResOutcome,
-  handleResWeapon,
   handleSubmitResultModal,
+  handleRepingPendentes,
   handleOpenWeaponQueue,
   handleWeaponConfirmPick,
   handleWeaponDecide,

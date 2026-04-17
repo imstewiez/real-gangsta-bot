@@ -957,6 +957,21 @@ const MIGRATIONS = [
     `
   },
   {
+    id: 25,
+    name: 'saidas_em_liquidacao_state',
+    // Novo estado intermédio 'em_liquidacao' entre em_curso e concluida.
+    // Quando staff fecha a saída, vai para em_liquidacao (participantes
+    // preenchem resultados individuais). Só quando staff finaliza é que
+    // passa a concluida (scoring + publicação com dados reais).
+    up: `
+      ALTER TABLE operations DROP CONSTRAINT IF EXISTS operations_status_check;
+      ALTER TABLE operations ADD CONSTRAINT operations_status_check
+        CHECK (status IN (
+          'aberta', 'em_preparacao', 'em_curso', 'em_liquidacao', 'concluida', 'cancelada'
+        ));
+    `
+  },
+  {
     id: 24,
     name: 'items_category_align_with_catalog',
     // Migration #19 criou o CHECK com naming antigo (armas, acessorios,

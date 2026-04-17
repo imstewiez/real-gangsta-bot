@@ -293,8 +293,9 @@ async function handleFinish(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const saidaId = parseInt(interaction.customId.split('::')[2]);
+  const saidaEngine = require('./saidaEngine');
 
-  // Guard: se a saída já foi fechada (ex: via close modal), não re-fechar
+  // Guard: se a saída já foi finalizada, mostrar resumo
   const currentSaida = await saidaRepo.findById(saidaId);
   if (currentSaida?.status === 'concluida') {
     const v = { net: currentSaida.net_value || 0, was_profitable: currentSaida.was_profitable };
@@ -312,36 +313,37 @@ async function handleFinish(interaction) {
       kills: 0, downs: 0, deaths_count: 0,
       died: false, survived: true, returned: true,
       settled: true,
+      individual_result_submitted: true,
+      individual_result_at: new Date(),
     });
   }
 
-  // Agrega totais dos participantes (NÃO muda status aqui — closeSaida trata da transição)
-  const refreshed = await saidaRepo.getParticipants(saidaId);
-  const totalKills = refreshed.reduce((a, p) => a + (p.kills || 0), 0);
-  const totalDeaths = refreshed.filter(p => p.died).length;
-  const survivors = refreshed.filter(p => p.survived).length;
-
-  // closeSaida faz a transição, cálculos económicos, scoring, stats e publish.
-  const saidaEngine = require('./saidaEngine');
+  // Step 1: closeSaida → em_liquidacao (guarda metadata de resultado)
   const saida = await saidaRepo.findById(saidaId);
-  const result = await saidaEngine.closeSaida(saidaId, {
-    result: saida.result || 'sem_conflito',
-    had_fight: saida.had_fight,
-    had_craft: saida.had_craft,
-    had_domination: saida.had_domination,
-    enemy_name: saida.enemy_name,
-    enemy_faction: saida.enemy_faction,
-    our_kills: totalKills,
-    deaths: totalDeaths,
-    survivors,
-    result_notes: saida.result_notes,
-    craft_amount: saida.craft_amount,
-  }, interaction.user.id);
+  if (!['concluida', 'em_liquidacao'].includes(saida.status)) {
+    await saidaEngine.closeSaida(saidaId, {
+      result: saida.result || 'sem_conflito',
+      had_fight: saida.had_fight,
+      had_craft: saida.had_craft,
+      had_domination: saida.had_domination,
+      enemy_name: saida.enemy_name,
+      enemy_faction: saida.enemy_faction,
+      result_notes: saida.result_notes,
+      craft_amount: saida.craft_amount,
+    }, interaction.user.id);
+  }
+
+  // Step 2: finalizeSaida → concluida (scoring + stats + publish)
+  const result = await saidaEngine.finalizeSaida(saidaId, interaction.user.id);
+
+  // Refresh session embed
+  const saidaSession = require('./saidaSession');
+  saidaSession.refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
 
   const v = result?.values || {};
   const channelId = CONFIG.SAIDA_RESULTS_CHANNEL_ID || CONFIG.AUDIT_CHANNEL_ID || '';
   return safeReply(interaction, {
-    content: SAIDAS.WIZARD_SUMMARY(saidaId, totalKills, totalDeaths, survivors, v.net, v.was_profitable, channelId),
+    content: SAIDAS.WIZARD_SUMMARY(saidaId, result?.totalKills || 0, result?.totalDeaths || 0, result?.totalSurvivors || 0, v.net, v.was_profitable, channelId),
   }, { dismissible: true });
 }
 

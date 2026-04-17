@@ -30,6 +30,7 @@ const {
   handleCreateSaidaButton, handleCloseSaidaButton,
   handleViewSaidasButton, handleAddParticipantButton,
   handleRegisterMaterialButton, handleIssueToParticipantButton,
+  handleFinalizeSaidaButton,
 } = require('../../../saidas/saidaHandlers');
 const saidaWizard  = require('../../../saidas/saidaSettlementWizard');
 const saidaStats   = require('../../../saidas/saidaStatsHandlers');
@@ -82,10 +83,12 @@ const BUTTON_ROUTES = [
 
   // Saída — resultado individual (self-service) + weapon return queue
   prefix('saida::submit_result::',         saidaIndividual.handleOpenSubmitResult),
-  prefix('saida::res_outcome::',           saidaIndividual.handleResOutcome),
-  prefix('saida::res_weapon::',            saidaIndividual.handleResWeapon),
+  prefix('saida::reping::',               saidaIndividual.handleRepingPendentes),
   prefix('saida::weapon_queue::',          saidaIndividual.handleOpenWeaponQueue),
   prefix('saida::weapon_decide::',         saidaIndividual.handleWeaponDecide),
+
+  // Saída — finalizar (em_liquidacao → concluida)
+  prefix('saida::finalize::',              handleFinalizeSaidaButton),
 
   // Saída — settlement wizard (staff fecha participante a participante)
   prefix('saida::wz_outcome::',            saidaWizard.handleOutcome),
