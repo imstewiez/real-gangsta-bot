@@ -53,6 +53,8 @@ const commands = [
 
   new SlashCommandBuilder().setName('kill').setDescription('Registar uma kill'),
 
+  new SlashCommandBuilder().setName('meu-pedido').setDescription('Ver o estado do teu pedido de tag'),
+
   // ── Staff operacional ──────────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName('audit')

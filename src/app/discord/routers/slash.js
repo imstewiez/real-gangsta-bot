@@ -18,6 +18,7 @@ const transfer = require('../../../queries/transfer');
 
 const { handleRegisterKillButton } = require('../../../kills/killHandlers');
 const { handleMovimento } = require('../../../members/bairristaHandlers');
+const { handleMeuPedido } = require('../../../onboarding/meuPedido');
 const { commandsByName } = require('../../../lib/metrics');
 
 const SLASH_ROUTES = {
@@ -30,6 +31,7 @@ const SLASH_ROUTES = {
   versao: versao.handle,
   movimento: handleMovimento,
   kill: handleRegisterKillButton,
+  'meu-pedido': handleMeuPedido,
 
   // ── Staff operacional
   audit: audit.handle,

@@ -78,7 +78,7 @@ Cadeia de custódia por participante. Material reconciliado automaticamente.
 ### Rádio
 - Painel com Principal + Parceria. Botões: aleatória/set/swap/history/refresh.
 
-## Slash commands (10)
+## Slash commands (11)
 
 Filosofia: **painéis são a via principal**. Slash commands são atalhos rápidos.
 
@@ -93,6 +93,7 @@ Filosofia: **painéis são a via principal**. Slash commands são atalhos rápid
 | `/ranking` | Rankings (semanal, mensal, histórico) |
 | `/saidas` | As tuas últimas saídas |
 | `/kill` | Registar uma kill |
+| `/meu-pedido` | Ver o estado do teu pedido de tag |
 
 ### Staff
 | Comando | Descrição |

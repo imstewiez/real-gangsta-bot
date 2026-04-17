@@ -2,6 +2,77 @@
 
 ---
 
+## v2.4 — Full update sistema de onboarding (2026-04-17)
+
+Fecha o sistema de onboarding com polish de UX + robustez + visibilidade.
+
+### UX — o que o user vê
+- **DM ao user em aprovação/negação** — mensagem privada celebratória
+  quando aprovado, respeitosa com motivo quando negado. **Fallback gracioso**
+  para canal de entrada com menção se DMs estão fechados.
+- **Denial com razão via modal** — chefia clica Negar e preenche razão
+  opcional (max 500 chars); razão vai no DM ao user e no audit log.
+- **Confirmação visual ao user após submeter o pedido** — embed com
+  ticker de 3 passos (Pedido enviado → Análise → Decisão por DM).
+- **Welcome embed polido no canal individual** — tom firma/rua
+  consistente, 4 CTAs claros.
+- **Painel de entrada com 2 botões** — "Dar a Cara" + novo "O meu pedido"
+  (consulta estado).
+- **`/meu-pedido`** — slash command para consultar estado do próprio
+  pedido mais recente (pending / approved / denied com razão).
+
+### Chefia — approval card enriquecido
+- **Contexto automático** no card: tempo no server, idade da conta
+  Discord (⚠️ "conta nova" se <7d), histórico de pedidos anteriores,
+  conflito de alcunha com bairrista activo.
+- **Surface explícito de falhas** no reply pós-aprovação: se canal falhou,
+  se nickname falhou, se DM entregou ou fez fallback — tudo visível.
+
+### Robustez
+- **Retry com backoff em channel create** (3 tentativas: 0ms / 1s / 2s)
+  para transient Discord API errors.
+- **Cooldown anti-spam** — 5 pedidos em 5 min por user via rateLimiter
+  (elimina spam de cliques).
+- **Migration 028** — `tag_requests.denial_reason TEXT`, `retry_count INT`,
+  `channel_create_failed BOOL`, `processed_at TIMESTAMPTZ`, índice
+  `(discord_id, status, created_at DESC)` para `/meu-pedido`.
+
+### Código
+- **Purge de código morto** em `src/content/onboarding.js`: 9 strings/funções
+  que estavam declaradas mas ninguém importava.
+- **Novo**: `src/shared/dm.js` (sendDM + tryDmOrFallback).
+- **Novo**: `src/onboarding/meuPedido.js` (handler partilhado entre botão e
+  slash).
+- **Copy centralizado** em `src/content/onboarding.js` — guards (HAS_PENDING,
+  HAS_ACTIVE_RECORD, HAS_PRIOR_APPROVED, COOLDOWN), DM templates
+  (DM_APPROVED_BODY, DM_DENIED_BODY), meu-pedido titles.
+
+### Tests
+- `test/dmHelper.test.js` (10 testes): sendDM ok/erro, tryDmOrFallback
+  com DM ok / DM falha+canal / DM falha+sem canal / DM+canal falham /
+  menção on/off / preservação de embeds.
+- `test/meuPedido.test.js` (7 testes): embed correcto per estado
+  (none/pending/approved/approved-with-failed-channel/denied-com-razão/
+  denied-sem-razão/estado-desconhecido).
+- Coverage subiu de 68.07% → 68.94% linhas.
+
+**264/264 testes passam.**
+
+---
+
+## v2.3 — Resolução de 26 issues de auditoria (2026-04-17)
+
+Ver commits `41021ff` → `049f8c6`. Destaques:
+- Config partido em 13 domain files + validator forte ao arranque
+- CI coverage obrigatório (.c8rc.json thresholds)
+- Bootstrap readyHook em 9 fases nomeadas
+- Drop legacy morador/chefe_moradores/*_operacao (migration 027)
+- Integration tests com postgres real no CI
+- Docs: JOBS, IDEMPOTENCY, RECONCILIATION, RATE_LIMITING, DEPRECATION,
+  TECH_DEBT, CONTRIBUTING
+
+---
+
 ## v2.2 — Migração de domínio: Bairristas / Patrão di Zona (2026-04-15)
 
 Rename ponta a ponta do vocabulário de domínio:
