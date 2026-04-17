@@ -4,8 +4,9 @@
  * `syncOne(tab)` com debounce curto para evitar rajadas.
  *
  * Mapa: evento → conjunto de tabs a sincronizar.
- * Cada invalidação reinicia o debounce timer. Quando dispara, o sync corre
- * por cada tab em fila — bugs numa tab não param as outras.
+ * Cada tab tem o seu próprio debounce timer — uma rajada de eventos de saídas
+ * não atrasa o flush de membros. Quando o timer dispara, o sync corre
+ * isoladamente por tab.
  *
  * Chamado uma vez no bootstrap via registerSheetProjections().
  */
@@ -54,44 +55,40 @@ const EVENT_TO_TABS = {
 
 const DEBOUNCE_MS = 5_000;
 
-// Estado local do subscriber
-const _pending = new Set();
-let _timer = null;
-let _inFlight = false;
+// Estado local do subscriber — debounce por tab para que uma rajada de
+// eventos num domínio (ex: saídas) não atrase o flush de outro (ex: membros).
+const _timers = new Map();    // tabKey → setTimeout id
+const _inFlight = new Set();  // tabs com sync a decorrer
 
-function scheduleFlush() {
-  if (_timer) return;
-  _timer = setTimeout(async () => {
-    _timer = null;
-    if (_inFlight) {
-      // Houve sync a correr — reagenda; o novo estado apanha na próxima.
-      scheduleFlush();
-      return;
-    }
-    const tabs = [..._pending];
-    _pending.clear();
-    if (!tabs.length) return;
-    _inFlight = true;
-    const { syncOne } = require('./syncEngine');
-    try {
-      for (const tab of tabs) {
-        try {
-          const r = await syncOne(tab);
-          if (r?.skipped) {
-            log(`[PROJ] ${tab} skipped: ${r.skipped}`);
-          } else {
-            log(`[PROJ] ${tab} sync: ${r.ops} ops em ${r.ms}ms`);
-          }
-        } catch (e) {
-          warn(`[PROJ] ${tab} falhou: ${e.message}`);
-        }
+function _flushTab(tab) {
+  _timers.delete(tab);
+  if (_inFlight.has(tab)) {
+    // Sync a correr para esta tab — reagenda para apanhar o novo estado.
+    _scheduleTab(tab);
+    return;
+  }
+  _inFlight.add(tab);
+  const { syncOne } = require('./syncEngine');
+  syncOne(tab)
+    .then(r => {
+      if (r?.skipped) {
+        log(`[PROJ] ${tab} skipped: ${r.skipped}`);
+      } else {
+        log(`[PROJ] ${tab} sync: ${r.ops} ops em ${r.ms}ms`);
       }
-    } finally {
-      _inFlight = false;
-      // Se chegaram mais eventos entretanto, reagenda.
-      if (_pending.size) scheduleFlush();
-    }
-  }, DEBOUNCE_MS);
+    })
+    .catch(e => {
+      warn(`[PROJ] ${tab} falhou: ${e.message}`);
+    })
+    .finally(() => {
+      _inFlight.delete(tab);
+      // Se chegaram mais eventos entretanto para esta tab, já há timer.
+    });
+}
+
+function _scheduleTab(tab) {
+  if (_timers.has(tab)) return; // já agendado
+  _timers.set(tab, setTimeout(() => _flushTab(tab), DEBOUNCE_MS));
 }
 
 function onDomainEvent(event) {
@@ -99,8 +96,7 @@ function onDomainEvent(event) {
     const tabs = EVENT_TO_TABS[event];
     if (!tabs?.length) return;
     log(`[PROJ] evento '${event}' → tabs pendentes: ${tabs.join(', ')}`);
-    for (const tab of tabs) _pending.add(tab);
-    scheduleFlush();
+    for (const tab of tabs) _scheduleTab(tab);
   };
 }
 
@@ -111,14 +107,12 @@ function registerSheetProjections() {
   log(`[PROJ] Subscritos ${Object.keys(EVENT_TO_TABS).length} eventos → sheets projections.`);
 }
 
-// Exposto para testes — permite forçar o flush imediato.
+// Exposto para testes — cancela todos os timers e faz flush imediato de todas
+// as tabs pendentes.
 async function _flushNow() {
-  if (_timer) {
-    clearTimeout(_timer);
-    _timer = null;
-  }
-  const tabs = [..._pending];
-  _pending.clear();
+  const tabs = [..._timers.keys()];
+  for (const [, id] of _timers) clearTimeout(id);
+  _timers.clear();
   if (!tabs.length) return [];
   const { syncOne } = require('./syncEngine');
   const results = [];

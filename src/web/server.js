@@ -90,6 +90,15 @@ function createServer(port = 3000) {
     }
 
     if (url === '/metrics') {
+      const metricsToken = process.env.METRICS_TOKEN;
+      if (metricsToken) {
+        const auth = req.headers.authorization;
+        if (auth !== `Bearer ${metricsToken}`) {
+          res.writeHead(401, { 'Content-Type': 'text/plain' });
+          res.end('unauthorized');
+          return;
+        }
+      }
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end(metrics.toPrometheusText());
       return;

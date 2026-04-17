@@ -7,11 +7,19 @@ const { Pool, Client } = require('pg');
 const _DB_URL = process.env.DATABASE_URL;
 
 // SSL config:
-//   - Dev: SSL off.
-//   - Railway: Postgres interno usa cert self-signed numa rede privada — relax.
-//   - Outros ambientes produção: strict por default; override explícito via
-//     DB_SSL_INSECURE=true se a DB usar cert self-signed.
+//   - DB_SSL_MODE env var tem prioridade absoluta:
+//       'off'    → sem SSL
+//       'require'→ SSL sem verificação de certificado
+//       'verify' → SSL com verificação estrita
+//   - Sem DB_SSL_MODE, auto-detect (legacy):
+//       Dev → off | Railway → require | Produção → verify
+//       Override: DB_SSL_INSECURE=true → require
 function _resolveSSL() {
+  const mode = (process.env.DB_SSL_MODE || '').toLowerCase();
+  if (mode === 'off' || mode === 'false') return false;
+  if (mode === 'verify') return { rejectUnauthorized: true };
+  if (mode === 'require') return { rejectUnauthorized: false };
+  // Auto-detect (legacy behavior)
   if (process.env.NODE_ENV !== 'production') return false;
   if (process.env.DB_SSL_INSECURE === 'true') return { rejectUnauthorized: false };
   if (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID) {
