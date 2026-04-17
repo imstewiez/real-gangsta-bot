@@ -6,6 +6,16 @@ const envPath = process.env.ENV_FILE
   : path.resolve(process.cwd(), '.env');
 require('dotenv').config({ path: envPath });
 
+// Guild defaults — IDs do servidor actual como fallback.
+// Override individual via env vars. Para outro servidor, criar novo guild-defaults.json.
+let _guildDefaults = { roles: {}, categories: {}, channels: {} };
+try {
+  _guildDefaults = require('../config/guild-defaults.json');
+} catch { /* ficheiro opcional — sem ele, tudo vem do env */ }
+function guildId(name, section = 'roles') {
+  return process.env[name] || (_guildDefaults[section] && _guildDefaults[section][name]) || '';
+}
+
 function req(name) {
   const v = process.env[name];
   if (!v) throw new Error(`[CONFIG] Variável obrigatória em falta: ${name}`);
@@ -32,30 +42,30 @@ const CONFIG = {
 
   // ── Role IDs — Hierarquia completa ────────────────────────────────────────
   // Comando Total
-  MANDA_CHUVA_ROLE_ID: optId('MANDA_CHUVA_ROLE_ID', '1490397675525242930'),
-  KINGPIN_ROLE_ID: optId('KINGPIN_ROLE_ID', '1490397676204855308'),
+  MANDA_CHUVA_ROLE_ID: guildId('MANDA_CHUVA_ROLE_ID'),
+  KINGPIN_ROLE_ID: guildId('KINGPIN_ROLE_ID'),
   // Supervisão (oficiais seniores)
-  OG_ROLE_ID: optId('OG_ROLE_ID', '1490397683070930945'),
-  REAL_GANGSTER_ROLE_ID: optId('REAL_GANGSTER_ROLE_ID', '1491223266487173311'),
+  OG_ROLE_ID: guildId('OG_ROLE_ID'),
+  REAL_GANGSTER_ROLE_ID: guildId('REAL_GANGSTER_ROLE_ID'),
   // Patrão di Zona — chefe do bairro dos Bairristas
-  PATRAO_DI_ZONA_ROLE_ID: optId('PATRAO_DI_ZONA_ROLE_ID', '1490397679753101312'),
+  PATRAO_DI_ZONA_ROLE_ID: guildId('PATRAO_DI_ZONA_ROLE_ID'),
   // Bairristas — tier ordering (entry → topo):
   //   young_blood (tier 1, entrada) → o_gunao (tier 2, após 25k€) → gangster_fodido (tier 3, após 50k€).
   //   Promoções excepcionais acima de Gangster Fodido são manuais.
-  YOUNG_BLOOD_ROLE_ID: optId('YOUNG_BLOOD_ROLE_ID', '1491213753235275806'),
-  O_GUNAO_ROLE_ID: optId('O_GUNAO_ROLE_ID', '1491213423613317220'),
-  GANGSTER_FODIDO_ROLE_ID: optId('GANGSTER_FODIDO_ROLE_ID', '1491213170961022997'),
+  YOUNG_BLOOD_ROLE_ID: guildId('YOUNG_BLOOD_ROLE_ID'),
+  O_GUNAO_ROLE_ID: guildId('O_GUNAO_ROLE_ID'),
+  GANGSTER_FODIDO_ROLE_ID: guildId('GANGSTER_FODIDO_ROLE_ID'),
   // Role base obrigatória para qualquer bairrista (invariante).
-  BAIRRISTAS_BASE_ROLE_ID: optId('BAIRRISTAS_BASE_ROLE_ID', '1490397684597653634'),
+  BAIRRISTAS_BASE_ROLE_ID: guildId('BAIRRISTAS_BASE_ROLE_ID'),
   // Pendente — atribuído automaticamente a quem acaba de chegar ao servidor.
   // Único role que vê boas-vindas. Removido quando o pedido de tag é aprovado.
   PENDENTE_ROLE_ID: optId('PENDENTE_ROLE_ID'),
   // Roles flavor (não-core)
-  TROPINHAS_DO_GUETTO_ROLE_ID: optId('TROPINHAS_DO_GUETTO_ROLE_ID', '1490397688800477215'),
-  PATRULHA_PATA_ROLE_ID: optId('PATRULHA_PATA_ROLE_ID', '1490795383448928276'),
+  TROPINHAS_DO_GUETTO_ROLE_ID: guildId('TROPINHAS_DO_GUETTO_ROLE_ID'),
+  PATRULHA_PATA_ROLE_ID: guildId('PATRULHA_PATA_ROLE_ID'),
   // Bot / configurador
-  BOT_ROLE_ID: optId('BOT_ROLE_ID', '1493165105242832919'),
-  CONFIGURADOR_ROLE_ID: optId('CONFIGURADOR_ROLE_ID', '1490397674543906938'),
+  BOT_ROLE_ID: guildId('BOT_ROLE_ID'),
+  CONFIGURADOR_ROLE_ID: guildId('CONFIGURADOR_ROLE_ID'),
 
   // ── Aliases semânticos ────────────────────────────────────────────────────
   get COMMAND_ROLE_IDS() {
@@ -92,28 +102,28 @@ const CONFIG = {
   PROMO_GUNAO_TO_GANGSTER_FODIDO: Number(process.env.PROMO_GUNAO_TO_GANGSTER_FODIDO || 50000),
 
   // ── Category IDs ──────────────────────────────────────────────────────────
-  BAIRRISTA_TOPICOS_CATEGORY_ID: optId('BAIRRISTA_TOPICOS_CATEGORY_ID', '1491543491233448006'),
+  BAIRRISTA_TOPICOS_CATEGORY_ID: guildId('BAIRRISTA_TOPICOS_CATEGORY_ID', 'categories'),
   BAIRRISTA_ARQUIVO_CATEGORY_ID: optId('BAIRRISTA_ARQUIVO_CATEGORY_ID'),
 
   // ── Channel IDs ───────────────────────────────────────────────────────────
-  TAG_REQUEST_CHANNEL_ID: optId('TAG_REQUEST_CHANNEL_ID', '1490397785948688529'),
+  TAG_REQUEST_CHANNEL_ID: guildId('TAG_REQUEST_CHANNEL_ID', 'channels'),
   AUDIT_LOG_CHANNEL_ID: optId('AUDIT_LOG_CHANNEL_ID'),
-  PANEL_ENTRADA_CHANNEL_ID: optId('PANEL_ENTRADA_CHANNEL_ID', '1494337043877335162'),
+  PANEL_ENTRADA_CHANNEL_ID: guildId('PANEL_ENTRADA_CHANNEL_ID', 'channels'),
   WEEKLY_TOP_CHANNEL_ID: optId('WEEKLY_TOP_CHANNEL_ID'),
   // Resumo diário — default aponta ao canal de logs (staff only). O canal
   // não deve ser público (dados operacionais, não user-facing). Para forçar
   // outro, definir DAILY_SUMMARY_CHANNEL_ID no env.
-  DAILY_SUMMARY_CHANNEL_ID: optId('DAILY_SUMMARY_CHANNEL_ID', '1492739363463758027'),
+  DAILY_SUMMARY_CHANNEL_ID: guildId('DAILY_SUMMARY_CHANNEL_ID', 'channels'),
   CEMETERY_CHANNEL_ID: optId('CEMETERY_CHANNEL_ID'),
   // Canal dedicado para resultados ricos de saídas (3 embeds no fecho).
   // Se vazio, faz fallback para AUDIT_LOG_CHANNEL_ID.
   SAIDA_RESULTS_CHANNEL_ID: optId('SAIDA_RESULTS_CHANNEL_ID'),
   // Canal onde o painel da saída é publicado (painel vivo + inscrições).
   // Default = mesmo canal das notificações (malta junta-se e vê lifecycle).
-  SAIDA_SESSION_CHANNEL_ID: optId('SAIDA_SESSION_CHANNEL_ID', '1494383859893276714'),
+  SAIDA_SESSION_CHANNEL_ID: guildId('SAIDA_SESSION_CHANNEL_ID', 'channels'),
   STRUCTURE_SYNC_LOG_CHANNEL_ID: optId('STRUCTURE_SYNC_LOG_CHANNEL_ID'),
   PANEL_BAIRRISTAS_CHANNEL_ID: optId('PANEL_BAIRRISTAS_CHANNEL_ID'),
-  PANEL_OFICIAIS_CHANNEL_ID: optId('PANEL_OFICIAIS_CHANNEL_ID', '1493661876557709452'),
+  PANEL_OFICIAIS_CHANNEL_ID: guildId('PANEL_OFICIAIS_CHANNEL_ID', 'channels'),
   PANEL_CHEFIA_CHANNEL_ID: optId('PANEL_CHEFIA_CHANNEL_ID'),
   PANEL_PATRAO_DI_ZONA_CHANNEL_ID: optId('PANEL_PATRAO_DI_ZONA_CHANNEL_ID'),
 
