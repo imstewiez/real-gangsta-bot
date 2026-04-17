@@ -48,7 +48,7 @@ async function updateItem(id, fields) {
 async function recordMovement({ movementType, itemId, quantity, memberId = null, memberRole = '', origin = '', destination = '', context = '', notes = '', operationId = null, createdBy }) {
   const res = await query(
     `INSERT INTO inventory_movements
-     (movement_type, item_id, quantity, member_id, member_role, origin, destination, context, notes, operation_id, created_by)
+     (movement_type, item_id, quantity, member_id, member_role, origin, destination, context, notes, saida_id, created_by)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
     [movementType, itemId, quantity, memberId, memberRole, origin, destination, context, notes, operationId, createdBy]
   );
@@ -134,7 +134,7 @@ async function getMovementsByOperation(operationId) {
     SELECT im.*, i.name as item_name
     FROM inventory_movements im
     JOIN items i ON i.id = im.item_id
-    WHERE im.operation_id = $1
+    WHERE im.saida_id = $1
     ORDER BY im.created_at
   `, [operationId]);
   return res.rows;

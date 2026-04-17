@@ -64,7 +64,7 @@ async function render(interaction, filter) {
   } else if (filter === 'sales') {
     filtered = movements.filter(m => /^venda_/.test(m.movement_type));
   } else if (filter === 'saida') {
-    filtered = movements.filter(m => m.operation_id != null);
+    filtered = movements.filter(m => m.saida_id != null);
   }
   filtered = filtered.slice(0, 20);
 
@@ -80,7 +80,7 @@ async function render(interaction, filter) {
       const emj = TYPE_EMOJI[m.movement_type] || '•';
       const lbl = TYPE_LABEL[m.movement_type] || m.movement_type;
       const date = formatPtDate(m.created_at);
-      const opTag = m.operation_id ? ` · saída **#${m.operation_id}**` : '';
+      const opTag = m.saida_id ? ` · saída **#${m.saida_id}**` : '';
       return `${emj} \`${date}\` **${m.quantity}× ${m.item_name}** — ${lbl}${opTag}`;
     });
 
