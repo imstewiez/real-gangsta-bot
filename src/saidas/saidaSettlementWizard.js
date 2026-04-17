@@ -5,7 +5,7 @@
  * Fluxo:
  *   1. handleStart(interaction, saidaId): publica ephemeral com embed de
  *      estado actual dos participantes + select "próximo" + botão "Concluir"
- *   2. user escolhe participante no select → abre modal (kills, downs,
+ *   2. user escolhe participante no select → abre modal (kills,
  *      morreu S/N, morreu com material S/N, notas)
  *   3. modal submit: actualiza DB participant (settled=true) + re-renderiza
  *      o embed (participante desaparece do select)
@@ -52,8 +52,7 @@ async function _renderWizardMessage(saidaId) {
       const status = p.died ? `${EMOJI.MORTE} Morto` : `${EMOJI.OK} Vivo`;
       const typeTag = p.participant_type === 'trabalhador' ? ' · 🛠️' : '';
       const k = p.kills ? ` · **${p.kills}k**` : '';
-      const d = p.downs ? ` · ${p.downs}d` : '';
-      lines.push(`• <@${p.discord_id}>${typeTag} — ${status}${k}${d}`);
+      lines.push(`• <@${p.discord_id}>${typeTag} — ${status}${k}`);
     }
     if (settled.length > 10) lines.push(`_… e mais ${settled.length - 10}._`);
   }
@@ -130,7 +129,7 @@ async function handleSelectParticipant(interaction) {
 }
 
 // STEP 2: clicou Vivo/Morto → se caracterizado+org+vivo, pergunta arma;
-// caso contrário salta para o modal de kills/downs/notes.
+// caso contrário salta para o modal de kills/notes.
 async function handleOutcome(interaction) {
   if (isDuplicate(interaction.id)) return;
   const parts = interaction.customId.split('::');
@@ -200,11 +199,6 @@ async function _openSettleModal(interaction, saidaId, discordId, outcome, weapon
           .setStyle(TextInputStyle.Short)
           .setRequired(false).setMaxLength(4).setPlaceholder('0').setValue('0')),
       new ActionRowBuilder().addComponents(
-        new TextInputBuilder().setCustomId('downs')
-          .setLabel(SAIDAS.MODAL.DOWNS_LABEL)
-          .setStyle(TextInputStyle.Short)
-          .setRequired(false).setMaxLength(4).setPlaceholder('0').setValue('0')),
-      new ActionRowBuilder().addComponents(
         new TextInputBuilder().setCustomId('notes')
           .setLabel(SAIDAS.MODAL.NOTES_LABEL)
           .setStyle(TextInputStyle.Paragraph)
@@ -225,7 +219,6 @@ async function handleSettleModal(interaction) {
   const weaponDecision = parts[5]; // 'returned' | 'not_returned' | 'lost' | 'died_auto' | 'no_org_weapon'
 
   const kills = Math.max(0, Math.min(parseInt(getModalField(interaction, 'kills')) || 0, 100));
-  const downs = Math.max(0, Math.min(parseInt(getModalField(interaction, 'downs')) || 0, 100));
   const died = outcome === 'dead';
   // Se morreu e tinha material da org, assume perda total. Se morreu sem
   // material, não há perda (weaponDecision='died_auto' mas sem issued).
@@ -272,7 +265,7 @@ async function handleSettleModal(interaction) {
   const netDelta = returnedValue - lostValue;
 
   await saidaRepo.updateParticipant(saidaId, member.id, {
-    kills, downs, deaths_count: died ? 1 : 0,
+    kills, deaths_count: died ? 1 : 0,
     issued_value: issuedValue,
     returned_value: returnedValue,
     lost_value: lostValue,
@@ -281,7 +274,7 @@ async function handleSettleModal(interaction) {
     settled: true,
   });
 
-  log(`[WIZARD] saída #${saidaId} participante ${discordId}: k=${kills} d=${downs} died=${died}`);
+  log(`[WIZARD] saída #${saidaId} participante ${discordId}: k=${kills} died=${died}`);
 
   // Re-renderiza a mensagem com o estado actualizado
   const { embed, components } = await _renderWizardMessage(saidaId);
@@ -310,7 +303,7 @@ async function handleFinish(interaction) {
   const pending = participants.filter(p => !p.settled);
   for (const p of pending) {
     await saidaRepo.updateParticipant(saidaId, p.member_id, {
-      kills: 0, downs: 0, deaths_count: 0,
+      kills: 0, deaths_count: 0,
       died: false, survived: true, returned: true,
       settled: true,
       individual_result_submitted: true,

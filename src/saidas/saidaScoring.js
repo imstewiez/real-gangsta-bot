@@ -5,11 +5,10 @@
  *
  * Fórmulas (intencionalmente explícitas e ajustáveis):
  *
- *   performance_score = kills*10 + wins_bonus + disciplina_bonus
+ *   performance_score = kills*10 + wins_bonus + survival_bonus
  *     + se o resultado for 'vitoria': +20
  *     + se survived=true e !died: +5
  *     - se died: -5
- *     + kills*10, downs*3, assists*2 (se preenchidos)
  *     clamped a [0, 100]
  *
  *   discipline_score = % de material devolvido sobre o recebido
@@ -31,7 +30,6 @@ function computeSaidaScores({ participants, result, suppliedTotal }) {
   const scored = participants.map(p => {
     const kills = Number(p.kills || 0);
     const deaths_count = Number(p.deaths_count || (p.died ? 1 : 0));
-    const downs = Number(p.downs || 0);
     const died = Boolean(p.died);
     const survived = p.survived !== false && !died;
 
@@ -45,7 +43,6 @@ function computeSaidaScores({ participants, result, suppliedTotal }) {
     // Performance score — combina combate e sobrevivência + resultado.
     let perf = 0;
     perf += kills * 10;
-    perf += downs * 3;
     if (survived) perf += 5;
     if (died) perf -= 5;
     if (isWin) perf += 20;
@@ -62,7 +59,7 @@ function computeSaidaScores({ participants, result, suppliedTotal }) {
 
     return {
       ...p,
-      kills, deaths_count, downs, died, survived,
+      kills, deaths_count, died, survived,
       issued_value, returned_value, lost_value, consumed_value,
       net_material_delta,
       performance_score,

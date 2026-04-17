@@ -165,7 +165,6 @@ const SAIDAS = {
   // Placeholders de modal
   MODAL: {
     KILLS_LABEL: 'Kills',
-    DOWNS_LABEL: 'Downs',
     DIED_LABEL: 'Morreu? (S/N)',
     DIED_WITH_MAT_LABEL: 'Morreu com material da firma?',
     NOTES_LABEL: 'Notas',

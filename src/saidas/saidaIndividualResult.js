@@ -117,12 +117,6 @@ async function handleOpenSubmitResult(interaction) {
         .setStyle(TextInputStyle.Short)
         .setRequired(true).setMaxLength(3)
         .setPlaceholder('0').setValue('0')),
-    new ActionRowBuilder().addComponents(
-      new TextInputBuilder().setCustomId('downs')
-        .setLabel('Quantos downs? (opcional)')
-        .setStyle(TextInputStyle.Short)
-        .setRequired(false).setMaxLength(3)
-        .setPlaceholder('0')),
   ];
 
   if (needsWeaponQ) {
@@ -181,8 +175,6 @@ async function handleSubmitResultModal(interaction) {
   const died = !survived;
   const killsRaw = String(getModalField(interaction, 'kills') || '0').trim();
   const kills = Math.max(0, Math.min(99, parseInt(killsRaw, 10) || 0));
-  const downsRaw = String(getModalField(interaction, 'downs') || '0').trim();
-  const downs = Math.max(0, Math.min(99, parseInt(downsRaw, 10) || 0));
   const notes = String(getModalField(interaction, 'notes') || '').slice(0, 300);
 
   // Weapon return status
@@ -203,7 +195,6 @@ async function handleSubmitResultModal(interaction) {
   const upd = await query(`
     UPDATE operation_participants
        SET kills = $3,
-           downs = $8,
            died  = $4,
            survived = $5,
            deaths_count = CASE WHEN $4 = TRUE THEN 1 ELSE 0 END,
@@ -214,7 +205,7 @@ async function handleSubmitResultModal(interaction) {
      WHERE operation_id = $1 AND member_id = $2
        AND individual_result_submitted = FALSE
      RETURNING id
-  `, [saidaId, member.id, kills, died, survived, notes, weaponReturnStatus, downs]);
+  `, [saidaId, member.id, kills, died, survived, notes, weaponReturnStatus]);
 
   if (upd.rowCount === 0) {
     return safeReply(interaction, {
@@ -228,12 +219,12 @@ async function handleSubmitResultModal(interaction) {
     entityType: 'saida',
     entityId: String(saidaId),
     actorId: interaction.user.id,
-    afterState: { memberId: member.id, kills, downs, died, weaponReturnStatus, notes },
+    afterState: { memberId: member.id, kills, died, weaponReturnStatus, notes },
   });
 
   eventBus.emitAsync('saida.individual_result', {
     saidaId, memberId: member.id, discordId: interaction.user.id,
-    kills, downs, died, weaponReturnStatus, at: new Date(),
+    kills, died, weaponReturnStatus, at: new Date(),
   }).catch(() => {});
 
   // Refresh session embed
@@ -245,7 +236,7 @@ async function handleSubmitResultModal(interaction) {
     `${EMOJI.OK} Resultado registado na **Saída #${saidaId}**.`,
     '',
     `• ${died ? `${EMOJI.MORTE} Morreste` : `${EMOJI.OK} Sobreviveste`}`,
-    `• ${EMOJI.KILL} **${kills}** kill(s)${downs > 0 ? ` · ${EMOJI.DOWN} **${downs}** down(s)` : ''}`,
+    `• ${EMOJI.KILL} **${kills}** kill(s)`,
   ];
   if (weaponReturnStatus === 'declared_returned') {
     lines.push(`• 🔫 Declaraste que devolveste a arma — **pendente de confirmação staff**`);
