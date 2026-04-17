@@ -103,7 +103,7 @@ async function notifyBairristaMovement(opts) {
     const channel = await _findOrCreateChannel();
     if (!channel) return;
 
-    const isVenda = opts.movementType === 'venda_bairrista' || opts.movementType === 'venda_morador';
+    const isVenda = opts.movementType === 'venda_bairrista';
     const L = BAIRRISTAS.LOG;
     const title = isVenda ? L.VENDA_TITLE : L.ENTREGA_TITLE;
     const color = isVenda ? 0xf1c40f : 0x2ecc71;

@@ -57,9 +57,9 @@ async function _memberMonthDeliveries(memberId, monthStart, monthEnd) {
   const r = await query(
     `
     SELECT
-      SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador') THEN quantity ELSE 0 END)::int AS deliveries,
-      SUM(CASE WHEN movement_type IN ('venda_bairrista','venda_morador') THEN quantity ELSE 0 END)::int AS sales,
-      SUM(CASE WHEN movement_type IN ('entrega_bairrista','venda_bairrista','entrega_oficial','entrega_morador','venda_morador')
+      SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS deliveries,
+      SUM(CASE WHEN movement_type = 'venda_bairrista' THEN quantity ELSE 0 END)::int AS sales,
+      SUM(CASE WHEN movement_type IN ('entrega_bairrista','venda_bairrista','entrega_oficial')
           THEN quantity ELSE 0 END)::int AS weighted_qty
     FROM inventory_movements
     WHERE member_id = $1 AND created_at >= $2::date AND created_at <= ($3::date + INTERVAL '1 day')`,
@@ -131,9 +131,9 @@ async function recomputeAllTimeStats() {
     WITH inv AS (
       SELECT
         member_id,
-        SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_morador','entrega_oficial') THEN quantity ELSE 0 END)::int AS deliveries,
-        SUM(CASE WHEN movement_type IN ('venda_bairrista','venda_morador') THEN quantity ELSE 0 END)::int AS sales,
-        SUM(CASE WHEN movement_type IN ('entrega_bairrista','venda_bairrista','entrega_oficial','entrega_morador','venda_morador')
+        SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS deliveries,
+        SUM(CASE WHEN movement_type = 'venda_bairrista' THEN quantity ELSE 0 END)::int AS sales,
+        SUM(CASE WHEN movement_type IN ('entrega_bairrista','venda_bairrista','entrega_oficial')
             THEN quantity ELSE 0 END)::numeric AS weighted_value,
         MIN(created_at::date) AS first_activity,
         MAX(created_at::date) AS last_activity

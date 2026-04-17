@@ -53,8 +53,7 @@ async function getMemberMaterialQty(memberId) {
     FROM inventory_movements im
     WHERE im.member_id = $1
       AND im.movement_type IN (
-        'entrega_bairrista', 'venda_bairrista', 'entrega_oficial',
-        'entrega_morador', 'venda_morador'
+        'entrega_bairrista', 'venda_bairrista', 'entrega_oficial'
       )
   `,
     [memberId]
@@ -78,9 +77,8 @@ async function checkAndPromote(discordId, guild, client) {
   const dbMember = await memberRepo.findByDiscordId(discordId);
   if (!dbMember) return null;
 
-  // Determinar tier atual pela DB (aceita role bairrista ou legacy 'morador')
-  const isBairristaRole = dbMember.role === 'bairrista' || dbMember.role === 'morador';
-  const currentTier = isBairristaRole ? dbMember.tier || CONFIG.BAIRRISTA_DEFAULT_TIER : null;
+  // Determinar tier atual pela DB
+  const currentTier = dbMember.role === 'bairrista' ? dbMember.tier || CONFIG.BAIRRISTA_DEFAULT_TIER : null;
   if (!currentTier) return null; // Não é bairrista, não aplica
 
   // Ver se há promoção disponível para este tier

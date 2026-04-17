@@ -32,7 +32,6 @@ const PANELS = [
     key: 'panel_bairristas',
     channelKey: 'PANEL_BAIRRISTAS_CHANNEL_ID',
     autoName: autoName('painel-bairristas'),
-    autoAltNames: [autoName('painel-moradores')],
     autoCategoryKey: 'GUETTO',
     build: buildBairristaPanel,
     stickySource: 'panel:bairristas',
@@ -57,7 +56,6 @@ const PANELS = [
     key: 'panel_patrao_di_zona',
     channelKey: 'PANEL_PATRAO_DI_ZONA_CHANNEL_ID',
     autoName: autoName('painel-patrao-di-zona'),
-    autoAltNames: [autoName('painel-chefe-moradores')],
     autoCategoryKey: 'GUETTO',
     build: buildPatraoDiZonaPanel,
     stickySource: 'panel:patrao_di_zona',
@@ -217,9 +215,9 @@ async function bootstrapAll(client) {
   }, {});
   log(`[PANELS] Painéis inicializados — ${JSON.stringify(counts)}.`);
 
-  // Backfill — garante que todos os canais individuais de morador têm o
-  // painel morador (welcome + botões). Necessário para canais criados antes
-  // de o painel existir, ou para canais onde a mensagem foi apagada.
+  // Backfill — garante que todos os canais individuais de bairrista têm o
+  // painel bairrista (welcome + botões). Necessário para canais criados
+  // antes de o painel existir, ou para canais onde a mensagem foi apagada.
   const backfill = await backfillResidentPanels(client);
   results.push({
     key: 'backfill_resident_panels',
@@ -233,11 +231,11 @@ async function bootstrapAll(client) {
 }
 
 /**
- * Itera todos os canais de morador activos e posta o painel morador se
- * ainda não existir uma mensagem do bot com esse painel lá.
+ * Itera todos os canais de bairrista activos e posta o painel bairrista
+ * se ainda não existir uma mensagem do bot com esse painel lá.
  *
  * Idempotente: não duplica se o painel já estiver no canal (detectado por
- * título do embed "Painel do Morador" ou "Bem-vindo ao bairro").
+ * título do embed "Painel do Bairrista" ou "Bem-vindo ao bairro").
  */
 async function backfillResidentPanels(client) {
   const { query } = require('./db');

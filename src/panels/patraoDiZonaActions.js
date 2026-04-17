@@ -30,7 +30,7 @@ async function listarBairristas(interaction) {
   }
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const res = await query(
-    "SELECT * FROM members WHERE role IN ('bairrista', 'morador') AND status = 'ativo' ORDER BY display_name"
+    "SELECT * FROM members WHERE role = 'bairrista' AND status = 'ativo' ORDER BY display_name"
   );
   const bairristas = res.rows;
   if (!bairristas.length) {
@@ -55,8 +55,8 @@ async function verEntregasOuVendas(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const id = interaction.customId;
   const types = id.includes('entregas')
-    ? ['entrega_bairrista', 'entrega_morador']
-    : ['venda_bairrista', 'venda_morador'];
+    ? ['entrega_bairrista']
+    : ['venda_bairrista'];
   const label = id.includes('entregas') ? 'Entregas' : 'Vendas';
   const res = await query(
     `
@@ -98,9 +98,7 @@ async function verTopsBairristas(interaction) {
   const { rankingRepo } = require('../repositories');
   const { start, end } = weekBounds();
   const weekStart = start.toISOString().split('T')[0];
-  // Primeiro tenta role novo; fallback para legacy.
-  let rankings = await rankingRepo.getWeekRankingByRole(weekStart, 'bairrista', 10);
-  if (!rankings.length) rankings = await rankingRepo.getWeekRankingByRole(weekStart, 'morador', 10);
+  const rankings = await rankingRepo.getWeekRankingByRole(weekStart, 'bairrista', 10);
   const weekLabel = `${formatPtDateOnly(start)} a ${formatPtDateOnly(end)}`;
   const embed = rankingEmbed('Top Bairristas', rankings, weekLabel);
   return safeReply(interaction, { embeds: [embed] }, { dismissible: true });

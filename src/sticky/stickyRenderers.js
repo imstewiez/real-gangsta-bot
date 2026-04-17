@@ -48,12 +48,10 @@ function registerBuiltinRenderers() {
     const { buildEntradaPanel } = require('../panels/entradaPanel');
     return buildEntradaPanel();
   });
-  const bairristaPanel = async () => {
+  registerRenderer('panel:bairristas', async () => {
     const { buildBairristaPanel } = require('../panels/bairristaPanel');
     return buildBairristaPanel();
-  };
-  registerRenderer('panel:bairristas', bairristaPanel);
-  registerRenderer('panel:moradores', bairristaPanel); // legacy alias
+  });
   registerRenderer('panel:oficiais', async () => {
     const { buildOficialPanel } = require('../panels/oficialPanel');
     return buildOficialPanel();
@@ -62,12 +60,10 @@ function registerBuiltinRenderers() {
     const { buildChefiaPanel } = require('../panels/chefiaPanel');
     return buildChefiaPanel();
   });
-  const patraoPanel = async () => {
+  registerRenderer('panel:patrao_di_zona', async () => {
     const { buildPatraoDiZonaPanel } = require('../panels/patraoDiZonaPanel');
     return buildPatraoDiZonaPanel();
-  };
-  registerRenderer('panel:patrao_di_zona', patraoPanel);
-  registerRenderer('panel:chefe_moradores', patraoPanel); // legacy alias
+  });
 }
 
 module.exports = { registerBuiltinRenderers };

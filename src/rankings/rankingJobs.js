@@ -118,9 +118,9 @@ async function publishDailySummary(client) {
 
     const matRes = await query(
       `SELECT
-         COUNT(*) FILTER (WHERE movement_type IN ('entrega_bairrista','entrega_morador'))::int AS entregas,
-         COUNT(*) FILTER (WHERE movement_type IN ('venda_bairrista','venda_morador'))::int AS vendas,
-         COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_bairrista','venda_bairrista','entrega_morador','venda_morador')), 0)::int AS qty
+         COUNT(*) FILTER (WHERE movement_type = 'entrega_bairrista')::int AS entregas,
+         COUNT(*) FILTER (WHERE movement_type = 'venda_bairrista')::int AS vendas,
+         COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_bairrista','venda_bairrista')), 0)::int AS qty
        FROM inventory_movements
        WHERE created_at::date = $1`,
       [today]

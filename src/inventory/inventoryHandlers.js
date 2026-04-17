@@ -192,7 +192,7 @@ async function handleQuantityModal(interaction) {
   try {
     const member = await memberRepo.findByDiscordId(interaction.user.id);
     let movementType = pending.movementType;
-    if (member?.role === 'oficial' && (movementType === 'entrega_bairrista' || movementType === 'entrega_morador')) {
+    if (member?.role === 'oficial' && movementType === 'entrega_bairrista') {
       movementType = 'entrega_oficial';
     }
 
@@ -207,7 +207,7 @@ async function handleQuantityModal(interaction) {
 
     pendingItemSelections.delete(interaction.user.id);
 
-    const isVenda = movementType === 'venda_bairrista' || movementType === 'venda_morador';
+    const isVenda = movementType === 'venda_bairrista';
     const movValue = quantity * (pending.itemPrice || 0);
     const balanceAfter = result?.balanceAfter ?? null;
 

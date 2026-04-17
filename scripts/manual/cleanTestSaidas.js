@@ -54,9 +54,9 @@ async function main() {
       DELETE FROM inventory_movements
       WHERE movement_type IN (
         'fornecimento_org',
-        'devolucao_saida', 'devolucao_operacao',
-        'perda_saida', 'perda_operacao',
-        'consumo_saida', 'consumo_operacao'
+        'devolucao_saida',
+        'perda_saida',
+        'consumo_saida'
       ) AND saida_id IS NULL
     `);
     console.log(`inventory_movements (tipos saída): ${r1b.rowCount} apagados`);

@@ -16,7 +16,7 @@
  *   - NÃO cria canais globais (CHANNELS_TO_CREATE eliminado)
  *   - NÃO faz auto-restyle de canais com padrão emoji│nome
  *   - NÃO reordena categorias
- *   - NÃO formata canais morador em bulk (só onboarding + promoção fazem isso,
+ *   - NÃO formata canais bairrista em bulk (só onboarding + promoção fazem isso,
  *     contextualmente, ao ciclo de vida do membro)
  *
  * Para auditar divergências contra o lock usar `/rg-layout-check`.
@@ -310,7 +310,7 @@ async function runPermsOnly(guild, opts = {}) {
       if (ch.parentId !== tpl.id) continue;
       if (explicitIds.has(chId)) continue;
       if (explicitNames.has(ch.name)) continue;
-      // Canal com overrides user-specific (canal individual de morador) — não tocar
+      // Canal com overrides user-specific (canal individual de bairrista) — não tocar
       if (ch.permissionOverwrites.cache.some(o => o.type === 1)) continue;
       if (apply) {
         try {

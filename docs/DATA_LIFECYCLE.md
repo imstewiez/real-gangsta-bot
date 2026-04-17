@@ -210,7 +210,7 @@ Registo mutations de domínio. Cobertura actual:
 | Members | diário (job + manual) | Compara tier/role Discord vs DB; backfill corrige |
 | Channels | diário + on-demand | `guild.channels.fetch()` por cada resident_channel |
 | Sheet | on-demand (5min collect) | `sheet_sync_state` vs thresholds |
-| Roles invariants | diário | YB/OG/GF ⇒ MORADORES_BASE (já existia) |
+| Roles invariants | diário | YB/OG/GF ⇒ BAIRRISTAS_BASE |
 
 **Fluxo**:
 1. `check()` dry-run → drift report (contadores + amostras)

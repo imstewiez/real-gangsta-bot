@@ -19,10 +19,8 @@ const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
 
 const TYPE_EMOJI = {
   entrega_bairrista: '📥',
-  entrega_morador: '📥',
   entrega_oficial: '📥',
   venda_bairrista: '💰',
-  venda_morador: '💰',
   fornecimento_org: '📤',
   devolucao_saida: '↩️',
   perda_saida: '❌',
@@ -34,10 +32,8 @@ const TYPE_EMOJI = {
 
 const TYPE_LABEL = {
   entrega_bairrista: 'entrega',
-  entrega_morador: 'entrega',
   entrega_oficial: 'entrega oficial',
   venda_bairrista: 'venda',
-  venda_morador: 'venda',
   fornecimento_org: 'fornecimento',
   devolucao_saida: 'devolução saída',
   perda_saida: 'perda saída',

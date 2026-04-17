@@ -4,7 +4,7 @@
  *
  * Acções:
  *   1. Procura o registo na DB via discord_id
- *   2. Se for morador e tem canal individual:
+ *   2. Se for bairrista e tem canal individual:
  *       - DELETE_ON_LEAVE=true (default) → apaga canal
  *       - ARCHIVE_ON_LEAVE=true         → move para arquivo (mantém)
  *   3. Marca members.status = 'inativo' + resident_channels.status
@@ -30,7 +30,7 @@ async function handleMemberLeave(guildMember, client) {
     return { action: 'noop', reason: 'not_registered' };
   }
 
-  const wasBairrista = dbMember.role === 'bairrista' || dbMember.role === 'morador';
+  const wasBairrista = dbMember.role === 'bairrista';
   const channelId = dbMember.channel_id;
   let channelAction = 'none';
 
@@ -40,7 +40,7 @@ async function handleMemberLeave(guildMember, client) {
       const channel = await guild.channels.fetch(channelId).catch(() => null);
       if (channel) {
         if (CONFIG.DELETE_ON_LEAVE) {
-          await queueChannelOp(() => channel.delete(`Morador ${displayName} saiu do servidor`));
+          await queueChannelOp(() => channel.delete(`Bairrista ${displayName} saiu do servidor`));
           await query(
             `UPDATE resident_channels SET status = 'deleted', deleted_at = NOW()
               WHERE channel_id = $1 AND status = 'active'`,

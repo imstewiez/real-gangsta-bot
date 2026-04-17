@@ -187,7 +187,7 @@ O bot NÃO:
 - força nomes "canónicos" de nada
 
 O bot AINDA:
-- cria o canal individual de morador em onboarding
+- cria o canal individual de bairrista em onboarding
 - renomeia esse canal pessoal quando o membro é promovido
 - aplica permissões em categorias e canais conhecidos (segurança)
 - cria o role `Pendente` se não existir (onboarding depende)

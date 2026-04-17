@@ -32,7 +32,7 @@ Desde este ponto em diante, o bot **não** renomeia categorias/canais/roles
 globalmente, **não** move canais entre categorias, e **não** cria canais
 globais. O único layout que o bot controla é:
 
-- Canal individual de morador — criado no onboarding, renomeado na
+- Canal individual de bairrista — criado no onboarding, renomeado na
   promoção (contextual ao ciclo de vida do membro, não é layout global).
 - Permissões das categorias e canais conhecidos — aplicadas via
   `/rg-sync-perms` como garantia de segurança (não tocam em nomes/posições).

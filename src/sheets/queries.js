@@ -46,25 +46,21 @@ function daysAgoISO(n) {
 //   - 'transferencia' aparece como par de movimentos: ajuste_manual -X numa casa
 //     + ajuste_manual +X na outra casa, mantendo total global inalterado.
 // Movement types considerados "entrada de stock" (+quantity no balance).
-// Aceita tanto os nomes novos (bairrista) como os legacy (morador).
 const POSITIVE_MOVES = `(
   'saldo_inicial',
   'entrega_bairrista', 'venda_bairrista', 'entrega_oficial',
-  'entrega_morador', 'venda_morador',
-  'devolucao_saida', 'devolucao_operacao', 'apreendido', 'craftado'
+  'devolucao_saida', 'apreendido', 'craftado'
 )`;
 // Movement types agregados como "entregas" (in-flow para stock, tipicamente
-// moradores/bairristas e oficiais). Também aceita legacy.
-const ENTREGA_MOVES = `(
-  'entrega_bairrista', 'entrega_oficial', 'entrega_morador'
-)`;
+// bairristas e oficiais).
+const ENTREGA_MOVES = `('entrega_bairrista', 'entrega_oficial')`;
 // Movement types de venda (sobrepõem a entrega_bairrista no sentido oposto).
-const VENDA_MOVES = "('venda_bairrista', 'venda_morador')";
+const VENDA_MOVES = "('venda_bairrista')";
 
 const STOCK_BALANCE_CASE = `
   CASE
     WHEN im.movement_type IN ${POSITIVE_MOVES} THEN im.quantity
-    WHEN im.movement_type IN ('fornecimento_org', 'consumo_saida', 'consumo_operacao', 'perda_saida', 'perda_operacao')
+    WHEN im.movement_type IN ('fornecimento_org', 'consumo_saida', 'perda_saida')
       THEN -im.quantity
     WHEN im.movement_type = 'ajuste_manual'
       THEN im.quantity
@@ -108,8 +104,8 @@ async function getDashboardKPIs() {
   const weekMov = await query(
     `
     SELECT
-      SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador') THEN quantity ELSE 0 END)::int AS entradas,
-      SUM(CASE WHEN movement_type IN ('venda_bairrista','venda_morador') THEN quantity ELSE 0 END)::int AS vendas
+      SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS entradas,
+      SUM(CASE WHEN movement_type IN ('venda_bairrista') THEN quantity ELSE 0 END)::int AS vendas
     FROM inventory_movements sm
     WHERE sm.created_at >= $1::date`,
     [w.start]
@@ -118,7 +114,7 @@ async function getDashboardKPIs() {
   const prevMov = await query(
     `
     SELECT
-      SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador') THEN quantity ELSE 0 END)::int AS entradas
+      SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS entradas
     FROM inventory_movements sm
     WHERE sm.created_at >= $1::date AND sm.created_at < $2::date`,
     [pw.start, pw.end]
@@ -177,16 +173,13 @@ async function getDashboardKPIs() {
     [pw.start, pw.end]
   );
 
-  // 4) Members ativos por role (contagens separadas para UI premium).
-  //    'moradores' retornado como agregado legacy; UI nova usa os campos
-  //    separados `bairristas`, `patroes`, `oficiais`, `chefia`.
+  // 4) Members ativos por role — contagens separadas.
   const members = await query(`
     SELECT
-      SUM(CASE WHEN role IN ('bairrista','morador') AND status='ativo' THEN 1 ELSE 0 END)::int AS bairristas,
-      SUM(CASE WHEN role IN ('patrao_di_zona','chefe_moradores') AND status='ativo' THEN 1 ELSE 0 END)::int AS patroes,
-      SUM(CASE WHEN role = 'oficial' AND status='ativo' THEN 1 ELSE 0 END)::int AS oficiais,
-      SUM(CASE WHEN role = 'chefia' AND status='ativo' THEN 1 ELSE 0 END)::int AS chefia,
-      SUM(CASE WHEN role IN ('bairrista','patrao_di_zona','morador','chefe_moradores') AND status='ativo' THEN 1 ELSE 0 END)::int AS moradores
+      SUM(CASE WHEN role = 'bairrista'      AND status='ativo' THEN 1 ELSE 0 END)::int AS bairristas,
+      SUM(CASE WHEN role = 'patrao_di_zona' AND status='ativo' THEN 1 ELSE 0 END)::int AS patroes,
+      SUM(CASE WHEN role = 'oficial'        AND status='ativo' THEN 1 ELSE 0 END)::int AS oficiais,
+      SUM(CASE WHEN role = 'chefia'         AND status='ativo' THEN 1 ELSE 0 END)::int AS chefia
     FROM members`);
 
   // 5) Top contributor (week) — em UNIDADES de material entregue
@@ -195,7 +188,7 @@ async function getDashboardKPIs() {
     SELECT m.discord_id, m.display_name, SUM(sm.quantity)::int AS value
     FROM inventory_movements sm
     JOIN members m ON m.id = sm.member_id
-    WHERE sm.created_at >= $1::date AND sm.movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador')
+    WHERE sm.created_at >= $1::date AND sm.movement_type IN ('entrega_bairrista','entrega_oficial')
     GROUP BY m.discord_id, m.display_name
     ORDER BY value DESC NULLS LAST LIMIT 1`,
     [w.start]
@@ -252,8 +245,6 @@ async function getDashboardKPIs() {
     patroesAtivos: members.rows[0]?.patroes || 0,
     oficiaisAtivos: members.rows[0]?.oficiais || 0,
     chefiaAtivos: members.rows[0]?.chefia || 0,
-    // Legacy alias — soma bairristas + patroes
-    moradoresAtivos: members.rows[0]?.moradores || 0,
     topContributor: topContrib.rows[0] || null,
     topKiller: topKiller.rows[0] || null,
     topSpotProfit: spotNet.rows[0] || null,
@@ -296,9 +287,9 @@ async function getWeeklySummary() {
   const deliveries = await query(
     `
     SELECT
-      SUM(CASE WHEN sm.movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador') THEN quantity ELSE 0 END)::int AS entregas,
-      SUM(CASE WHEN sm.movement_type IN ('venda_bairrista','venda_morador') THEN quantity ELSE 0 END)::int AS vendas,
-      SUM(CASE WHEN sm.movement_type IN ('entrega_bairrista','venda_bairrista','entrega_oficial','entrega_morador','venda_morador')
+      SUM(CASE WHEN sm.movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS entregas,
+      SUM(CASE WHEN sm.movement_type IN ('venda_bairrista') THEN quantity ELSE 0 END)::int AS vendas,
+      SUM(CASE WHEN sm.movement_type IN ('entrega_bairrista','venda_bairrista','entrega_oficial')
           THEN quantity ELSE 0 END)::int AS weighted
     FROM inventory_movements sm
     WHERE sm.created_at >= $1::date`,
@@ -333,8 +324,8 @@ async function getDailyBreakdown(days = 14) {
     ) ops ON true
     LEFT JOIN LATERAL (
       SELECT
-        SUM(CASE WHEN sm.movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador') THEN quantity ELSE 0 END)::int AS entradas,
-        SUM(CASE WHEN sm.movement_type IN ('venda_bairrista','venda_morador') THEN quantity ELSE 0 END)::int AS vendas
+        SUM(CASE WHEN sm.movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS entradas,
+        SUM(CASE WHEN sm.movement_type IN ('venda_bairrista') THEN quantity ELSE 0 END)::int AS vendas
       FROM inventory_movements sm
       WHERE DATE(sm.created_at) = d::date
     ) mov ON true
@@ -377,11 +368,11 @@ async function getMembersFull() {
     FROM members m
     LEFT JOIN LATERAL (
       SELECT
-        SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador') THEN quantity ELSE 0 END)::int AS entregas,
+        SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS entregas,
         -- Material total em UNIDADES (não valor €). O preço estimado do item
         -- é usado só em cálculos económicos de saídas, não aqui.
-        SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador') THEN quantity ELSE 0 END)::int AS weighted_entregas,
-        SUM(CASE WHEN movement_type IN ('venda_bairrista','venda_morador') THEN quantity ELSE 0 END)::int AS vendas
+        SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS weighted_entregas,
+        SUM(CASE WHEN movement_type IN ('venda_bairrista') THEN quantity ELSE 0 END)::int AS vendas
       FROM inventory_movements sm
       WHERE sm.member_id = m.id
     ) mv ON true
@@ -550,7 +541,7 @@ async function getRankings() {
     FROM inventory_movements sm
     JOIN items i ON i.id = sm.item_id
     JOIN members m ON m.id = sm.member_id
-    WHERE sm.movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador')
+    WHERE sm.movement_type IN ('entrega_bairrista','entrega_oficial')
     GROUP BY m.discord_id, m.display_name, m.tier
     ORDER BY weighted DESC NULLS LAST LIMIT 25`);
 
@@ -626,8 +617,8 @@ async function getInventoryFull() {
       (COALESCE(sb.balance_armazem,0) * COALESCE(i.estimated_value,0))::numeric AS value_armazem,
       (COALESCE(sb.balance_grupo,0)   * COALESCE(i.estimated_value,0))::numeric AS value_grupo,
       (SELECT MAX(created_at) FROM inventory_movements WHERE item_id = i.id) AS last_movement,
-      (SELECT SUM(quantity)::int FROM inventory_movements WHERE item_id = i.id AND movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador')) AS total_in,
-      (SELECT SUM(quantity)::int FROM inventory_movements WHERE item_id = i.id AND movement_type NOT IN ('entrega_bairrista','entrega_oficial','entrega_morador')) AS total_out
+      (SELECT SUM(quantity)::int FROM inventory_movements WHERE item_id = i.id AND movement_type IN ('entrega_bairrista','entrega_oficial')) AS total_in,
+      (SELECT SUM(quantity)::int FROM inventory_movements WHERE item_id = i.id AND movement_type NOT IN ('entrega_bairrista','entrega_oficial')) AS total_out
     FROM items i
     JOIN stock_balances sb ON sb.id = i.id
     WHERE i.active = true
@@ -692,7 +683,7 @@ async function getTopMovers() {
     FROM inventory_movements sm
     JOIN members m ON m.id = sm.member_id
     WHERE sm.created_at >= $1::date
-      AND sm.movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador')
+      AND sm.movement_type IN ('entrega_bairrista','entrega_oficial')
     GROUP BY m.display_name
     ORDER BY value DESC NULLS LAST LIMIT 3`,
     [w.start]
@@ -762,8 +753,8 @@ async function getTrending() {
     query(
       `
     SELECT
-      SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial','entrega_morador') THEN quantity ELSE 0 END)::int AS entregas,
-      SUM(CASE WHEN movement_type IN ('venda_bairrista','venda_morador') THEN quantity ELSE 0 END)::int AS vendas
+      SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS entregas,
+      SUM(CASE WHEN movement_type IN ('venda_bairrista') THEN quantity ELSE 0 END)::int AS vendas
     FROM inventory_movements
     WHERE created_at >= $1::date AND created_at < $2::date`,
       [s, e]

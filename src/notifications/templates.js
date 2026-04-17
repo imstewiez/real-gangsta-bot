@@ -24,10 +24,8 @@ const mention = discordId => (discordId ? `<@${discordId}>` : '—');
 
 const MOVEMENT_LABELS = {
   entrega_bairrista: { label: 'Entrega (Bairrista)', color: 0x27ae60, emoji: EMOJI.ENTREGA },
-  entrega_morador: { label: 'Entrega (Bairrista)', color: 0x27ae60, emoji: EMOJI.ENTREGA },
   entrega_oficial: { label: 'Entrega (Oficial)', color: 0x27ae60, emoji: EMOJI.ENTREGA },
   venda_bairrista: { label: 'Venda', color: 0xf39c12, emoji: EMOJI.VENDA },
-  venda_morador: { label: 'Venda', color: 0xf39c12, emoji: EMOJI.VENDA },
   fornecimento_org: { label: 'Fornecimento (saída)', color: 0x3498db, emoji: EMOJI.FORNECER },
   devolucao_saida: { label: 'Devolução de saída', color: 0x3498db, emoji: EMOJI.DEVOLVER },
   perda_saida: { label: 'Perda em saída', color: 0xe74c3c, emoji: EMOJI.PERDIDO },

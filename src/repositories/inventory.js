@@ -77,14 +77,10 @@ async function getStock() {
           WHEN im.movement_type IN (
             'saldo_inicial',
             'entrega_bairrista', 'venda_bairrista', 'entrega_oficial',
-            'entrega_morador', 'venda_morador',
-            'devolucao_saida', 'devolucao_operacao',
-            'apreendido', 'craftado'
+            'devolucao_saida', 'apreendido', 'craftado'
           ) THEN im.quantity
           WHEN im.movement_type IN (
-            'fornecimento_org',
-            'consumo_saida', 'consumo_operacao',
-            'perda_saida', 'perda_operacao'
+            'fornecimento_org', 'consumo_saida', 'perda_saida'
           ) THEN -im.quantity
           WHEN im.movement_type = 'ajuste_manual'
             THEN im.quantity
@@ -108,14 +104,10 @@ async function getStockForItem(itemId) {
         WHEN movement_type IN (
           'saldo_inicial',
           'entrega_bairrista', 'venda_bairrista', 'entrega_oficial',
-          'entrega_morador', 'venda_morador',
-          'devolucao_saida', 'devolucao_operacao',
-          'apreendido', 'craftado'
+          'devolucao_saida', 'apreendido', 'craftado'
         ) THEN quantity
         WHEN movement_type IN (
-          'fornecimento_org',
-          'consumo_saida', 'consumo_operacao',
-          'perda_saida', 'perda_operacao'
+          'fornecimento_org', 'consumo_saida', 'perda_saida'
         ) THEN -quantity
         WHEN movement_type = 'ajuste_manual'
           THEN quantity
@@ -181,15 +173,15 @@ async function getWeeklyMovements(weekStart, weekEnd) {
   const res = await query(
     `
     SELECT im.member_id, m.discord_id, m.display_name, m.role as member_role,
-      SUM(CASE WHEN im.movement_type IN ('entrega_bairrista', 'entrega_morador', 'entrega_oficial') THEN im.quantity ELSE 0 END) as deliveries,
-      SUM(CASE WHEN im.movement_type IN ('venda_bairrista', 'venda_morador') THEN im.quantity ELSE 0 END) as sales,
-      SUM(CASE WHEN im.movement_type IN ('entrega_bairrista', 'venda_bairrista', 'entrega_oficial', 'entrega_morador', 'venda_morador')
+      SUM(CASE WHEN im.movement_type IN ('entrega_bairrista', 'entrega_oficial') THEN im.quantity ELSE 0 END) as deliveries,
+      SUM(CASE WHEN im.movement_type = 'venda_bairrista' THEN im.quantity ELSE 0 END) as sales,
+      SUM(CASE WHEN im.movement_type IN ('entrega_bairrista', 'venda_bairrista', 'entrega_oficial')
           THEN im.quantity ELSE 0 END) as weighted_value
     FROM inventory_movements im
     JOIN members m ON m.id = im.member_id
     JOIN items i ON i.id = im.item_id
     WHERE im.created_at >= $1 AND im.created_at <= $2
-      AND im.movement_type IN ('entrega_bairrista', 'venda_bairrista', 'entrega_oficial', 'entrega_morador', 'venda_morador')
+      AND im.movement_type IN ('entrega_bairrista', 'venda_bairrista', 'entrega_oficial')
     GROUP BY im.member_id, m.discord_id, m.display_name, m.role
     ORDER BY weighted_value DESC
   `,

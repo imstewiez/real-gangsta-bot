@@ -14,7 +14,7 @@
  * Isto é garantido explicitamente por CHANNEL-LEVEL deny overwrites nas
  * roles `BAIRRISTA_TIER_ROLE_IDS` + `BAIRRISTAS_BASE_ROLE_ID`. A categoria
  * GUETTO permite estas roles ver-se por default (para canais partilhados
- * como chat-moradores, material, etc.), então sem o deny explícito a
+ * como chat-bairristas, material, etc.), então sem o deny explícito a
  * permissão cascateia para os canais filhos.
  */
 
@@ -124,8 +124,9 @@ function buildBairristaChannelOverwrites(guild, ownerId, botId, opts = {}) {
 
 /**
  * Reaplica as overwrites correctas a todos os canais individuais de
- * bairristas. Fetches `members.channel_id` onde role é bairrista/morador
- * e status=ativo. Idempotente — aplica mesmo que já esteja correcto.
+ * bairristas. Fetches `members.channel_id` onde role é bairrista ou
+ * patrao_di_zona e status=ativo. Idempotente — aplica mesmo que já
+ * esteja correcto.
  *
  * Usado pelo `/rg-sync-perms apply` e como one-shot depois do rename.
  *
@@ -141,7 +142,7 @@ async function reconcileBairristaChannels(guild, opts = {}) {
       FROM members m
      WHERE m.channel_id IS NOT NULL
        AND m.status = 'ativo'
-       AND m.role IN ('bairrista', 'morador', 'patrao_di_zona', 'chefe_moradores')
+       AND m.role IN ('bairrista', 'patrao_di_zona')
   `);
 
   const report = { scanned: 0, fixed: 0, renamed: 0, drift_renamed: 0, skipped: 0, missing: 0, errors: [] };

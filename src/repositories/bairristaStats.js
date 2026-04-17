@@ -14,8 +14,8 @@ const { weekBounds } = require('../util');
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const DELIVERY_TYPES = "'entrega_bairrista','entrega_morador','entrega_oficial'";
-const SALE_TYPES = "'venda_bairrista','venda_morador'";
+const DELIVERY_TYPES = "'entrega_bairrista','entrega_oficial'";
+const SALE_TYPES = "'venda_bairrista'";
 const ALL_CONTRIB_TYPES = `${DELIVERY_TYPES},${SALE_TYPES}`;
 
 async function _memberId(discordId) {

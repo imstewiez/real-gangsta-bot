@@ -31,8 +31,8 @@ async function recordDelivery({
     quantity,
     memberId: member.id,
     memberRole: member.role,
-    origin: /bairrista|morador|oficial/.test(movementType) ? 'membro' : 'org',
-    destination: /bairrista|morador|oficial/.test(movementType) ? 'org' : 'membro',
+    origin: /bairrista|oficial/.test(movementType) ? 'membro' : 'org',
+    destination: /bairrista|oficial/.test(movementType) ? 'org' : 'membro',
     context: operationId ? `Operação #${operationId}` : '',
     notes,
     operationId,
@@ -71,7 +71,7 @@ async function recordDelivery({
   }).catch(() => {});
 
   // Fire-and-forget: log dedicado dos Bairristas (entregas + vendas)
-  const isBairristaMovement = /entrega_bairrista|venda_bairrista|entrega_morador|venda_morador/.test(movementType);
+  const isBairristaMovement = /entrega_bairrista|venda_bairrista/.test(movementType);
   if (isBairristaMovement) {
     (async () => {
       const { start } = weekBounds();

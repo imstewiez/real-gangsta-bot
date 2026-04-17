@@ -14,14 +14,14 @@ const assert = require('node:assert/strict');
 // Cópia textual da matriz de sinais — alinhada com getStock/getStockForItem.
 const POSITIVE_TYPES = new Set([
   'saldo_inicial',
-  'entrega_morador',
-  'venda_morador',
+  'entrega_bairrista',
+  'venda_bairrista',
   'entrega_oficial',
-  'devolucao_operacao',
+  'devolucao_saida',
   'apreendido',
   'craftado',
 ]);
-const NEGATIVE_TYPES = new Set(['fornecimento_org', 'consumo_operacao', 'perda_operacao']);
+const NEGATIVE_TYPES = new Set(['fornecimento_org', 'consumo_saida', 'perda_saida']);
 
 function signedQuantity(movementType, quantity) {
   if (POSITIVE_TYPES.has(movementType)) return quantity;
@@ -40,8 +40,8 @@ describe('inventoryLedger — sinais por movement_type', () => {
   });
 
   it('entregas e vendas adicionam stock', () => {
-    assert.equal(signedQuantity('entrega_morador', 5), 5);
-    assert.equal(signedQuantity('venda_morador', 5), 5);
+    assert.equal(signedQuantity('entrega_bairrista', 5), 5);
+    assert.equal(signedQuantity('venda_bairrista', 5), 5);
     assert.equal(signedQuantity('entrega_oficial', 5), 5);
     assert.equal(signedQuantity('apreendido', 5), 5);
     assert.equal(signedQuantity('craftado', 5), 5);
@@ -49,12 +49,12 @@ describe('inventoryLedger — sinais por movement_type', () => {
 
   it('fornecimentos/consumos/perdas removem stock', () => {
     assert.equal(signedQuantity('fornecimento_org', 5), -5);
-    assert.equal(signedQuantity('consumo_operacao', 5), -5);
-    assert.equal(signedQuantity('perda_operacao', 5), -5);
+    assert.equal(signedQuantity('consumo_saida', 5), -5);
+    assert.equal(signedQuantity('perda_saida', 5), -5);
   });
 
-  it('devolucao_operacao traz stock de volta', () => {
-    assert.equal(signedQuantity('devolucao_operacao', 5), 5);
+  it('devolucao_saida traz stock de volta', () => {
+    assert.equal(signedQuantity('devolucao_saida', 5), 5);
   });
 
   it('ajuste_manual usa o sinal recebido', () => {
@@ -65,16 +65,28 @@ describe('inventoryLedger — sinais por movement_type', () => {
   it('movement_type desconhecido devolve 0 (rede de segurança)', () => {
     assert.equal(signedQuantity('xyz_unknown', 999), 0);
   });
+
+  it('movement_types legacy (morador/operacao) já não são reconhecidos', () => {
+    // Post-v2.3: os nomes legacy deixaram de ser válidos — ver migration 027.
+    // A migration faz UPDATE dos dados antigos, portanto o ledger em prod só
+    // tem os novos. Se aparecer um legacy em runtime é um bug — não deve
+    // contribuir para o balance.
+    assert.equal(signedQuantity('entrega_morador', 5), 0);
+    assert.equal(signedQuantity('venda_morador', 5), 0);
+    assert.equal(signedQuantity('consumo_operacao', 5), 0);
+    assert.equal(signedQuantity('perda_operacao', 5), 0);
+    assert.equal(signedQuantity('devolucao_operacao', 5), 0);
+  });
 });
 
 describe('inventoryLedger — fluxo end-to-end', () => {
   it('bootstrap + entrega + fornecimento + devolução = balance correcto', () => {
     const movs = [
       { type: 'saldo_inicial', qty: 100 }, // +100
-      { type: 'entrega_morador', qty: 50 }, // +50  → 150
+      { type: 'entrega_bairrista', qty: 50 }, // +50  → 150
       { type: 'fornecimento_org', qty: 30 }, // -30  → 120
-      { type: 'devolucao_operacao', qty: 20 }, // +20  → 140
-      { type: 'perda_operacao', qty: 5 }, //  -5  → 135
+      { type: 'devolucao_saida', qty: 20 }, // +20  → 140
+      { type: 'perda_saida', qty: 5 }, //  -5  → 135
     ];
     assert.equal(computeBalance(movs), 135);
   });

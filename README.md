@@ -50,7 +50,7 @@ npm start
 Env vars: `PROMO_YOUNG_BLOOD_TO_GUNAO` e `PROMO_GUNAO_TO_GANGSTER_FODIDO`.
 
 ### Inventário (ledger)
-Tipos de movimento: `saldo_inicial`, `entrega_bairrista`, `venda_bairrista`, `entrega_oficial`, `fornecimento_org`, `consumo_saida`, `devolucao_saida`, `ajuste_manual`, `perda_saida`, `apreendido`, `craftado`. (Legacy: `entrega_morador`, `venda_morador` — aceites em leitura.)
+Tipos de movimento: `saldo_inicial`, `entrega_bairrista`, `venda_bairrista`, `entrega_oficial`, `fornecimento_org`, `consumo_saida`, `devolucao_saida`, `ajuste_manual`, `perda_saida`, `apreendido`, `craftado`.
 
 Stock é sempre calculado a partir do ledger — nunca sobreposto.
 

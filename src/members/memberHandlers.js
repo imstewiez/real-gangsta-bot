@@ -10,13 +10,11 @@ const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
 const MOVEMENT_LABELS = {
   entrega_bairrista: 'Entrega',
   venda_bairrista: 'Venda',
-  entrega_morador: 'Entrega', // legacy
-  venda_morador: 'Venda', // legacy
   entrega_oficial: 'Entrega (oficial)',
-  devolucao_operacao: 'Devolução',
+  devolucao_saida: 'Devolução',
   fornecimento_org: 'Fornecido',
-  consumo_operacao: 'Consumo',
-  perda_operacao: 'Perda',
+  consumo_saida: 'Consumo',
+  perda_saida: 'Perda',
   ajuste_manual: 'Ajuste',
   apreendido: 'Apreendido',
   craftado: 'Craftado',
@@ -27,13 +25,11 @@ const MOVEMENT_LABELS = {
 const MOVEMENT_EMOJI = {
   entrega_bairrista: EMOJI.MATERIAL,
   venda_bairrista: EMOJI.LUCRO,
-  entrega_morador: EMOJI.MATERIAL,
-  venda_morador: EMOJI.LUCRO,
   entrega_oficial: EMOJI.MATERIAL,
-  devolucao_operacao: EMOJI.DEVOLVER,
+  devolucao_saida: EMOJI.DEVOLVER,
   fornecimento_org: EMOJI.FORNECER,
-  consumo_operacao: EMOJI.CRAFT,
-  perda_operacao: EMOJI.PERDIDO,
+  consumo_saida: EMOJI.CRAFT,
+  perda_saida: EMOJI.PERDIDO,
   ajuste_manual: EMOJI.AJUSTAR,
   apreendido: EMOJI.MATERIAL,
   craftado: EMOJI.CRAFT,
@@ -54,8 +50,8 @@ async function handleMemberCommand(interaction) {
   const embed = memberProfileEmbed(member);
 
   const totals = await inventoryRepo.getMemberTotals(member.id);
-  const totalEntregas = (totals.entrega_bairrista || 0) + (totals.entrega_morador || 0);
-  const totalVendas = (totals.venda_bairrista || 0) + (totals.venda_morador || 0);
+  const totalEntregas = totals.entrega_bairrista || 0;
+  const totalVendas = totals.venda_bairrista || 0;
   const totalOficial = totals.entrega_oficial || 0;
   if (totalEntregas || totalVendas || totalOficial) {
     embed.addFields({
@@ -119,10 +115,10 @@ async function handleMemberTotalsButton(interaction) {
 
   const totals = await inventoryRepo.getMemberTotals(member.id);
   const agg = {
-    entregas: (totals.entrega_bairrista || 0) + (totals.entrega_morador || 0),
-    vendas: (totals.venda_bairrista || 0) + (totals.venda_morador || 0),
+    entregas: totals.entrega_bairrista || 0,
+    vendas: totals.venda_bairrista || 0,
     oficial: totals.entrega_oficial || 0,
-    devolvido: totals.devolucao_operacao || 0,
+    devolvido: totals.devolucao_saida || 0,
   };
 
   const embed = brandEmbed('MOVEMENT')

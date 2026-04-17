@@ -11,7 +11,6 @@
  * Antes disso, todas as chamadas são no-op silenciosas (boot-safe).
  *
  * Mapping movement_type → canal:
- *   saldo_inicial, entrega_morador, venda_morador, entrega_oficial,
  *   todos os movimentos → stock-log (canal único, badge distingue tipo)
  *
  * Resumo periódico + alertas → `resumo-stock`.
@@ -44,18 +43,13 @@ const MOVEMENT_TO_CHANNEL = {
   saldo_inicial: 'stock_log',
   entrega_bairrista: 'stock_log',
   venda_bairrista: 'stock_log',
-  entrega_morador: 'stock_log', // legacy — safe to remove when no old data
-  venda_morador: 'stock_log', // legacy — safe to remove when no old data
   entrega_oficial: 'stock_log',
   devolucao_saida: 'stock_log',
-  devolucao_operacao: 'stock_log', // legacy — safe to remove when no old data
   apreendido: 'stock_log',
   craftado: 'stock_log',
   fornecimento_org: 'stock_log',
   consumo_saida: 'stock_log',
-  consumo_operacao: 'stock_log', // legacy — safe to remove when no old data
   perda_saida: 'stock_log',
-  perda_operacao: 'stock_log', // legacy — safe to remove when no old data
   ajuste_manual: 'stock_log',
 };
 
@@ -64,18 +58,13 @@ const MOVEMENT_KIND = {
   saldo_inicial: 'entradas',
   entrega_bairrista: 'entradas',
   venda_bairrista: 'entradas',
-  entrega_morador: 'entradas', // legacy — safe to remove when no old data
-  venda_morador: 'entradas', // legacy — safe to remove when no old data
   entrega_oficial: 'entradas',
   devolucao_saida: 'entradas',
-  devolucao_operacao: 'entradas', // legacy — safe to remove when no old data
   apreendido: 'entradas',
   craftado: 'entradas',
   fornecimento_org: 'saidas',
   consumo_saida: 'saidas',
-  consumo_operacao: 'saidas', // legacy — safe to remove when no old data
   perda_saida: 'saidas',
-  perda_operacao: 'saidas', // legacy — safe to remove when no old data
   ajuste_manual: 'ajustes',
 };
 
@@ -83,18 +72,13 @@ const MOVEMENT_LABEL = {
   saldo_inicial: '📦 Saldo Inicial',
   entrega_bairrista: '📥 Entrega (Bairrista)',
   venda_bairrista: '💰 Venda (Bairrista)',
-  entrega_morador: '📥 Entrega (Bairrista)', // legacy — safe to remove when no old data
-  venda_morador: '💰 Venda (Bairrista)', // legacy — safe to remove when no old data
   entrega_oficial: '📥 Entrega (Oficial)',
   devolucao_saida: '↩️ Devolução de Saída',
-  devolucao_operacao: '↩️ Devolução de Saída', // legacy — safe to remove when no old data
   apreendido: '🪪 Apreendido',
   craftado: '🛠️ Craftado',
   fornecimento_org: '📤 Fornecimento (Org)',
   consumo_saida: '🔥 Consumo em Saída',
-  consumo_operacao: '🔥 Consumo em Saída', // legacy — safe to remove when no old data
   perda_saida: '💥 Perda em Saída',
-  perda_operacao: '💥 Perda em Saída', // legacy — safe to remove when no old data
   ajuste_manual: '🔧 Ajuste Manual',
 };
 

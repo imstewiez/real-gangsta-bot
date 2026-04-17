@@ -862,20 +862,10 @@ const PERMS_READONLY_BAIRRISTAS_VIEW = {
 // Aceita tanto o nome formatado (`emoji・𝗻𝗼𝗺𝗲`) como nomes legacy
 // (`emoji│nome`). Assim, seja qual for o que existe, as perms aplicam-se.
 const _BOAS_VINDAS_NAMES = [ch('👋', 'boas-vindas'), '👋│boas-vindas', ch('📋', 'painel-entrada'), '📋│painel-entrada'];
-const _PAINEL_BAIRRISTAS_NAMES = [
-  ch('📋', 'painel-bairristas'),
-  '📋│painel-bairristas',
-  ch('📋', 'painel-moradores'),
-  '📋│painel-moradores',
-]; // legacy
+const _PAINEL_BAIRRISTAS_NAMES = [ch('📋', 'painel-bairristas'), '📋│painel-bairristas'];
 const _PAINEL_OFICIAIS_NAMES = [ch('📋', 'painel-oficiais'), '📋│painel-oficiais'];
 const _PAINEL_CHEFIA_NAMES = [ch('📋', 'painel-chefia'), '📋│painel-chefia'];
-const _PAINEL_PATRAO_DI_ZONA_NAMES = [
-  ch('📋', 'painel-patrao-di-zona'),
-  '📋│painel-patrao-di-zona',
-  ch('📋', 'painel-chefe-moradores'),
-  '📋│painel-chefe-moradores',
-]; // legacy
+const _PAINEL_PATRAO_DI_ZONA_NAMES = [ch('📋', 'painel-patrao-di-zona'), '📋│painel-patrao-di-zona'];
 
 const CHANNEL_PERM_OVERRIDES_BY_NAME = {};
 for (const n of _BOAS_VINDAS_NAMES) CHANNEL_PERM_OVERRIDES_BY_NAME[n] = PERMS_BOAS_VINDAS;
