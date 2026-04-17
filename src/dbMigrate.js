@@ -21,20 +21,23 @@ const MIGRATIONS_DIR = path.resolve(__dirname, '..', 'migrations');
 
 function loadMigrations() {
   if (!fs.existsSync(MIGRATIONS_DIR)) return [];
-  const files = fs.readdirSync(MIGRATIONS_DIR)
+  const files = fs
+    .readdirSync(MIGRATIONS_DIR)
     .filter(f => f.endsWith('.sql'))
     .sort();
 
-  return files.map(f => {
-    const match = f.match(/^(\d+)_(.+)\.sql$/);
-    if (!match) return null;
-    return {
-      id: parseInt(match[1], 10),
-      name: match[2],
-      file: f,
-      sql: fs.readFileSync(path.join(MIGRATIONS_DIR, f), 'utf8'),
-    };
-  }).filter(Boolean);
+  return files
+    .map(f => {
+      const match = f.match(/^(\d+)_(.+)\.sql$/);
+      if (!match) return null;
+      return {
+        id: parseInt(match[1], 10),
+        name: match[2],
+        file: f,
+        sql: fs.readFileSync(path.join(MIGRATIONS_DIR, f), 'utf8'),
+      };
+    })
+    .filter(Boolean);
 }
 
 async function runMigrations() {

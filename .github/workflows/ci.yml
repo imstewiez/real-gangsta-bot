@@ -33,3 +33,41 @@ jobs:
           name: coverage
           path: coverage/
           retention-days: 7
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: bot
+          POSTGRES_PASSWORD: bot
+          POSTGRES_DB: bot_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bot"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Apply migrations
+        run: npm run db:migrate
+        env:
+          DATABASE_URL: postgresql://bot:bot@localhost:5432/bot_ci
+          DB_SSL_MODE: off
+          DISCORD_BOT_TOKEN: "test"
+          DISCORD_GUILD_ID: "test"
+      - name: Integration tests
+        run: npm run test:integration
+        env:
+          DATABASE_URL: postgresql://bot:bot@localhost:5432/bot_ci
+          DB_SSL_MODE: off
+          DISCORD_BOT_TOKEN: "test"
+          DISCORD_GUILD_ID: "test"

@@ -44,7 +44,13 @@ const stubSaidaRepo = {
   getParticipants: async () => state.participants,
   // findById — devolve saída em status 'em_liquidacao' por default (permite finalizeSaida).
   // Testes podem override state.saidaStatus e state.saidaFields para testar outros caminhos.
-  findById: async id => ({ id, status: state.saidaStatus || 'em_liquidacao', result: null, spot: null, ...state.saidaFields }),
+  findById: async id => ({
+    id,
+    status: state.saidaStatus || 'em_liquidacao',
+    result: null,
+    spot: null,
+    ...state.saidaFields,
+  }),
   closeSaida: async (id, data) => {
     state.closedPayload = { id, ...data };
     // Simula retorno da row completa (inclui campos pré-existentes como spot).

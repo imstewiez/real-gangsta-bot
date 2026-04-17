@@ -59,10 +59,7 @@ function validateConfig(config = CONFIG) {
 
   // PENDENTE — só aviso, flow sobrevive sem.
   if (!config.PENDENTE_ROLE_ID && config.AUTO_ASSIGN_PENDENTE) {
-    warn(
-      'PENDENTE_ROLE_ID',
-      'AUTO_ASSIGN_PENDENTE=true mas role em falta — newcomers não vão ser marcados.'
-    );
+    warn('PENDENTE_ROLE_ID', 'AUTO_ASSIGN_PENDENTE=true mas role em falta — newcomers não vão ser marcados.');
   }
 
   // ── Canais-chave ──
@@ -113,10 +110,7 @@ function validateConfig(config = CONFIG) {
     err('AVAILABILITY_SLOTS', 'Precisa de pelo menos 1 slot.');
   }
   if (config.AVAILABILITY_AUTO_PUBLISH_ENABLED && !config.AVAILABILITY_CHANNEL_ID) {
-    err(
-      'AVAILABILITY_CHANNEL_ID',
-      'AUTO_PUBLISH_ENABLED=true mas canal em falta — job vai falhar.'
-    );
+    err('AVAILABILITY_CHANNEL_ID', 'AUTO_PUBLISH_ENABLED=true mas canal em falta — job vai falhar.');
   }
 
   // ── Radio ──
@@ -141,10 +135,7 @@ function validateConfig(config = CONFIG) {
   // ── Sticky ──
   const validStickyModes = new Set(['repost', 'update', 'none']);
   if (!validStickyModes.has(config.PANELS_STICKY_MODE)) {
-    err(
-      'PANELS_STICKY_MODE',
-      `Valor "${config.PANELS_STICKY_MODE}" inválido. Válidos: repost, update, none.`
-    );
+    err('PANELS_STICKY_MODE', `Valor "${config.PANELS_STICKY_MODE}" inválido. Válidos: repost, update, none.`);
   }
 
   return findings;
@@ -172,7 +163,9 @@ function validateOrExit(config) {
   // eslint-disable-next-line no-console
   console[hasErrors ? 'error' : 'log'](report);
   if (hasErrors) {
-    throw new Error(`[CONFIG] ${findings.filter(f => f.level === 'error').length} erros de configuração — abortar arranque.`);
+    throw new Error(
+      `[CONFIG] ${findings.filter(f => f.level === 'error').length} erros de configuração — abortar arranque.`
+    );
   }
   return findings;
 }

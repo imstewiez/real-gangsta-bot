@@ -96,9 +96,18 @@ describe('templates saídas — novos eventos', () => {
     });
     const json = embed.toJSON();
     const fieldNames = (json.fields || []).map(f => f.name);
-    assert.ok(fieldNames.some(n => /Fornecido/i.test(n)), 'deve mostrar field de Fornecido');
-    assert.ok(fieldNames.some(n => /Devolvido/i.test(n)), 'deve mostrar field de Devolvido');
-    assert.ok(fieldNames.some(n => /Perdido/i.test(n)), 'deve mostrar field de Perdido');
+    assert.ok(
+      fieldNames.some(n => /Fornecido/i.test(n)),
+      'deve mostrar field de Fornecido'
+    );
+    assert.ok(
+      fieldNames.some(n => /Devolvido/i.test(n)),
+      'deve mostrar field de Devolvido'
+    );
+    assert.ok(
+      fieldNames.some(n => /Perdido/i.test(n)),
+      'deve mostrar field de Perdido'
+    );
   });
 
   it('unaccounted > 0 gera field de warning', () => {

@@ -12,6 +12,8 @@
     "dev": "node --watch src/index.js",
     "db:migrate": "node -e \"require('./src/dbMigrate').runMigrations().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); })\"",
     "test": "node --test test/*.test.js",
+    "test:integration": "node --test test/integration/*.test.js",
+    "test:all": "node --test test/*.test.js test/integration/*.test.js",
     "lint": "eslint src/ test/ scripts/",
     "format": "prettier --write src/ test/ scripts/",
     "format:check": "prettier --check src/ test/ scripts/",

@@ -10,7 +10,11 @@ const {
 const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
 const { successEmbed, stockEmbed, brandEmbed, progressBar } = require('../shared/embedBuilders');
 const { recordDelivery, adjustStock, getCurrentStock } = require('./inventoryEngine');
-const { buildCategorySelectMenu, buildItemSelectMenuForCategory, buildStockAdjustmentModal } = require('./inventoryMenus');
+const {
+  buildCategorySelectMenu,
+  buildItemSelectMenuForCategory,
+  buildStockAdjustmentModal,
+} = require('./inventoryMenus');
 const { inventoryRepo, memberRepo } = require('../repositories');
 const { isChefia } = require('../permissions/permissionEngine');
 const { EMOJI, ERRORS, MODALS, INVENTORY } = require('../content');

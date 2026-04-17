@@ -57,8 +57,8 @@ const DEBOUNCE_MS = 5_000;
 
 // Estado local do subscriber — debounce por tab para que uma rajada de
 // eventos num domínio (ex: saídas) não atrase o flush de outro (ex: membros).
-const _timers = new Map();    // tabKey → setTimeout id
-const _inFlight = new Set();  // tabs com sync a decorrer
+const _timers = new Map(); // tabKey → setTimeout id
+const _inFlight = new Set(); // tabs com sync a decorrer
 
 function _flushTab(tab) {
   _timers.delete(tab);
@@ -88,7 +88,10 @@ function _flushTab(tab) {
 
 function _scheduleTab(tab) {
   if (_timers.has(tab)) return; // já agendado
-  _timers.set(tab, setTimeout(() => _flushTab(tab), DEBOUNCE_MS));
+  _timers.set(
+    tab,
+    setTimeout(() => _flushTab(tab), DEBOUNCE_MS)
+  );
 }
 
 function onDomainEvent(event) {

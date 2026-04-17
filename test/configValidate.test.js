@@ -66,35 +66,27 @@ test('validateConfig — role ID com formato inválido é erro', () => {
 });
 
 test('validateConfig — PENDENTE em falta com AUTO_ASSIGN=true é warning', () => {
-  const findings = validateConfig(
-    baseConfig({ PENDENTE_ROLE_ID: '', AUTO_ASSIGN_PENDENTE: true })
-  );
+  const findings = validateConfig(baseConfig({ PENDENTE_ROLE_ID: '', AUTO_ASSIGN_PENDENTE: true }));
   const warn = findings.find(f => f.key === 'PENDENTE_ROLE_ID');
   assert.ok(warn);
   assert.equal(warn.level, 'warn');
 });
 
 test('validateConfig — canais críticos em falta são erros', () => {
-  const findings = validateConfig(
-    baseConfig({ TAG_REQUEST_CHANNEL_ID: '', PANEL_ENTRADA_CHANNEL_ID: '' })
-  );
+  const findings = validateConfig(baseConfig({ TAG_REQUEST_CHANNEL_ID: '', PANEL_ENTRADA_CHANNEL_ID: '' }));
   assert.ok(findings.find(f => f.key === 'TAG_REQUEST_CHANNEL_ID' && f.level === 'error'));
   assert.ok(findings.find(f => f.key === 'PANEL_ENTRADA_CHANNEL_ID' && f.level === 'error'));
 });
 
 test('validateConfig — Sheets parcial é erro', () => {
-  const findings = validateConfig(
-    baseConfig({ GOOGLE_SERVICE_ACCOUNT_JSON: 'x', SPREADSHEET_ID: '' })
-  );
+  const findings = validateConfig(baseConfig({ GOOGLE_SERVICE_ACCOUNT_JSON: 'x', SPREADSHEET_ID: '' }));
   const err = findings.find(f => f.key === 'SPREADSHEET_ID');
   assert.ok(err);
   assert.equal(err.level, 'error');
 });
 
 test('validateConfig — availability auto-publish sem canal é erro', () => {
-  const findings = validateConfig(
-    baseConfig({ AVAILABILITY_AUTO_PUBLISH_ENABLED: true, AVAILABILITY_CHANNEL_ID: '' })
-  );
+  const findings = validateConfig(baseConfig({ AVAILABILITY_AUTO_PUBLISH_ENABLED: true, AVAILABILITY_CHANNEL_ID: '' }));
   const err = findings.find(f => f.key === 'AVAILABILITY_CHANNEL_ID');
   assert.ok(err);
   assert.equal(err.level, 'error');
@@ -108,9 +100,7 @@ test('validateConfig — sticky mode inválido é erro', () => {
 });
 
 test('validateConfig — radio max < min é erro', () => {
-  const findings = validateConfig(
-    baseConfig({ RADIO_RANDOM_MIN: 5000, RADIO_RANDOM_MAX: 1000 })
-  );
+  const findings = validateConfig(baseConfig({ RADIO_RANDOM_MIN: 5000, RADIO_RANDOM_MAX: 1000 }));
   const err = findings.find(f => f.key === 'RADIO_RANDOM_MAX');
   assert.ok(err);
 });

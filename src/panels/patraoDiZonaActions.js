@@ -29,9 +29,7 @@ async function listarBairristas(interaction) {
     );
   }
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  const res = await query(
-    "SELECT * FROM members WHERE role = 'bairrista' AND status = 'ativo' ORDER BY display_name"
-  );
+  const res = await query("SELECT * FROM members WHERE role = 'bairrista' AND status = 'ativo' ORDER BY display_name");
   const bairristas = res.rows;
   if (!bairristas.length) {
     return safeReply(interaction, { content: 'Sem bairristas registados.' }, { dismissible: true });
@@ -54,9 +52,7 @@ async function verEntregasOuVendas(interaction) {
   }
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const id = interaction.customId;
-  const types = id.includes('entregas')
-    ? ['entrega_bairrista']
-    : ['venda_bairrista'];
+  const types = id.includes('entregas') ? ['entrega_bairrista'] : ['venda_bairrista'];
   const label = id.includes('entregas') ? 'Entregas' : 'Vendas';
   const res = await query(
     `

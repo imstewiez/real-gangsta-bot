@@ -930,7 +930,10 @@ async function handleMaterialDirectionSelect(interaction) {
   ctx.direction = direction;
   _setContext(interaction.user.id, ctx);
   const menu = await buildCategorySelectMenu('saida::cat_material', 'Seleciona a categoria');
-  await safeUpdate(interaction, { content: `Que material foi **${direction}**? Escolhe a categoria:`, components: [menu] });
+  await safeUpdate(interaction, {
+    content: `Que material foi **${direction}**? Escolhe a categoria:`,
+    components: [menu],
+  });
 }
 
 // Step intermediário: categoria seleccionada → mostrar itens dessa categoria
@@ -1101,7 +1104,10 @@ async function handleIssueParticipantSelect(interaction) {
   ctx.participantDiscordId = discordId;
   _setContext(interaction.user.id, ctx);
   const menu = await buildCategorySelectMenu('saida::cat_issue', 'Seleciona a categoria');
-  await safeUpdate(interaction, { content: `Saída **#${ctx.saidaId}** → <@${discordId}> — categoria:`, components: [menu] });
+  await safeUpdate(interaction, {
+    content: `Saída **#${ctx.saidaId}** → <@${discordId}> — categoria:`,
+    components: [menu],
+  });
 }
 
 async function handleIssueItemSelect(interaction) {

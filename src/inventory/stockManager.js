@@ -67,15 +67,7 @@ async function addStock({ itemId, quantity, location, type = 'apreendido', actor
   if (!VALID_LOCATIONS.includes(location))
     throw new Error(`Casa inválida: ${location} (deve ser 'armazem' ou 'grupo')`);
   if (!Number.isInteger(quantity) || quantity <= 0) throw new Error('Quantidade tem de ser inteiro positivo');
-  if (
-    ![
-      'apreendido',
-      'craftado',
-      'entrega_bairrista',
-      'entrega_oficial',
-      'devolucao_saida',
-    ].includes(type)
-  ) {
+  if (!['apreendido', 'craftado', 'entrega_bairrista', 'entrega_oficial', 'devolucao_saida'].includes(type)) {
     throw new Error(`Tipo de entrada inválido: ${type}`);
   }
   const r = await query(
@@ -106,14 +98,7 @@ async function removeStock({
 }) {
   if (!VALID_LOCATIONS.includes(location)) throw new Error(`Casa inválida: ${location}`);
   if (!Number.isInteger(quantity) || quantity <= 0) throw new Error('Quantidade tem de ser inteiro positivo');
-  if (
-    ![
-      'venda_bairrista',
-      'fornecimento_org',
-      'consumo_saida',
-      'perda_saida',
-    ].includes(type)
-  ) {
+  if (!['venda_bairrista', 'fornecimento_org', 'consumo_saida', 'perda_saida'].includes(type)) {
     throw new Error(`Tipo de saída inválido: ${type}`);
   }
   // Aviso se vai a negativo

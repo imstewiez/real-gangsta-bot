@@ -92,35 +92,50 @@ function startAll(client) {
 
   // Data health — actualiza gauges Prometheus (stale tabs, drift, retention
   // pending, stuck jobs). Corre a cada 5 min, barato.
-  registerJob('data_health_collect', 5 * 60 * 1000, async client => {
-    const guild = client?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
-    const { collect } = require('../lib/dataHealth');
-    const r = await collect({ guild });
-    return {
-      stale: r.sheet?.stale,
-      errors: r.sheet?.errors,
-      members_drift: (r.members?.role_mismatch || 0) + (r.members?.tier_mismatch || 0),
-      stuck_jobs: r.stuck_jobs?.length || 0,
-    };
-  }, { runOnStart: true });
+  registerJob(
+    'data_health_collect',
+    5 * 60 * 1000,
+    async client => {
+      const guild = client?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
+      const { collect } = require('../lib/dataHealth');
+      const r = await collect({ guild });
+      return {
+        stale: r.sheet?.stale,
+        errors: r.sheet?.errors,
+        members_drift: (r.members?.role_mismatch || 0) + (r.members?.tier_mismatch || 0),
+        stuck_jobs: r.stuck_jobs?.length || 0,
+      };
+    },
+    { runOnStart: true }
+  );
 
   // Stock alerts — corre hourly. Verifica items com alert_threshold definido
   // e posta no canal alertas-stock se balance < threshold. Throttle 24h.
-  registerJob('stock_alerts', 60 * 60 * 1000, async client => {
-    const { setClient, checkAndAlert } = require('../inventory/stockAlertEngine');
-    setClient(client);
-    return await checkAndAlert({ dryRun: false });
-  }, { runOnStart: true });
+  registerJob(
+    'stock_alerts',
+    60 * 60 * 1000,
+    async client => {
+      const { setClient, checkAndAlert } = require('../inventory/stockAlertEngine');
+      setClient(client);
+      return await checkAndAlert({ dryRun: false });
+    },
+    { runOnStart: true }
+  );
 
   // Rankings mensais + all-time snapshot — corre a cada 6h (idempotente).
   // No primeiro dia do mês apanha o mês anterior; resto dos dias actualiza
   // o mês corrente e mantém all_time_stats frescas.
-  registerJob('monthly_rankings', 6 * 60 * 60 * 1000, async () => {
-    const { computeMonthlyRankings, recomputeAllTimeStats } = require('../rankings/monthlyRankingEngine');
-    const m = await computeMonthlyRankings();
-    const a = await recomputeAllTimeStats();
-    log(`[SCHEDULER] monthly_rankings: ${m.count} mês + ${a.count} all-time`);
-  }, { runOnStart: true });
+  registerJob(
+    'monthly_rankings',
+    6 * 60 * 60 * 1000,
+    async () => {
+      const { computeMonthlyRankings, recomputeAllTimeStats } = require('../rankings/monthlyRankingEngine');
+      const m = await computeMonthlyRankings();
+      const a = await recomputeAllTimeStats();
+      log(`[SCHEDULER] monthly_rankings: ${m.count} mês + ${a.count} all-time`);
+    },
+    { runOnStart: true }
+  );
 
   // Catalog prices — corre semanalmente (7 dias). Substitui o antigo
   // slash /precario; lê config/prices-catalog.json e aplica preços.

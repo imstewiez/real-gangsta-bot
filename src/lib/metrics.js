@@ -15,7 +15,10 @@ function _ensureGauge(name, help) {
 function labeledCounter(name, help, labelNames = []) {
   const values = new Map(); // 'key="val",key2="val2"' → count
   const obj = {
-    name, help, type: 'counter', labelNames,
+    name,
+    help,
+    type: 'counter',
+    labelNames,
     inc(labels = {}) {
       const key = labelNames.map(l => `${l}="${labels[l] || ''}"`).join(',');
       values.set(key, (values.get(key) || 0) + 1);
