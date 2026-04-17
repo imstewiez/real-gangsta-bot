@@ -366,35 +366,22 @@ async function handleCaracterizadoSource(interaction) {
   const saidaId = parseInt(parts[2]);
   const source = parts[3]; // 'own' ou 'org'
 
-  // Armas — filtra pela whitelist ORG_ISSUED_WEAPONS (9 armas curadas).
-  // Sem filtro de categoria: a whitelist é a autoridade. Items na DB
-  // podem ter categorias legacy ('armas' em vez de 'armas_fogo') se foram
-  // seeded com versão antiga do catálogo.
+  // Armas — usa categorias da DB directamente (armas_fogo, armas_brancas, armas).
+  // Para "Pedir à Org" → só armas_fogo (armas curadas da firma).
+  // Para "Arma Própria" → armas_fogo + armas_brancas + armas (catálogo completo).
   const items = await inventoryRepo.getItems(true);
 
-  const { SAIDAS: S } = require('../content');
-  const norm = (s) => (s || '').trim().toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ');
-  const allowed = new Set((S.ORG_ISSUED_WEAPONS || []).map(norm));
-  const byNorm = new Map();
-  for (const w of items) byNorm.set(norm(w.name), w);
+  const orgCategories = new Set(['armas_fogo', 'armas']);
+  const ownCategories = new Set(['armas_fogo', 'armas_brancas', 'armas']);
+  const filterCats = source === 'org' ? orgCategories : ownCategories;
 
-  let weapons = [];
-  const missing = [];
-  for (const target of allowed) {
-    const hit = byNorm.get(target);
-    if (hit) weapons.push(hit);
-    else missing.push(target);
-  }
-  if (missing.length) {
-    warn(`[SAIDA] Armas no whitelist sem match na DB: ${missing.join(', ')}. Items total na DB: ${items.length}. Sample names: ${items.slice(0, 5).map(i => i.name).join(', ')}`);
-  }
+  let weapons = items.filter(i => filterCats.has(i.category));
 
   if (source === 'org') {
     for (const w of weapons) {
       w._balance = Number(await inventoryRepo.getStockForItem(w.id).catch(() => 0)) || 0;
     }
+    // Org: ordenar por stock (em stock primeiro), depois nome
     weapons.sort((a, b) => (b._balance - a._balance) || a.name.localeCompare(b.name));
   } else {
     weapons.sort((a, b) => a.name.localeCompare(b.name));
@@ -402,7 +389,7 @@ async function handleCaracterizadoSource(interaction) {
 
   if (weapons.length === 0) {
     return safeReply(interaction, {
-      content: `${EMOJI.WARN} Não há armas definidas no catálogo.`,
+      content: `${EMOJI.WARN} Não há armas no catálogo. Contacta a chefia.`,
       flags: MessageFlags.Ephemeral,
     }, { messageClass: 'WARN' });
   }
