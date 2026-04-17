@@ -208,11 +208,11 @@ async function buildSessionEmbed(saidaId) {
     const pendingCount = totalCount - submittedCount;
     const allDone = submittedCount >= totalCount && totalCount > 0;
 
-    // Row 1 — resultado individual (self-service)
+    // Row 1 — resultado individual (self-service, permite editar)
     components.push(new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`saida::submit_result::${saidaId}`)
-        .setLabel(`Preencher o meu Resultado (${submittedCount}/${totalCount})`)
+        .setLabel(`Preencher / Editar Resultado (${submittedCount}/${totalCount})`)
         .setStyle(ButtonStyle.Success)
         .setEmoji(EMOJI.OK),
     ));

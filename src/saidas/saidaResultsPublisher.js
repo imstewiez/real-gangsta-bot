@@ -89,8 +89,10 @@ function buildDestaquesEmbed(saida, participants) {
 
   const killers = participants.filter(p => (p.kills || 0) > 0).sort((a, b) => b.kills - a.kills);
   const mortos = participants.filter(p => p.died);
+  const sobreviventes = participants.filter(p => !p.died);
   const devolveram = participants.filter(p => (p.returned_value || 0) > 0 && (p.issued_value || 0) > 0 && p.returned_value >= p.issued_value);
   const ficaramDevendo = participants.filter(p => (p.issued_value || 0) > (p.returned_value || 0) + (p.lost_value || 0) + (p.consumed_value || 0));
+  const totalKills = participants.reduce((a, p) => a + (p.kills || 0), 0);
 
   const fmt = (p) => {
     const typeTag = p.participant_type === 'trabalhador' ? ' 🛠️' : '';
@@ -99,10 +101,19 @@ function buildDestaquesEmbed(saida, participants) {
   const L = SAIDAS.LABELS;
 
   const fields = [];
+
+  // Resumo rápido
+  fields.push({
+    name: `${EMOJI.COMBATE} Resumo de combate`,
+    value: `**${totalKills}** kills · **${mortos.length}** mortes · **${sobreviventes.length}** vivos · **${participants.length}** participantes`,
+    inline: false,
+  });
+
+  // MVP
   fields.push({
     name: `${EMOJI.MVP} ${L.MVP}`,
     value: mvp
-      ? `${fmt(mvp)} · ${mvp.kills || 0} kills · peso **${Math.round(mvp.performance_score)}** · disciplina **${Math.round(mvp.discipline_score)}%**`
+      ? `${fmt(mvp)} · **${mvp.kills || 0}** kills · peso **${Math.round(mvp.performance_score)}** · disciplina **${Math.round(mvp.discipline_score)}%**`
       : '_(sem destaque)_',
     inline: false,
   });
@@ -110,27 +121,30 @@ function buildDestaquesEmbed(saida, participants) {
   if (killers.length) {
     fields.push({
       name: `${EMOJI.KILL} Kills por nome`,
-      value: killers.slice(0, 10).map(k => `• ${fmt(k)} — **${k.kills}** kill${k.kills === 1 ? '' : 's'}`).join('\n'),
+      value: killers.slice(0, 10).map((k, i) => {
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '•';
+        return `${medal} ${fmt(k)} — **${k.kills}** kill${k.kills === 1 ? '' : 's'}`;
+      }).join('\n'),
       inline: false,
     });
   }
   if (mortos.length) {
     fields.push({
-      name: `${EMOJI.MORTE} ${L.MORTOS}`,
+      name: `${EMOJI.MORTE} ${L.MORTOS} (${mortos.length})`,
       value: mortos.map(m => `• ${fmt(m)}`).join('\n'),
       inline: false,
     });
   }
   if (devolveram.length) {
     fields.push({
-      name: `${EMOJI.OK} ${L.DEVOLVERAM}`,
+      name: `${EMOJI.OK} ${L.DEVOLVERAM} (${devolveram.length})`,
       value: devolveram.slice(0, 10).map(m => `• ${fmt(m)}`).join('\n'),
       inline: false,
     });
   }
   if (ficaramDevendo.length) {
     fields.push({
-      name: `${EMOJI.WARN} ${L.DEVENDO}`,
+      name: `${EMOJI.WARN} ${L.DEVENDO} (${ficaramDevendo.length})`,
       value: ficaramDevendo.slice(0, 10).map(m => `• ${fmt(m)} (${formatMoney(m.issued_value - m.returned_value - m.lost_value - m.consumed_value)})`).join('\n'),
       inline: false,
     });

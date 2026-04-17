@@ -92,17 +92,26 @@ async function handleOpenSubmitResult(interaction) {
     }, { messageClass: 'WARN' });
   }
 
-  if (me.individual_result_submitted) {
+  // Se já submeteu e a saída está concluida → bloqueia (scoring já feito).
+  // Se já submeteu mas está em em_liquidacao → permite editar (scoring ainda não correu).
+  if (me.individual_result_submitted && saida.status === 'concluida') {
     return safeReply(interaction, {
-      content: `${EMOJI.OK} Já preencheste o teu resultado nesta saída.`,
+      content: `${EMOJI.OK} Já preencheste o teu resultado e a saída já foi finalizada — não pode ser alterado.`,
       flags: MessageFlags.Ephemeral,
     }, { messageClass: 'BANAL' });
   }
+
+  const isEdit = me.individual_result_submitted;
 
   // Determinar se precisa da pergunta da arma
   const needsWeaponQ = me.received_org_material && !me.own_weapon;
   // Flag no customId: 'w' = needs weapon question, 'n' = no weapon question
   const wFlag = needsWeaponQ ? 'w' : 'n';
+
+  // Pré-preencher com valores anteriores se for edição
+  const prevSurvived = isEdit ? (me.survived ? 'S' : 'N') : '';
+  const prevKills = isEdit ? String(me.kills || 0) : '0';
+  const prevNotes = isEdit ? (me.notes || '') : '';
 
   const fields = [
     new ActionRowBuilder().addComponents(
@@ -110,33 +119,40 @@ async function handleOpenSubmitResult(interaction) {
         .setLabel('Sobreviveste? (S ou N)')
         .setStyle(TextInputStyle.Short)
         .setRequired(true).setMaxLength(3)
-        .setPlaceholder('S ou N')),
+        .setPlaceholder('S ou N')
+        .setValue(prevSurvived)),
     new ActionRowBuilder().addComponents(
       new TextInputBuilder().setCustomId('kills')
         .setLabel('Quantos kills fizeste?')
         .setStyle(TextInputStyle.Short)
         .setRequired(true).setMaxLength(3)
-        .setPlaceholder('0').setValue('0')),
+        .setPlaceholder('0').setValue(prevKills)),
   ];
 
   if (needsWeaponQ) {
+    const prevWeapon = isEdit
+      ? (['declared_returned', 'confirmed_returned'].includes(me.weapon_return_status) ? 'S' : 'N')
+      : '';
     fields.push(new ActionRowBuilder().addComponents(
       new TextInputBuilder().setCustomId('weapon_returned')
         .setLabel('Devolveste a arma da org? (S ou N)')
         .setStyle(TextInputStyle.Short)
         .setRequired(true).setMaxLength(3)
-        .setPlaceholder('S ou N')));
+        .setPlaceholder('S ou N')
+        .setValue(prevWeapon)));
   }
 
   fields.push(new ActionRowBuilder().addComponents(
     new TextInputBuilder().setCustomId('notes')
       .setLabel('Notas (opcional)')
       .setStyle(TextInputStyle.Paragraph)
-      .setRequired(false).setMaxLength(300)));
+      .setRequired(false).setMaxLength(300)
+      .setValue(prevNotes)));
 
+  const modalTitle = isEdit ? `Editar Resultado — #${saidaId}` : `Resultado — Saída #${saidaId}`;
   const modal = new ModalBuilder()
     .setCustomId(`saida::submit_result_modal::${saidaId}::${wFlag}`)
-    .setTitle(`Resultado — Saída #${saidaId}`)
+    .setTitle(modalTitle.slice(0, 45))
     .addComponents(...fields);
 
   await safeShowModal(interaction, modal);
@@ -191,28 +207,34 @@ async function handleSubmitResultModal(interaction) {
     weaponReturnStatus = 'not_applicable';
   }
 
-  // Persiste — UPDATE idempotente
+  // Verificar se a saída ainda permite edição (em_liquidacao = sim, concluida = não)
+  const saida = await saidaRepo.findById(saidaId);
+  const allowEdit = saida?.status === 'em_liquidacao';
+
+  // Persiste — se em_liquidacao permite overwrite (edição); se concluida só aceita primeiro submit
   const upd = await query(`
     UPDATE operation_participants
        SET kills = $3,
            died  = $4,
            survived = $5,
            deaths_count = CASE WHEN $4 = TRUE THEN 1 ELSE 0 END,
-           notes = COALESCE(NULLIF($6, ''), notes),
+           notes = $6,
            individual_result_submitted = TRUE,
            individual_result_at = NOW(),
            weapon_return_status = $7
      WHERE operation_id = $1 AND member_id = $2
-       AND individual_result_submitted = FALSE
+       AND ($8 = TRUE OR individual_result_submitted = FALSE)
      RETURNING id
-  `, [saidaId, member.id, kills, died, survived, notes, weaponReturnStatus]);
+  `, [saidaId, member.id, kills, died, survived, notes, weaponReturnStatus, allowEdit]);
 
   if (upd.rowCount === 0) {
     return safeReply(interaction, {
-      embeds: [errorEmbed('Já submetido', 'O teu resultado já foi registado. Não pode ser alterado.')],
+      embeds: [errorEmbed('Não foi possível', 'A saída já foi finalizada — o resultado não pode ser alterado.')],
       flags: MessageFlags.Ephemeral,
     }, { messageClass: 'WARN' });
   }
+
+  const isEdit = me.individual_result_submitted;
 
   await logAudit({
     action: 'saida_individual_result',
@@ -233,7 +255,7 @@ async function handleSubmitResultModal(interaction) {
 
   // Feedback ao participante
   const lines = [
-    `${EMOJI.OK} Resultado registado na **Saída #${saidaId}**.`,
+    `${EMOJI.OK} Resultado ${isEdit ? '**editado**' : 'registado'} na **Saída #${saidaId}**.`,
     '',
     `• ${died ? `${EMOJI.MORTE} Morreste` : `${EMOJI.OK} Sobreviveste`}`,
     `• ${EMOJI.KILL} **${kills}** kill(s)`,

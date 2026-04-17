@@ -53,10 +53,10 @@ async function handle(interaction) {
   const recent = await query(
     `SELECT op.kills, op.died, op.performance_score, op.discipline_score, op.mvp_flag,
             op.participant_type, op.own_weapon,
-            o.id, o.spot, o.date, o.result, o.operation_type
+            o.id, o.spot, o.date, o.result, o.operation_type, o.status
        FROM operation_participants op
        JOIN operations o ON o.id = op.operation_id
-      WHERE op.member_id = $1 AND o.status = 'concluida'
+      WHERE op.member_id = $1 AND o.status IN ('concluida', 'em_liquidacao')
       ORDER BY o.date DESC, o.id DESC LIMIT 10`,
     [member.id]
   );
@@ -71,7 +71,10 @@ async function handle(interaction) {
     const mvp = r.mvp_flag ? ` ${EMOJI.MVP}` : '';
     const death = r.died ? ` ${EMOJI.MORTE}` : '';
     const typeTag = r.participant_type === 'trabalhador' ? ' 🛠️' : '';
-    return `\`${formatPtDateOnly(r.date)}\` **#${r.id}** ${r.spot || '—'} · ${result} · ${r.kills || 0}k · perf **${Math.round(r.performance_score || 0)}**${death}${mvp}${typeTag}`;
+    // Saídas em liquidação ainda não têm scoring — mostra "⏳" em vez de perf
+    const isLiquidacao = r.status === 'em_liquidacao';
+    const perfTag = isLiquidacao ? '⏳ pendente' : `perf **${Math.round(r.performance_score || 0)}**`;
+    return `\`${formatPtDateOnly(r.date)}\` **#${r.id}** ${r.spot || '—'} · ${result} · ${r.kills || 0}k · ${perfTag}${death}${mvp}${typeTag}`;
   });
 
   const embed = brandEmbed('MOVEMENT')

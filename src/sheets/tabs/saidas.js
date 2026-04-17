@@ -54,11 +54,12 @@ function resultBadge(r) {
 }
 function statusBadge(s) {
   const map = {
-    aberta:        { label: 'ABERTA',  bg: COLOR.GREEN_DEEP },
-    em_preparacao: { label: 'PREP',    bg: COLOR.YELLOW_DEEP },
-    em_curso:      { label: 'CURSO',   bg: COLOR.RED_DEEP },
-    concluida:     { label: 'FECHADA', bg: COLOR.GRAPHITE },
-    cancelada:     { label: 'CANCEL',  bg: COLOR.GRAY_DARK },
+    aberta:         { label: 'ABERTA',  bg: COLOR.GREEN_DEEP },
+    em_preparacao:  { label: 'PREP',    bg: COLOR.YELLOW_DEEP },
+    em_curso:       { label: 'CURSO',   bg: COLOR.RED_DEEP },
+    em_liquidacao:  { label: 'LIQUID.', bg: COLOR.GOLD || COLOR.YELLOW_DEEP },
+    concluida:      { label: 'FECHADA', bg: COLOR.GRAPHITE },
+    cancelada:      { label: 'CANCEL',  bg: COLOR.GRAY_DARK },
   };
   const m = map[s];
   return m ? badgeCell(m.label, m.bg) : bodyCell(s || '—');
