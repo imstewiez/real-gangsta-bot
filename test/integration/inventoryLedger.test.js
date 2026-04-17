@@ -55,8 +55,8 @@ describe('integration/inventoryLedger', () => {
 
   it('saldo_inicial soma', async () => {
     await query(
-      `INSERT INTO inventory_movements (movement_type, item_id, quantity, member_id)
-       VALUES ('saldo_inicial', $1, 100, $2)`,
+      `INSERT INTO inventory_movements (movement_type, item_id, quantity, member_id, created_by)
+       VALUES ('saldo_inicial', $1, 100, $2, 'test')`,
       [_itemId, _memberId]
     );
     const b = await inventoryRepo.getStockForItem(_itemId);
@@ -65,8 +65,8 @@ describe('integration/inventoryLedger', () => {
 
   it('entrega_bairrista + fornecimento_org = balance correcto', async () => {
     await query(
-      `INSERT INTO inventory_movements (movement_type, item_id, quantity, member_id)
-       VALUES ('saldo_inicial', $1, 100, $2), ('entrega_bairrista', $1, 50, $2), ('fornecimento_org', $1, 30, $2)`,
+      `INSERT INTO inventory_movements (movement_type, item_id, quantity, member_id, created_by)
+       VALUES ('saldo_inicial', $1, 100, $2, 'test'), ('entrega_bairrista', $1, 50, $2, 'test'), ('fornecimento_org', $1, 30, $2, 'test')`,
       [_itemId, _memberId]
     );
     const b = await inventoryRepo.getStockForItem(_itemId);
@@ -75,8 +75,8 @@ describe('integration/inventoryLedger', () => {
 
   it('ajuste_manual negativo desconta', async () => {
     await query(
-      `INSERT INTO inventory_movements (movement_type, item_id, quantity, member_id)
-       VALUES ('saldo_inicial', $1, 100, $2), ('ajuste_manual', $1, -25, $2)`,
+      `INSERT INTO inventory_movements (movement_type, item_id, quantity, member_id, created_by)
+       VALUES ('saldo_inicial', $1, 100, $2, 'test'), ('ajuste_manual', $1, -25, $2, 'test')`,
       [_itemId, _memberId]
     );
     const b = await inventoryRepo.getStockForItem(_itemId);
@@ -85,8 +85,8 @@ describe('integration/inventoryLedger', () => {
 
   it('perda_saida e consumo_saida descontam', async () => {
     await query(
-      `INSERT INTO inventory_movements (movement_type, item_id, quantity, member_id)
-       VALUES ('saldo_inicial', $1, 200, $2), ('perda_saida', $1, 30, $2), ('consumo_saida', $1, 20, $2)`,
+      `INSERT INTO inventory_movements (movement_type, item_id, quantity, member_id, created_by)
+       VALUES ('saldo_inicial', $1, 200, $2, 'test'), ('perda_saida', $1, 30, $2, 'test'), ('consumo_saida', $1, 20, $2, 'test')`,
       [_itemId, _memberId]
     );
     const b = await inventoryRepo.getStockForItem(_itemId);
@@ -95,8 +95,8 @@ describe('integration/inventoryLedger', () => {
 
   it('devolucao_saida, apreendido, craftado somam', async () => {
     await query(
-      `INSERT INTO inventory_movements (movement_type, item_id, quantity, member_id)
-       VALUES ('devolucao_saida', $1, 10, $2), ('apreendido', $1, 5, $2), ('craftado', $1, 7, $2)`,
+      `INSERT INTO inventory_movements (movement_type, item_id, quantity, member_id, created_by)
+       VALUES ('devolucao_saida', $1, 10, $2, 'test'), ('apreendido', $1, 5, $2, 'test'), ('craftado', $1, 7, $2, 'test')`,
       [_itemId, _memberId]
     );
     const b = await inventoryRepo.getStockForItem(_itemId);

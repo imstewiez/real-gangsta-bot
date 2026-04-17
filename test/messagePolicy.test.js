@@ -66,8 +66,10 @@ describe('messagePolicy', () => {
 });
 
 describe('formatPtDate', () => {
-  it('formata Date para dd/mm/yyyy - hh:mm', () => {
-    const d = new Date(2026, 3, 16, 21, 35); // Abril (mês 3 = Abril 0-indexed)
+  it('formata Date para dd/mm/yyyy - hh:mm em TZ Europe/Lisbon', () => {
+    // Construído em UTC para ser independente da TZ local do runner.
+    // Abril em Lisbon = WEST (UTC+1); 20:35Z → 21:35 local.
+    const d = new Date(Date.UTC(2026, 3, 16, 20, 35));
     assert.equal(formatPtDate(d), '16/04/2026 - 21:35');
   });
 
@@ -93,12 +95,13 @@ describe('formatPtDate', () => {
   });
 
   it('formatPtDateOnly devolve só a data', () => {
-    const d = new Date(2026, 3, 16, 21, 35);
+    const d = new Date(Date.UTC(2026, 3, 16, 20, 35));
     assert.equal(formatPtDateOnly(d), '16/04/2026');
   });
 
   it('padding de dia e mês', () => {
-    const d = new Date(2026, 0, 3, 9, 5);
+    // Janeiro em Lisbon = WET (UTC+0); 09:05Z → 09:05 local.
+    const d = new Date(Date.UTC(2026, 0, 3, 9, 5));
     assert.equal(formatPtDate(d), '03/01/2026 - 09:05');
   });
 });

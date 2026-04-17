@@ -74,9 +74,9 @@ describe('integration/dbSmoke', () => {
     let error = null;
     try {
       await pool.query(
-        `INSERT INTO inventory_movements (movement_type, item_id, quantity, member_id)
-         VALUES ($1, $2, $3, $4)`,
-        ['entrega_morador', itemId, 5, memberId]
+        `INSERT INTO inventory_movements (movement_type, item_id, quantity, member_id, created_by)
+         VALUES ($1, $2, $3, $4, $5)`,
+        ['entrega_morador', itemId, 5, memberId, 'test']
       );
     } catch (e) {
       error = e;

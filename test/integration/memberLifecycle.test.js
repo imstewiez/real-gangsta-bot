@@ -57,8 +57,10 @@ describe('integration/memberLifecycle', () => {
         ORDER BY id DESC LIMIT 1`
     );
     assert.equal(audit.rows.length, 1);
-    assert.equal(JSON.parse(audit.rows[0].before_state).role, 'bairrista');
-    assert.equal(JSON.parse(audit.rows[0].after_state).role, 'oficial');
+    // audit_logs before_state/after_state são JSONB; o pg driver devolve
+    // como object JS já parsed.
+    assert.equal(audit.rows[0].before_state.role, 'bairrista');
+    assert.equal(audit.rows[0].after_state.role, 'oficial');
   });
 
   it('deactivateMember marca status inativo', async () => {
