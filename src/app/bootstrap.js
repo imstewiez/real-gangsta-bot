@@ -15,6 +15,7 @@
 
 const { Events } = require('discord.js');
 const CONFIG = require('../config');
+const { validateOrExit } = require('../config/validate');
 const { pool, acquireInstanceLockWithRetry, releaseInstanceLock, warmPool } = require('../db');
 const { runMigrations } = require('../dbMigrate');
 const {
@@ -47,6 +48,10 @@ let _shuttingDown = false;
 
 async function bootstrap() {
   log(`[BOOT] ${CONFIG.BOT_INTERNAL_NAME} a iniciar...`);
+
+  // Validação forte de config ANTES de qualquer coisa. Aborta com relatório
+  // claro se houver erros; warnings ficam nos logs.
+  validateOrExit();
 
   // Rotação periódica de logs + limpeza de sessões velhas.
   startLogMaintenance();
