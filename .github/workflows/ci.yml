@@ -26,3 +26,9 @@ jobs:
           DATABASE_URL: ""
           DISCORD_BOT_TOKEN: "test"
           DISCORD_GUILD_ID: "test"
+      - name: Test with coverage
+        run: npm run test:coverage || true
+        env:
+          DATABASE_URL: ""
+          DISCORD_BOT_TOKEN: "test"
+          DISCORD_GUILD_ID: "test"
