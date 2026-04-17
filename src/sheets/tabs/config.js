@@ -91,9 +91,9 @@ async function syncConfig(batch, sheetId) {
     ['entrega_oficial',    'entrega feita por oficial',                   badgeCell('+',    COLOR.GREEN_DEEP)],
     ['venda_bairrista',    'venda na rua',                                badgeCell('+',    COLOR.GOLD)],
     ['fornecimento_org',   'material retirado do stock para saída',       badgeCell('−',    COLOR.RED_BLOOD)],
-    ['devolucao_operacao', 'material devolvido após saída',               badgeCell('+',    COLOR.GRAPHITE)],
-    ['perda_operacao',     'material perdido em saída',                   badgeCell('−',    COLOR.RED_DEEP)],
-    ['consumo_operacao',   'material gasto em saída',                     badgeCell('−',    COLOR.YELLOW_DEEP)],
+    ['devolucao_saida',    'material devolvido após saída',               badgeCell('+',    COLOR.GRAPHITE)],
+    ['perda_saida',        'material perdido em saída',                   badgeCell('−',    COLOR.RED_DEEP)],
+    ['consumo_saida',      'material gasto em saída',                     badgeCell('−',    COLOR.YELLOW_DEEP)],
     ['ajuste_manual',      'correção manual do stock',                    badgeCell('±',    COLOR.GRAY_DARK)],
     ['saldo_inicial',      'bootstrap inicial do stock',                  badgeCell('+',    COLOR.IRON)],
     ['apreendido',         'material capturado / apreendido',             badgeCell('+',    COLOR.BLUE_DEEP)],
@@ -102,6 +102,22 @@ async function syncConfig(batch, sheetId) {
   row = tableBody(batch, sheetId, row, mtypes.map(m => pairRow(m[0], m[1], m[2])));
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
+
+  // ── LIFECYCLE DE SAÍDA ────────────────────────────────────────────────────
+  row = sectionHeader(batch, sheetId, row, {
+    title: '🔄 LIFECYCLE DE SAÍDA', hint: 'estados da saída', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, ['Estado', 'Descrição', 'Badge', '', '']);
+  const lifecycle = [
+    ['aberta',         'inscrições abertas — membros podem entrar',        badgeCell('ABERTA',  COLOR.GREEN_DEEP)],
+    ['em_preparacao',  'a preparar — material a ser emitido',              badgeCell('PREP',    COLOR.YELLOW_DEEP)],
+    ['em_curso',       'na rua — saída activa',                             badgeCell('CURSO',   COLOR.RED_DEEP)],
+    ['em_liquidacao',  'a fechar — participantes a submeter resultados',    badgeCell('LIQUID.', COLOR.GOLD)],
+    ['concluida',      'fechada — resultados e stats calculados',           badgeCell('FECHADA', COLOR.GRAPHITE)],
+    ['cancelada',      'cancelada antes de completar',                      badgeCell('CANCEL',  COLOR.GRAY_DARK)],
+  ];
+  row = tableBody(batch, sheetId, row, lifecycle.map(l => pairRow(l[0], l[1], l[2])));
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
   // ── CORES / CONDITIONAL ──────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
@@ -124,11 +140,13 @@ async function syncConfig(batch, sheetId) {
   });
   row = tableHeader(batch, sheetId, row, ['Conceito', 'Detalhe', '', '', '']);
   const concepts = [
-    ['Material (itens)',      'entregas, vendas, progresso de tier — contam UNIDADES'],
-    ['Lucro de saídas (€)',   'valor económico das saídas: fornecido / devolvido / perdido / net'],
-    ['Promoção YB → OG',      '25.000 itens entregues'],
-    ['Promoção OG → GF',      '50.000 itens entregues'],
+    ['Material (itens)',      'entregas, vendas, progresso de tier — contam UNIDADES (não €)'],
+    ['Lucro de saídas (€)',   'valor económico: fornecido − devolvido − perdido = líquido'],
+    ['Promoção YB → OG',      '25.000 unidades entregues (auto-promoção)'],
+    ['Promoção OG → GF',      '50.000 unidades entregues (auto-promoção)'],
+    ['Acima de GF',           'promoção manual pela chefia'],
     ['Stock (€)',             'quantidade × valor estimado por item'],
+    ['Armazém vs Grupo',      'armazém = chefes · grupo = oficiais — stock separado por casa'],
   ];
   row = tableBody(batch, sheetId, row, concepts.map(c => pairRow(c[0], c[1])));
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
@@ -140,30 +158,51 @@ async function syncConfig(batch, sheetId) {
   row = tableHeader(batch, sheetId, row, ['Score', 'Fórmula', '', '', '']);
   const scores = [
     ['K/D',               'kills ÷ mortes — eficácia em combate'],
-    ['Return Rate',       'valor devolvido ÷ valor recebido — disciplina'],
+    ['Return Rate',       'valor devolvido ÷ valor recebido — disciplina material'],
     ['Survival Rate',     'saídas sem morrer ÷ saídas totais'],
     ['Win Rate',          'vitórias ÷ saídas concluídas'],
-    ['Performance Score', 'combate + sobrevivência + resultado (0-100)'],
-    ['Discipline Score',  'gestão de material durante saída (0-100)'],
-    ['Hybrid Score',      'contribuição × 0.4 + performance × 0.4 + fiabilidade × 0.2'],
+    ['Performance Score', 'kills×10 + (vivo?+5:-5) + (win?+20) — clamped 0-100'],
+    ['Discipline Score',  'devolvido ÷ recebido × 100 — clamped 0-100'],
+    ['Hybrid Score',      'contribuição×0.4 + performance×0.4 + fiabilidade×0.2'],
+    ['MVP',               'maior performance score na saída — se kills>0 ou (vivo + disc≥70%)'],
   ];
   row = tableBody(batch, sheetId, row, scores.map(s => pairRow(s[0], s[1])));
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
-  // ── Sync engine info ─────────────────────────────────────────────────────
+  // ── Comandos Discord ─────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '⚙️ SYNC ENGINE', hint: 'como o workbook é mantido', columnCount: COL_COUNT,
+    title: '💬 COMANDOS DISCORD', hint: '10 slash commands activos', columnCount: COL_COUNT,
   });
-  row = tableHeader(batch, sheetId, row, ['Comando', 'Efeito', '', '', '']);
+  row = tableHeader(batch, sheetId, row, ['Comando', 'Descrição', '', '', '']);
   const cmds = [
-    ['/rg-sync-sheets',                       'sincroniza todas as 6 tabs (intervalo auto: 15min)'],
-    ['/rg-sync-sheets-tab tab:<key>',         'sincroniza apenas uma tab específica'],
-    ['/rg-sync-sheets-rebuild',               'apaga e recria as 6 tabs canónicas (reset visual)'],
-    ['/rg-sync-sheets-rebuild purge:True',    'o mesmo + apaga quaisquer tabs não-canónicas'],
-    ['Trim automático',                       'cada sync encolhe a tab ao tamanho necessário (cleanup engine)'],
-    ['Design system',                         'theme.js + _common.js — consistência premium'],
+    ['/versao',     'estado do bot, versão e dados'],
+    ['/stock',      'inventário actual (geral ou por item)'],
+    ['/catalogo',   'catálogo de material com preços'],
+    ['/ficha',      'perfil de um membro (stats, tiers, historial)'],
+    ['/movimento',  'cockpit pessoal (material, PvP, progresso)'],
+    ['/ranking',    'rankings (semanal / mensal / all-time)'],
+    ['/saidas',     'as tuas saídas recentes (ou por ID)'],
+    ['/kill',       'registar uma kill'],
+    ['/audit',      'logs de auditoria (chefia)'],
+    ['/transfer',   'mover material entre armazém e grupo (chefia)'],
   ];
   row = tableBody(batch, sheetId, row, cmds.map(c => pairRow(c[0], c[1])));
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
+
+  // ── Sync do workbook ────────────────────────────────────────────────────
+  row = sectionHeader(batch, sheetId, row, {
+    title: '⚙️ SYNC DO WORKBOOK', hint: 'como estas tabs são mantidas', columnCount: COL_COUNT,
+  });
+  row = tableHeader(batch, sheetId, row, ['Mecanismo', 'Detalhe', '', '', '']);
+  const syncInfo = [
+    ['Event-driven',      'cada acção (entrega, saída, kill) dispara sync das tabs afectadas'],
+    ['Boot sync',         'ao arrancar, o bot sincroniza todas as 6 tabs automaticamente'],
+    ['Reconciliação',     'a cada 15 minutos, tabs paradas ou com erro são re-sincronizadas'],
+    ['Trim automático',   'cada sync encolhe a tab ao tamanho necessário (sem rows mortas)'],
+    ['Debounce 5s',       'eventos rápidos são agrupados — 1 sync por burst, não 1 por evento'],
+    ['Design system',     'theme.js + _common.js — paleta, tipografia e componentes centralizados'],
+  ];
+  row = tableBody(batch, sheetId, row, syncInfo.map(s => pairRow(s[0], s[1])));
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Config');

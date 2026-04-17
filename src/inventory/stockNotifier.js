@@ -45,12 +45,15 @@ const MOVEMENT_TO_CHANNEL = {
   entrega_morador:     'stock_log', // legacy
   venda_morador:       'stock_log', // legacy
   entrega_oficial:     'stock_log',
-  devolucao_operacao:  'stock_log',
+  devolucao_saida:     'stock_log',
+  devolucao_operacao:  'stock_log', // legacy
   apreendido:          'stock_log',
   craftado:            'stock_log',
   fornecimento_org:    'stock_log',
-  consumo_operacao:    'stock_log',
-  perda_operacao:      'stock_log',
+  consumo_saida:       'stock_log',
+  consumo_operacao:    'stock_log', // legacy
+  perda_saida:         'stock_log',
+  perda_operacao:      'stock_log', // legacy
   ajuste_manual:       'stock_log',
 };
 
@@ -58,8 +61,12 @@ const MOVEMENT_TO_CHANNEL = {
 const MOVEMENT_KIND = {
   saldo_inicial: 'entradas', entrega_bairrista: 'entradas', venda_bairrista: 'entradas',
   entrega_morador: 'entradas', venda_morador: 'entradas', // legacy
-  entrega_oficial: 'entradas', devolucao_operacao: 'entradas', apreendido: 'entradas', craftado: 'entradas',
-  fornecimento_org: 'saidas', consumo_operacao: 'saidas', perda_operacao: 'saidas',
+  entrega_oficial: 'entradas',
+  devolucao_saida: 'entradas', devolucao_operacao: 'entradas', // legacy
+  apreendido: 'entradas', craftado: 'entradas',
+  fornecimento_org: 'saidas',
+  consumo_saida: 'saidas', consumo_operacao: 'saidas', // legacy
+  perda_saida: 'saidas', perda_operacao: 'saidas', // legacy
   ajuste_manual: 'ajustes',
 };
 
@@ -70,12 +77,15 @@ const MOVEMENT_LABEL = {
   entrega_morador:     '📥 Entrega (Bairrista)', // legacy → mesmo label
   venda_morador:       '💰 Venda (Bairrista)',   // legacy → mesmo label
   entrega_oficial:     '📥 Entrega (Oficial)',
-  devolucao_operacao:  '↩️ Devolução de Operação',
+  devolucao_saida:     '↩️ Devolução de Saída',
+  devolucao_operacao:  '↩️ Devolução de Saída',  // legacy
   apreendido:          '🪪 Apreendido',
   craftado:            '🛠️ Craftado',
   fornecimento_org:    '📤 Fornecimento (Org)',
-  consumo_operacao:    '🔥 Consumo de Operação',
-  perda_operacao:      '💥 Perda em Operação',
+  consumo_saida:       '🔥 Consumo em Saída',
+  consumo_operacao:    '🔥 Consumo em Saída',    // legacy
+  perda_saida:         '💥 Perda em Saída',
+  perda_operacao:      '💥 Perda em Saída',      // legacy
   ajuste_manual:       '🔧 Ajuste Manual',
 };
 

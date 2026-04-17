@@ -51,7 +51,7 @@ const POSITIVE_MOVES = `(
   'saldo_inicial',
   'entrega_bairrista', 'venda_bairrista', 'entrega_oficial',
   'entrega_morador', 'venda_morador',
-  'devolucao_operacao', 'apreendido', 'craftado'
+  'devolucao_saida', 'devolucao_operacao', 'apreendido', 'craftado'
 )`;
 // Movement types agregados como "entregas" (in-flow para stock, tipicamente
 // moradores/bairristas e oficiais). Também aceita legacy.
@@ -64,7 +64,7 @@ const VENDA_MOVES = `('venda_bairrista', 'venda_morador')`;
 const STOCK_BALANCE_CASE = `
   CASE
     WHEN im.movement_type IN ${POSITIVE_MOVES} THEN im.quantity
-    WHEN im.movement_type IN ('fornecimento_org', 'consumo_operacao', 'perda_operacao')
+    WHEN im.movement_type IN ('fornecimento_org', 'consumo_saida', 'consumo_operacao', 'perda_saida', 'perda_operacao')
       THEN -im.quantity
     WHEN im.movement_type = 'ajuste_manual'
       THEN im.quantity

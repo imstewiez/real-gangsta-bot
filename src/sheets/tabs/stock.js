@@ -64,8 +64,11 @@ const MOV_PILL = {
   ajuste_manual:      { label: 'AJUSTE',    bg: COLOR.GRAY_DARK },
   fornecimento_org:   { label: 'FORNECIDO', bg: COLOR.RED_BLOOD },
   devolucao_operacao: { label: 'DEVOL.',    bg: COLOR.GRAPHITE },
+  devolucao_saida:    { label: 'DEVOL.',    bg: COLOR.GRAPHITE },
   perda_operacao:     { label: 'PERDA',     bg: COLOR.RED_DEEP },
+  perda_saida:        { label: 'PERDA',     bg: COLOR.RED_DEEP },
   consumo_operacao:   { label: 'CONSUMO',   bg: COLOR.YELLOW_DEEP },
+  consumo_saida:      { label: 'CONSUMO',   bg: COLOR.YELLOW_DEEP },
   saldo_inicial:      { label: 'SALDO INIC',bg: COLOR.IRON },
   apreendido:         { label: 'APREEND.',  bg: COLOR.BLUE_DEEP },
   craftado:           { label: 'CRAFT',     bg: COLOR.GOLD },
@@ -121,7 +124,7 @@ async function syncStock(batch, sheetId) {
   const zeros      = inv.filter(r => (r.balance || 0) <= 0).length;
   const totalIn    = movs.filter(r => ['entrega_bairrista', 'entrega_oficial', 'entrega_morador'].includes(r.movement_type)).reduce((a, r) => a + Number(r.total_value || 0), 0);
   const totalSales = movs.filter(r => ['venda_bairrista', 'venda_morador'].includes(r.movement_type)).reduce((a, r) => a + Number(r.total_value || 0), 0);
-  const totalLost  = movs.filter(r => r.movement_type === 'perda_operacao').reduce((a, r) => a + Number(r.total_value || 0), 0);
+  const totalLost  = movs.filter(r => r.movement_type === 'perda_saida' || r.movement_type === 'perda_operacao').reduce((a, r) => a + Number(r.total_value || 0), 0);
 
   growSheet(batch, sheetId, { rows: Math.max(inv.length + movs.length + 80, 200) });
 

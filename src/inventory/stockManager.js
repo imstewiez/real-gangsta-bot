@@ -42,9 +42,9 @@ async function getCurrentStock(itemId, location = null) {
   const r = await query(`
     SELECT COALESCE(SUM(
       CASE
-        WHEN movement_type IN ('saldo_inicial','entrega_bairrista','venda_bairrista','entrega_oficial','entrega_morador','venda_morador','devolucao_operacao','apreendido','craftado')
+        WHEN movement_type IN ('saldo_inicial','entrega_bairrista','venda_bairrista','entrega_oficial','entrega_morador','venda_morador','devolucao_saida','devolucao_operacao','apreendido','craftado')
           THEN quantity
-        WHEN movement_type IN ('fornecimento_org','consumo_operacao','perda_operacao')
+        WHEN movement_type IN ('fornecimento_org','consumo_saida','consumo_operacao','perda_saida','perda_operacao')
           THEN -quantity
         WHEN movement_type = 'ajuste_manual' THEN quantity
         ELSE 0
@@ -59,7 +59,7 @@ async function getCurrentStock(itemId, location = null) {
 async function addStock({ itemId, quantity, location, type = 'apreendido', actor, memberId = null, notes = '' }) {
   if (!VALID_LOCATIONS.includes(location)) throw new Error(`Casa inválida: ${location} (deve ser 'armazem' ou 'grupo')`);
   if (!Number.isInteger(quantity) || quantity <= 0) throw new Error('Quantidade tem de ser inteiro positivo');
-  if (!['apreendido', 'craftado', 'entrega_bairrista', 'entrega_morador', 'entrega_oficial', 'devolucao_operacao'].includes(type)) {
+  if (!['apreendido', 'craftado', 'entrega_bairrista', 'entrega_morador', 'entrega_oficial', 'devolucao_saida', 'devolucao_operacao'].includes(type)) {
     throw new Error(`Tipo de entrada inválido: ${type}`);
   }
   const r = await query(
@@ -78,7 +78,7 @@ async function addStock({ itemId, quantity, location, type = 'apreendido', actor
 async function removeStock({ itemId, quantity, location, type = 'venda_bairrista', actor, memberId = null, notes = '' }) {
   if (!VALID_LOCATIONS.includes(location)) throw new Error(`Casa inválida: ${location}`);
   if (!Number.isInteger(quantity) || quantity <= 0) throw new Error('Quantidade tem de ser inteiro positivo');
-  if (!['venda_bairrista', 'venda_morador', 'fornecimento_org', 'consumo_operacao', 'perda_operacao'].includes(type)) {
+  if (!['venda_bairrista', 'venda_morador', 'fornecimento_org', 'consumo_saida', 'consumo_operacao', 'perda_saida', 'perda_operacao'].includes(type)) {
     throw new Error(`Tipo de saída inválido: ${type}`);
   }
   // Aviso se vai a negativo
