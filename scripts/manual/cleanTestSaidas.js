@@ -111,10 +111,9 @@ async function main() {
 
     const r10 = await client.query(`
       UPDATE all_time_stats SET
-        saidas_total = 0, wins = 0, losses = 0, draws = 0,
+        saidas_total = 0, wins = 0, losses = 0,
         kills_total = 0, deaths_total = 0,
-        profit_generated = 0, survival_rate = 0,
-        performance_avg = 0, discipline_avg = 0, mvp_count = 0
+        profit_generated = 0, mvp_count = 0
     `);
     console.log(`all_time_stats resetados:          ${r10.rowCount} rows`);
 
