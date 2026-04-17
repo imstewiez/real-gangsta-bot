@@ -15,7 +15,7 @@
     "lint": "eslint src/ test/ scripts/",
     "format": "prettier --write src/ test/ scripts/",
     "format:check": "prettier --check src/ test/ scripts/",
-    "test:coverage": "c8 --reporter=text --reporter=lcov node --test test/*.test.js"
+    "test:coverage": "c8 node --test test/*.test.js"
   },
   "dependencies": {
     "discord.js": "14.26.3",

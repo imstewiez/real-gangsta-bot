@@ -1,0 +1,301 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for src/content/errors.js</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../prettify.css" />
+    <link rel="stylesheet" href="../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/content</a> errors.js</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">97.22% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>70/72</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>1/1</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">0% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>0/23</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">97.22% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>70/72</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line high'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">'use strict';
+/**
+ * Mensagens de erro — curtas, directas, sem drama.
+ *
+ * Nunca começar por "Erro:". O emoji e a frase dizem tudo.
+ * Sempre tu, nunca "utilizador".
+ */
+&nbsp;
+const E = require('./emojis');
+&nbsp;
+const ERRORS = {
+  // Genéricos
+  GENERIC: <span class="fstat-no" title="function not covered" >() =&gt; `${E.ERRO} Algo correu mal. Tenta outra vez.`,</span>
+&nbsp;
+  DUPLICATE_REQUEST: <span class="fstat-no" title="function not covered" >() =&gt; `${E.DUPLICADO} Calma — já tinhas feito isso.`,</span>
+&nbsp;
+  DB_UNAVAILABLE: <span class="fstat-no" title="function not covered" >() =&gt; `${E.ERRO} A DB está fora. Nada foi guardado.`,</span>
+&nbsp;
+  DB_WRITE_FAILED: <span class="fstat-no" title="function not covered" >what =&gt; `${E.WARN} Não consegui guardar "${what}". Tenta de novo.`,</span>
+&nbsp;
+  // Permissões
+  NO_PERMISSION: <span class="fstat-no" title="function not covered" >what =&gt; `${E.NO_PERMISSION} ${what ? `Não é contigo — ${what}.` : 'Ainda não tens acesso a isto.'}`,</span>
+&nbsp;
+  NO_ROLE: <span class="fstat-no" title="function not covered" >() =&gt; `${E.NO_PERMISSION} Não tens o peso para isto.`,</span>
+&nbsp;
+  // Membros
+  MEMBER_NOT_FOUND: <span class="fstat-no" title="function not covered" >() =&gt; `${E.NOT_FOUND} Esse nome não está na casa.`,</span>
+&nbsp;
+  ALREADY_REGISTERED: <span class="fstat-no" title="function not covered" >() =&gt; `${E.WARN} Já está na firma — não precisas de registar outra vez.`,</span>
+&nbsp;
+  // Saídas
+  SAIDA_NOT_FOUND: <span class="fstat-no" title="function not covered" >() =&gt; `${E.NOT_FOUND} Essa saída não existe.`,</span>
+&nbsp;
+  SAIDA_CLOSED: <span class="fstat-no" title="function not covered" >() =&gt; `${E.BLOQUEADO} Essa saída já foi fechada.`,</span>
+&nbsp;
+  SAIDA_FULL: <span class="fstat-no" title="function not covered" >max =&gt; `${E.WARN} Grupo cheio — máximo ${max}.`,</span>
+&nbsp;
+  SAIDA_NOT_OPEN: <span class="fstat-no" title="function not covered" >() =&gt; `${E.BLOQUEADO} A saída não está aberta para isto.`,</span>
+&nbsp;
+  // Material
+  ITEM_NOT_FOUND: <span class="fstat-no" title="function not covered" >() =&gt; `${E.NOT_FOUND} Esse material não está no catálogo.`,</span>
+&nbsp;
+  STOCK_EMPTY: <span class="fstat-no" title="function not covered" >item =&gt; `${E.MATERIAL} Sem ${item} em stock.`,</span>
+&nbsp;
+  STOCK_INSUFFICIENT: <span class="fstat-no" title="function not covered" >(item, have, want) =&gt; `${E.WARN} Só há ${have} de ${item} — pediste ${want}.`,</span>
+&nbsp;
+  INVALID_QUANTITY: <span class="fstat-no" title="function not covered" >() =&gt; `${E.WARN} Quantidade inválida — tem de ser positiva.`,</span>
+&nbsp;
+  // Canais / permissões
+  CHANNEL_CREATE_FAILED: <span class="fstat-no" title="function not covered" >() =&gt; `${E.WARN} Não consegui abrir o canal. Confirma as permissões.`,</span>
+&nbsp;
+  // Votação / sessões
+  SESSION_NOT_FOUND: <span class="fstat-no" title="function not covered" >() =&gt; `${E.NOT_FOUND} Sessão não encontrada.`,</span>
+&nbsp;
+  SESSION_CLOSED: <span class="fstat-no" title="function not covered" >() =&gt; `${E.BLOQUEADO} Sessão fechada — votos congelados.`,</span>
+&nbsp;
+  INVALID_STATE: <span class="fstat-no" title="function not covered" >() =&gt; `${E.WARN} Estado inválido.`,</span>
+&nbsp;
+  // Sticky
+  STICKY_NOT_FOUND: <span class="fstat-no" title="function not covered" >() =&gt; `${E.NOT_FOUND} Sticky não existe ou está inactiva.`,</span>
+&nbsp;
+  // ── Legacy aliases (não tens de usar; só para callers antigos) ──────────
+  // Migrar para os nomes directamente quando tocares no handler.
+<span class="fstat-no" title="function not covered" >  get OPERATION_NOT_FOUND() {</span>
+<span class="cstat-no" title="statement not covered" >    return this.SAIDA_NOT_FOUND;</span>
+  },
+<span class="fstat-no" title="function not covered" >  get OPERATION_CLOSED() {</span>
+<span class="cstat-no" title="statement not covered" >    return this.SAIDA_CLOSED;</span>
+  },
+};
+&nbsp;
+module.exports = ERRORS;
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-04-17T18:58:53.214Z
+            </div>
+        <script src="../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../sorter.js"></script>
+        <script src="../../block-navigation.js"></script>
+    </body>
+</html>
+    

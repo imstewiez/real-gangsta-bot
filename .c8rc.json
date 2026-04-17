@@ -1,0 +1,24 @@
+{
+  "all": false,
+  "check-coverage": true,
+  "include": ["src/**/*.js"],
+  "exclude": [
+    "src/**/*.test.js",
+    "test/**",
+    "scripts/**",
+    "migrations/**",
+    "src/logger.js",
+    "src/web/server.js",
+    "src/app/bootstrap.js",
+    "src/index.js",
+    "src/sheets/**",
+    "src/content/**",
+    "src/reconcile/**",
+    "src/notifications/**"
+  ],
+  "lines": 65,
+  "statements": 65,
+  "branches": 75,
+  "functions": 50,
+  "reporter": ["text-summary", "lcov"]
+}
