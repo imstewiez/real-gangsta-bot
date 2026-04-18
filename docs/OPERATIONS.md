@@ -62,6 +62,135 @@
 - Para testar: usar guild de teste + DB separada via env vars
 - Recomendado: criar projecto Railway staging com DB própria
 
+## Disaster Recovery
+
+### Backup da DB
+
+**Railway** oferece backups automáticos diários do Postgres plugin (confirmar
+na UI do projecto Railway → Data → Backups). Retention standard: 7 dias.
+Backups são restauráveis via Railway UI.
+
+**Backup manual** para segurança adicional ou antes de migração tocante:
+```bash
+# Local (assumindo DATABASE_URL exportado)
+./scripts/manual/backupDb.sh
+# Output: ./snapshots/bot-di-zona-YYYY-MM-DD-HHMM.dump
+
+# Com retention de 14 dias em pasta específica
+DATABASE_URL="..." BACKUP_DIR=/tmp/bot-backups RETAIN_DAYS=14 \
+  ./scripts/manual/backupDb.sh
+```
+
+Formato: pg_dump custom (`-Fc`). Compressed, permite restore selectivo e
+paralelismo com `pg_restore --jobs N`.
+
+### Restore
+
+**Fluxo seguro:**
+
+1. **Pára o bot** antes de restaurar:
+   ```bash
+   # No Railway: Deploy menu → "Pause Service"
+   # (não basta fazer revert de código — connections activas podem corromper restore)
+   ```
+2. **Verifica o backup** antes de usar:
+   ```bash
+   pg_restore --list bot-di-zona-YYYY-MM-DD-HHMM.dump | head -20
+   ```
+3. **Restore** para DB limpa (preferível) ou com `--clean`:
+   ```bash
+   # Target DB vazia:
+   pg_restore --no-owner --no-privileges --jobs=4 \
+     -d "$TARGET_DATABASE_URL" bot-di-zona-YYYY-MM-DD-HHMM.dump
+
+   # Target DB com dados (overwrite):
+   pg_restore --clean --if-exists --no-owner --no-privileges --jobs=4 \
+     -d "$TARGET_DATABASE_URL" bot-di-zona-YYYY-MM-DD-HHMM.dump
+   ```
+4. **Sanity check** pós-restore:
+   ```sql
+   SELECT COUNT(*) FROM schema_migrations;        -- esperar 29+
+   SELECT COUNT(*) FROM members WHERE status='ativo'; -- esperar número razoável
+   SELECT MAX(id) FROM operations;                -- maior id esperado
+   ```
+5. **Re-arranca o bot** (unpause Railway) e monitoriza `/health` durante 5 min.
+6. Se OK, documenta o incidente em `docs/CHANGELOG.md` secção "Incidentes".
+
+### Runbook — Cenários
+
+#### Cenário 1 — Migration partiu schema em prod
+
+**Sintomas:** bot em crash loop após deploy, logs mostram erro de schema,
+`/health` 503 permanente.
+
+1. Abrir Railway logs → identificar qual migration falhou
+2. Fazer `git revert` do commit que adicionou a migration + push
+3. **Importante:** revert de código NÃO reverte a migration já aplicada. Se
+   a migration tocou tabelas existentes de forma quebrada, criar nova
+   migration N+1 que corrige forward (ex: re-recria constraint correcta)
+4. Só em último caso: restore de snapshot (perde dados recentes)
+
+#### Cenário 2 — DB corrompida
+
+**Sintomas:** queries erram com "invalid page", "xid wrap", ou rows faltam
+sem explicação.
+
+1. Pausar o bot imediatamente
+2. `pg_dump` do estado actual (mesmo corrompido — referência para pós-mortem)
+3. Restore do último snapshot limpo (Railway UI ou backup manual)
+4. Validar sanity checks (contagens acima)
+5. Unpause + monitoriza `/health`
+6. Pós-mortem: analisar dump corrompido + logs Railway para causa raiz
+
+#### Cenário 3 — Bot em crash loop
+
+**Sintomas:** `/health` 503, Railway mostra restarts consecutivos.
+
+1. Consultar `/health/full` (se acessível) → identifica componente que falha
+2. Railway logs → stack trace + `correlationId`
+3. Erros comuns:
+   - `acquireInstanceLockWithRetry` timeout → instância antiga não saiu; esperar 90s ou forçar delete de `bot_instances` antiga na DB
+   - `validateOrExit` error → env var em falta / inválida (ver relatório que imprime no boot)
+   - Migration error → ver Cenário 1
+4. Se `correlationId` não aparece nos logs (crash pre-bootstrap), verificar
+   DATABASE_URL + DISCORD_BOT_TOKEN
+
+#### Cenário 4 — Discord bot token comprometido
+
+**Sintomas:** bot faz coisas estranhas, logs mostram chamadas API não
+originadas pelo código, ou recebeste notificação do Discord.
+
+1. **Imediato:** ir ao [Discord Developer Portal](https://discord.com/developers/applications)
+   → Bot → "Reset Token"
+2. Pausar o serviço Railway (o token antigo fica morto, novo ainda não
+   está no env)
+3. Actualizar `DISCORD_BOT_TOKEN` no Railway
+4. Unpause → bot re-arranca com token novo
+5. Auditar `audit_logs` nas últimas 24h antes do reset — procurar acções
+   fora do padrão (role changes sem actor conhecido, etc.)
+6. Pós-incidente: revisar como o token leak aconteceu (repo leak? dev
+   máquina? screenshot?) e fechar o vector
+
+### Backups em Intervalo Regular (automação recomendada)
+
+Opção A — Railway built-in (confirmar tier):
+- Dashboard → Postgres plugin → "Backups" tab
+- Se disponível, configurar retention para 14 dias mínimo
+
+Opção B — cron externo (mais controlo):
+```bash
+# Em qualquer máquina com acesso ao DATABASE_URL + pg_dump
+# crontab -e:
+0 4 * * * cd /path/to/repo && DATABASE_URL="..." BACKUP_DIR=/backups RETAIN_DAYS=30 ./scripts/manual/backupDb.sh
+```
+
+Opção C — GitHub Action (se budget permitir):
+```yaml
+# .github/workflows/backup.yml — diário 04:00 UTC
+# Usa secret DATABASE_URL_READONLY + storage bucket para upload.
+```
+Não implementado actualmente. Avaliar quando a operação crescer.
+
 ## Variáveis de Ambiente Obrigatórias
 
 | Var | Descrição |
