@@ -23,6 +23,7 @@ const syncSheets = require('../../../queries/syncSheets');
 const backfillTopicos = require('../../../queries/backfillTopicos');
 const cleanupTopicos = require('../../../queries/cleanupTopicos');
 const organizeTopicos = require('../../../queries/organizeTopicos');
+const novaCategoriaTopicos = require('../../../queries/novaCategoriaTopicos');
 const { commandsByName } = require('../../../lib/metrics');
 
 const SLASH_ROUTES = {
@@ -44,6 +45,7 @@ const SLASH_ROUTES = {
   'backfill-topicos': backfillTopicos.handle,
   'cleanup-topicos': cleanupTopicos.handle,
   'organize-topicos': organizeTopicos.handle,
+  'nova-categoria-topicos': novaCategoriaTopicos.handle,
 };
 
 async function handleSlash(interaction) {

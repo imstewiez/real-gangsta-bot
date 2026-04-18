@@ -78,6 +78,10 @@ const commands = [
     ),
 
   new SlashCommandBuilder()
+    .setName('nova-categoria-topicos')
+    .setDescription('Força criação de nova overflow category para tópicos (chefia)'),
+
+  new SlashCommandBuilder()
     .setName('sync-sheets')
     .setDescription('Diagnóstico e resync do Google Sheets (chefia)')
     .addStringOption(opt =>
