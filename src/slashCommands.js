@@ -57,6 +57,13 @@ const commands = [
 
   // ── Staff diagnóstico ──────────────────────────────────────────────────────
   new SlashCommandBuilder()
+    .setName('backfill-topicos')
+    .setDescription('Cria tópicos em falta para bairristas sem canal individual (chefia)')
+    .addBooleanOption(opt =>
+      opt.setName('executar').setDescription('true=cria os canais · false/omit=só preview (default)').setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
     .setName('sync-sheets')
     .setDescription('Diagnóstico e resync do Google Sheets (chefia)')
     .addStringOption(opt =>
