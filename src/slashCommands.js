@@ -64,6 +64,13 @@ const commands = [
     ),
 
   new SlashCommandBuilder()
+    .setName('cleanup-topicos')
+    .setDescription('Arquiva tópicos de ex-bairristas (promovidos, saídos) — liberta slots na categoria (chefia)')
+    .addBooleanOption(opt =>
+      opt.setName('executar').setDescription('true=arquiva · false/omit=só preview (default)').setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
     .setName('sync-sheets')
     .setDescription('Diagnóstico e resync do Google Sheets (chefia)')
     .addStringOption(opt =>

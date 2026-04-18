@@ -21,6 +21,7 @@ const { handleMovimento } = require('../../../members/bairristaHandlers');
 const { handleMeuPedido } = require('../../../onboarding/meuPedido');
 const syncSheets = require('../../../queries/syncSheets');
 const backfillTopicos = require('../../../queries/backfillTopicos');
+const cleanupTopicos = require('../../../queries/cleanupTopicos');
 const { commandsByName } = require('../../../lib/metrics');
 
 const SLASH_ROUTES = {
@@ -40,6 +41,7 @@ const SLASH_ROUTES = {
   transfer: transfer.handle,
   'sync-sheets': syncSheets.handle,
   'backfill-topicos': backfillTopicos.handle,
+  'cleanup-topicos': cleanupTopicos.handle,
 };
 
 async function handleSlash(interaction) {
