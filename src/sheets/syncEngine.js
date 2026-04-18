@@ -37,6 +37,45 @@ function getSpreadsheetId() {
   return CONFIG.SPREADSHEET_ID || CONFIG.GOOGLE_SHEET_ID || CONFIG.SHEET_ID || null;
 }
 
+/**
+ * Percorre o batch e devolve o maior endRow/endCol que aparece em
+ * qualquer `updateCells` para este sheetId. Defensive safety net para o
+ * trimSheet — se o syncer reportar lastRow subestimado, usamos o
+ * observado para não encolher a grid abaixo das células realmente escritas.
+ *
+ * Suporta dois formatos de updateCells:
+ *   - { range: { sheetId, startRowIndex, endRowIndex, ... } } (clearRange)
+ *   - { start: { sheetId, rowIndex, columnIndex }, rows: [...] } (updateCells com dados)
+ */
+function _maxWrittenCell(requests, sheetId) {
+  let maxRow = 0;
+  let maxCol = 0;
+  for (const req of requests) {
+    const uc = req.updateCells;
+    if (!uc) continue;
+
+    // Formato 1: clearRange — range explícito.
+    if (uc.range && uc.range.sheetId === sheetId) {
+      if (Number.isFinite(uc.range.endRowIndex)) maxRow = Math.max(maxRow, uc.range.endRowIndex);
+      if (Number.isFinite(uc.range.endColumnIndex)) maxCol = Math.max(maxCol, uc.range.endColumnIndex);
+      continue;
+    }
+
+    // Formato 2: updateCells com start + rows.
+    if (uc.start && uc.start.sheetId === sheetId) {
+      const startRow = uc.start.rowIndex || 0;
+      const startCol = uc.start.columnIndex || 0;
+      const rowCount = Array.isArray(uc.rows) ? uc.rows.length : 0;
+      const colCount = rowCount
+        ? Math.max(...uc.rows.map(r => (Array.isArray(r.values) ? r.values.length : 0)))
+        : 0;
+      maxRow = Math.max(maxRow, startRow + rowCount);
+      maxCol = Math.max(maxCol, startCol + colCount);
+    }
+  }
+  return { row: maxRow, col: maxCol };
+}
+
 async function syncOne(key) {
   const syncer = TAB_SYNCERS[key];
   if (!syncer) throw new Error(`Tab desconhecida: ${key}`);
@@ -73,7 +112,15 @@ async function syncOne(key) {
   try {
     const result = await syncer()(batch, sheetId);
     if (result && Number.isFinite(result.lastRow) && Number.isFinite(result.lastCol)) {
-      trimSheet(batch, sheetId, result.lastRow, result.lastCol);
+      // Defensive: calcula o maior endRow/endCol que aparece em qualquer
+      // updateCells do batch. Se o syncer subestima (ex: cursor `row` não
+      // acompanha todas as escritas — observado em stock.js), trimSheet
+      // pode encolher abaixo de writes reais → Google rejeita com
+      // "Attempting to write row X, beyond last requested row of Y".
+      const observed = _maxWrittenCell(batch.requests, sheetId);
+      const safeRow = Math.max(result.lastRow, observed.row);
+      const safeCol = Math.max(result.lastCol, observed.col);
+      trimSheet(batch, sheetId, safeRow, safeCol);
     }
     flushed = await batch.flush();
   } catch (e) {
