@@ -1,9 +1,12 @@
 'use strict';
-const { guildId, optId } = require('./_helpers');
+const { guildId, optId, optList } = require('./_helpers');
 
 module.exports = {
   // Categorias
   BAIRRISTA_TOPICOS_CATEGORY_ID: guildId('BAIRRISTA_TOPICOS_CATEGORY_ID', 'categories'),
+  // Overflow: categorias extra para quando a principal atinge o limite Discord
+  // de 50 canais. Comma-separated env var: BAIRRISTA_TOPICOS_OVERFLOW_CATEGORY_IDS=id1,id2,id3
+  BAIRRISTA_TOPICOS_OVERFLOW_CATEGORY_IDS: optList('BAIRRISTA_TOPICOS_OVERFLOW_CATEGORY_IDS'),
   BAIRRISTA_ARQUIVO_CATEGORY_ID: optId('BAIRRISTA_ARQUIVO_CATEGORY_ID'),
   // Canais operacionais
   TAG_REQUEST_CHANNEL_ID: guildId('TAG_REQUEST_CHANNEL_ID', 'channels'),

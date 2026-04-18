@@ -129,23 +129,22 @@ async function processApproval(tagRequest, approverMember, client) {
         const botMember = guild.members.me;
         const { buildBairristaChannelOverwrites } = require('../members/channelInvariants');
         const permissionOverwrites = buildBairristaChannelOverwrites(guild, discordId, botMember.id);
+        const { createResidentChannel } = require('../members/createResidentChannel');
 
-        const channel = await queueChannelOp(() =>
-          guild.channels.create({
-            name: channelName,
-            type: ChannelType.GuildText,
-            parent: CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID,
-            permissionOverwrites,
-            topic: `Canal individual de ${fullName} (${nickname})`,
-          })
-        );
+        // Fallback automático entre categoria principal e overflow quando cheia.
+        const { channel, categoryId } = await createResidentChannel(guild, {
+          name: channelName,
+          type: ChannelType.GuildText,
+          permissionOverwrites,
+          topic: `Canal individual de ${fullName} (${nickname})`,
+        });
 
         await memberRepo.update(dbMember.id, { channel_id: channel.id });
 
         await query(
           `INSERT INTO resident_channels (member_id, discord_id, channel_id, channel_name, category_id)
            VALUES ($1, $2, $3, $4, $5)`,
-          [dbMember.id, discordId, channel.id, channelName, CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID]
+          [dbMember.id, discordId, channel.id, channelName, categoryId]
         );
 
         // Welcome embed + painel (errors aqui não falham o onboarding —

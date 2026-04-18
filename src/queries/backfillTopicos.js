@@ -25,9 +25,9 @@ const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed, welcomeChannelEmbed } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
-const { queueChannelOp } = require('../discordQueue');
 const { formatResidentChannelName } = require('../discord/structureTemplate');
 const { buildBairristaChannelOverwrites } = require('../members/channelInvariants');
+const { createResidentChannel } = require('../members/createResidentChannel');
 const { buildBairristaChannelPanel } = require('../onboarding/onboardingHandlers');
 const memberRepo = require('../repositories/member');
 
@@ -54,22 +54,19 @@ async function _createOne(guild, botId, dbMember) {
 
   const permissionOverwrites = buildBairristaChannelOverwrites(guild, dbMember.discord_id, botId);
 
-  const channel = await queueChannelOp(() =>
-    guild.channels.create({
-      name: channelName,
-      type: ChannelType.GuildText,
-      parent: CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID,
-      permissionOverwrites,
-      topic: `Canal individual de ${fullName} (${nickname})`,
-    })
-  );
+  const { channel, categoryId } = await createResidentChannel(guild, {
+    name: channelName,
+    type: ChannelType.GuildText,
+    permissionOverwrites,
+    topic: `Canal individual de ${fullName} (${nickname})`,
+  });
 
   await memberRepo.update(dbMember.id, { channel_id: channel.id });
 
   await query(
     `INSERT INTO resident_channels (member_id, discord_id, channel_id, channel_name, category_id)
      VALUES ($1, $2, $3, $4, $5)`,
-    [dbMember.id, dbMember.discord_id, channel.id, channelName, CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID]
+    [dbMember.id, dbMember.discord_id, channel.id, channelName, categoryId]
   );
 
   // Welcome embed + painel — non-fatal se falhar.
