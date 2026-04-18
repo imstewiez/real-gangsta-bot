@@ -184,6 +184,13 @@ async function syncOne(key) {
       const safeCol = Math.max(result.lastCol, observed.col);
       trimSheet(batch, sheetId, safeRow, safeCol);
     }
+    // Debug pre-flush — diagnostica "row X beyond row Y" reportado em prod.
+    // Dumpa o estado do grow target para ver se o SET semantic está a funcionar
+    // ou se o deploy do fix não chegou a Railway (ambos dão sintoma parecido).
+    const growTarget = batch._growTargets?.get(sheetId);
+    log(
+      `[SHEETS:debug] ${key} pre-flush: ${batch.requests.length} requests, growTarget=${JSON.stringify(growTarget || null)}, result.lastRow=${result?.lastRow}, result.lastCol=${result?.lastCol}`
+    );
     flushed = await batch.flush();
   } catch (e) {
     syncErr = e;
