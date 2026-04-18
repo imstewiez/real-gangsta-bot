@@ -12,7 +12,7 @@
 
 const { ChannelType } = require('discord.js');
 const CONFIG = require('../config');
-const { CATEGORY_BY_KEY, bold } = require('../discord/structureTemplate');
+const { bold } = require('../discord/structureTemplate');
 const { brandEmbed, rankBadge } = require('../shared/embedBuilders');
 const { BAIRRISTAS, EMOJI } = require('../content');
 const { weekBounds } = require('../util');
@@ -44,42 +44,34 @@ async function _findOrCreateChannel() {
   const guild = _client.guilds.cache.get(CONFIG.DISCORD_GUILD_ID);
   if (!guild) return null;
 
-  // Procurar por slug na categoria alvo ou em qualquer lado.
-  // Fallback: GUETTO (moradia/tópicos) → COMANDO (chefia) se BAIRRISTAS não existir.
-  const catKey = CONFIG.BAIRRISTA_LOG_CATEGORY_KEY || 'BAIRRISTAS';
-  const targetCat = CATEGORY_BY_KEY[catKey] || CATEGORY_BY_KEY['GUETTO'] || CATEGORY_BY_KEY['COMANDO'];
-  const slugRe = /log.bairrista|movimento.bairrista/i;
-
+  // Match por nome EXACTO (expectedChannelName usa bold unicode via bold());
+  // regex antiga /log.bairrista/i não apanhava os chars `𝗹𝗼𝗴-𝗯𝗮𝗶𝗿𝗿𝗶𝘀𝘁𝗮𝘀` →
+  // busca falhava → auto-create criava duplicado em cada boot, a ocupar slots
+  // da categoria de tópicos.
+  //
+  // Também: não criar automaticamente. Se canal não existe, skip silencioso.
+  // As notificações individuais de entrega já vivem em material-entregue; este
+  // canal só é útil se a chefia o criou manualmente e quer logs centralizados.
+  const expected = expectedChannelName();
   const textChannels = Array.from(guild.channels.cache.values()).filter(c => c.type === ChannelType.GuildText);
 
-  // Primeiro na categoria alvo
-  let channel = null;
-  if (targetCat?.id) {
-    channel = textChannels.find(c => c.parentId === targetCat.id && slugRe.test(c.name));
-  }
-  // Fallback global
-  if (!channel) {
-    channel = textChannels.find(c => slugRe.test(c.name));
+  // Match exacto, ou match loose que apanha variants (com/sem bold, acentos, etc.)
+  const normalized = s =>
+    String(s || '')
+      .normalize('NFKD')
+      .replace(/[^a-z0-9-]/gi, '')
+      .toLowerCase();
+
+  const channel = textChannels.find(c => c.name === expected || normalized(c.name).includes('logbairristas'));
+
+  if (channel) {
+    _channelId = channel.id;
+    return channel;
   }
 
-  // Auto-criar se não existe e se temos categoria
-  if (!channel && targetCat?.id) {
-    try {
-      channel = await guild.channels.create({
-        name: expectedChannelName(),
-        type: ChannelType.GuildText,
-        parent: targetCat.id,
-        reason: 'Auto-criado pelo bairristaNotifier (log de entregas/vendas)',
-      });
-      log(`[BAIRRISTA-LOG] Canal '${expectedChannelName()}' criado.`);
-    } catch (e) {
-      warn(`[BAIRRISTA-LOG] Falha a criar canal: ${e.message}`);
-      return null;
-    }
-  }
-
-  if (channel) _channelId = channel.id;
-  return channel;
+  // Canal não existe. NÃO criar — evita duplicados que saturam a categoria de
+  // tópicos. Chefia pode criar manualmente se quiser logs centralizados.
+  return null;
 }
 
 /**
