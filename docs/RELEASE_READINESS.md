@@ -4,7 +4,10 @@
 > commit. A actualidade deste documento é uma **responsabilidade**, não uma
 > sugestão. Se estás a trabalhar num item listado, abre issue antes.
 >
-> Última revisão: **2026-04-18** · Commit de referência: **`e0b820a` → após alignment pass**
+> Última revisão: **2026-04-18** · Commit de referência: **`27b4edb` (após I-1 + I-3 + I-4)**
+>
+> **Status das issues abertas neste ciclo:** 3/3 fechadas ✅ — `#2 (I-1)`,
+> `#3 (I-3)`, `#4 (I-4)`. Must-do das "próximas 2 semanas" já está done.
 >
 > Documentos vivos complementares:
 > - `docs/TECH_DEBT.md` — backlog técnico (severidade + estado)
@@ -64,12 +67,11 @@ Ordenados por probabilidade × impacto. **Estilo/preferência não é risco** �
 Converter directamente em issues GitHub. Cada item tem acceptance criteria
 testável. Os handle `tech-debt`, `ux`, `observability` são recomendados.
 
-### 🟠 I-1 · Advisory lock em `checkAndPromote` para prevenir race
+### ✅ I-1 · Advisory lock em `checkAndPromote` — FECHADO (`419a075`, #2)
 - **Severity:** high
-- **Why:** Dois movimentos de material em rápida sucessão podem ambos passar o check e duplicar o evento `member.promoted` (audit spam, dupla notificação).
-- **Files:** `src/members/autoPromotionEngine.js`
-- **Acceptance:** (a) `checkAndPromote` usa `pg_advisory_xact_lock` per-discord_id; (b) teste com 2 invocações concorrentes simuladas só resulta em 1 evento `member.promoted`.
-- **Type:** code + tests
+- **Status:** ✅ fechado em 2026-04-18
+- **Implementação:** helper `withAdvisoryLock` em `src/db.js` (pg_advisory_xact_lock per-discord_id com hashtext) + refactor em `checkAndPromote` (região crítica com re-read + CAS-style UPDATE WHERE tier=from).
+- **Validação:** integration test `test/integration/promotionRace.test.js` confirma que 5 invocações concorrentes só promovem 1× em postgres real.
 
 ### 🟡 I-2 · Alerting/observability layer em cima das métricas Prometheus existentes
 - **Severity:** medium
@@ -78,19 +80,20 @@ testável. Os handle `tech-debt`, `ux`, `observability` são recomendados.
 - **Acceptance:** (a) documento a dizer como ligar; (b) pelo menos 1 alarme activo (ex: `drift_members_total > 5`) com destino configurado.
 - **Type:** docs + infra externa
 
-### 🟡 I-3 · Integration tests para fluxo de saída end-to-end
+### ✅ I-3 · Integration test saída end-to-end — FECHADO (`ac3d706`, #3)
 - **Severity:** medium
-- **Why:** `test/saidaEndToEnd.test.js` é stub-based. Fluxos de saída são dos mais críticos (cadeia de custódia + scoring); um regression partia dados.
-- **Files:** novo `test/integration/saidaFlow.test.js`.
-- **Acceptance:** (a) cria saída com DB real + migrations 1–29; (b) adiciona 2 participantes; (c) fecha + finaliza; (d) valida `inventory_movements` + `saida_stats` + `spot_cooldowns` resultantes.
-- **Type:** tests
+- **Status:** ✅ fechado em 2026-04-18
+- **Implementação:** `test/integration/saidaFlow.test.js` com 9 casos sequenciais (createSaida → cooldown guard → addParticipant × 2 → issueMaterial → closeSaida → updateParticipantResult × 2 → finalizeSaida → validação de spot_stats + member_saida_stats + audit_logs + MVP + scores).
+- **Validação:** corre em CI job `integration` com postgres:15 em ~2-5s.
 
-### 🟡 I-4 · Staging environment + disaster recovery runbook
+### ✅ I-4 · DR runbook + backup script — FECHADO (`27b4edb`, #4)
 - **Severity:** medium
-- **Why:** Hoje rollback = `git revert + push`. Sem backup de DB documentado nem procedimento de restore. Railway não é suficiente.
-- **Files:** `docs/OPERATIONS.md` (nova secção), script de backup manual.
-- **Acceptance:** (a) DB snapshot semanal automático (Railway built-in ou cron externo); (b) procedimento de restore testado uma vez; (c) documentado no OPERATIONS.
-- **Type:** docs + infra
+- **Status:** ✅ fechado em 2026-04-18 (Parte 1+2+4); Parte 3 (staging env dedicado) deixada como recomendação
+- **Implementação:**
+  - `scripts/manual/backupDb.sh` (pg_dump -Fc compressed, retention via env var)
+  - `docs/OPERATIONS.md` § "Disaster Recovery" com fluxo seguro de restore + sanity checks
+  - 4 cenários operacionais documentados: migration partiu schema, DB corrompida, bot crash loop, token comprometido
+- **Deixado como recomendação (não bloqueante):** projecto Railway staging dedicado — validar custo/benefício quando a operação crescer.
 
 ### 🟢 I-5 · Subir coverage em zonas excluídas conforme estabilizam
 - **Severity:** low
@@ -117,14 +120,14 @@ testável. Os handle `tech-debt`, `ux`, `observability` são recomendados.
 
 Assumindo equipa pequena focada (1–2 devs), ~20h úteis de engenharia.
 
-### Must-do (~8h)
-1. **R2 mitigation (I-1)** — advisory lock em `checkAndPromote` + teste. ~4h. **Release gate:** sim.
-2. **I-3 — Integration test saida end-to-end.** ~4h. **Release gate:** sim (confiança para próxima release).
+### Must-do (~8h) — ✅ FECHADO
+1. ~~**R2 mitigation (I-1)**~~ ✅ `419a075` #2
+2. ~~**I-3 — Integration test saida end-to-end**~~ ✅ `ac3d706` #3
 
-### Should-do (~8h)
-3. **I-2 — Alerting setup.** ~3h (setup Grafana Cloud + 2 alarmes básicos). **Release gate:** não, mas queimas tempo real em incidentes sem isto.
-4. **I-4 — Backup + DR runbook.** ~4h (configurar Railway snapshot + `docs/OPERATIONS.md` secção Restore). **Release gate:** não, mas é negligência operacional sem.
-5. **Manutenção docs** — verificar que TECH_DEBT, DEPRECATION e ARCHITECTURE continuam alinhados após cada merge. 1h distribuída.
+### Should-do (~8h) — 1/2 fechado
+3. **I-2 — Alerting setup.** ~3h (setup Grafana Cloud + 2 alarmes básicos). **Release gate:** não, mas queimas tempo real em incidentes sem isto. **Aberto.**
+4. ~~**I-4 — Backup + DR runbook**~~ ✅ `27b4edb` #4
+5. **Manutenção docs** — verificar que TECH_DEBT, DEPRECATION, ARCHITECTURE, RELEASE_READINESS continuam alinhados após cada merge. **Contínuo.** Última actualização: 2026-04-18.
 
 ### Optional (~4h)
 6. **I-7 — UX feedback cycle.** Mandar mensagem a 2–3 staff, ouvir 48h, decidir. Sem feedback → fechar como "wontfix-by-design".

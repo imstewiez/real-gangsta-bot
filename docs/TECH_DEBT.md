@@ -23,11 +23,12 @@ funcs; 287 testes unit + integration tests com postgres real na CI).
 
 ## Backlog (aberto)
 
-### 🟡 Audit de idempotência cross-handler
+### 🟡 Audit de idempotência cross-handler (I-1 fechado; restantes abertos)
 Risco de race condition entre `onboardingEngine` (YB assign) + job
-`role_invariants` (reconcile) + `promotionEngine` (tier change) a correr
-simultaneamente. Documentação inicial em `docs/IDEMPOTENCY.md`; falta
-análise handler-a-handler + testes de stress.
+`role_invariants` (reconcile) + `promotionEngine` (tier change).
+**Promoção já protegida** por advisory lock (issue #2, commit `419a075`).
+Falta review similar em: onboarding↔invariants simultaneous, settlement
+wizard concorrente.
 
 ### 🟡 Cobertura incremental nas zonas menos testadas
 Baseline actual: **68.94% lines / 80.23% branches / 56.52% funcs / 68.94%
@@ -78,6 +79,10 @@ actual: `docs/ARCHITECTURE.md` + `docs/JOBS.md` + `docs/CONTRIBUTING.md`.
 
 | Item | Fechada em | Commit / PR |
 |---|---|---|
+| I-4: DR runbook + backup script + 4 cenários incident | 2026-04-18 | `27b4edb` (#4) |
+| I-3: Integration test saída end-to-end com DB real | 2026-04-18 | `ac3d706` (#3) |
+| I-1: Advisory lock em `checkAndPromote` (race de promoção) | 2026-04-18 | `419a075` (#2) |
+| Release-lead alignment pass: config validator + integration tests 028/029 + OPERATIONS/ARCHITECTURE sync | 2026-04-18 | `856ca4d` |
 | Whitelist de armas no dropdown de saída (10 armas ordenadas, sem brancas) | 2026-04-18 | `a467072` |
 | Spot cooldown 30min + notificação pública | 2026-04-18 | `378f43b` |
 | Fix "multiple assignments to same column updated_at" + 3 bugs de CI | 2026-04-18 | `8639948`, `3f8a9da` |
