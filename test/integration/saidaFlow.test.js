@@ -264,7 +264,7 @@ describe('integration/saidaFlow — end-to-end', () => {
     assert.ok(spot.rows[0].total_saidas >= 1);
 
     const mStats = await query(
-      `SELECT m.discord_id, mss.saidas_count
+      `SELECT m.discord_id, mss.saidas_total
          FROM member_saida_stats mss
          JOIN members m ON m.id = mss.member_id
         WHERE m.discord_id = ANY($1)`,
@@ -272,7 +272,7 @@ describe('integration/saidaFlow — end-to-end', () => {
     );
     assert.ok(mStats.rows.length >= 1, 'pelo menos um participante com stats');
     for (const row of mStats.rows) {
-      assert.ok(row.saidas_count >= 1);
+      assert.ok(row.saidas_total >= 1);
     }
   });
 
