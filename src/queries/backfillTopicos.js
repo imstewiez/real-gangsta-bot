@@ -84,6 +84,19 @@ async function _createOne(guild, botId, dbMember) {
 }
 
 async function handle(interaction) {
+  try {
+    return await _handleInner(interaction);
+  } catch (e) {
+    warn(`[BACKFILL-TOPICOS] Erro em handler: ${e.message}\n${e.stack}`);
+    const msg = `${EMOJI.ERRO} Falha: ${String(e.message).slice(0, 200)}`;
+    if (interaction.deferred || interaction.replied) {
+      return interaction.editReply({ content: msg }).catch(() => {});
+    }
+    return interaction.reply({ content: msg, flags: MessageFlags.Ephemeral }).catch(() => {});
+  }
+}
+
+async function _handleInner(interaction) {
   if (!isChefia(interaction.member)) {
     return safeReply(
       interaction,
