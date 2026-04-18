@@ -80,7 +80,7 @@ async function _statusHandler(interaction) {
     const ms = r.last_ms != null ? `${r.last_ms}ms` : '—';
     const extra = [];
     if ((r.consecutive_errors || 0) > 0) extra.push(`⚠ ${r.consecutive_errors}× seguidas`);
-    if (r.last_result === 'error' && r.last_error) extra.push(`_${String(r.last_error).slice(0, 60)}_`);
+    if (r.last_result === 'error' && r.last_error) extra.push(`_${String(r.last_error).slice(0, 200)}_`);
     const tail = extra.length ? ` · ${extra.join(' · ')}` : '';
     lines.push(`${emoji} **${tab}** · ${age} · ${ops} · ${ms}${tail}`);
   }
@@ -124,7 +124,7 @@ async function _resyncAllHandler(interaction) {
     lines.push(`${EMOJI.INFO} **${r.tab}** · skip _(${r.skipped})_`);
   }
   for (const r of errored) {
-    lines.push(`${EMOJI.ERRO} **${r.tab}** · ${String(r.error).slice(0, 120)}`);
+    lines.push(`${EMOJI.ERRO} **${r.tab}** · ${String(r.error).slice(0, 200)}`);
   }
 
   const color = errored.length ? 0xe74c3c : ok.length ? 0x2ecc71 : 0xf39c12;

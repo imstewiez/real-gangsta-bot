@@ -50,8 +50,12 @@ function isTransientSheetsError(err) {
 
 // Dimensão mínima antes de cada sync — garante espaço para escrever mesmo
 // depois de trims agressivos em syncs anteriores. Tabs com mais linhas
-// podem chamar growSheet adicional dentro do seu syncer.
-const PRE_SYNC_MIN_ROWS = 500;
+// (stock: inv.length + movs.length pode passar 1000) podem chamar growSheet
+// adicional. Bumped de 500 para 2000 em 2026-04-18 após stock falhar com
+// "Attempting to write row 509 beyond last row 5" — floor generoso é mais
+// barato que reasoning sobre timing de updates/trim. trimSheet no fim
+// encolhe para o tamanho real + padding.
+const PRE_SYNC_MIN_ROWS = 2000;
 const PRE_SYNC_MIN_COLS = 30;
 
 const TAB_SYNCERS = {
@@ -194,6 +198,19 @@ async function syncOne(key) {
     flushed = await batch.flush();
   } catch (e) {
     syncErr = e;
+    // Se o erro menciona requests[N], dumpa esse request + vizinhos para
+    // percebermos o que partiu em prod (ex: "row 509 beyond row 5" precisa
+    // de ver a updateSheetProperties e a updateCells em causa).
+    const m = /requests\[(\d+)\]/.exec(String(e.message || ''));
+    if (m) {
+      const idx = Number(m[1]);
+      const reqsNear = [idx - 1, idx, idx + 1]
+        .filter(i => i >= 0 && i < batch.requests.length)
+        .map(i => ({ i, req: batch.requests[i] }));
+      warn(`[SHEETS:flush-error] ${key} req[${idx}]: ${JSON.stringify(reqsNear).slice(0, 1500)}`);
+      // Também dumpa o primeiro request — é normalmente o grow (updateSheetProperties).
+      warn(`[SHEETS:flush-error] ${key} req[0] (grow): ${JSON.stringify(batch.requests[0] || null).slice(0, 500)}`);
+    }
   }
 
   // Protecção + hide em batch separado (não falha o sync se já existe protecção)
