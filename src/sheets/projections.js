@@ -78,7 +78,9 @@ async function _syncWithRetry(tab) {
       const canRetry = attempt < RETRY_DELAYS_MS.length && isTransientSheetsError(e);
       if (!canRetry) throw e;
       const delay = RETRY_DELAYS_MS[attempt];
-      warn(`[PROJ] ${tab} transitório (tentativa ${attempt + 1}/${RETRY_DELAYS_MS.length + 1}): ${e.message} — retry em ${delay}ms`);
+      warn(
+        `[PROJ] ${tab} transitório (tentativa ${attempt + 1}/${RETRY_DELAYS_MS.length + 1}): ${e.message} — retry em ${delay}ms`
+      );
       await _sleep(delay);
     }
   }

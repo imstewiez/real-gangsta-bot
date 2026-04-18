@@ -54,7 +54,11 @@ async function _statusHandler(interaction) {
   try {
     rows = await getSheetSyncState();
   } catch (e) {
-    return safeReply(interaction, { content: ERRORS.WITH_DETAIL(`Leitura de estado falhou: ${e.message}`) }, { dismissible: true });
+    return safeReply(
+      interaction,
+      { content: ERRORS.WITH_DETAIL(`Leitura de estado falhou: ${e.message}`) },
+      { dismissible: true }
+    );
   }
 
   const byTab = new Map((rows || []).map(r => [r.tab_key, r]));
@@ -82,9 +86,10 @@ async function _statusHandler(interaction) {
   }
 
   const color = degradedCount > 0 ? 0xe74c3c : 0x2ecc71;
-  const title = degradedCount > 0
-    ? `${EMOJI.WARN} Sync Sheets — ${degradedCount} tab(s) degradada(s)`
-    : `${EMOJI.OK} Sync Sheets — todas ok`;
+  const title =
+    degradedCount > 0
+      ? `${EMOJI.WARN} Sync Sheets — ${degradedCount} tab(s) degradada(s)`
+      : `${EMOJI.OK} Sync Sheets — todas ok`;
 
   const embed = brandEmbed('MOVEMENT')
     .setColor(color)
@@ -135,7 +140,10 @@ async function _resyncTabHandler(interaction, tab) {
   if (!tab || !VALID_TABS.has(tab)) {
     return safeReply(
       interaction,
-      { content: `${EMOJI.WARN} Preenche a opção \`tab\` (uma de: ${[...VALID_TABS].join(', ')}).`, flags: MessageFlags.Ephemeral },
+      {
+        content: `${EMOJI.WARN} Preenche a opção \`tab\` (uma de: ${[...VALID_TABS].join(', ')}).`,
+        flags: MessageFlags.Ephemeral,
+      },
       { dismissible: true }
     );
   }

@@ -106,9 +106,7 @@ function _maxWrittenCell(requests, sheetId) {
         const startRow = uc.start.rowIndex || 0;
         const startCol = uc.start.columnIndex || 0;
         const rowCount = Array.isArray(uc.rows) ? uc.rows.length : 0;
-        const colCount = rowCount
-          ? Math.max(...uc.rows.map(r => (Array.isArray(r.values) ? r.values.length : 0)))
-          : 0;
+        const colCount = rowCount ? Math.max(...uc.rows.map(r => (Array.isArray(r.values) ? r.values.length : 0))) : 0;
         maxRow = Math.max(maxRow, startRow + rowCount);
         maxCol = Math.max(maxCol, startCol + colCount);
       }
