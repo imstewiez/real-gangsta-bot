@@ -39,38 +39,72 @@ function getSpreadsheetId() {
 
 /**
  * Percorre o batch e devolve o maior endRow/endCol que aparece em
- * qualquer `updateCells` para este sheetId. Defensive safety net para o
- * trimSheet — se o syncer reportar lastRow subestimado, usamos o
- * observado para não encolher a grid abaixo das células realmente escritas.
+ * QUALQUER request com range/start para este sheetId. Defensive safety
+ * net para o trimSheet — se algum request (updateCells, setRowHeight,
+ * mergeCells, etc.) toca em row N, a grid TEM de ter rowCount >= N+1.
  *
- * Suporta dois formatos de updateCells:
- *   - { range: { sheetId, startRowIndex, endRowIndex, ... } } (clearRange)
- *   - { start: { sheetId, rowIndex, columnIndex }, rows: [...] } (updateCells com dados)
+ * Formatos suportados:
+ *   - updateCells com range        (clearRange)           → endRowIndex
+ *   - updateCells com start+rows   (writes com dados)     → start.rowIndex + rows.length
+ *   - updateDimensionProperties    (setRowHeight/Col)     → range.endIndex
+ *   - mergeCells                   (merges)               → range.endRowIndex
+ *   - updateBorders                (bordas)               → range.endRowIndex
+ *   - addBanding                   (zebra)                → bandedRange.range.endRowIndex
+ *   - addConditionalFormatRule     (conditional)          → ranges[].endRowIndex
+ *   - repeatCell                   (repeat styling)       → range.endRowIndex
+ *
+ * Qualquer outro request que introduza range e não esteja aqui: não
+ * fatal, só significa que o safeRow fica subestimado para esse request
+ * (fallback: syncer's reported lastRow continua a ser o piso mínimo).
  */
 function _maxWrittenCell(requests, sheetId) {
   let maxRow = 0;
   let maxCol = 0;
-  for (const req of requests) {
-    const uc = req.updateCells;
-    if (!uc) continue;
 
-    // Formato 1: clearRange — range explícito.
-    if (uc.range && uc.range.sheetId === sheetId) {
-      if (Number.isFinite(uc.range.endRowIndex)) maxRow = Math.max(maxRow, uc.range.endRowIndex);
-      if (Number.isFinite(uc.range.endColumnIndex)) maxCol = Math.max(maxCol, uc.range.endColumnIndex);
-      continue;
+  const readRange = range => {
+    if (!range || range.sheetId !== sheetId) return;
+    if (Number.isFinite(range.endRowIndex)) maxRow = Math.max(maxRow, range.endRowIndex);
+    if (Number.isFinite(range.endColumnIndex)) maxCol = Math.max(maxCol, range.endColumnIndex);
+  };
+
+  for (const req of requests) {
+    // updateCells — dois formatos: com range OR com start+rows.
+    if (req.updateCells) {
+      const uc = req.updateCells;
+      if (uc.range) readRange(uc.range);
+      if (uc.start && uc.start.sheetId === sheetId) {
+        const startRow = uc.start.rowIndex || 0;
+        const startCol = uc.start.columnIndex || 0;
+        const rowCount = Array.isArray(uc.rows) ? uc.rows.length : 0;
+        const colCount = rowCount
+          ? Math.max(...uc.rows.map(r => (Array.isArray(r.values) ? r.values.length : 0)))
+          : 0;
+        maxRow = Math.max(maxRow, startRow + rowCount);
+        maxCol = Math.max(maxCol, startCol + colCount);
+      }
     }
 
-    // Formato 2: updateCells com start + rows.
-    if (uc.start && uc.start.sheetId === sheetId) {
-      const startRow = uc.start.rowIndex || 0;
-      const startCol = uc.start.columnIndex || 0;
-      const rowCount = Array.isArray(uc.rows) ? uc.rows.length : 0;
-      const colCount = rowCount
-        ? Math.max(...uc.rows.map(r => (Array.isArray(r.values) ? r.values.length : 0)))
-        : 0;
-      maxRow = Math.max(maxRow, startRow + rowCount);
-      maxCol = Math.max(maxCol, startCol + colCount);
+    // updateDimensionProperties — setRowHeight, setColumnWidth.
+    // range usa startIndex/endIndex em vez de startRowIndex/endRowIndex.
+    if (req.updateDimensionProperties) {
+      const r = req.updateDimensionProperties.range;
+      if (r && r.sheetId === sheetId && Number.isFinite(r.endIndex)) {
+        if (r.dimension === 'ROWS') maxRow = Math.max(maxRow, r.endIndex);
+        else if (r.dimension === 'COLUMNS') maxCol = Math.max(maxCol, r.endIndex);
+      }
+    }
+
+    // mergeCells, updateBorders, repeatCell — range standard.
+    if (req.mergeCells) readRange(req.mergeCells.range);
+    if (req.updateBorders) readRange(req.updateBorders.range);
+    if (req.repeatCell) readRange(req.repeatCell.range);
+
+    // addBanding — bandedRange.range.
+    if (req.addBanding && req.addBanding.bandedRange) readRange(req.addBanding.bandedRange.range);
+
+    // addConditionalFormatRule — rule.ranges[].
+    if (req.addConditionalFormatRule && req.addConditionalFormatRule.rule) {
+      for (const range of req.addConditionalFormatRule.rule.ranges || []) readRange(range);
     }
   }
   return { row: maxRow, col: maxCol };
