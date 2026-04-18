@@ -381,85 +381,44 @@ async function syncStock(batch, sheetId) {
     return vb - va;
   });
 
-  // Bulk-writes por categoria: 1 updateCells com catHeader + N items + subtotal
-  // todos juntos. Era por-item-individual, mas em prod isso resultava em items
-  // não aparecerem na sheet (apenas categorias visíveis). O padrão bulk é o que
-  // tableBody usa para o breakdown que FUNCIONA — padroniza aqui.
-  let zebraIndex = 0;
+  // MUDANÇA DE PADRÃO: flat table com TODOS os items ordenados por categoria
+  // (depois por nome). Usa tableBody — EXACTAMENTE o mesmo padrão do breakdown
+  // e dos membros/saidas que funcionam em prod. Abandona os cabeçalhos de
+  // categoria + subtotais inline porque o padrão "per-category mergeCells +
+  // per-item updateCells" estava a resultar em items invisíveis na sheet em
+  // prod (razão não identificada; tableBody é o fallback seguro).
+  //
+  // Os itens continuam ordenados por categoria (col "Categoria") portanto
+  // agrupam visualmente. Subtotais e panorama estão no topo da tab.
+  const sortedItems = [];
   for (const cat of sortedCats) {
-    const items = groups.get(cat);
-
-    // Monta todas as linhas da categoria num único array: [catHeader, ...items, subtotal]
-    const catBlock = [];
-
-    // Cat header
-    const catHeaderRow = [
-      bodyBoldCell(catLabel(cat), { bg: COLOR.BG_BLOCK, align: 'LEFT' }),
-      ...Array(COL_COUNT - 1).fill(cell('', { bg: COLOR.BG_BLOCK })),
-    ];
-    catBlock.push(catHeaderRow);
-
-    // Items
-    for (const i of items) {
-      const cells = [
-        bodyCell(i.name),
-        captionCell(i.category || '—'),
-        captionCell(i.unit || 'un'),
-        numCell(i.balance_armazem || 0, NUM_FMT.INT),
-        numCell(i.balance_grupo || 0, NUM_FMT.INT),
-        numCell(i.balance, NUM_FMT.INT),
-        numCell(Number(i.estimated_value), NUM_FMT.EURO_DEC),
-        numCell(Number(i.value_total), NUM_FMT.EURO),
-        numCell(i.total_in || 0, NUM_FMT.INT),
-        numCell(i.total_out || 0, NUM_FMT.INT),
-        captionCell(fmtDT(i.last_movement)),
-        stateBadge(i.balance, i),
-      ];
-      while (cells.length < COL_COUNT) cells.push(cell('', { bg: COLOR.BG_APP }));
-      if (zebraIndex % 2 === 1) {
-        for (const c of cells) {
-          if (c.userEnteredFormat && c.userEnteredFormat.backgroundColor) {
-            const bg = c.userEnteredFormat.backgroundColor;
-            if (Math.abs(bg.red - COLOR.BG_APP.red) < 0.02) {
-              c.userEnteredFormat.backgroundColor = COLOR.BG_BLOCK;
-            }
-          }
-        }
-      }
-      catBlock.push(cells);
-      zebraIndex += 1;
-    }
-
-    // Subtotal
-    const subQtyAr = items.reduce((a, i) => a + Number(i.balance_armazem || 0), 0);
-    const subQtyGr = items.reduce((a, i) => a + Number(i.balance_grupo || 0), 0);
-    const subQty = items.reduce((a, i) => a + Number(i.balance || 0), 0);
-    const subVal = items.reduce((a, i) => a + Number(i.value_total || 0), 0);
-    const boldFont = { fontFamily: 'Inter', fontSize: 10, bold: true, foregroundColor: COLOR.WHITE };
-    const subCells = [
-      bodyBoldCell(`⎯ subtotal ${CAT_DISPLAY[cat] || cat}`, { bg: COLOR.BG_BLOCK_ALT, align: 'RIGHT' }),
-      cell('', { bg: COLOR.BG_BLOCK_ALT }),
-      cell('', { bg: COLOR.BG_BLOCK_ALT }),
-      numCell(subQtyAr, NUM_FMT.INT, { bg: COLOR.BG_BLOCK_ALT, font: boldFont }),
-      numCell(subQtyGr, NUM_FMT.INT, { bg: COLOR.BG_BLOCK_ALT, font: boldFont }),
-      numCell(subQty, NUM_FMT.INT, { bg: COLOR.BG_BLOCK_ALT, font: boldFont }),
-      cell('', { bg: COLOR.BG_BLOCK_ALT }),
-      numCell(subVal, NUM_FMT.EURO, { bg: COLOR.BG_BLOCK_ALT, font: boldFont }),
-      ...Array(COL_COUNT - 8).fill(cell('', { bg: COLOR.BG_BLOCK_ALT })),
-    ];
-    catBlock.push(subCells);
-
-    // BULK WRITE da categoria inteira — 1 updateCells para catHeader + items + subtotal
-    batch.updateCells(sheetId, row, 0, catBlock);
-    // Row heights e merge do catHeader separadamente (API não permite bulk)
-    const catHeaderRowIdx = row;
-    for (let idx = 0; idx < catBlock.length; idx += 1) {
-      batch.setRowHeight(sheetId, row + idx, 22);
-    }
-    batch.mergeCells(sheetId, catHeaderRowIdx, catHeaderRowIdx + 1, 0, COL_COUNT);
-    row += catBlock.length;
-    zebraIndex = 0;
+    const items = groups
+      .get(cat)
+      .slice()
+      .sort((a, b) => Number(b.value_total || 0) - Number(a.value_total || 0));
+    sortedItems.push(...items);
   }
+
+  const itemRows = sortedItems.map(i => [
+    bodyCell(i.name),
+    captionCell(catLabel(i.category || '—')),
+    captionCell(i.unit || 'un'),
+    numCell(i.balance_armazem || 0, NUM_FMT.INT),
+    numCell(i.balance_grupo || 0, NUM_FMT.INT),
+    numCell(i.balance, NUM_FMT.INT),
+    numCell(Number(i.estimated_value), NUM_FMT.EURO_DEC),
+    numCell(Number(i.value_total), NUM_FMT.EURO),
+    numCell(i.total_in || 0, NUM_FMT.INT),
+    numCell(i.total_out || 0, NUM_FMT.INT),
+    captionCell(fmtDT(i.last_movement)),
+    stateBadge(i.balance, i),
+  ]);
+  // Pad cada row para COL_COUNT
+  for (const r of itemRows) {
+    while (r.length < COL_COUNT) r.push(cell('', { bg: COLOR.BG_APP }));
+  }
+  // basicFilter fica na secção de movimentos (tab só suporta 1 basicFilter).
+  row = tableBody(batch, sheetId, row, itemRows);
 
   // Grand total do inventário
   row = totalRow(batch, sheetId, row, {
