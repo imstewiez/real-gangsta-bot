@@ -79,7 +79,10 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('nova-categoria-topicos')
-    .setDescription('Força criação de nova overflow category para tópicos (chefia)'),
+    .setDescription('Cria (ou reutiliza) categoria e move TODOS os tópicos para lá (chefia)')
+    .addStringOption(opt =>
+      opt.setName('nome').setDescription('Nome da categoria (default: BAIRRISTAS)').setRequired(false)
+    ),
 
   new SlashCommandBuilder()
     .setName('sync-sheets')

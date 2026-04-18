@@ -1,14 +1,18 @@
 'use strict';
 /**
- * /nova-categoria-topicos — força criação de uma nova overflow category.
+ * /nova-categoria-topicos — cria (ou reutiliza) categoria e consolida lá
+ * TODOS os tópicos activos.
  *
- * Para quando o /organize-topicos não dispara auto-create porque:
- *   - Não há órfãos para mover (sem trigger)
- *   - A primary ainda não está 50/50 (sem trigger)
- *   - Ou simplesmente queremos criar proactivamente antes de encher
+ * Steps:
+ *   1. Procura categoria com o nome indicado (default: "BAIRRISTAS"). Se
+ *      existir, reutiliza. Se não, cria com perms clonadas da primary.
+ *   2. Regista em managed_topic_categories (role='overflow-auto') se não
+ *      estiver lá já.
+ *   3. Move TODOS os resident_channels.status='active' para lá, via
+ *      setParent. Skip se já estão lá. Se a categoria atingir 50 durante
+ *      o processo, pára e reporta os que faltaram.
  *
- * Diferente de /organize-topicos: este comando NÃO faz preview — cria logo.
- * Chefia-only. Clona perms da primary. Persiste em managed_topic_categories.
+ * Chefia-only. Sem preview — é acção explícita.
  */
 
 const { ChannelType, MessageFlags } = require('discord.js');
@@ -20,6 +24,8 @@ const { brandEmbed } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
 const { queueChannelOp } = require('../discordQueue');
+
+const DEFAULT_NAME = 'BAIRRISTAS';
 
 async function _cloneOverwritesFromPrimary(guild) {
   const primary = CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID;
@@ -34,18 +40,83 @@ async function _cloneOverwritesFromPrimary(guild) {
   }));
 }
 
-async function _nextOverflowName(guild) {
-  const primary = CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID;
-  let baseName = 'Tópicos Bairristas';
-  if (primary) {
-    const cat = await guild.channels.fetch(primary).catch(() => null);
-    if (cat?.name) baseName = cat.name.replace(/\s*#\d+$/, '');
+async function _findCategoryByName(guild, name) {
+  const wanted = String(name).trim().toLowerCase();
+  // Procura por nome exacto (case-insensitive).
+  const all = Array.from(guild.channels.cache.values()).filter(c => c.type === ChannelType.GuildCategory);
+  return all.find(c => String(c.name).trim().toLowerCase() === wanted) || null;
+}
+
+async function _ensureCategory(guild, name, actorTag) {
+  const existing = await _findCategoryByName(guild, name);
+  if (existing) {
+    log(`[NOVA-CATEGORIA] Categoria '${name}' já existe (${existing.id}) — reusing.`);
+    // Regista em DB se não estiver.
+    await query(
+      `INSERT INTO managed_topic_categories (category_id, role, notes)
+       VALUES ($1, 'overflow-auto', $2)
+       ON CONFLICT (category_id) DO NOTHING`,
+      [existing.id, `Reused via /nova-categoria-topicos por ${actorTag} em ${new Date().toISOString()}`]
+    );
+    return { category: existing, created: false };
   }
-  const r = await query(`SELECT COUNT(*)::int AS n FROM managed_topic_categories WHERE role = 'overflow-auto'`).catch(
-    () => ({ rows: [{ n: 0 }] })
+  const permissionOverwrites = (await _cloneOverwritesFromPrimary(guild)) || [];
+  const cat = await queueChannelOp(() =>
+    guild.channels.create({
+      name,
+      type: ChannelType.GuildCategory,
+      permissionOverwrites,
+      reason: `Criada via /nova-categoria-topicos por ${actorTag}`,
+    })
   );
-  const nextIdx = (r.rows[0]?.n || 0) + 2;
-  return `${baseName} #${nextIdx}`;
+  await query(
+    `INSERT INTO managed_topic_categories (category_id, role, notes)
+     VALUES ($1, 'overflow-auto', $2)
+     ON CONFLICT (category_id) DO NOTHING`,
+    [cat.id, `Criada via /nova-categoria-topicos por ${actorTag} em ${new Date().toISOString()}`]
+  );
+  log(`[NOVA-CATEGORIA] '${name}' (${cat.id}) criada por ${actorTag}.`);
+  return { category: cat, created: true };
+}
+
+async function _moveAllTopicsInto(guild, targetCatId) {
+  const active = await query(
+    `SELECT rc.channel_id, m.display_name
+       FROM resident_channels rc
+       JOIN members m ON m.id = rc.member_id
+      WHERE rc.status = 'active'
+      ORDER BY m.display_name ASC`
+  );
+  const moved = [];
+  const skipped = [];
+  const failed = [];
+
+  for (const r of active.rows) {
+    try {
+      const ch = await guild.channels.fetch(r.channel_id).catch(() => null);
+      if (!ch) {
+        failed.push({ name: r.display_name, channelId: r.channel_id, error: 'canal não existe em Discord' });
+        continue;
+      }
+      if (ch.parentId === targetCatId) {
+        skipped.push({ name: r.display_name, reason: 'já na categoria' });
+        continue;
+      }
+      await queueChannelOp(() => ch.setParent(targetCatId, { lockPermissions: false }));
+      await query(`UPDATE resident_channels SET category_id = $1 WHERE channel_id = $2`, [targetCatId, r.channel_id]);
+      moved.push({ name: r.display_name, channelId: r.channel_id });
+    } catch (e) {
+      failed.push({ name: r.display_name, channelId: r.channel_id, error: e.message });
+      // Se a categoria encheu, stop — os seguintes vão falhar todos.
+      const msg = String(e.message || '');
+      if (msg.includes('CHANNEL_PARENT_MAX_CHANNELS') || msg.includes('Maximum number of channels')) {
+        warn(`[NOVA-CATEGORIA] Categoria target cheia — a parar após ${moved.length} movidos.`);
+        break;
+      }
+    }
+  }
+
+  return { moved, skipped, failed };
 }
 
 async function handle(interaction) {
@@ -79,37 +150,42 @@ async function _handleInner(interaction) {
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
+  const nome = (interaction.options.getString('nome') || DEFAULT_NAME).trim();
   const guild = interaction.guild;
-  const name = await _nextOverflowName(guild);
-  const permissionOverwrites = (await _cloneOverwritesFromPrimary(guild)) || [];
 
-  const cat = await queueChannelOp(() =>
-    guild.channels.create({
-      name,
-      type: ChannelType.GuildCategory,
-      permissionOverwrites,
-      reason: `Overflow category criada via /nova-categoria-topicos por ${interaction.user.tag}`,
-    })
+  // 1. Ensure category
+  const { category, created } = await _ensureCategory(guild, nome, interaction.user.tag);
+
+  // 2. Move all topics
+  const { moved, skipped, failed } = await _moveAllTopicsInto(guild, category.id);
+
+  const lines = [];
+  lines.push(
+    created
+      ? `${EMOJI.OK} Criada nova categoria **${category.name}** (<#${category.id}>) com perms clonadas da primary.`
+      : `${EMOJI.INFO} Categoria **${category.name}** já existia (<#${category.id}>) — a reutilizar.`
   );
+  lines.push('');
+  lines.push(`**${moved.length}** tópico(s) movido(s) · **${skipped.length}** já lá · **${failed.length}** falha(s).`);
+  if (moved.length) {
+    lines.push('');
+    lines.push('**Movidos:**');
+    for (const m of moved.slice(0, 25)) lines.push(`• ${m.name}`);
+    if (moved.length > 25) lines.push(`_… e mais ${moved.length - 25}_`);
+  }
+  if (failed.length) {
+    lines.push('');
+    lines.push('**Falhas:**');
+    for (const f of failed.slice(0, 10)) lines.push(`${EMOJI.ERRO} ${f.name} · ${String(f.error).slice(0, 80)}`);
+    if (failed.length > 10) lines.push(`_… e mais ${failed.length - 10}_`);
+  }
 
-  await query(
-    `INSERT INTO managed_topic_categories (category_id, role, notes)
-     VALUES ($1, 'overflow-auto', $2)
-     ON CONFLICT (category_id) DO NOTHING`,
-    [cat.id, `Criada via /nova-categoria-topicos por ${interaction.user.id} em ${new Date().toISOString()}`]
-  );
-
-  log(`[NOVA-CATEGORIA] '${name}' (${cat.id}) criada por ${interaction.user.tag}.`);
-
+  const color = failed.length ? 0xe74c3c : 0x2ecc71;
   const embed = brandEmbed('MOVEMENT')
-    .setColor(0x2ecc71)
-    .setTitle(`${EMOJI.OK} Categoria criada`)
-    .setDescription(
-      `**${name}** criada com perms clonadas da primary.\n\n` +
-        `Nova categoria: <#${cat.id}>\n\n` +
-        `A partir de agora, qualquer /backfill-topicos, /organize-topicos ou approve de tag usa esta categoria como fallback quando a primary estiver cheia.\n\n` +
-        `Podes correr \`/organize-topicos executar:true\` para mover órfãos directamente para cá.`
-    );
+    .setColor(color)
+    .setTitle(`${EMOJI.REFRESH} Categoria **${category.name}** — ${moved.length} movidos`)
+    .setDescription(lines.join('\n').slice(0, 3900));
+
   return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
 }
 
