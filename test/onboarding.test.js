@@ -39,6 +39,38 @@ require.cache[resolvedPath('db.js')] = {
   exports: {
     pool: { connect: async () => ({ query: async () => ({ rows: [] }), release: () => {} }) },
     query: async () => ({ rows: [{ total_qty: _memberMaterialQty }] }),
+    // Stub para withAdvisoryLock — executa callback com um txClient que
+    // responde às queries que checkAndPromote faz dentro do lock.
+    withAdvisoryLock: async (_key, callback) => {
+      const txClient = {
+        query: async (sql, _values) => {
+          if (sql.includes('FROM members WHERE discord_id')) {
+            if (!_currentMember) return { rows: [], rowCount: 0 };
+            return {
+              rows: [
+                {
+                  id: _currentMember.id || 1,
+                  tier: _currentMember.tier,
+                  role: _currentMember.role,
+                  display_name: 'Stubbed',
+                  nickname: 'stub',
+                  channel_id: null,
+                },
+              ],
+              rowCount: 1,
+            };
+          }
+          if (sql.includes('SUM(im.quantity)')) {
+            return { rows: [{ total_qty: _memberMaterialQty }], rowCount: 1 };
+          }
+          if (sql.startsWith('UPDATE members SET tier')) {
+            return { rowCount: _memberMaterialQty >= 25000 ? 1 : 0, rows: [] };
+          }
+          return { rows: [], rowCount: 0 };
+        },
+      };
+      return callback(txClient);
+    },
   },
 };
 

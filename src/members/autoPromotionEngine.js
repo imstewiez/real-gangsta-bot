@@ -68,6 +68,16 @@ const getMemberMaterialValue = getMemberMaterialQty;
  * Verifica se um membro merece promoção automática e aplica-a.
  * Chamado após cada registo de material.
  *
+ * **Thread-safety**: usa `withAdvisoryLock('promote:<discord_id>')` para
+ * garantir que duas invocações concorrentes para o mesmo user não duplicam
+ * a promoção. A região crítica (re-read tier + check qty + UPDATE tier)
+ * corre dentro do lock; as side-effects Discord (add/remove role, rename
+ * canal, audit, event bus) correm FORA para não prender o pool.
+ *
+ * Se o lock é concedido e a segunda invocação entra, ela vai ver o tier
+ * já actualizado e retornar null (a guard `liveTier !== promotion.from`
+ * filtra). Zero duplicação.
+ *
  * @param {string} discordId - Discord ID do membro
  * @param {object} guild - Discord guild object
  * @param {object} client - Discord client
@@ -88,21 +98,72 @@ async function checkAndPromote(discordId, guild, client) {
   const threshold = CONFIG[promotion.thresholdKey];
   if (!threshold) return null;
 
-  const totalQty = await getMemberMaterialQty(dbMember.id);
-  if (totalQty < threshold) return null; // Ainda não atingiu
-
-  // ── Promover! ──────────────────────────────────────────────────────────
-  const fromRoleId = CONFIG[promotion.fromRoleKey];
   const toRoleId = CONFIG[promotion.toRoleKey];
+  const fromRoleId = CONFIG[promotion.fromRoleKey];
 
   if (!toRoleId) {
     warn(`[AUTO-PROMO] Role ID ${promotion.toRoleKey} não configurado. Promoção abortada.`);
     return null;
   }
 
+  // ── Região crítica: re-read tier + check qty + UPDATE, tudo atómico ──
+  // O lock é per-discord_id, não global — não bloqueia outros users.
+  const { withAdvisoryLock } = require('../db');
+  const decision = await withAdvisoryLock(`promote:${discordId}`, async txClient => {
+    // Re-read dentro do lock — se alguém promoveu este user entre o fetch
+    // inicial e aqui, o tier já mudou e nós desistimos.
+    const memberRes = await txClient.query(
+      'SELECT id, tier, role, display_name, nickname, channel_id FROM members WHERE discord_id = $1 FOR UPDATE',
+      [discordId]
+    );
+    const liveMember = memberRes.rows[0];
+    if (!liveMember) return null;
+    if (liveMember.role !== 'bairrista') return null;
+    const liveTier = liveMember.tier || CONFIG.BAIRRISTA_DEFAULT_TIER;
+    if (liveTier !== promotion.from) {
+      // Outro processo concorrente já promoveu — esta invocação é redundante.
+      return null;
+    }
+
+    // Soma o material dentro da mesma transação — precisão total.
+    const qtyRes = await txClient.query(
+      `SELECT COALESCE(SUM(im.quantity), 0)::int AS total_qty
+         FROM inventory_movements im
+        WHERE im.member_id = $1
+          AND im.movement_type IN ('entrega_bairrista', 'venda_bairrista', 'entrega_oficial')`,
+      [liveMember.id]
+    );
+    const totalQty = Number(qtyRes.rows[0].total_qty) || 0;
+    if (totalQty < threshold) return null;
+
+    // Decidiu promover — UPDATE com WHERE tier=from para CAS-style safety.
+    const upd = await txClient.query(
+      'UPDATE members SET tier = $1, updated_at = NOW() WHERE id = $2 AND tier = $3 RETURNING id',
+      [promotion.to, liveMember.id, promotion.from]
+    );
+    if (upd.rowCount === 0) return null; // alguém mexeu mesmo no último microssegundo
+
+    return {
+      memberId: liveMember.id,
+      displayName: liveMember.display_name,
+      nickname: liveMember.nickname,
+      channelId: liveMember.channel_id,
+      totalQty,
+    };
+  });
+
+  if (!decision) return null;
+
+  // ── Side-effects Discord + audit + event (já fora do lock) ──
   try {
     const guildMember = await guild.members.fetch(discordId).catch(() => null);
-    if (!guildMember) return null;
+    if (!guildMember) {
+      // DB já actualizada — role invariants job corrige no próximo ciclo.
+      warn(
+        `[AUTO-PROMO] DB promoveu ${dbMember.display_name} mas guildMember não existe; roles/canal ficam para invariants.`
+      );
+      return { promoted: true, from: promotion.from, to: promotion.to, qty: decision.totalQty };
+    }
 
     // Remover role anterior e adicionar novo
     if (fromRoleId && guildMember.roles.cache.has(fromRoleId)) {
@@ -114,28 +175,25 @@ async function checkAndPromote(discordId, guild, client) {
       guildMember.roles.add(toRoleId, `Auto-promoção: atingiu ${threshold.toLocaleString('pt-PT')} itens entregues`)
     );
 
-    // Atualizar DB
-    await memberRepo.update(dbMember.id, { tier: promotion.to });
-
     // Renomear canal individual para reflectir novo tier (se existir)
-    if (dbMember.channel_id) {
+    if (decision.channelId) {
       try {
         const { formatResidentChannelName } = require('../discord/structureTemplate');
         const { query: dbQuery } = require('../db');
-        const channel = await guild.channels.fetch(dbMember.channel_id).catch(() => null);
+        const channel = await guild.channels.fetch(decision.channelId).catch(() => null);
         if (channel) {
-          const newName = formatResidentChannelName(promotion.to, dbMember.nickname || dbMember.display_name);
+          const newName = formatResidentChannelName(promotion.to, decision.nickname || decision.displayName);
           if (channel.name !== newName) {
             await queueChannelOp(() => channel.setName(newName));
             await dbQuery(
               "UPDATE resident_channels SET channel_name = $1 WHERE channel_id = $2 AND status = 'active'",
-              [newName, dbMember.channel_id]
+              [newName, decision.channelId]
             );
-            log(`[AUTO-PROMO] Canal de ${dbMember.display_name} renomeado: ${newName}`);
+            log(`[AUTO-PROMO] Canal de ${decision.displayName} renomeado: ${newName}`);
           }
         }
       } catch (e) {
-        warn(`[AUTO-PROMO] Falha a renomear canal de ${dbMember.display_name}: ${e.message}`);
+        warn(`[AUTO-PROMO] Falha a renomear canal de ${decision.displayName}: ${e.message}`);
       }
     }
 
@@ -145,36 +203,37 @@ async function checkAndPromote(discordId, guild, client) {
       entityId: discordId,
       actorId: 'system',
       actorName: CONFIG.BOT_DISPLAY_NAME,
-      beforeState: { tier: promotion.from, totalQty },
+      beforeState: { tier: promotion.from, totalQty: decision.totalQty },
       afterState: { tier: promotion.to, threshold },
-      context: `Material acumulado: ${totalQty.toLocaleString('pt-PT')} itens (meta: ${threshold.toLocaleString('pt-PT')} itens)`,
+      context: `Material acumulado: ${decision.totalQty.toLocaleString('pt-PT')} itens (meta: ${threshold.toLocaleString('pt-PT')} itens)`,
     });
 
     await sendAuditToChannel(client, {
       title: 'Promoção Automática!',
-      description: `<@${discordId}> subiu de **${formatTierName(promotion.from)}** para **${formatTierName(promotion.to)}**!\n\nMaterial acumulado: **${totalQty.toLocaleString('pt-PT')} itens** (meta: ${threshold.toLocaleString('pt-PT')} itens)`,
+      description: `<@${discordId}> subiu de **${formatTierName(promotion.from)}** para **${formatTierName(promotion.to)}**!\n\nMaterial acumulado: **${decision.totalQty.toLocaleString('pt-PT')} itens** (meta: ${threshold.toLocaleString('pt-PT')} itens)`,
       color: 0xffd700,
     });
 
-    log(`[AUTO-PROMO] ${dbMember.display_name}: ${promotion.from} → ${promotion.to} (${totalQty} itens)`);
+    log(`[AUTO-PROMO] ${decision.displayName}: ${promotion.from} → ${promotion.to} (${decision.totalQty} itens)`);
 
     // Event — dispara projecção sheets (membros + dashboard + resumo).
     eventBus
       .emitAsync('member.tier_changed', {
         discordId,
-        memberId: dbMember.id,
-        displayName: dbMember.display_name,
+        memberId: decision.memberId,
+        displayName: decision.displayName,
         from: promotion.from,
         to: promotion.to,
-        qty: totalQty,
+        qty: decision.totalQty,
         at: new Date(),
       })
       .catch(() => {});
 
-    return { promoted: true, from: promotion.from, to: promotion.to, qty: totalQty };
+    return { promoted: true, from: promotion.from, to: promotion.to, qty: decision.totalQty };
   } catch (e) {
-    warn(`[AUTO-PROMO] Falha ao promover ${dbMember.display_name}: ${e.message}`);
-    return null;
+    warn(`[AUTO-PROMO] Falha no side-effect de ${decision.displayName}: ${e.message}`);
+    // Não reverte DB — role_invariants job corrige desalinhamento Discord↔DB.
+    return { promoted: true, from: promotion.from, to: promotion.to, qty: decision.totalQty };
   }
 }
 

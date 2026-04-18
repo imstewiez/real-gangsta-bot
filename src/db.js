@@ -107,6 +107,37 @@ async function queryWithTransaction(callback) {
   }
 }
 
+/**
+ * Corre `callback` dentro de uma transação com `pg_advisory_xact_lock` adquirido.
+ * O lock liberta automaticamente no COMMIT/ROLLBACK — imune a process crash.
+ *
+ * Usar para regiões críticas pequenas onde 2 requests concorrentes para a
+ * mesma entidade podem race (ex: promoção automática, UPSERT de agregados).
+ *
+ * A key pode ser:
+ *   - string → hashed via `hashtext()` do Postgres (case-sensitive, estável)
+ *   - number → usado directamente como bigint
+ *
+ * O lock é **blocking**. Segundo caller espera. Região crítica deve ser
+ * pequena (zero chamadas I/O externas tipo Discord API); senão o pool trava.
+ *
+ * @param {string|number} key
+ * @param {(client) => Promise<T>} callback
+ * @returns {Promise<T>}
+ */
+async function withAdvisoryLock(key, callback) {
+  return queryWithTransaction(async client => {
+    if (typeof key === 'string') {
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1)::int)', [key]);
+    } else if (typeof key === 'number' && Number.isFinite(key)) {
+      await client.query('SELECT pg_advisory_xact_lock($1)', [key]);
+    } else {
+      throw new Error(`[DB] withAdvisoryLock: key deve ser string ou number, recebeu ${typeof key}`);
+    }
+    return callback(client);
+  });
+}
+
 // ── Singleton lock via PostgreSQL advisory lock ──────────────────────────────
 // Usa uma conexão dedicada (não do pool) para que o lock seja libertado
 // automaticamente quando o processo termina — impede duas instâncias simultâneas.
@@ -176,4 +207,12 @@ async function warmPool(n = 3) {
   }
 }
 
-module.exports = { pool, query, queryWithTransaction, acquireInstanceLockWithRetry, releaseInstanceLock, warmPool };
+module.exports = {
+  pool,
+  query,
+  queryWithTransaction,
+  withAdvisoryLock,
+  acquireInstanceLockWithRetry,
+  releaseInstanceLock,
+  warmPool,
+};
