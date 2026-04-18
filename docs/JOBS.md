@@ -24,6 +24,7 @@ e dependências entre eles. Fonte: `src/jobs/scheduler.js`.
 | `bairrista_daily_summary` | 30 min | não | — | Publica resumo diário dos bairristas (log-bairristas) |
 | `bairrista_weekly_summary` | 6h | não | — | Publica resumo semanal dos bairristas à sexta |
 | `bairrista_monthly_summary` | 12h | não | — | Publica resumo mensal dos bairristas no dia 1 |
+| `spot_cooldown_expirer` | 1 min | **sim** | DB + Discord client | Apaga cooldowns expirados (`expires_at <= NOW()`) e edita a mensagem pública para "Spot livre" |
 
 ---
 

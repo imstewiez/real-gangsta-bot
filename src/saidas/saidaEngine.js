@@ -70,7 +70,23 @@ async function createSaida({
   maxParticipants,
   notes,
   createdBy,
+  force = false,
 }) {
+  // Spot cooldown guard: se há cooldown activo neste spot, bloquear
+  // (excepto com force=true — reservado para comandos staff-only).
+  if (spot && !force) {
+    const spotCooldown = require('./spotCooldown');
+    const status = await spotCooldown.getStatus(spot);
+    if (status.active) {
+      const remaining = spotCooldown.formatRemaining(status.remainingMs);
+      const err = new Error(
+        `Spot "${spot}" em cooldown — ainda faltam ${remaining} (saída anterior #${status.saidaId || '—'}).`
+      );
+      err.code = 'SPOT_COOLDOWN';
+      throw err;
+    }
+  }
+
   let leaderId = null;
   if (leaderDiscordId) {
     const leader = await memberRepo.findByDiscordId(leaderDiscordId);
@@ -96,6 +112,29 @@ async function createSaida({
     actorId: createdBy,
     afterState: { saidaType, spot, spotType, date, groupNumber },
   });
+
+  // Arranca cooldown do spot + posta notificação pública.
+  // Fire-and-forget: se falha, não aborta a criação (saída já foi gravada).
+  if (spot) {
+    const spotCooldown = require('./spotCooldown');
+    const { SAIDA_TYPE } = require('../content');
+    let leaderName = '—';
+    if (leaderId) {
+      const leader = await memberRepo.findById(leaderId).catch(() => null);
+      if (leader) leaderName = leader.display_name || leader.username;
+    } else if (createdBy) {
+      const creator = await memberRepo.findByDiscordId(createdBy).catch(() => null);
+      if (creator) leaderName = creator.display_name || creator.username;
+    }
+    spotCooldown
+      .startCooldown({
+        spot,
+        saidaId: s.id,
+        saidaType: SAIDA_TYPE[saidaType] || saidaType,
+        leaderName,
+      })
+      .catch(e => warn(`[SAIDA] Cooldown falhou para "${spot}": ${e.message}`));
+  }
 
   // Event bus — notification routing publica em SAIDAS_EVENTS.
   eventBus

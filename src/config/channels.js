@@ -17,6 +17,9 @@ module.exports = {
   SAIDA_RESULTS_CHANNEL_ID: optId('SAIDA_RESULTS_CHANNEL_ID'),
   // Painel vivo de saídas; default igual ao canal de notificações.
   SAIDA_SESSION_CHANNEL_ID: guildId('SAIDA_SESSION_CHANNEL_ID', 'channels'),
+  // Canal público onde o bot anuncia cooldowns de spot — toda a gente vê
+  // que um spot está "queimado" e quanto tempo falta.
+  SPOT_COOLDOWN_CHANNEL_ID: optId('SPOT_COOLDOWN_CHANNEL_ID', '1492736946072453190'),
   STRUCTURE_SYNC_LOG_CHANNEL_ID: optId('STRUCTURE_SYNC_LOG_CHANNEL_ID'),
   // Painéis
   PANEL_BAIRRISTAS_CHANNEL_ID: optId('PANEL_BAIRRISTAS_CHANNEL_ID'),

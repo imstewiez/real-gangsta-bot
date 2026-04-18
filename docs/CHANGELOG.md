@@ -2,6 +2,35 @@
 
 ---
 
+## v2.5 — Spot cooldown (2026-04-18)
+
+Regra RP nova: quando uma saída abre num spot, esse spot fica **queimado
+durante 30 min** — nenhuma outra saída da org pode abrir no mesmo spot
+durante essa janela. A chefia só sabe que está bloqueado; a rua sabe via
+canal público dedicado.
+
+- **Migration 029** — tabela `spot_cooldowns` (spot PK + expires_at +
+  saida_id + tracking da notificação).
+- **`src/saidas/spotCooldown.js`** — novo engine com `getStatus`,
+  `startCooldown`, `runExpirer`, `formatRemaining`.
+- **`saidaEngine.createSaida`**: verifica cooldown antes de criar
+  (throw `SPOT_COOLDOWN` com mensagem clara ao handler); arranca cooldown
+  após criar (best-effort).
+- **Notificação pública** em `SPOT_COOLDOWN_CHANNEL_ID` (default do env
+  fornecido pelo user). Embed com spot, saída #N, hora de expiração.
+  Quando expira, o job edita o embed para "Spot Livre".
+- **Job `spot_cooldown_expirer`** (1/min, runOnStart): apaga expirados +
+  edita mensagem para verde.
+- **Config**: `SPOT_COOLDOWN_MINUTES` (default 30), `SPOT_COOLDOWN_CHANNEL_ID`.
+- **Override**: parâmetro `force: true` em `createSaida` reservado para
+  ferramenta staff (ex: futuro slash "/rg-force-saida").
+- **Tests**: `test/spotCooldown.test.js` (10 casos cobrindo getStatus,
+  startCooldown, runExpirer, formatRemaining).
+
+279/279 testes passam.
+
+---
+
 ## v2.4 — Full update sistema de onboarding (2026-04-17)
 
 Fecha o sistema de onboarding com polish de UX + robustez + visibilidade.

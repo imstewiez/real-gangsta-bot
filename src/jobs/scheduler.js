@@ -202,6 +202,19 @@ function startAll(client) {
     return await publishBairristaMonthlySummary();
   });
 
+  // Spot cooldown expirer — 1/min. Edita mensagem para "livre" e apaga
+  // rows com expires_at <= NOW(). Índice em expires_at torna o DELETE
+  // barato mesmo com muitos rows históricos.
+  registerJob(
+    'spot_cooldown_expirer',
+    60 * 1000,
+    async client => {
+      const { runExpirer } = require('../saidas/spotCooldown');
+      return await runExpirer(client);
+    },
+    { runOnStart: true }
+  );
+
   for (const job of jobs) {
     job.timer = setInterval(() => runJob(job), job.intervalMs);
     job.timer.unref();

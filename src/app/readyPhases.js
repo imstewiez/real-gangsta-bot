@@ -29,6 +29,7 @@ const { setClient: setStockClient } = require('../inventory/stockNotifier');
 const { setClient: setBairristaLogClient } = require('../inventory/bairristaNotifier');
 const { setClient: setSaidaClient } = require('../saidas/saidaEngine');
 const { setClient: setNotifRouterClient } = require('../notifications/routing');
+const { setClient: setSpotCooldownClient } = require('../saidas/spotCooldown');
 const { registerCommands } = require('./discord/registerCommands');
 
 async function registerSlashCommandsPhase(client) {
@@ -44,6 +45,7 @@ function injectClientPhase(client) {
   setBairristaLogClient(client);
   setSaidaClient(client);
   setNotifRouterClient(client);
+  setSpotCooldownClient(client);
 }
 
 async function panelBootstrapPhase(client) {
