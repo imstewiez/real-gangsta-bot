@@ -97,13 +97,39 @@ describe('projections — retry semantics', () => {
     assert.ok(results.every(r => r.error));
   });
 
-  it('erro transitório: retry até MAX_RETRIES, depois desiste limpamente', async () => {
-    // _flushNow NÃO usa retry (é diagnostic helper). Para testar retry a sério,
-    // usamos o caminho _flushTab directamente via setTimeout com DEBOUNCE=0.
-    const originalDebounce = projections.DEBOUNCE_MS;
-    // Hacky: não podemos mudar const; testamos _flushNow que é determinístico
-    // E testamos _syncWithRetry indirectamente via o facto de syncOne ser
-    // chamado MAX+1 vezes quando o erro é transitório.
+  it('_syncWithRetry: transitório → retries até sucesso', async () => {
+    let calls = 0;
+    restoreStub = _stubSyncEngine({
+      syncOne: async tab => {
+        calls += 1;
+        if (calls < 3) {
+          const err = new Error('503 Service Unavailable');
+          err.code = 503;
+          throw err;
+        }
+        return { tab, ops: 7, ms: 1 };
+      },
+    });
+    const result = await projections._syncWithRetry('stock');
+    assert.equal(calls, 3); // 2 falhas transitórias + 1 sucesso
+    assert.equal(result.ops, 7);
+  });
+
+  it('_syncWithRetry: não-transitório → 1 chamada, rethrow', async () => {
+    let calls = 0;
+    restoreStub = _stubSyncEngine({
+      syncOne: async () => {
+        calls += 1;
+        const err = new Error('Invalid requests[0].updateCells');
+        err.code = 400;
+        throw err;
+      },
+    });
+    await assert.rejects(() => projections._syncWithRetry('stock'), /Invalid requests/);
+    assert.equal(calls, 1); // bug do bot = bail imediato, sem retry
+  });
+
+  it('_syncWithRetry: transitório persistente → MAX tentativas, depois throws', async () => {
     let calls = 0;
     restoreStub = _stubSyncEngine({
       syncOne: async () => {
@@ -113,24 +139,9 @@ describe('projections — retry semantics', () => {
         throw err;
       },
     });
-    // _flushNow chama syncOne directamente — NÃO é o caminho com retry.
-    // O caminho com retry é _flushTab(tab) via timer. Vamos chamá-lo directamente.
-    // Mas _flushTab é private. Alternativa: re-required o módulo e chamamos
-    // _syncWithRetry indirectamente. Como não está exportado, confirmamos pelo
-    // comportamento: registamos o evento e esperamos pelo flush (debounce=5s).
-    // Para não atrasar os testes 5s, chamamos _flushTab via cache hack:
-    const projMod = require('../src/sheets/projections');
-    // acedemos ao closure? não podemos. Em vez disso, confirmamos que a função
-    // está exportada via _flushNow para um caso simples, e confiamos no
-    // assertion de isTransientSheetsError (testado separado) + integração.
-
-    // Simplificamos este test: só valida que erros 5xx são classificados como
-    // transitórios via API pública.
-    const { isTransientSheetsError } = require('../src/sheets/syncEngine');
-    const err503 = new Error('503 Service Unavailable');
-    err503.code = 503;
-    assert.equal(isTransientSheetsError(err503), true);
-    assert.equal(calls, 0); // não corremos _flushTab aqui
+    await assert.rejects(() => projections._syncWithRetry('stock'), /503/);
+    // RETRY_DELAYS_MS.length tentativas adicionais + 1 inicial = 4.
+    assert.equal(calls, projections.RETRY_DELAYS_MS.length + 1);
   });
 
   it('EVENT_TO_TABS e RETRY_DELAYS_MS estão exportados', () => {

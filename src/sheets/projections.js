@@ -160,4 +160,5 @@ module.exports = {
   DEBOUNCE_MS,
   RETRY_DELAYS_MS,
   _flushNow,
+  _syncWithRetry, // exposto para testes — garante que retry loop é cobertável
 };
