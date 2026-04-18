@@ -34,6 +34,8 @@ function baseConfig(overrides = {}) {
     WEEKLY_TOP_HOUR: 23,
     DAILY_SUMMARY_HOUR: 20,
     PANELS_STICKY_MODE: 'repost',
+    SPOT_COOLDOWN_MINUTES: 30,
+    SPOT_COOLDOWN_CHANNEL_ID: '12345678901234581',
     ...overrides,
   };
 }
@@ -114,6 +116,45 @@ test('validateConfig — weekly_top_day fora do range é erro', () => {
 test('validateConfig — thresholds promo = 0 é erro', () => {
   const findings = validateConfig(baseConfig({ PROMO_YOUNG_BLOOD_TO_GUNAO: 0 }));
   assert.ok(findings.find(f => f.key === 'PROMO_YOUNG_BLOOD_TO_GUNAO' && f.level === 'error'));
+});
+
+test('validateConfig — SPOT_COOLDOWN_MINUTES = 0 é erro', () => {
+  const findings = validateConfig(baseConfig({ SPOT_COOLDOWN_MINUTES: 0 }));
+  const err = findings.find(f => f.key === 'SPOT_COOLDOWN_MINUTES');
+  assert.ok(err);
+  assert.equal(err.level, 'error');
+  assert.match(err.message, />\s*0/);
+});
+
+test('validateConfig — SPOT_COOLDOWN_MINUTES negativo é erro', () => {
+  const findings = validateConfig(baseConfig({ SPOT_COOLDOWN_MINUTES: -5 }));
+  assert.ok(findings.find(f => f.key === 'SPOT_COOLDOWN_MINUTES' && f.level === 'error'));
+});
+
+test('validateConfig — SPOT_COOLDOWN_MINUTES string é erro', () => {
+  const findings = validateConfig(baseConfig({ SPOT_COOLDOWN_MINUTES: 'quinze' }));
+  assert.ok(findings.find(f => f.key === 'SPOT_COOLDOWN_MINUTES' && f.level === 'error'));
+});
+
+test('validateConfig — SPOT_COOLDOWN_MINUTES > 24h é warning', () => {
+  const findings = validateConfig(baseConfig({ SPOT_COOLDOWN_MINUTES: 2880 })); // 48h
+  const w = findings.find(f => f.key === 'SPOT_COOLDOWN_MINUTES');
+  assert.ok(w);
+  assert.equal(w.level, 'warn');
+});
+
+test('validateConfig — SPOT_COOLDOWN_CHANNEL_ID formato inválido é erro', () => {
+  const findings = validateConfig(baseConfig({ SPOT_COOLDOWN_CHANNEL_ID: 'not-snowflake' }));
+  const err = findings.find(f => f.key === 'SPOT_COOLDOWN_CHANNEL_ID');
+  assert.ok(err);
+  assert.equal(err.level, 'error');
+});
+
+test('validateConfig — SPOT_COOLDOWN_CHANNEL_ID vazio é warning (aplica em DB, sem notificação)', () => {
+  const findings = validateConfig(baseConfig({ SPOT_COOLDOWN_CHANNEL_ID: '' }));
+  const w = findings.find(f => f.key === 'SPOT_COOLDOWN_CHANNEL_ID');
+  assert.ok(w);
+  assert.equal(w.level, 'warn');
 });
 
 test('formatReport — config ok reporta "OK"', () => {

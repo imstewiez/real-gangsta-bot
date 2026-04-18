@@ -138,6 +138,32 @@ function validateConfig(config = CONFIG) {
     err('PANELS_STICKY_MODE', `Valor "${config.PANELS_STICKY_MODE}" inválido. Válidos: repost, update, none.`);
   }
 
+  // ── Spot cooldown ──
+  if (typeof config.SPOT_COOLDOWN_MINUTES !== 'number' || !Number.isFinite(config.SPOT_COOLDOWN_MINUTES)) {
+    err('SPOT_COOLDOWN_MINUTES', `Valor inválido (${config.SPOT_COOLDOWN_MINUTES}) — tem de ser número finito.`);
+  } else if (config.SPOT_COOLDOWN_MINUTES <= 0) {
+    err(
+      'SPOT_COOLDOWN_MINUTES',
+      `Valor (${config.SPOT_COOLDOWN_MINUTES}) tem de ser > 0 — cooldown de 0 min desactiva a regra silenciosamente.`
+    );
+  } else if (config.SPOT_COOLDOWN_MINUTES > 1440) {
+    warn(
+      'SPOT_COOLDOWN_MINUTES',
+      `Valor (${config.SPOT_COOLDOWN_MINUTES} min = ${Math.round(config.SPOT_COOLDOWN_MINUTES / 60)}h) é incomum; confirma.`
+    );
+  }
+  if (config.SPOT_COOLDOWN_CHANNEL_ID && !/^\d{17,20}$/.test(String(config.SPOT_COOLDOWN_CHANNEL_ID))) {
+    err(
+      'SPOT_COOLDOWN_CHANNEL_ID',
+      `Formato inválido ("${config.SPOT_COOLDOWN_CHANNEL_ID}") — esperado Discord snowflake (17-20 dígitos).`
+    );
+  } else if (!config.SPOT_COOLDOWN_CHANNEL_ID) {
+    warn(
+      'SPOT_COOLDOWN_CHANNEL_ID',
+      'Em falta — cooldowns de spot continuam a aplicar na DB, mas não há notificação pública.'
+    );
+  }
+
   return findings;
 }
 

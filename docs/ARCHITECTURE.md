@@ -25,7 +25,7 @@ src/
 │       ├── interactionRouter.js     # ctx.run + rate limit + dispatch
 │       └── routers/
 │           ├── autocomplete.js
-│           ├── slash.js             # commandName → handler (10 cmds)
+│           ├── slash.js             # commandName → handler (11 cmds)
 │           ├── buttons.js           # customId → handler (exact / prefix)
 │           ├── selects.js
 │           ├── modals.js
@@ -88,7 +88,7 @@ src/
 └── web/           │ healthcheck + /ready
 ```
 
-## Slash commands (10 canónicos)
+## Slash commands (11 canónicos)
 
 ```
 USER-FACING          STAFF OPERACIONAL
@@ -100,6 +100,7 @@ USER-FACING          STAFF OPERACIONAL
 /ranking
 /saidas
 /kill
+/meu-pedido          ← estado do próprio pedido de tag
 ```
 
 **Erradicados** (manutenção técnica → jobs automáticos):
@@ -146,20 +147,27 @@ bootstrap antes do Discord login). Debounce de 5s agrupa rajadas.
 
 ## Jobs automáticos
 
-`src/jobs/scheduler.js` corre em background:
+`src/jobs/scheduler.js` corre em background (16 jobs registados; ver
+`docs/JOBS.md` para detalhes de idempotência/dependências):
 
-| Job                     | Frequência | Propósito                              |
-|-------------------------|------------|----------------------------------------|
-| `weekly_rankings`       | 30min      | Publica top semanal no canal           |
-| `daily_summary`         | 30min      | Resumo diário                          |
-| `role_invariants`       | 24h        | Garante invariantes Discord↔DB (apply) |
-| `reconcile_daily`       | 24h        | Dry-run detection drift DB↔Discord↔Sheet |
-| `retention`             | 24h        | Retenção audit_logs, job_runs, …       |
-| `stock_alerts`          | 1h         | Alerta canal quando stock < threshold  |
-| `monthly_rankings`      | 6h         | Recalcula mês + all-time stats         |
-| `catalog_prices`        | 7d         | Sincroniza `config/prices-catalog.json` |
-| `data_health_collect`   | 5min       | Gauges Prometheus                      |
-| `sticky_time_refresh`   | 1min       | Refresh time-based das stickys         |
+| Job                          | Frequência | Propósito                                |
+|------------------------------|------------|------------------------------------------|
+| `weekly_rankings`            | 30 min     | Publica top semanal no canal             |
+| `daily_summary`              | 30 min     | Resumo diário                            |
+| `role_invariants`            | 24 h       | Garante invariantes Discord↔DB (apply)   |
+| `reconcile_daily`            | 24 h       | Dry-run drift DB↔Discord↔Sheet           |
+| `retention`                  | 24 h       | Limpa audit_logs, job_runs, radio_history |
+| `stock_alerts`               | 1 h        | Alerta canal quando stock < threshold    |
+| `monthly_rankings`           | 6 h        | Recalcula mês + all-time stats           |
+| `catalog_prices`             | 7 d        | Sincroniza `config/prices-catalog.json`  |
+| `data_health_collect`        | 5 min      | Gauges Prometheus                        |
+| `sticky_time_refresh`        | 1 min      | Refresh time-based das stickys           |
+| `stock_summary`              | 4 h        | Snapshot periódico no canal resumo-stock |
+| `availability_auto_publish`  | 5 min      | Chamada diária (verifica hora)           |
+| `bairrista_daily_summary`    | 30 min     | Resumo diário bairristas (verifica hora) |
+| `bairrista_weekly_summary`   | 6 h        | Resumo semanal bairristas (sexta)        |
+| `bairrista_monthly_summary`  | 12 h       | Resumo mensal bairristas (dia 1)         |
+| `spot_cooldown_expirer`      | 1 min      | Limpa cooldowns expirados + edita msg    |
 
 **Sem `sheets_sync` periódico** — as projections event-driven cobrem.
 

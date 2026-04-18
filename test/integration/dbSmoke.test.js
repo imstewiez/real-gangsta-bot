@@ -88,4 +88,70 @@ describe('integration/dbSmoke', () => {
     await pool.query("DELETE FROM members WHERE discord_id = 'mv-test'");
     await pool.query("DELETE FROM items WHERE name = 'mv-test-item'");
   });
+
+  // ── Migration 028: tag_requests extensions ─────────────────────────────
+  it('migration 028: tag_requests tem denial_reason, retry_count, channel_create_failed, processed_at', async () => {
+    const r = await pool.query(`
+      SELECT column_name, is_nullable, data_type
+        FROM information_schema.columns
+       WHERE table_name = 'tag_requests'
+         AND column_name IN ('denial_reason', 'retry_count', 'channel_create_failed', 'processed_at')
+       ORDER BY column_name`);
+    const cols = r.rows.map(row => row.column_name);
+    assert.deepEqual(cols.sort(), ['channel_create_failed', 'denial_reason', 'processed_at', 'retry_count']);
+  });
+
+  it('migration 028: índice ix_tag_requests_discord_id_status existe', async () => {
+    const r = await pool.query(`
+      SELECT indexname FROM pg_indexes
+       WHERE tablename = 'tag_requests'
+         AND indexname = 'ix_tag_requests_discord_id_status'`);
+    assert.equal(r.rows.length, 1, 'índice deve existir');
+  });
+
+  // ── Migration 029: spot_cooldowns ──────────────────────────────────────
+  it('migration 029: tabela spot_cooldowns existe com schema correcto', async () => {
+    const r = await pool.query(`
+      SELECT column_name, is_nullable
+        FROM information_schema.columns
+       WHERE table_name = 'spot_cooldowns'
+       ORDER BY ordinal_position`);
+    const cols = r.rows.map(row => row.column_name);
+    assert.ok(cols.includes('spot'));
+    assert.ok(cols.includes('started_at'));
+    assert.ok(cols.includes('expires_at'));
+    assert.ok(cols.includes('saida_id'));
+    assert.ok(cols.includes('notification_channel_id'));
+    assert.ok(cols.includes('notification_msg_id'));
+  });
+
+  it('migration 029: PRIMARY KEY em spot previne duplicados (UPSERT)', async () => {
+    const future = new Date(Date.now() + 60_000);
+    await pool.query(`INSERT INTO spot_cooldowns (spot, expires_at, saida_id) VALUES ('smoke-test-spot', $1, 1)`, [
+      future,
+    ]);
+    // Segunda insert com mesmo spot — deve falhar (PK) ou ser suportada por ON CONFLICT.
+    let error = null;
+    try {
+      await pool.query(`INSERT INTO spot_cooldowns (spot, expires_at, saida_id) VALUES ('smoke-test-spot', $1, 2)`, [
+        future,
+      ]);
+    } catch (e) {
+      error = e;
+    }
+    assert.ok(error, 'PK em spot devia rejeitar duplicado sem ON CONFLICT');
+    assert.match(error.message, /duplicate key|unique/i);
+
+    // ON CONFLICT funciona (o engine faz isto):
+    await pool.query(
+      `INSERT INTO spot_cooldowns (spot, expires_at, saida_id) VALUES ('smoke-test-spot', $1, 99)
+       ON CONFLICT (spot) DO UPDATE SET saida_id = EXCLUDED.saida_id`,
+      [future]
+    );
+    const r = await pool.query("SELECT saida_id FROM spot_cooldowns WHERE spot = 'smoke-test-spot'");
+    assert.equal(r.rows[0].saida_id, 99);
+
+    // Cleanup
+    await pool.query("DELETE FROM spot_cooldowns WHERE spot = 'smoke-test-spot'");
+  });
 });

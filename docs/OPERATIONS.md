@@ -33,6 +33,7 @@
 | bairrista_daily_summary | 30 min | não | Resumo diário bairristas |
 | bairrista_weekly_summary | 6h | não | Resumo semanal bairristas |
 | bairrista_monthly_summary | 12h | não | Resumo mensal bairristas |
+| spot_cooldown_expirer | 1 min | sim | Apaga cooldowns de spot expirados + edita notificação para "livre" |
 
 ## Endpoints HTTP
 
@@ -78,3 +79,10 @@
 | METRICS_TOKEN | (vazio) | Bearer token para /metrics |
 | GOOGLE_SERVICE_ACCOUNT_JSON | (vazio) | Credenciais Google Sheets |
 | SPREADSHEET_ID | (vazio) | ID do Google Sheet |
+| SPOT_COOLDOWN_MINUTES | 30 | Minutos que um spot fica "queimado" após saída |
+| SPOT_COOLDOWN_CHANNEL_ID | (default p/ canal RP fornecido) | Canal público das notificações de cooldown |
+| PROMO_YOUNG_BLOOD_TO_GUNAO | 25000 | Threshold em unidades para promoção YB → O Gunão |
+| PROMO_GUNAO_TO_GANGSTER_FODIDO | 50000 | Threshold unidades O Gunão → Gangster Fodido |
+| AUTO_PUBLISH_WEEKLY_TOP | true | Publica top semanal no canal configurado |
+| WEEKLY_TOP_DAY | 0 | Dia da semana do top (0=Dom..6=Sáb) |
+| WEEKLY_TOP_HOUR | 23 | Hora local Lisbon do top semanal |
