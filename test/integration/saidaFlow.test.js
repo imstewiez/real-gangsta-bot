@@ -77,8 +77,8 @@ describe('integration/saidaFlow — end-to-end', () => {
   after(async () => {
     // Order matters: FKs em operations / operation_participants.
     if (_saidaId) {
-      await query('DELETE FROM operation_participants WHERE saida_id = $1', [_saidaId]);
-      await query('DELETE FROM operation_materials WHERE saida_id = $1', [_saidaId]);
+      await query('DELETE FROM operation_participants WHERE operation_id = $1', [_saidaId]);
+      await query('DELETE FROM operation_materials WHERE operation_id = $1', [_saidaId]);
       await query('DELETE FROM inventory_movements WHERE saida_id = $1', [_saidaId]);
       await query('DELETE FROM operations WHERE id = $1', [_saidaId]);
     }
@@ -159,7 +159,7 @@ describe('integration/saidaFlow — end-to-end', () => {
       /já estás inscrito/i
     );
 
-    const r = await query('SELECT COUNT(*)::int AS n FROM operation_participants WHERE saida_id = $1', [_saidaId]);
+    const r = await query('SELECT COUNT(*)::int AS n FROM operation_participants WHERE operation_id = $1', [_saidaId]);
     assert.equal(r.rows[0].n, 2);
   });
 
@@ -178,7 +178,7 @@ describe('integration/saidaFlow — end-to-end', () => {
     // operation_materials regista como "fornecido".
     const mat = await query(
       `SELECT SUM(quantity)::int AS total FROM operation_materials
-       WHERE saida_id = $1 AND direction = 'fornecido'`,
+       WHERE operation_id = $1 AND direction = 'fornecido'`,
       [_saidaId]
     );
     assert.equal(mat.rows[0].total, 10);
@@ -223,7 +223,7 @@ describe('integration/saidaFlow — end-to-end', () => {
       `SELECT m.discord_id, op.kills, op.died
          FROM operation_participants op
          JOIN members m ON m.id = op.member_id
-        WHERE op.saida_id = $1
+        WHERE op.operation_id = $1
         ORDER BY m.discord_id`,
       [_saidaId]
     );
@@ -245,14 +245,14 @@ describe('integration/saidaFlow — end-to-end', () => {
 
     // Exactamente 1 MVP (dos 2 participantes).
     const mvp = await query(
-      'SELECT COUNT(*)::int AS n FROM operation_participants WHERE saida_id = $1 AND mvp_flag = true',
+      'SELECT COUNT(*)::int AS n FROM operation_participants WHERE operation_id = $1 AND mvp_flag = true',
       [_saidaId]
     );
     assert.equal(mvp.rows[0].n, 1, 'exactamente 1 MVP');
 
     // performance_score populado para todos.
     const scored = await query(
-      'SELECT COUNT(*)::int AS n FROM operation_participants WHERE saida_id = $1 AND performance_score IS NOT NULL',
+      'SELECT COUNT(*)::int AS n FROM operation_participants WHERE operation_id = $1 AND performance_score IS NOT NULL',
       [_saidaId]
     );
     assert.equal(scored.rows[0].n, 2);
