@@ -24,6 +24,7 @@ const backfillTopicos = require('../../../queries/backfillTopicos');
 const cleanupTopicos = require('../../../queries/cleanupTopicos');
 const organizeTopicos = require('../../../queries/organizeTopicos');
 const novaCategoriaTopicos = require('../../../queries/novaCategoriaTopicos');
+const dedupTopicos = require('../../../queries/dedupTopicos');
 const { commandsByName } = require('../../../lib/metrics');
 
 const SLASH_ROUTES = {
@@ -46,6 +47,7 @@ const SLASH_ROUTES = {
   'cleanup-topicos': cleanupTopicos.handle,
   'organize-topicos': organizeTopicos.handle,
   'nova-categoria-topicos': novaCategoriaTopicos.handle,
+  'dedup-topicos': dedupTopicos.handle,
 };
 
 async function handleSlash(interaction) {

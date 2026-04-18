@@ -85,6 +85,13 @@ const commands = [
     ),
 
   new SlashCommandBuilder()
+    .setName('dedup-topicos')
+    .setDescription('Apaga canais duplicados por bairrista — mantém o mais antigo (chefia)')
+    .addBooleanOption(opt =>
+      opt.setName('executar').setDescription('true=aplica · false/omit=só preview (default)').setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
     .setName('sync-sheets')
     .setDescription('Diagnóstico e resync do Google Sheets (chefia)')
     .addStringOption(opt =>
