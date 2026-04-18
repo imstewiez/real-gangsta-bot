@@ -78,9 +78,60 @@ async function runMigrations() {
     } else {
       console.log('[DB:Migrate] All migrations up to date.');
     }
+
+    // Safety net — re-executa DDL idempotente de tabelas/colunas críticas em
+    // cada boot, bypassing schema_migrations. Observado em Railway prod:
+    // schema_migrations regista IDs como aplicados mas as tabelas desaparecem
+    // (hipótese: volume reset, restore de backup, drop manual). Sem este
+    // fallback, o bot arranca "all migrations up to date" mas job crasha ao
+    // usar spot_cooldowns ou recordSheetSync falha por column missing.
+    await ensureCriticalSchema(client);
   } finally {
     client.release();
   }
 }
 
-module.exports = { runMigrations, loadMigrations };
+async function ensureCriticalSchema(client) {
+  const ddls = [
+    {
+      name: 'spot_cooldowns table',
+      sql: `CREATE TABLE IF NOT EXISTS spot_cooldowns (
+              spot                     TEXT PRIMARY KEY,
+              started_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              expires_at               TIMESTAMPTZ NOT NULL,
+              saida_id                 INTEGER,
+              notification_channel_id  TEXT,
+              notification_msg_id      TEXT,
+              created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )`,
+    },
+    {
+      name: 'spot_cooldowns index',
+      sql: 'CREATE INDEX IF NOT EXISTS ix_spot_cooldowns_expires_at ON spot_cooldowns (expires_at)',
+    },
+    {
+      name: 'sheet_sync_state.consecutive_errors',
+      sql: 'ALTER TABLE sheet_sync_state ADD COLUMN IF NOT EXISTS consecutive_errors INTEGER NOT NULL DEFAULT 0',
+    },
+    {
+      name: 'tag_requests recovery columns',
+      sql: `ALTER TABLE tag_requests
+              ADD COLUMN IF NOT EXISTS denial_reason          TEXT,
+              ADD COLUMN IF NOT EXISTS retry_count            INTEGER NOT NULL DEFAULT 0,
+              ADD COLUMN IF NOT EXISTS channel_create_failed  BOOLEAN NOT NULL DEFAULT FALSE,
+              ADD COLUMN IF NOT EXISTS processed_at           TIMESTAMPTZ`,
+    },
+  ];
+  let applied = 0;
+  for (const { name, sql } of ddls) {
+    try {
+      await client.query(sql);
+      applied += 1;
+    } catch (e) {
+      console.warn(`[DB:Migrate] ensureCriticalSchema '${name}' falhou (non-fatal): ${e.message}`);
+    }
+  }
+  console.log(`[DB:Migrate] ensureCriticalSchema: ${applied}/${ddls.length} DDLs idempotentes OK.`);
+}
+
+module.exports = { runMigrations, loadMigrations, ensureCriticalSchema };
