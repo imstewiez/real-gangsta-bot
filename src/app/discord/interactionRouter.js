@@ -18,6 +18,7 @@ const metrics = require('../../lib/metrics');
 const ctx = require('../../shared/requestContext');
 const rateLimiter = require('../../shared/rateLimiter');
 const { safeReply } = require('../../shared/interactionHelpers');
+const { ERRORS } = require('../../content');
 
 const { handleAutocomplete } = require('./routers/autocomplete');
 const { handleSlash } = require('./routers/slash');
@@ -102,7 +103,7 @@ async function onInteraction(interaction) {
         error(`[INTERACTION] Unhandled (${typeTagFor(interaction)}, user=${interaction.user?.id}): ${e.message}`, e);
         try {
           const payload = {
-            content: `⛔ Falha interna. Ref: \`${cid}\``,
+            content: ERRORS.INTERNAL(cid),
             flags: MessageFlags.Ephemeral,
           };
           if (interaction.deferred || interaction.replied) {

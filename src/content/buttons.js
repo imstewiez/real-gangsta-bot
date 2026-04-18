@@ -23,7 +23,11 @@ const STYLE = { SUCCESS: 'Success', PRIMARY: 'Primary', SECONDARY: 'Secondary', 
 
 const BUTTONS = {
   ENTRADA: {
-    PEDIR_TAG: { label: 'Pedir Tag', emoji: E.TAG, style: STYLE.SUCCESS },
+    // Label user-facing canonical: "Dar a Cara" — tom RP imersivo,
+    // usado no painel de entrada público (Tier 1). "Pedir Tag" fica
+    // como termo técnico em logs e slash /meu-pedido.
+    PEDIR_TAG: { label: 'Dar a Cara', emoji: E.TAG, style: STYLE.SUCCESS },
+    MEU_PEDIDO: { label: 'O meu pedido', emoji: '🔎', style: STYLE.SECONDARY },
   },
 
   BAIRRISTA: {
@@ -42,13 +46,14 @@ const BUTTONS = {
   OFICIAL: {
     REGISTAR: { label: 'Registar Material', emoji: E.MATERIAL, style: STYLE.SUCCESS },
     VALIDAR: { label: 'Validar Entrega', emoji: E.OK, style: STYLE.SUCCESS },
-    MEMBROS: { label: 'Lista de Nomes', emoji: E.PARTICIPANTE, style: STYLE.PRIMARY },
+    // Canonizado com PATRAO.LISTAR — mesma acção, mesmo label.
+    MEMBROS: { label: 'Listar Bairristas', emoji: E.PARTICIPANTE, style: STYLE.PRIMARY },
   },
 
   CHEFIA: {
-    // Saídas — só acções de topo (sub-passos vivem no painel da sessão)
-    CRIAR_SAIDA: { label: 'Nova Sessão', emoji: E.NOVO, style: STYLE.SUCCESS },
-    VER_SAIDAS: { label: 'Sessões Activas', emoji: E.VER, style: STYLE.PRIMARY },
+    // Saídas — termo canónico é "Saída", não "Sessão" (ver docs/VOICE_AND_UX.md § 3).
+    CRIAR_SAIDA: { label: 'Abrir Saída', emoji: E.NOVO, style: STYLE.SUCCESS },
+    VER_SAIDAS: { label: 'Ver Saídas', emoji: E.VER, style: STYLE.PRIMARY },
     // Stock
     VER_STOCK: { label: 'Ver Stock', emoji: E.STOCK, style: STYLE.PRIMARY },
     AJUSTAR_STOCK: { label: 'Ajustar Stock', emoji: E.AJUSTAR, style: STYLE.SECONDARY },

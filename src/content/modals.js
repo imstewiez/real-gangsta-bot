@@ -162,7 +162,7 @@ const MODALS = {
     FIELDS: {
       result: {
         label: 'Resultado',
-        placeholder: 'win · loss · draw · sem_conflito',
+        placeholder: 'vitória · derrota · empate · sem conflito',
         maxLength: 20,
         required: true,
       },

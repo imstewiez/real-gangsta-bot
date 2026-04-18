@@ -32,18 +32,19 @@ function buildEntradaPanel() {
     brandEmbed('SHORT').setTitle(PANELS.ENTRADA.TITLE).setDescription(PANELS.ENTRADA.DESCRIPTION)
   );
 
-  const b = BUTTONS.ENTRADA.PEDIR_TAG;
+  const bPrimary = BUTTONS.ENTRADA.PEDIR_TAG;
+  const bSecondary = BUTTONS.ENTRADA.MEU_PEDIDO;
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('onboard::pedir_tag')
-      .setLabel(b.label)
-      .setStyle(ButtonStyle[b.style])
-      .setEmoji(b.emoji),
+      .setLabel(bPrimary.label)
+      .setStyle(ButtonStyle[bPrimary.style])
+      .setEmoji(bPrimary.emoji),
     new ButtonBuilder()
       .setCustomId('onboard::meu_pedido')
-      .setLabel('O meu pedido')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('🔎')
+      .setLabel(bSecondary.label)
+      .setStyle(ButtonStyle[bSecondary.style])
+      .setEmoji(bSecondary.emoji)
   );
 
   return { embeds: [embed], components: [row] };

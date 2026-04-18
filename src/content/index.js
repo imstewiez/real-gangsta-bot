@@ -33,7 +33,7 @@ const PANELS = require('./panels');
 const { BUTTONS, STYLE } = require('./buttons');
 const MODALS = require('./modals');
 const ONBOARDING = require('./onboarding');
-const { SAIDAS, RESULT_LABEL } = require('./saidas');
+const { SAIDAS, VALID_RESULTS, RESULT_LABEL, RESULT_NAME, RESULT_EMOJI, RESULT_DESCRIPTION } = require('./saidas');
 const STATS = require('./stats');
 const KILLS = require('./kills');
 const AVAILABILITY = require('./availability');
@@ -57,7 +57,11 @@ module.exports = {
   MODALS,
   ONBOARDING,
   SAIDAS,
+  VALID_RESULTS,
   RESULT_LABEL,
+  RESULT_NAME,
+  RESULT_EMOJI,
+  RESULT_DESCRIPTION,
   STATS,
   KILLS,
   AVAILABILITY,

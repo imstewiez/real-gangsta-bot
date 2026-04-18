@@ -17,7 +17,7 @@ const { MessageFlags } = require('discord.js');
 const CONFIG = require('../config');
 const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed, rankingEmbed } = require('../shared/embedBuilders');
-const { ERRORS, EMOJI } = require('../content');
+const { ERRORS, EMOJI, SUCCESS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
 const { radioRepo, stickyRepo } = require('../repositories');
 const { getRecentLogs } = require('../audit/auditEngine');
@@ -49,7 +49,7 @@ async function publicarRadio(interaction) {
   return safeReply(
     interaction,
     {
-      content: `📻 Painel publicado em <#${targetCh.id}>.`,
+      content: SUCCESS.PUBLISHED(targetCh.id),
     },
     { dismissible: true }
   );

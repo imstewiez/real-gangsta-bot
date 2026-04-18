@@ -112,7 +112,7 @@ async function handleCategorySelect(interaction) {
 
   const menu = await buildItemSelectMenuForCategory(itemPrefix, 'Seleciona o item', category);
   await safeUpdate(interaction, {
-    content: `Categoria: **${category}** — escolhe o item:`,
+    content: INVENTORY.PROMPTS.CATEGORY_ITEM(category),
     components: [menu],
   });
 }
@@ -332,7 +332,7 @@ async function handleAdjustModal(interaction) {
     const embed = successEmbed('Stock Ajustado', `Ajuste de **${quantity}** aplicado.\nRazão: ${notes}`);
     return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   } catch (e) {
-    return safeReply(interaction, { content: `Erro: ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.WITH_DETAIL(e.message) }, { dismissible: true });
   }
 }
 
@@ -496,7 +496,7 @@ async function handleAddItemModal(interaction) {
   if (isNaN(price) || price < 0) return safeReply(interaction, { content: 'Preço inválido.' }, { dismissible: true });
 
   const existing = await inventoryRepo.getItemByName(name);
-  if (existing) return safeReply(interaction, { content: `Material "${name}" já existe.` }, { dismissible: true });
+  if (existing) return safeReply(interaction, { content: ERRORS.ALREADY_EXISTS(name) }, { dismissible: true });
 
   await inventoryRepo.createItem({ name, category, unit: 'unidade', estimatedValue: price });
 

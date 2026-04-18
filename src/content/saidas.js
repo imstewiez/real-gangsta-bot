@@ -164,19 +164,69 @@ const SAIDAS = {
     DIED_LABEL: 'Morreu? (S/N)',
     DIED_WITH_MAT_LABEL: 'Morreu com material da firma?',
     NOTES_LABEL: 'Notas',
-    RESULT_LABEL: 'Resultado (win/loss/draw/sem_conflito)',
+    RESULT_LABEL: 'Resultado (vitória/derrota/empate/sem conflito)',
     ENEMY_LABEL: 'Inimigo · facção',
     CRAFT_LABEL: 'Material craftado (unidades)',
     FLAGS_LABEL: 'Flags (fight,craft,dom)',
   },
+
+  // ── Prompts inline (evitar duplicação em handlers) ──────────────────
+  PROMPTS: {
+    ESCOLHE_SAIDA_FECHAR: '🏁 Escolhe a saída a fechar:',
+    QUAL_RESULTADO: id => `🏁 Saída **#${id}** — qual foi o resultado?`,
+    ESCOLHE_CATEGORIA_MATERIAL: 'Categoria **{category}** — escolhe o item:',
+    ESCOLHE_PARTICIPANTE: id => `Saída **#${id}** — escolhe quem entra:`,
+    TIPO_MOVIMENTO: id => `Saída **#${id}** — que tipo de movimento?`,
+    DIRECCAO_MATERIAL: direction => `Que material foi **${direction}**? Escolhe a categoria:`,
+    PARTICIPANT_CATEGORY: (id, discordId) => `Saída **#${id}** → <@${discordId}> — categoria:`,
+    WIZARD_PARTICIPANT: name => `**${name}** — como foi a saída?`,
+    AUTO_SETTLE_HINT: 'Carrega em "Concluir" para auto-liquidar os restantes como vivos sem kills.',
+  },
 };
 
-// Tradução de resultado para label com emoji — usada em embeds.
+// ── Enum canónico + labels ────────────────────────────────────────────
+// ÚNICA fonte de verdade para resultados de saída. Qualquer handler que
+// precise de mostrar ou iterar resultados usa estas constantes.
+
+const VALID_RESULTS = ['vitoria', 'derrota', 'empate', 'sem_conflito', 'abortada'];
+
 const RESULT_LABEL = {
+  vitoria: `${E.VITORIA} Vitória`,
+  derrota: `${E.DERROTA} Derrota`,
+  empate: `${E.EMPATE} Empate`,
+  sem_conflito: `${E.INFO} Sem conflito`,
+  abortada: `${E.WARN} Abortada`,
+  // Legacy (data histórica pré-2026-04): mapear para display correcto.
   win: `${E.VITORIA} Vitória`,
   loss: `${E.DERROTA} Derrota`,
   draw: `${E.EMPATE} Empate`,
-  sem_conflito: `${E.INFO} Sem conflito`,
 };
 
-module.exports = { SAIDAS, RESULT_LABEL };
+// Labels sem emoji — para places onde emoji vive separado (ex: selects).
+const RESULT_NAME = {
+  vitoria: 'Vitória',
+  derrota: 'Derrota',
+  empate: 'Empate',
+  sem_conflito: 'Sem conflito',
+  abortada: 'Abortada',
+};
+
+// Emoji map — usado em selects + embeds.
+const RESULT_EMOJI = {
+  vitoria: '🏆',
+  derrota: '☠️',
+  empate: '⚖️',
+  sem_conflito: 'ℹ️',
+  abortada: '⚠️',
+};
+
+// Descrição curta — usada em dropdown options (Discord mostra abaixo do label).
+const RESULT_DESCRIPTION = {
+  vitoria: 'Ganhámos a fight',
+  derrota: 'Perdemos',
+  empate: 'Nenhum lado ganhou',
+  sem_conflito: 'Não houve fight',
+  abortada: 'Saída cancelada/abortada',
+};
+
+module.exports = { SAIDAS, VALID_RESULTS, RESULT_LABEL, RESULT_NAME, RESULT_EMOJI, RESULT_DESCRIPTION };

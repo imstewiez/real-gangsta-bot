@@ -132,7 +132,7 @@ async function handleSelectParticipant(interaction) {
   await safeReply(
     interaction,
     {
-      content: `**${name}** — como foi a saída?`,
+      content: SAIDAS.PROMPTS.WIZARD_PARTICIPANT(name),
       components: [row],
       flags: MessageFlags.Ephemeral,
     },

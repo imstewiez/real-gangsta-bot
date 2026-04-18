@@ -15,7 +15,17 @@ const { isChefia, isOficial, canOpenSession } = require('../permissions/permissi
 const { saidaRepo } = require('../repositories');
 const saidaEngine = require('./saidaEngine');
 const { publishSessionEmbed } = require('./saidaSession');
-const { EMOJI, ERRORS, SUCCESS, SAIDAS, MODALS } = require('../content');
+const {
+  EMOJI,
+  ERRORS,
+  SUCCESS,
+  SAIDAS,
+  MODALS,
+  VALID_RESULTS,
+  RESULT_NAME,
+  RESULT_EMOJI,
+  RESULT_DESCRIPTION,
+} = require('../content');
 const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
 
 // Context efémero por user durante fluxos multi-step.
@@ -29,7 +39,7 @@ function _setContext(userId, ctx) {
 }
 
 const SAIDA_TYPES = ['craft', 'dominio', 'ataque', 'defesa', 'recolha', 'outra'];
-const VALID_RESULTS = ['vitoria', 'derrota', 'empate', 'sem_conflito', 'abortada'];
+// VALID_RESULTS, RESULT_NAME, RESULT_EMOJI, RESULT_DESCRIPTION vêm do content.
 
 const SAIDA_TYPE_EMOJI = { craft: '🛠️', dominio: '🏴', ataque: '⚔️', defesa: '🛡️', recolha: '📦', outra: '📋' };
 const SAIDA_TYPE_LABEL = {
@@ -326,22 +336,10 @@ async function handleCloseSessionDirect(interaction) {
   // Vai directo para o select de resultado
   _setContext(interaction.user.id, { saidaId });
   const resultOptions = VALID_RESULTS.map(r => ({
-    label: {
-      vitoria: 'Vitória',
-      derrota: 'Derrota',
-      empate: 'Empate',
-      sem_conflito: 'Sem conflito',
-      abortada: 'Abortada',
-    }[r],
-    description: {
-      vitoria: 'Ganhamos a fight',
-      derrota: 'Perdemos',
-      empate: 'Nenhum lado ganhou',
-      sem_conflito: 'Não houve fight',
-      abortada: 'Saída cancelada/abortada',
-    }[r],
+    label: RESULT_NAME[r],
+    description: RESULT_DESCRIPTION[r],
     value: r,
-    emoji: { vitoria: '🏆', derrota: '☠️', empate: '⚖️', sem_conflito: 'ℹ️', abortada: '⚠️' }[r],
+    emoji: RESULT_EMOJI[r],
   }));
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
@@ -365,22 +363,10 @@ async function handleCloseSaidaSelect(interaction) {
 
   // Step 2: resultado predefinido (select, não texto livre)
   const resultOptions = VALID_RESULTS.map(r => ({
-    label: {
-      vitoria: 'Vitória',
-      derrota: 'Derrota',
-      empate: 'Empate',
-      sem_conflito: 'Sem conflito',
-      abortada: 'Abortada',
-    }[r],
-    description: {
-      vitoria: 'Ganhamos a fight',
-      derrota: 'Perdemos',
-      empate: 'Nenhum lado ganhou',
-      sem_conflito: 'Não houve fight',
-      abortada: 'Saída cancelada/abortada',
-    }[r],
+    label: RESULT_NAME[r],
+    description: RESULT_DESCRIPTION[r],
     value: r,
-    emoji: { vitoria: '🏆', derrota: '☠️', empate: '⚖️', sem_conflito: 'ℹ️', abortada: '⚠️' }[r],
+    emoji: RESULT_EMOJI[r],
   }));
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
@@ -407,10 +393,7 @@ async function handleCloseResultSelect(interaction) {
   _setContext(interaction.user.id, ctx);
 
   const saidaId = ctx.saidaId;
-  const resultLabel =
-    { vitoria: 'Vitória', derrota: 'Derrota', empate: 'Empate', sem_conflito: 'Sem conflito', abortada: 'Abortada' }[
-      result
-    ] || result;
+  const resultLabel = RESULT_NAME[result] || result;
   const SF = MODALS.SAIDA_SETTLE.FIELDS;
   const needsEnemy = result === 'vitoria' || result === 'derrota' || result === 'empate';
 
@@ -508,10 +491,7 @@ async function handleCloseSaidaModal(interaction) {
   // Ping participantes no canal da sessão para preencherem resultados
   _pingParticipantsForResults(interaction.client, ctx.saidaId, result, closedData?.participants || []).catch(() => {});
 
-  const resultLabel =
-    { vitoria: 'Vitória', derrota: 'Derrota', empate: 'Empate', sem_conflito: 'Sem conflito', abortada: 'Abortada' }[
-      result
-    ] || result;
+  const resultLabel = RESULT_NAME[result] || result;
   return safeReply(
     interaction,
     {
@@ -537,10 +517,7 @@ async function _pingParticipantsForResults(client, saidaId, result, participants
   if (!discordIds.length) return;
 
   const mentions = discordIds.map(id => `<@${id}>`).join(' ');
-  const resultLabel =
-    { vitoria: 'Vitória', derrota: 'Derrota', empate: 'Empate', sem_conflito: 'Sem conflito', abortada: 'Abortada' }[
-      result
-    ] || result;
+  const resultLabel = RESULT_NAME[result] || result;
 
   // Lista personalizada por participante
   const participantLines = participants.map(p => {
@@ -811,7 +788,7 @@ async function handleAddParticipantSelect(interaction) {
       .setMaxValues(25)
   );
   await safeUpdate(interaction, {
-    content: `Saída **#${saidaId}** — escolhe quem entra:`,
+    content: SAIDAS.PROMPTS.ESCOLHE_PARTICIPANTE(saidaId),
     components: [userMenu],
   });
 }
@@ -913,7 +890,10 @@ async function handleMaterialOpSelect(interaction) {
       .setMaxValues(1)
       .addOptions(directionOptions)
   );
-  await safeUpdate(interaction, { content: `Saída **#${saidaId}** — que tipo de movimento?`, components: [row] });
+  await safeUpdate(interaction, {
+    content: SAIDAS.PROMPTS.TIPO_MOVIMENTO(saidaId),
+    components: [row],
+  });
 }
 
 async function handleMaterialDirectionSelect(interaction) {
@@ -931,7 +911,7 @@ async function handleMaterialDirectionSelect(interaction) {
   _setContext(interaction.user.id, ctx);
   const menu = await buildCategorySelectMenu('saida::cat_material', 'Seleciona a categoria');
   await safeUpdate(interaction, {
-    content: `Que material foi **${direction}**? Escolhe a categoria:`,
+    content: SAIDAS.PROMPTS.DIRECCAO_MATERIAL(direction),
     components: [menu],
   });
 }
@@ -944,7 +924,10 @@ async function handleMaterialCategorySelect(interaction) {
   const customId = interaction.customId;
   const itemPrefix = customId.includes('cat_issue') ? 'saida::issue_select_item' : 'saida::select_material_item';
   const menu = await buildItemSelectMenuForCategory(itemPrefix, 'Seleciona o item', category);
-  await safeUpdate(interaction, { content: `Categoria **${category}** — escolhe o item:`, components: [menu] });
+  await safeUpdate(interaction, {
+    content: SAIDAS.PROMPTS.ESCOLHE_CATEGORIA_MATERIAL.replace('{category}', category),
+    components: [menu],
+  });
 }
 
 async function handleMaterialItemSelect(interaction) {
@@ -1105,7 +1088,7 @@ async function handleIssueParticipantSelect(interaction) {
   _setContext(interaction.user.id, ctx);
   const menu = await buildCategorySelectMenu('saida::cat_issue', 'Seleciona a categoria');
   await safeUpdate(interaction, {
-    content: `Saída **#${ctx.saidaId}** → <@${discordId}> — categoria:`,
+    content: SAIDAS.PROMPTS.PARTICIPANT_CATEGORY(ctx.saidaId, discordId),
     components: [menu],
   });
 }

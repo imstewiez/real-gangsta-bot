@@ -44,7 +44,9 @@ const ONBOARDING = {
     (channelMention ? `\nCanal individual: ${channelMention}` : ''),
 
   // ── DM ao user quando aprovado ──
-  DM_APPROVED_TITLE: `${E.SANGUE} Entraste, ${0}`.replace('{0}', ''), // placeholder, build dinâmico no handler
+  // Título construído inline no handler (precisa do nome). Esta constante
+  // é só a base de fallback.
+  DM_APPROVED_TITLE: name => `${E.SANGUE} Entraste, ${name}`,
   DM_APPROVED_BODY: (nickname, guildName, channelMention) =>
     `Tag validada. Agora és bairrista da **${guildName}**.\n` +
     '\n' +

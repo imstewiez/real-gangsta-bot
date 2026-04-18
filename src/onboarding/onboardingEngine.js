@@ -224,7 +224,7 @@ async function processApproval(tagRequest, approverMember, client) {
     const dmEmbed = applyLogo(
       brandEmbed('HOUSE')
         .setColor(0x2ecc71)
-        .setTitle(`${EMOJI.SANGUE} Entraste, ${fullName}`)
+        .setTitle(ONBOARDING.DM_APPROVED_TITLE(fullName))
         .setDescription(ONBOARDING.DM_APPROVED_BODY(nickname, guildName, channelMention))
     );
     const entradaChannel = CONFIG.PANEL_ENTRADA_CHANNEL_ID

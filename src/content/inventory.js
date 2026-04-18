@@ -27,6 +27,8 @@ const INVENTORY = {
     QUE_MATERIAL_VENDA: 'Que material queres **vender**? O valor é calculado automaticamente.',
     QUE_ITEM_AJUSTAR: 'Que item queres ajustar?',
     QUE_ITEM_ENCOMENDAR: 'Que material queres encomendar?',
+    // Prompt partilhado: cadeia select-categoria → select-item.
+    CATEGORY_ITEM: category => `Categoria: **${category}** — escolhe o item:`,
   },
 
   SELECTS: {

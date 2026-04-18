@@ -12,11 +12,23 @@ const ERRORS = {
   // Genéricos
   GENERIC: () => `${E.ERRO} Algo correu mal. Tenta outra vez.`,
 
+  // Erro com mensagem user-friendly explícita (ex: throws de domínio tipo
+  // "Spot em cooldown — faltam 22 min"). Usar APENAS com strings já
+  // preparadas para user-facing; nunca com stack traces ou detail técnico.
+  WITH_DETAIL: detail => `${E.ERRO} ${detail}`,
+
+  // Falha interna com correlation ID — o correlation vem do requestContext
+  // e permite grep nos logs. Standardiza a linguagem entre todos os handlers.
+  INTERNAL: cid => `${E.ERRO} Falha interna. Ref: \`${cid}\`.`,
+
   DUPLICATE_REQUEST: () => `${E.DUPLICADO} Calma — já tinhas feito isso.`,
 
   DB_UNAVAILABLE: () => `${E.ERRO} A DB está fora. Nada foi guardado.`,
 
   DB_WRITE_FAILED: what => `${E.WARN} Não consegui guardar "${what}". Tenta de novo.`,
+
+  // Duplicado em catálogo / lista.
+  ALREADY_EXISTS: what => `${E.DUPLICADO} "${what}" já existe.`,
 
   // Permissões
   NO_PERMISSION: what => `${E.NO_PERMISSION} ${what ? `Não é contigo — ${what}.` : 'Ainda não tens acesso a isto.'}`,
