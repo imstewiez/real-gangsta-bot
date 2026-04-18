@@ -33,12 +33,7 @@ const { brandEmbed } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
 const { queueChannelOp } = require('../discordQueue');
-
-function _managedCategoryIds() {
-  const primary = CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID;
-  const overflow = CONFIG.BAIRRISTA_TOPICOS_OVERFLOW_CATEGORY_IDS || [];
-  return [primary, ...overflow].filter(Boolean);
-}
+const { moveChannelToManagedCategory, getManagedCategoryIds } = require('../members/createResidentChannel');
 
 function _normalized(s) {
   return String(s || '')
@@ -65,7 +60,7 @@ function _isSeparator(name) {
 }
 
 async function _scanState(guild) {
-  const managed = _managedCategoryIds();
+  const managed = await getManagedCategoryIds();
 
   // 1. Órfãos — resident_channels.active com parentId fora de managed
   const active = await query(
@@ -109,22 +104,14 @@ async function _scanState(guild) {
   return { managed, orphans, logDups, separators, countsByCategory };
 }
 
-async function _moveOrphan(guild, orphan, managed) {
+async function _moveOrphan(guild, orphan) {
   const ch = await guild.channels.fetch(orphan.channelId).catch(() => null);
   if (!ch) throw new Error('canal não existe em Discord');
-  let lastErr = null;
-  for (const catId of managed) {
-    try {
-      await queueChannelOp(() => ch.setParent(catId, { lockPermissions: false }));
-      // Actualiza resident_channels.category_id para reflectir novo parent.
-      await query(`UPDATE resident_channels SET category_id = $1 WHERE channel_id = $2`, [catId, orphan.channelId]);
-      return { toCategoryId: catId };
-    } catch (e) {
-      lastErr = e;
-      continue; // tenta próxima categoria
-    }
-  }
-  throw lastErr || new Error('todas as categorias falharam');
+  // moveChannelToManagedCategory tenta todas as categorias conhecidas com
+  // fallback por "cheia", e AUTO-CRIA nova overflow se necessário.
+  const { categoryId } = await moveChannelToManagedCategory(guild, ch);
+  await query(`UPDATE resident_channels SET category_id = $1 WHERE channel_id = $2`, [categoryId, orphan.channelId]);
+  return { toCategoryId: categoryId };
 }
 
 async function _deleteChannel(guild, target, reason) {
@@ -218,7 +205,7 @@ async function _handleInner(interaction) {
   }
   for (const o of orphans) {
     try {
-      const r = await _moveOrphan(guild, o, managed);
+      const r = await _moveOrphan(guild, o);
       moved.push({ ...o, toCategoryId: r.toCategoryId });
       log(`[ORGANIZE-TOPICOS] moved ${o.channelId} (${o.memberName}) → ${r.toCategoryId}`);
     } catch (e) {

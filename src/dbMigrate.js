@@ -121,6 +121,21 @@ async function ensureCriticalSchema(client) {
               ADD COLUMN IF NOT EXISTS channel_create_failed  BOOLEAN NOT NULL DEFAULT FALSE,
               ADD COLUMN IF NOT EXISTS processed_at           TIMESTAMPTZ`,
     },
+    {
+      name: 'managed_topic_categories table',
+      sql: `CREATE TABLE IF NOT EXISTS managed_topic_categories (
+              id          SERIAL PRIMARY KEY,
+              category_id TEXT NOT NULL UNIQUE,
+              role        TEXT NOT NULL DEFAULT 'overflow-auto'
+                          CHECK (role IN ('primary', 'overflow-env', 'overflow-auto')),
+              created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              notes       TEXT
+            )`,
+    },
+    {
+      name: 'managed_topic_categories index',
+      sql: 'CREATE INDEX IF NOT EXISTS ix_managed_topic_categories_role ON managed_topic_categories (role)',
+    },
   ];
   let applied = 0;
   for (const { name, sql } of ddls) {
