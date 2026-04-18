@@ -67,24 +67,39 @@ function webReadyPhase(client) {
 }
 
 function sheetsInitialSyncPhase() {
-  // Fire-and-forget, não bloqueia o ready; delay 20s para evitar rate limit.
-  if (!CONFIG.isSheetsEnabled || !CONFIG.isSheetsEnabled()) return;
-  setTimeout(() => {
-    _syncSheetsOnBoot().catch(() => {});
-  }, 20_000).unref?.();
+  if (!CONFIG.isSheetsEnabled || !CONFIG.isSheetsEnabled()) {
+    log('[BOOT:SHEETS] Skip — Sheets desactivado (GOOGLE_SERVICE_ACCOUNT_JSON/SPREADSHEET_ID ausente).');
+    return;
+  }
+  // Fire-and-forget mas via Promise (não setTimeout com .unref que em alguns
+  // cenários é cancelado silenciosamente). Log de entrada explícito para
+  // discriminar "não correu" vs "correu mas falhou silenciosamente".
+  log('[BOOT:SHEETS] A agendar sync inicial...');
+  _syncSheetsOnBoot().catch(e => {
+    warn(`[BOOT:SHEETS] Promise rejected inesperadamente: ${e.message}`);
+  });
 }
 
 async function _syncSheetsOnBoot() {
+  log('[BOOT:SHEETS] Sync inicial de todas as tabs a arrancar...');
   try {
-    log('[BOOT:SHEETS] Sync inicial de todas as tabs...');
     const { syncAll } = require('../sheets/syncEngine');
+    const t0 = Date.now();
     const results = await syncAll();
     const ok = results.filter(r => !r.error && !r.skipped).length;
     const skipped = results.filter(r => r.skipped).length;
     const errored = results.filter(r => r.error).length;
-    log(`[BOOT:SHEETS] Sync inicial: ${ok} OK · ${skipped} skipped · ${errored} erros.`);
+    log(
+      `[BOOT:SHEETS] Sync inicial terminou: ${ok} OK · ${skipped} skipped · ${errored} erros · ${Date.now() - t0}ms.`
+    );
+    for (const r of results) {
+      if (r.error) warn(`[BOOT:SHEETS] ${r.tab} erro: ${String(r.error).slice(0, 300)}`);
+      else if (r.skipped) log(`[BOOT:SHEETS] ${r.tab} skipped (${r.skipped}).`);
+      else log(`[BOOT:SHEETS] ${r.tab} OK (${r.ops || 0} ops · ${r.ms || 0}ms).`);
+    }
   } catch (e) {
-    warn(`[BOOT:SHEETS] Falhou: ${e.message}`);
+    warn(`[BOOT:SHEETS] Falha geral: ${e.message}`);
+    warn(`[BOOT:SHEETS] Stack: ${e.stack}`);
   }
 }
 
