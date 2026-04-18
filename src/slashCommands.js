@@ -71,6 +71,13 @@ const commands = [
     ),
 
   new SlashCommandBuilder()
+    .setName('organize-topicos')
+    .setDescription('Move órfãos, apaga log-bairristas duplicados e separadores — arruma categorias (chefia)')
+    .addBooleanOption(opt =>
+      opt.setName('executar').setDescription('true=aplica · false/omit=só preview (default)').setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
     .setName('sync-sheets')
     .setDescription('Diagnóstico e resync do Google Sheets (chefia)')
     .addStringOption(opt =>

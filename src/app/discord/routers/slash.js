@@ -22,6 +22,7 @@ const { handleMeuPedido } = require('../../../onboarding/meuPedido');
 const syncSheets = require('../../../queries/syncSheets');
 const backfillTopicos = require('../../../queries/backfillTopicos');
 const cleanupTopicos = require('../../../queries/cleanupTopicos');
+const organizeTopicos = require('../../../queries/organizeTopicos');
 const { commandsByName } = require('../../../lib/metrics');
 
 const SLASH_ROUTES = {
@@ -42,6 +43,7 @@ const SLASH_ROUTES = {
   'sync-sheets': syncSheets.handle,
   'backfill-topicos': backfillTopicos.handle,
   'cleanup-topicos': cleanupTopicos.handle,
+  'organize-topicos': organizeTopicos.handle,
 };
 
 async function handleSlash(interaction) {
