@@ -366,7 +366,9 @@ async function syncStock(batch, sheetId) {
     columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, INV_HEADERS.concat(Array(COL_COUNT - INV_HEADERS.length).fill('')));
-  batch.freezeRows(sheetId, row);
+  // NÃO congelar aqui — freeze a row~46 torna a tab inutilizável em ecrãs
+  // onde o frozen pane é maior que a viewport (bloqueia scroll).
+  // O frozenRowCount=0 no sheetsEngine pre-sync já garante que não há freeze.
   const invFirstRow = row;
 
   const groups = new Map();
