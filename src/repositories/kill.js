@@ -83,6 +83,23 @@ async function totalOrgKills(windowDays = null) {
   return res.rows[0]?.n || 0;
 }
 
+/**
+ * Total de kills da firma incluindo operation_participants (saídas) +
+ * kill_logs (/kill events). Para display "Kills da firma all-time" —
+ * totalOrgKills sozinho só conta /kill e deixa de fora as saídas.
+ */
+async function totalOrgKillsAllSources(windowDays = null) {
+  const logsWindow = windowDays ? `WHERE created_at >= NOW() - INTERVAL '${parseInt(windowDays)} days'` : '';
+  const opsWindow = windowDays ? `WHERE updated_at >= NOW() - INTERVAL '${parseInt(windowDays)} days'` : '';
+  const r = await query(`
+    SELECT
+      (SELECT COUNT(*) FROM kill_logs ${logsWindow})::int AS from_logs,
+      (SELECT COALESCE(SUM(kills), 0) FROM operation_participants ${opsWindow})::int AS from_saidas
+  `);
+  const row = r.rows[0] || {};
+  return (row.from_logs || 0) + (row.from_saidas || 0);
+}
+
 module.exports = {
   recordKill,
   getLeaderboard,
@@ -90,4 +107,5 @@ module.exports = {
   countKillsBySaida,
   countKillsByMember,
   totalOrgKills,
+  totalOrgKillsAllSources,
 };

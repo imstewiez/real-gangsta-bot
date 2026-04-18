@@ -191,7 +191,11 @@ function saidaLifecycleEmbed(p) {
     fields.push({ name: 'Tipo', value: typeLabel, inline: true });
   }
   if (p.leaderId) fields.push({ name: 'Líder', value: mention(p.leaderId), inline: true });
-  if (p.result) fields.push({ name: 'Resultado', value: `\`${p.result}\``, inline: true });
+  if (p.result) {
+    // Enum → label pt-PT com emoji (nunca mostrar "vitoria" raw).
+    const { RESULT_LABEL } = require('../content');
+    fields.push({ name: 'Resultado', value: RESULT_LABEL[p.result] || p.result, inline: true });
+  }
 
   if (p.participantsCount != null) {
     const parts = [`**${p.participantsCount}** totais`];

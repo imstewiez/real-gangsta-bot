@@ -11,9 +11,10 @@
 
 const { EmbedBuilder } = require('discord.js');
 const CONFIG = require('../config');
-const { saidaRepo, killRepo, spotStatsRepo, memberSaidaStatsRepo } = require('../repositories');
+const { saidaRepo, killRepo, spotStatsRepo, memberSaidaStatsRepo, memberRepo } = require('../repositories');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { SAIDAS, EMOJI, SAIDA_TYPE } = require('../content');
+const { formatPtDateOnly } = require('../shared/formatPtDate');
 const { log, warn } = require('../logger');
 
 const RESULT_META = {
@@ -29,21 +30,54 @@ function formatMoney(v) {
   return `${n.toLocaleString('pt-PT', { maximumFractionDigits: 0 })} €`;
 }
 
-function buildResumoEmbed(saida, participants) {
+// Resolve o nome do líder com fallback ao creator (quem criou a saída).
+// Antes mostrava "—" se leader_id era null; agora cai para o creator.
+async function resolveLeaderName(saida) {
+  if (saida.leader_name) return saida.leader_name;
+  if (saida.created_by) {
+    const creator = await memberRepo.findByDiscordId(saida.created_by).catch(() => null);
+    if (creator) return creator.display_name || creator.username || `<@${saida.created_by}>`;
+    return `<@${saida.created_by}>`;
+  }
+  return '—';
+}
+
+// Formata o field de inimigo — dedupa quando name===faction (comum: o modal
+// preenche os dois campos com o mesmo input).
+function formatEnemy(name, faction) {
+  const n = (name || '').trim();
+  const f = (faction || '').trim();
+  if (!n && !f) return '—';
+  if (!n) return f;
+  if (!f) return n;
+  if (n.toLowerCase() === f.toLowerCase()) return n; // dedup
+  return `${n} · ${f}`;
+}
+
+// Tag tri-state para net_value: lucro / empate / prejuízo. Antes
+// mostrava sempre "Prejuízo" quando net=0.
+function profitTag(net) {
+  const n = Number(net) || 0;
+  if (n > 0) return `${EMOJI.LUCRO} Lucro`;
+  if (n < 0) return `${EMOJI.WARN} Prejuízo`;
+  return `${EMOJI.INFO} Sem lucro`;
+}
+
+async function buildResumoEmbed(saida, participants) {
   const meta = RESULT_META[saida.result] || RESULT_META.sem_conflito;
   const type = SAIDA_TYPE[saida.operation_type] || saida.operation_type;
-  const profitTag = saida.was_profitable ? `${EMOJI.LUCRO} Lucro` : `${EMOJI.WARN} Prejuízo`;
 
   const L = SAIDAS.LABELS;
   const characterized = participants.filter(p => p.participant_type === 'caracterizado');
   const workers = participants.filter(p => p.participant_type === 'trabalhador');
   const ownWeaponCount = participants.filter(p => p.own_weapon).length;
+  const leaderName = await resolveLeaderName(saida);
 
   const fields = [
     { name: L.SPOT, value: saida.spot || '—', inline: true },
     { name: L.TIPO, value: type, inline: true },
-    { name: L.LIDER, value: saida.leader_name || '—', inline: true },
-    { name: 'Data', value: String(saida.date).split('T')[0], inline: true },
+    { name: L.LIDER, value: leaderName, inline: true },
+    { name: 'Data', value: formatPtDateOnly(saida.date), inline: true },
     {
       name: 'Na saída',
       value: `**${participants.length}** (${characterized.length} caract. · ${workers.length} trab.)`,
@@ -57,9 +91,8 @@ function buildResumoEmbed(saida, participants) {
   }
 
   if (saida.had_fight) {
-    const enemy = [saida.enemy_name, saida.enemy_faction].filter(Boolean).join(' · ') || '—';
     fields.push(
-      { name: L.INIMIGO, value: enemy, inline: true },
+      { name: L.INIMIGO, value: formatEnemy(saida.enemy_name, saida.enemy_faction), inline: true },
       { name: `${EMOJI.KILL} ${L.KILLS}`, value: String(saida.our_kills || 0), inline: true },
       { name: `${EMOJI.MORTE} ${L.MORTES}`, value: String(saida.deaths || 0), inline: true }
     );
@@ -77,7 +110,11 @@ function buildResumoEmbed(saida, participants) {
     { name: `${EMOJI.PERDIDO} ${L.MATERIAL_PERDIDO}`, value: formatMoney(saida.lost_value), inline: true },
     { name: `${EMOJI.CRAFT} Consumido`, value: formatMoney(saida.consumed_value), inline: true },
     { name: `${EMOJI.LUCRO} ${L.LUCRO_BRUTO}`, value: formatMoney(saida.gross_value), inline: true },
-    { name: `${EMOJI.DINHEIRO} ${L.LUCRO_LIQUIDO} (${profitTag})`, value: formatMoney(saida.net_value), inline: true }
+    {
+      name: `${EMOJI.DINHEIRO} ${L.LUCRO_LIQUIDO} (${profitTag(saida.net_value)})`,
+      value: formatMoney(saida.net_value),
+      inline: true,
+    }
   );
 
   if (saida.result_notes) fields.push({ name: 'Notas', value: saida.result_notes.slice(0, 200), inline: false });
@@ -188,7 +225,9 @@ async function buildImpactoEmbed(saida) {
     }
   }
 
-  const totalKills = await killRepo.totalOrgKills();
+  // Kills da firma all-time = /kill events + kills em saídas (agregado).
+  // Antes só contava /kill — ficava 0 se ninguém tivesse usado o slash.
+  const totalKills = await killRepo.totalOrgKillsAllSources();
   fields.push({ name: `${EMOJI.DERROTA} ${L.ORG_KILLS}`, value: String(totalKills), inline: true });
 
   const medals = [EMOJI.MEDAL_1, EMOJI.MEDAL_2, EMOJI.MEDAL_3];
@@ -203,10 +242,14 @@ async function buildImpactoEmbed(saida) {
   }
 
   const topProfit = await memberSaidaStatsRepo.listTop('profit_generated', 3);
-  if (topProfit.length) {
+  // Só mostrar se pelo menos um tem valor > 0 — evita rank de 0€×3 (ruído).
+  const profitSignal = topProfit.filter(m => Number(m.profit_generated) > 0);
+  if (profitSignal.length) {
     fields.push({
       name: `${EMOJI.LUCRO} Top lucro gerado`,
-      value: topProfit.map((m, i) => `${medals[i]} <@${m.discord_id}> — ${formatMoney(m.profit_generated)}`).join('\n'),
+      value: profitSignal
+        .map((m, i) => `${medals[i]} <@${m.discord_id}> — ${formatMoney(m.profit_generated)}`)
+        .join('\n'),
       inline: false,
     });
   }
@@ -228,7 +271,7 @@ async function publishResults(client, saidaId) {
   const participants = await saidaRepo.getParticipants(saidaId);
 
   try {
-    const resumo = buildResumoEmbed(saida, participants);
+    const resumo = await buildResumoEmbed(saida, participants);
     const destaques = buildDestaquesEmbed(saida, participants);
     const impacto = await buildImpactoEmbed(saida);
     await channel.send({ embeds: [resumo, destaques, impacto], allowedMentions: { parse: [] } });
