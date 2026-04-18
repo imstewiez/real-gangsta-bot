@@ -13,10 +13,40 @@
 
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
+const metrics = require('../lib/metrics');
 const { getSheetsClient } = require('./googleAuth');
 const { BatchWriter } = require('./batchWriter');
 const { ensureTabs } = require('./workbook');
 const { trimSheet, growSheet } = require('./cleanup');
+
+/**
+ * Classificação de erros para decidir retry vs bail. Retry em:
+ *   - 5xx (Google API down)
+ *   - 429 (rate limit — backoff resolve)
+ *   - ECONNRESET / ETIMEDOUT / EAI_AGAIN (rede)
+ * Bail em 400/401/403/404 — são bugs do bot ou do auth, retry não resolve.
+ */
+function isTransientSheetsError(err) {
+  if (!err) return false;
+  const code = err.code || err.response?.status || err.response?.data?.error?.code;
+  if (code) {
+    const n = Number(code);
+    if (Number.isFinite(n)) {
+      if (n === 429) return true;
+      if (n >= 500 && n < 600) return true;
+      return false; // 4xx não-429: bug; não faz retry
+    }
+    const str = String(code).toUpperCase();
+    if (str === 'ECONNRESET' || str === 'ETIMEDOUT' || str === 'EAI_AGAIN' || str === 'ENOTFOUND') {
+      return true;
+    }
+  }
+  // Fallback por mensagem (googleapis às vezes enterra o status).
+  const msg = String(err.message || '').toLowerCase();
+  if (msg.includes('timeout') || msg.includes('econnreset') || msg.includes('socket hang up')) return true;
+  if (msg.includes('rate limit') || msg.includes('quota exceeded') || msg.includes('user rate limit')) return true;
+  return false;
+}
 
 // Dimensão mínima antes de cada sync — garante espaço para escrever mesmo
 // depois de trims agressivos em syncs anteriores. Tabs com mais linhas
@@ -196,6 +226,11 @@ async function syncOne(key) {
     warn(`[SHEETS] recordSheetSync falhou: ${e.message}`);
   }
 
+  // Métricas — sempre incrementa, independente de DB (observabilidade in-memory).
+  metrics.sheetsSyncTotal.inc();
+  metrics.sheetsSyncByTab.inc({ tab: key, result: syncErr ? 'error' : 'ok' });
+  if (syncErr) metrics.sheetsSyncErrorsTotal.inc();
+
   if (syncErr) throw syncErr;
   log(`[SHEETS] sync ${key}: ${ops} ops em ${ms}ms`);
   return { tab: key, ops, ms };
@@ -220,4 +255,4 @@ async function syncAll() {
   return results;
 }
 
-module.exports = { syncOne, syncAll, TAB_SYNCERS };
+module.exports = { syncOne, syncAll, TAB_SYNCERS, isTransientSheetsError };

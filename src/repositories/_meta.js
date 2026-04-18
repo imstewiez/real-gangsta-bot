@@ -75,17 +75,26 @@ async function bumpVersion(table, id) {
 
 async function recordSheetSync(tabKey, { result, ops, ms, error, dataHash }) {
   const res = String(result || 'unknown');
+  // consecutive_errors: incrementa em 'error', reseta em 'ok', preserva em 'skipped'.
+  // CASE nativo evita read-modify-write em dois statements (sem race).
   await query(
-    `INSERT INTO sheet_sync_state (tab_key, last_synced_at, last_result, last_ops, last_ms, last_error, last_data_hash, updated_at)
-     VALUES ($1, NOW(), $2, $3, $4, $5, $6, NOW())
+    `INSERT INTO sheet_sync_state (tab_key, last_synced_at, last_result, last_ops, last_ms, last_error, last_data_hash, consecutive_errors, updated_at)
+     VALUES ($1, NOW(), $2, $3, $4, $5, $6,
+             CASE WHEN $2 = 'error' THEN 1 ELSE 0 END,
+             NOW())
      ON CONFLICT (tab_key) DO UPDATE SET
-       last_synced_at = EXCLUDED.last_synced_at,
-       last_result    = EXCLUDED.last_result,
-       last_ops       = EXCLUDED.last_ops,
-       last_ms        = EXCLUDED.last_ms,
-       last_error     = EXCLUDED.last_error,
-       last_data_hash = EXCLUDED.last_data_hash,
-       updated_at     = NOW()`,
+       last_synced_at      = EXCLUDED.last_synced_at,
+       last_result         = EXCLUDED.last_result,
+       last_ops            = EXCLUDED.last_ops,
+       last_ms             = EXCLUDED.last_ms,
+       last_error          = EXCLUDED.last_error,
+       last_data_hash      = EXCLUDED.last_data_hash,
+       consecutive_errors  = CASE
+                               WHEN EXCLUDED.last_result = 'error' THEN sheet_sync_state.consecutive_errors + 1
+                               WHEN EXCLUDED.last_result = 'ok'    THEN 0
+                               ELSE sheet_sync_state.consecutive_errors
+                             END,
+       updated_at          = NOW()`,
     [tabKey, res, ops || null, ms || null, error || null, dataHash || null]
   );
 }

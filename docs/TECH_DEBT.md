@@ -56,13 +56,6 @@ secções pre-ready (migrations, event bus subscribers, coordinator) ainda
 estão inline (~60 linhas). Pode ser extraído para `preReadyPhases.js` se
 crescer acima de ~100 linhas.
 
-### 🟡 Sheets — falta comando manual de force-resync
-Quando utilizador reporta "info desapareceu na sheet", só é possível
-forçar resync via evento de domínio (ex: fazer uma entrega fictícia).
-Devia existir `/rg-sync-sheets` staff-only que chame `syncEngine.syncAll()`
-— desbloqueia diagnóstico quando há suspeita de stale. Observado em
-2026-04-18 durante investigação de embed de saída.
-
 ### 🟢 Sheets — ficheiros sem testes unitários
 `src/sheets/*` (~3k linhas) excluído do coverage porque Sheets é
 controlado por flag (opcional). Quando passar a ser obrigatório para
@@ -86,6 +79,8 @@ actual: `docs/ARCHITECTURE.md` + `docs/JOBS.md` + `docs/CONTRIBUTING.md`.
 
 | Item | Fechada em | Commit / PR |
 |---|---|---|
+| Sheets hardening pass: retry transient-only + counters per tab + `consecutive_errors` + `/sync-sheets status\|all\|tab` + runbook `SHEETS_OPERATIONS.md` + padding headroom | 2026-04-18 | _este commit_ |
+| Sheets — `/sync-sheets` staff-only force-resync | 2026-04-18 | `23e55bc` + _este commit_ |
 | I-4: DR runbook + backup script + 4 cenários incident | 2026-04-18 | `27b4edb` (#4) |
 | I-3: Integration test saída end-to-end com DB real | 2026-04-18 | `ac3d706` (#3) |
 | I-1: Advisory lock em `checkAndPromote` (race de promoção) | 2026-04-18 | `419a075` (#2) |

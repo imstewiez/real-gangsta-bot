@@ -12,9 +12,11 @@
  * para que o trim faça parte do mesmo flush da sync (economiza calls).
  */
 
-// Zero padding — o grow/trim corre atomicamente no batch, não há risco de
-// "write beyond bounds" entre syncs. Tabs ficam tight sem rows vazias.
-const DEFAULT_PADDING_ROWS = 0;
+// Padding defensivo — 3 linhas de headroom absorvem off-by-one num cursor de
+// syncer (já observado em stock.js) sem que trim corte abaixo de writes reais
+// do mesmo batch. O grow/trim continua atómico; o padding é uma 2ª linha de
+// defesa além do `_maxWrittenCell` em syncEngine.js.
+const DEFAULT_PADDING_ROWS = 3;
 const DEFAULT_PADDING_COLS = 0;
 const MIN_ROWS = 10;
 const MIN_COLS = 1;

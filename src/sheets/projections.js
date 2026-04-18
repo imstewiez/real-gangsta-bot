@@ -54,22 +54,47 @@ const EVENT_TO_TABS = {
 };
 
 const DEBOUNCE_MS = 5_000;
+// Retry backoff — só usado para erros transitórios (5xx, 429, rede).
+// Bugs do bot (400/403/404) falham logo, sem retry, para surfarem em logs/métricas.
+const RETRY_DELAYS_MS = [1_000, 3_000, 9_000];
 
 // Estado local do subscriber — debounce por tab para que uma rajada de
 // eventos num domínio (ex: saídas) não atrase o flush de outro (ex: membros).
 const _timers = new Map(); // tabKey → setTimeout id
-const _inFlight = new Set(); // tabs com sync a decorrer
+const _inFlight = new Set(); // tabs com sync a decorrer (inclui durante backoff)
+
+function _sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function _syncWithRetry(tab) {
+  const { syncOne, isTransientSheetsError } = require('./syncEngine');
+  let lastErr = null;
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      return await syncOne(tab);
+    } catch (e) {
+      lastErr = e;
+      const canRetry = attempt < RETRY_DELAYS_MS.length && isTransientSheetsError(e);
+      if (!canRetry) throw e;
+      const delay = RETRY_DELAYS_MS[attempt];
+      warn(`[PROJ] ${tab} transitório (tentativa ${attempt + 1}/${RETRY_DELAYS_MS.length + 1}): ${e.message} — retry em ${delay}ms`);
+      await _sleep(delay);
+    }
+  }
+  throw lastErr; // unreachable — loop acima throws no attempt final
+}
 
 function _flushTab(tab) {
   _timers.delete(tab);
   if (_inFlight.has(tab)) {
-    // Sync a correr para esta tab — reagenda para apanhar o novo estado.
+    // Sync (ou backoff) a correr para esta tab — reagenda para apanhar o novo estado
+    // depois do actual terminar. O retry não duplica in-flight porque ocupa o slot.
     _scheduleTab(tab);
     return;
   }
   _inFlight.add(tab);
-  const { syncOne } = require('./syncEngine');
-  syncOne(tab)
+  _syncWithRetry(tab)
     .then(r => {
       if (r?.skipped) {
         log(`[PROJ] ${tab} skipped: ${r.skipped}`);
@@ -78,7 +103,7 @@ function _flushTab(tab) {
       }
     })
     .catch(e => {
-      warn(`[PROJ] ${tab} falhou: ${e.message}`);
+      warn(`[PROJ] ${tab} falhou (após retries se aplicável): ${e.message}`);
     })
     .finally(() => {
       _inFlight.delete(tab);
@@ -133,5 +158,6 @@ module.exports = {
   registerSheetProjections,
   EVENT_TO_TABS,
   DEBOUNCE_MS,
+  RETRY_DELAYS_MS,
   _flushNow,
 };

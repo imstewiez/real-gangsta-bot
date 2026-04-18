@@ -4,6 +4,9 @@ Dashboard premium da organização. A DB continua a ser a fonte da verdade;
 o Sheets é a camada de **visualização, analytics e reporting**.
 O bot escreve — humanos lêem.
 
+> **Operações e fiabilidade** (como o sync corre, o que garante, como
+> diagnosticar falhas): ver `docs/SHEETS_OPERATIONS.md`.
+
 ---
 
 ## Configuração

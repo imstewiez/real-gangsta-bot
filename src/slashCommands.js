@@ -58,7 +58,32 @@ const commands = [
   // ── Staff diagnóstico ──────────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName('sync-sheets')
-    .setDescription('Força resync de todas as tabs do Google Sheets (chefia)'),
+    .setDescription('Diagnóstico e resync do Google Sheets (chefia)')
+    .addStringOption(opt =>
+      opt
+        .setName('acao')
+        .setDescription('status=ver estado · all=resync de todas · tab=resync de uma (default: status)')
+        .setRequired(false)
+        .addChoices(
+          { name: 'status (ver última sync por tab)', value: 'status' },
+          { name: 'all (resync de todas as tabs)', value: 'all' },
+          { name: 'tab (resync de uma — preenche "tab")', value: 'tab' }
+        )
+    )
+    .addStringOption(opt =>
+      opt
+        .setName('tab')
+        .setDescription('Tab a resync (obrigatório se acao=tab)')
+        .setRequired(false)
+        .addChoices(
+          { name: 'dashboard', value: 'dashboard' },
+          { name: 'resumo', value: 'resumo' },
+          { name: 'membros', value: 'membros' },
+          { name: 'saidas', value: 'saidas' },
+          { name: 'stock', value: 'stock' },
+          { name: 'config', value: 'config' }
+        )
+    ),
 
   // ── Staff operacional ──────────────────────────────────────────────────────
   new SlashCommandBuilder()

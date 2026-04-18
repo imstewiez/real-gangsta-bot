@@ -140,6 +140,7 @@ const sheetsSyncErrorsTotal = counter('rg_sheets_sync_errors_total', 'Google She
 const commandsByName = labeledCounter('rg_commands_by_name', 'Commands invoked by name', ['command']);
 const jobsByName = labeledCounter('rg_jobs_by_name', 'Job runs by name', ['job']);
 const eventsByName = labeledCounter('rg_events_by_name', 'Domain events emitted', ['event']);
+const sheetsSyncByTab = labeledCounter('rg_sheets_sync_by_tab', 'Sheets syncs por tab+resultado', ['tab', 'result']);
 
 const membersActive = gauge('rg_members_active', 'Active members');
 const discordPingMs = gauge('rg_discord_ping_ms', 'Discord WS ping ms');
@@ -182,6 +183,7 @@ module.exports = {
   commandsByName,
   jobsByName,
   eventsByName,
+  sheetsSyncByTab,
   membersActive,
   discordPingMs,
   dbPoolTotal,
