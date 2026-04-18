@@ -19,6 +19,7 @@ const transfer = require('../../../queries/transfer');
 const { handleRegisterKillButton } = require('../../../kills/killHandlers');
 const { handleMovimento } = require('../../../members/bairristaHandlers');
 const { handleMeuPedido } = require('../../../onboarding/meuPedido');
+const syncSheets = require('../../../queries/syncSheets');
 const { commandsByName } = require('../../../lib/metrics');
 
 const SLASH_ROUTES = {
@@ -36,6 +37,7 @@ const SLASH_ROUTES = {
   // ── Staff operacional
   audit: audit.handle,
   transfer: transfer.handle,
+  'sync-sheets': syncSheets.handle,
 };
 
 async function handleSlash(interaction) {

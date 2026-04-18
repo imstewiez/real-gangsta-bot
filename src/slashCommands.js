@@ -55,6 +55,11 @@ const commands = [
 
   new SlashCommandBuilder().setName('meu-pedido').setDescription('Ver o estado do teu pedido de tag'),
 
+  // ── Staff diagnóstico ──────────────────────────────────────────────────────
+  new SlashCommandBuilder()
+    .setName('sync-sheets')
+    .setDescription('Força resync de todas as tabs do Google Sheets (chefia)'),
+
   // ── Staff operacional ──────────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName('audit')
