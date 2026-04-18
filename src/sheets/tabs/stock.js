@@ -35,7 +35,6 @@ const {
   applyRowBanding,
 } = require('./_common');
 const { getInventoryFull, getStockByCategory, getMovementsFull } = require('../queries');
-const { growSheet } = require('../cleanup');
 
 const MOVS_HEADERS = [
   'Data/Hora',
@@ -179,7 +178,8 @@ async function syncStock(batch, sheetId) {
     .filter(r => r.movement_type === 'perda_saida')
     .reduce((a, r) => a + Number(r.total_value || 0), 0);
 
-  growSheet(batch, sheetId, { rows: Math.max(inv.length + movs.length + 80, 200) });
+  // Grow é feito pelo syncEngine via pre-flight API separada (PRE_SYNC_MIN_ROWS).
+  // Não chamar growSheet aqui — encolheria a grid pre-flight.
 
   let row = headerBlock(batch, sheetId, {
     title: 'Stock · Inventário & Movimentos',

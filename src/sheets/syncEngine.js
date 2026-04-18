@@ -17,7 +17,7 @@ const metrics = require('../lib/metrics');
 const { getSheetsClient } = require('./googleAuth');
 const { BatchWriter } = require('./batchWriter');
 const { ensureTabs } = require('./workbook');
-const { trimSheet, growSheet } = require('./cleanup');
+const { trimSheet } = require('./cleanup');
 
 /**
  * Classificação de erros para decidir retry vs bail. Retry em:
@@ -48,15 +48,57 @@ function isTransientSheetsError(err) {
   return false;
 }
 
-// Dimensão mínima antes de cada sync — garante espaço para escrever mesmo
-// depois de trims agressivos em syncs anteriores. Tabs com mais linhas
-// (stock: inv.length + movs.length pode passar 1000) podem chamar growSheet
-// adicional. Bumped de 500 para 2000 em 2026-04-18 após stock falhar com
-// "Attempting to write row 509 beyond last row 5" — floor generoso é mais
-// barato que reasoning sobre timing de updates/trim. trimSheet no fim
-// encolhe para o tamanho real + padding.
-const PRE_SYNC_MIN_ROWS = 2000;
+// Dimensão mínima garantida por sync via pre-flight grow (chamada API separada
+// antes do main batch). Grande o suficiente para cobrir o pior caso de qualquer
+// tab (stock: ~1500 rows). trimSheet no fim encolhe para o tamanho real — zero
+// overhead residual na sheet.
+const PRE_SYNC_MIN_ROWS = 3000;
 const PRE_SYNC_MIN_COLS = 30;
+
+/**
+ * Pre-flight grow — chamada API SEPARADA antes do main batch.
+ *
+ * Por que separada: o grow in-batch (updateSheetProperties como request 0 do
+ * batch) tem falhado em prod sem erro visível — sintoma "Attempting to write
+ * row X, beyond last requested row of: 5" com 5 = grid size ANTES do grow.
+ * Ou o grow não aplica, ou aplica tarde demais. Causa incerta. Um batchUpdate
+ * separado com SÓ o grow ELIMINA a classe: se falha, syncOne throws antes de
+ * escrever; se passa, o main batch arranca com grid ≥ PRE_SYNC_MIN × 30.
+ *
+ * Usa MAX(current, min) para NUNCA encolher — se a sheet já tem mais rows
+ * (sync pesado anterior que trim não chegou a aplicar), preserva.
+ */
+async function _preFlightGrow(sheets, spreadsheetId, sheetId, key) {
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets(properties(sheetId,gridProperties))',
+  });
+  const sheetMeta = (meta.data.sheets || []).find(s => s.properties.sheetId === sheetId);
+  const current = sheetMeta?.properties?.gridProperties || {};
+  const curRows = current.rowCount || 0;
+  const curCols = current.columnCount || 0;
+  const targetRows = Math.max(curRows, PRE_SYNC_MIN_ROWS);
+  const targetCols = Math.max(curCols, PRE_SYNC_MIN_COLS);
+  if (targetRows === curRows && targetCols === curCols) {
+    log(`[SHEETS] pre-flight grow ${key}: já ${curRows}×${curCols}, skip.`);
+    return { curRows, curCols, targetRows, targetCols };
+  }
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [
+        {
+          updateSheetProperties: {
+            properties: { sheetId, gridProperties: { rowCount: targetRows, columnCount: targetCols } },
+            fields: 'gridProperties.rowCount,gridProperties.columnCount',
+          },
+        },
+      ],
+    },
+  });
+  log(`[SHEETS] pre-flight grow ${key}: ${curRows}×${curCols} → ${targetRows}×${targetCols}`);
+  return { curRows, curCols, targetRows, targetCols };
+}
 
 const TAB_SYNCERS = {
   dashboard: () => require('./tabs/dashboard').syncDashboard,
@@ -162,10 +204,11 @@ async function syncOne(key) {
   const sheetId = tabs[key];
   if (sheetId === undefined) throw new Error(`SheetId não encontrado para ${key}`);
 
+  // Pre-flight grow — chamada API separada ANTES do main batch. Se falha,
+  // syncOne throws sem escrever. Se passa, main batch arranca com grid garantido.
+  await _preFlightGrow(sheets, spreadsheetId, sheetId, key);
+
   const batch = new BatchWriter(sheets, spreadsheetId);
-  // Grow preventivo — evita "Attempting to write row X, beyond last row Y"
-  // quando o trim anterior encolheu a grid e os dados agora cresceram.
-  growSheet(batch, sheetId, { rows: PRE_SYNC_MIN_ROWS, cols: PRE_SYNC_MIN_COLS });
   // Reset freezes/merges antigos — novos layouts podem sobrepor-se aos antigos.
   batch.freezeRows(sheetId, 0);
   batch.freezeCols(sheetId, 0);

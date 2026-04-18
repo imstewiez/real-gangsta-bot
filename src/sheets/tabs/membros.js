@@ -33,7 +33,6 @@ const {
   autoResizeAll,
 } = require('./_common');
 const { getMembersFull } = require('../queries');
-const { growSheet } = require('../cleanup');
 
 const HEADERS = [
   'Nome',
@@ -177,8 +176,7 @@ async function syncMembros(batch, sheetId) {
     young_blood: countTier(bairristas, 'young_blood'),
   };
 
-  // Grow antes de escrever — Membros pode crescer se houver backfill.
-  growSheet(batch, sheetId, { rows: Math.max(rows.length + 50, 200) });
+  // Grow é feito pelo syncEngine via pre-flight (PRE_SYNC_MIN_ROWS).
   let row = headerBlock(batch, sheetId, {
     title: 'Membros · Ficha da Casa',
     subtitle: `${rows.length} membros · ${chefia.length} chefia · ${oficial.length} oficiais · ${patroes.length} patrões di zona · ${bairristas.length} bairristas`,

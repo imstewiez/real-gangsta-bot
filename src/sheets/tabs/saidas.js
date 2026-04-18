@@ -38,7 +38,6 @@ const {
   autoResizeAll,
 } = require('./_common');
 const { getSaidasFull, getParticipantsFull, getKillsFull, getKillsKPIs, getSpotsFull } = require('../queries');
-const { growSheet } = require('../cleanup');
 
 const SAIDAS_HEADERS = [
   'ID',
@@ -197,7 +196,7 @@ async function syncSaidas(batch, sheetId) {
   const bestSpot = spots.slice().sort((a, b) => Number(b.total_net_value || 0) - Number(a.total_net_value || 0))[0];
   const worstSpot = spots.slice().sort((a, b) => (b.our_deaths || 0) - (a.our_deaths || 0))[0];
 
-  growSheet(batch, sheetId, { rows: Math.max(rows.length + parts.length + spots.length + kills.length + 150, 200) });
+  // Grow é feito pelo syncEngine via pre-flight (PRE_SYNC_MIN_ROWS).
 
   let row = headerBlock(batch, sheetId, {
     title: 'Saídas & Combate · Firma RedWood',
