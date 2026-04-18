@@ -1,0 +1,15 @@
+{
+  "_comment": "Whitelist ordenada de armas permitidas nos dropdowns de saída (tanto 'Arma Própria' como 'Pedir à Org'). A ordem importa — é a ordem em que aparecem no select.",
+  "allowed": [
+    "Micro SMG",
+    "Machine Pistol",
+    "Pistola Tec",
+    "Espingarda de Assalto",
+    "AP Pistola",
+    "Compact Rifle",
+    "Gusenberg",
+    "P90",
+    "Carabina Especial",
+    "Pistola .50"
+  ]
+}

@@ -400,48 +400,40 @@ async function handleCaracterizadoSource(interaction) {
   const saidaId = parseInt(parts[2]);
   const source = parts[3]; // 'own' ou 'org'
 
-  // Armas — usa categorias da DB directamente (armas_fogo, armas_brancas, armas).
-  // Para "Pedir à Org" → só armas_fogo (armas curadas da firma).
-  // Para "Arma Própria" → armas_fogo + armas_brancas + armas (catálogo completo).
+  // Armas — filtradas pela whitelist em `config/saida-weapons.json`.
+  // Mesma lista para "Arma Própria" e "Pedir à Org": armas brancas + outras
+  // fora da whitelist NUNCA aparecem. Ordem segue a do JSON (editável sem
+  // tocar em código).
   const items = await inventoryRepo.getItems(true);
-
-  const orgCategories = new Set(['armas_fogo', 'armas']);
-  const ownCategories = new Set(['armas_fogo', 'armas_brancas', 'armas']);
-  const filterCats = source === 'org' ? orgCategories : ownCategories;
-
-  const weapons = items.filter(i => filterCats.has(i.category));
+  const { filterAndOrderForSaida } = require('./allowedWeapons');
+  const weapons = filterAndOrderForSaida(items);
 
   if (source === 'org') {
+    // Carrega stock por arma para label enriquecido. Ordem mantém-se
+    // (não reordena por stock — quem sabe o que quer, clica).
     for (const w of weapons) {
       w._balance = Number(await inventoryRepo.getStockForItem(w.id).catch(() => 0)) || 0;
     }
-    // Org: ordenar por stock (em stock primeiro), depois nome
-    weapons.sort((a, b) => b._balance - a._balance || a.name.localeCompare(b.name));
-  } else {
-    weapons.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   if (weapons.length === 0) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.WARN} Não há armas no catálogo. Contacta a chefia.`,
+        content: `${EMOJI.WARN} Sem armas elegíveis no catálogo. Contacta a chefia.`,
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'WARN' }
     );
   }
 
-  // Discord StringSelect: max 25 opções. Se passar, trunca.
+  // Discord StringSelect: max 25 opções. A whitelist tem 10 → sempre cabe.
   const options = weapons.slice(0, 25).map(w => {
     let label = w.name;
     if (source === 'org') {
       label = w._balance > 0 ? `${w.name} · stock ${w._balance}` : `${w.name} · sem stock`;
     }
-    return new StringSelectMenuOptionBuilder()
-      .setLabel(label.slice(0, 100))
-      .setValue(String(w.id))
-      .setEmoji(w.category === 'armas_brancas' ? '🔪' : '🔫');
+    return new StringSelectMenuOptionBuilder().setLabel(label.slice(0, 100)).setValue(String(w.id)).setEmoji('🔫');
   });
 
   const select = new StringSelectMenuBuilder()
