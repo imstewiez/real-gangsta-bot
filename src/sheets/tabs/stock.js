@@ -381,19 +381,25 @@ async function syncStock(batch, sheetId) {
     return vb - va;
   });
 
+  // Bulk-writes por categoria: 1 updateCells com catHeader + N items + subtotal
+  // todos juntos. Era por-item-individual, mas em prod isso resultava em items
+  // não aparecerem na sheet (apenas categorias visíveis). O padrão bulk é o que
+  // tableBody usa para o breakdown que FUNCIONA — padroniza aqui.
   let zebraIndex = 0;
   for (const cat of sortedCats) {
     const items = groups.get(cat);
-    // Cabeçalho de categoria
-    const catCells = [
+
+    // Monta todas as linhas da categoria num único array: [catHeader, ...items, subtotal]
+    const catBlock = [];
+
+    // Cat header
+    const catHeaderRow = [
       bodyBoldCell(catLabel(cat), { bg: COLOR.BG_BLOCK, align: 'LEFT' }),
       ...Array(COL_COUNT - 1).fill(cell('', { bg: COLOR.BG_BLOCK })),
     ];
-    batch.updateCells(sheetId, row, 0, [catCells]);
-    batch.setRowHeight(sheetId, row, 22);
-    batch.mergeCells(sheetId, row, row + 1, 0, COL_COUNT);
-    row += 1;
+    catBlock.push(catHeaderRow);
 
+    // Items
     for (const i of items) {
       const cells = [
         bodyCell(i.name),
@@ -420,13 +426,11 @@ async function syncStock(batch, sheetId) {
           }
         }
       }
-      batch.updateCells(sheetId, row, 0, [cells]);
-      batch.setRowHeight(sheetId, row, 22);
-      row += 1;
+      catBlock.push(cells);
       zebraIndex += 1;
     }
 
-    // Subtotal — colunas: Item / Cat / Un / QtdAr / QtdGr / QtdTotal / VUnit / VTotal / Entradas / Saídas / UltMov / Estado
+    // Subtotal
     const subQtyAr = items.reduce((a, i) => a + Number(i.balance_armazem || 0), 0);
     const subQtyGr = items.reduce((a, i) => a + Number(i.balance_grupo || 0), 0);
     const subQty = items.reduce((a, i) => a + Number(i.balance || 0), 0);
@@ -443,9 +447,17 @@ async function syncStock(batch, sheetId) {
       numCell(subVal, NUM_FMT.EURO, { bg: COLOR.BG_BLOCK_ALT, font: boldFont }),
       ...Array(COL_COUNT - 8).fill(cell('', { bg: COLOR.BG_BLOCK_ALT })),
     ];
-    batch.updateCells(sheetId, row, 0, [subCells]);
-    batch.setRowHeight(sheetId, row, 22);
-    row += 1;
+    catBlock.push(subCells);
+
+    // BULK WRITE da categoria inteira — 1 updateCells para catHeader + items + subtotal
+    batch.updateCells(sheetId, row, 0, catBlock);
+    // Row heights e merge do catHeader separadamente (API não permite bulk)
+    const catHeaderRowIdx = row;
+    for (let idx = 0; idx < catBlock.length; idx += 1) {
+      batch.setRowHeight(sheetId, row + idx, 22);
+    }
+    batch.mergeCells(sheetId, catHeaderRowIdx, catHeaderRowIdx + 1, 0, COL_COUNT);
+    row += catBlock.length;
     zebraIndex = 0;
   }
 
