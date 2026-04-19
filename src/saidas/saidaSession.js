@@ -132,6 +132,18 @@ async function buildSessionEmbed(saidaId) {
   // Indicador de resultado individual (para estados em_liquidacao e concluida)
   const showResultStatus = isInLiquidacao || isConcluded;
 
+  // Sanity cap — kills ≥ 20 são flagged visualmente para chefia rever antes
+  // de finalizar (provavelmente typo; o cap hard é 99 no modal).
+  const KILLS_SANITY_THRESHOLD = 20;
+  const formatResultMark = p => {
+    if (!showResultStatus) return '';
+    if (!p.individual_result_submitted) return ' ⏳';
+    const kills = p.kills || 0;
+    const killsTag = kills > 0 ? ` · ${kills}k${kills >= KILLS_SANITY_THRESHOLD ? '⚠' : ''}` : '';
+    const diedTag = p.died ? ` · ${EMOJI.MORTE}` : '';
+    return ` ✅${killsTag}${diedTag}`;
+  };
+
   if (characterized.length) {
     lines.push('', '**── Caracterizados ──**');
     for (const p of characterized) {
@@ -139,29 +151,13 @@ async function buildSessionEmbed(saidaId) {
       const srcIcon = p.own_weapon ? '🔫' : p.received_org_material ? '📦' : '⏳';
       const srcLabel = p.own_weapon ? 'própria' : p.received_org_material ? 'org' : 'sem arma';
       const weaponFull = weaponName ? `${srcIcon} ${weaponName} (${srcLabel})` : `${srcIcon} ${srcLabel}`;
-      let resultMark = '';
-      if (showResultStatus && p.individual_result_submitted) {
-        const killsTag = p.kills > 0 ? ` · ${p.kills}k` : '';
-        const diedTag = p.died ? ` · ${EMOJI.MORTE}` : '';
-        resultMark = ` ✅${killsTag}${diedTag}`;
-      } else if (showResultStatus) {
-        resultMark = ' ⏳';
-      }
-      lines.push(`• <@${p.discord_id}> · ${weaponFull}${resultMark}`);
+      lines.push(`• <@${p.discord_id}> · ${weaponFull}${formatResultMark(p)}`);
     }
   }
   if (workers.length) {
     lines.push('', '**── Trabalhadores ──**');
     for (const p of workers) {
-      let resultMark = '';
-      if (showResultStatus && p.individual_result_submitted) {
-        const killsTag = p.kills > 0 ? ` · ${p.kills}k` : '';
-        const diedTag = p.died ? ` · ${EMOJI.MORTE}` : '';
-        resultMark = ` ✅${killsTag}${diedTag}`;
-      } else if (showResultStatus) {
-        resultMark = ' ⏳';
-      }
-      lines.push(`• <@${p.discord_id}>${resultMark}`);
+      lines.push(`• <@${p.discord_id}>${formatResultMark(p)}`);
     }
   }
   // Pedidos de entrada em sessão activa (post-start) — visíveis para admin.
@@ -177,6 +173,7 @@ async function buildSessionEmbed(saidaId) {
   } else if (isInLiquidacao) {
     const submittedCount = participants.filter(p => p.individual_result_submitted).length;
     const totalCount = participants.length;
+    const pendingList = participants.filter(p => !p.individual_result_submitted);
     const pendingWeapon = characterized.filter(p => p.weapon_return_status === 'declared_returned').length;
     const resultLabel =
       { vitoria: 'Vitória', derrota: 'Derrota', empate: 'Empate', sem_conflito: 'Sem conflito', abortada: 'Abortada' }[
@@ -187,9 +184,33 @@ async function buildSessionEmbed(saidaId) {
     lines.push(`🔶 **Em liquidação** — resultado: **${resultLabel}**`);
     if (saida.enemy_name) lines.push(`${EMOJI.COMBATE} Contra: **${saida.enemy_name}**`);
     lines.push(`${EMOJI.PENDENTE} **${submittedCount}/${totalCount}** resultado(s) preenchido(s)`);
+
     if (submittedCount >= totalCount && totalCount > 0) {
-      lines.push(`${EMOJI.OK} **Todos preencheram!** Staff pode finalizar ↓`);
+      // Auto-finalize fallback: se passaram > 2min desde o último submit e
+      // a saída ainda está em_liquidacao, provavelmente o auto-finalize
+      // falhou silenciosamente. Avisa chefia para finalizar manualmente em
+      // vez de ficar silenciosa. Sem coluna extra — staleness deduzida.
+      const lastSubmitAt = participants
+        .map(p => (p.individual_result_at ? new Date(p.individual_result_at).getTime() : 0))
+        .reduce((a, b) => Math.max(a, b), 0);
+      const staleMs = lastSubmitAt ? Date.now() - lastSubmitAt : 0;
+      const AUTO_FINALIZE_STALE_THRESHOLD = 2 * 60_000;
+      if (staleMs > AUTO_FINALIZE_STALE_THRESHOLD) {
+        lines.push(
+          `${EMOJI.WARN} **Auto-finalize pendente há ${Math.round(staleMs / 60_000)} min** — clica **"Finalizar e Publicar"** ↓`
+        );
+      } else {
+        lines.push(`${EMOJI.OK} **Todos preencheram!** Staff pode finalizar ↓`);
+      }
     } else {
+      // Cockpit: lista explícita de quem falta, para chefia ver rapidamente
+      // quem chatear sem ter de abrir DMs ou scroll pela lista.
+      const aguarda = pendingList
+        .slice(0, 10)
+        .map(p => `<@${p.discord_id}>`)
+        .join(', ');
+      const extra = pendingList.length > 10 ? ` +${pendingList.length - 10}` : '';
+      lines.push(`${EMOJI.PENDENTE} **Aguarda** (${pendingList.length}): ${aguarda}${extra}`);
       lines.push('_Participantes — cliquem em **"Preencher o meu Resultado"** ↓_');
     }
     if (pendingWeapon > 0) lines.push(`${EMOJI.WARN} **${pendingWeapon}** devolução(ões) de arma pendente(s)`);
@@ -878,6 +899,48 @@ async function handleSessionPedirJuntar(interaction) {
       interaction.guild
     );
     refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
+
+    // Se o novo pedido tem score superior ao pior caracterizado actual,
+    // avisa o creator por DM — pode valer a pena swap. Evita que um
+    // bairrista com KDA alto fique de fora só porque chegou tarde.
+    // Fire-and-forget — falhar aqui não afecta o pedido.
+    (async () => {
+      try {
+        const saida = await saidaRepo.findById(saidaId);
+        if (!saida?.created_by) return;
+        const all = await saidaRepo.getParticipants(saidaId);
+        const currentCaracs = all.filter(p => p.participant_type === 'caracterizado');
+        if (!currentCaracs.length) return;
+
+        const { autoPickCaracterizados } = require('./autoPickCaracterizados');
+        const newRow = all.find(p => p.member_id === member.id);
+        if (!newRow) return;
+        const hypothetical = [...currentCaracs, newRow];
+        const { caracterizados: hypoWinners } = await autoPickCaracterizados(
+          hypothetical,
+          saida.max_participants || 12
+        );
+        const wouldBeat = hypoWinners.some(w => w.member_id === member.id);
+        if (!wouldBeat) return;
+
+        // Qual caract seria deslocado na hipótese → nome para a DM
+        const deslocado = currentCaracs.find(c => !hypoWinners.some(w => w.member_id === c.member_id));
+
+        const creator = await interaction.client.users.fetch(saida.created_by).catch(() => null);
+        if (!creator) return;
+        await creator
+          .send({
+            content:
+              `${EMOJI.WARN} Saída **#${saidaId}** — **${member.display_name}** pediu para juntar-se e ` +
+              `tem score superior a **${deslocado?.display_name || 'um caracterizado actual'}**.\n` +
+              `Podes considerar aprovar e fazer swap manualmente pelo painel (**"Trocar Caract ↔ Trab"**).`,
+          })
+          .catch(() => {});
+      } catch (e) {
+        warn(`[SAIDA] Alerta-creator falhou para #${saidaId}: ${e.message}`);
+      }
+    })();
+
     return safeReply(
       interaction,
       {
