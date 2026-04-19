@@ -35,6 +35,11 @@ const W_MATERIAL = 0.5;
 
 const MATERIAL_NORMALIZATION = 100000; // "material_value" em €; 100k € = 1.0 normalizado
 
+// Roles que NUNCA são demitidas para trabalhador — têm lugar reservado nos
+// caracts. Chefia + Patrão di Zona são decisores/líderes; se se inscrevem
+// para lutar, entram sempre. Oficiais e bairristas competem normalmente.
+const PROTECTED_ROLES = new Set(['chefia', 'patrao_di_zona']);
+
 async function _loadScoringData(memberIds) {
   if (!memberIds.length) return new Map();
   const res = await query(
@@ -75,33 +80,59 @@ function _scoreParticipant(p, stats) {
 
 /**
  * Classifica participants por score e devolve:
- *   { caracterizados: [...], trabalhadores: [...], scored: [{participant, score}...] }
+ *   { caracterizados: [...], trabalhadores: [...], scored: [...] }
+ *
+ * Ordem de decisão:
+ *   1. Protected roles (chefia, patrao_di_zona) SEMPRE entram como caract —
+ *      mesmo que excedam maxCaracterizados. Zero competição, lugar reservado.
+ *   2. Competitive (bairrista, oficial, restantes) competem pelos slots que
+ *      sobram (maxCaracterizados - protected.length). Os melhores por score
+ *      ficam caract, resto vai trabalhador.
  *
  * @param {Array} participants — rows de operation_participants (precisam de
- *                               `member_id` e opcionalmente `own_weapon`)
- * @param {number} maxCaracterizados — quantos vão ser caracterizados
+ *                               `member_id`, `member_role` e opcionalmente
+ *                               `own_weapon`)
+ * @param {number} maxCaracterizados — quantos vão ser caracterizados (soft
+ *                                      limit; protected podem exceder)
  */
 async function autoPickCaracterizados(participants, maxCaracterizados) {
   if (!participants?.length) return { caracterizados: [], trabalhadores: [], scored: [] };
-  const memberIds = participants.map(p => p.member_id).filter(Boolean);
+
+  // Split: protected (staff, lugar reservado) vs competitive (o resto).
+  const protectedList = participants.filter(p => PROTECTED_ROLES.has(p.member_role));
+  const competitive = participants.filter(p => !PROTECTED_ROLES.has(p.member_role));
+
+  const remainingSlots = Math.max(0, maxCaracterizados - protectedList.length);
+
+  const memberIds = competitive.map(p => p.member_id).filter(Boolean);
   const statsMap = await _loadScoringData(memberIds);
 
-  const scored = participants.map(p => ({
+  const scoredCompetitive = competitive.map(p => ({
     participant: p,
     score: _scoreParticipant(p, statsMap.get(p.member_id)),
     stats: statsMap.get(p.member_id) || null,
   }));
 
-  // Sort: score DESC, tiebreak by created_at ASC (inscrição mais cedo ganha).
-  scored.sort((a, b) => {
+  scoredCompetitive.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
     const ta = new Date(a.participant.created_at || 0).getTime();
     const tb = new Date(b.participant.created_at || 0).getTime();
     return ta - tb;
   });
 
-  const caracterizados = scored.slice(0, maxCaracterizados).map(s => s.participant);
-  const trabalhadores = scored.slice(maxCaracterizados).map(s => s.participant);
+  const competitiveWinners = scoredCompetitive.slice(0, remainingSlots).map(s => s.participant);
+  const competitiveLosers = scoredCompetitive.slice(remainingSlots).map(s => s.participant);
+
+  // Caracterizados = todos os protected + competitive winners.
+  const caracterizados = [...protectedList, ...competitiveWinners];
+  const trabalhadores = competitiveLosers;
+
+  // Scored devolvido para debug/UX (incluí os protected com score=Infinity
+  // para sinalizar "não competem"; e os competitive ordenados por score real).
+  const scored = [
+    ...protectedList.map(p => ({ participant: p, score: Infinity, stats: null, protected: true })),
+    ...scoredCompetitive.map(s => ({ ...s, protected: false })),
+  ];
 
   return { caracterizados, trabalhadores, scored };
 }

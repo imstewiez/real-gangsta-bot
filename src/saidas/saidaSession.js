@@ -724,71 +724,50 @@ async function handleSessionIniciar(interaction) {
 
   const maxChar = saida.max_participants || 12;
   const { query } = require('../db');
+  const { autoPickCaracterizados } = require('./autoPickCaracterizados');
 
-  let demotedCount = 0;
-  let keptCount = inscritos.length;
+  // Sempre corre auto-pick — internamente protege chefia + patrao_di_zona
+  // (lugar reservado, nunca vão para trabalhador). Bairristas/oficiais
+  // competem pelos slots restantes por KDA/MVP/arma/material.
+  const { caracterizados, trabalhadores } = await autoPickCaracterizados(inscritos, maxChar);
 
-  if (inscritos.length > maxChar) {
-    // Overflow — auto-pick top maxChar mantém como caract, resto demite a trab.
-    const { autoPickCaracterizados } = require('./autoPickCaracterizados');
-    const { caracterizados, trabalhadores } = await autoPickCaracterizados(inscritos, maxChar);
-    for (const p of caracterizados) {
-      // Mantém tudo; só garante participant_type='caracterizado' (se estava 'pending' legacy).
-      if (p.participant_type !== 'caracterizado') {
-        await saidaRepo.updateParticipant(saidaId, p.member_id, { participant_type: 'caracterizado' });
-      }
+  for (const p of caracterizados) {
+    if (p.participant_type !== 'caracterizado') {
+      await saidaRepo.updateParticipant(saidaId, p.member_id, { participant_type: 'caracterizado' });
     }
-    for (const p of trabalhadores) {
-      await saidaRepo.updateParticipant(saidaId, p.member_id, {
-        participant_type: 'trabalhador',
-        own_weapon: false,
-        brought_own: false,
-        received_org_material: false,
-        weapon_item_id: null,
-      });
-    }
-    demotedCount = trabalhadores.length;
-    keptCount = caracterizados.length;
-  } else {
-    // Cabem todos como caract. Garante tipo correcto caso algum esteja 'pending' legacy.
-    for (const p of inscritos) {
-      if (p.participant_type !== 'caracterizado') {
-        await saidaRepo.updateParticipant(saidaId, p.member_id, { participant_type: 'caracterizado' });
-      }
-    }
+  }
+  for (const p of trabalhadores) {
+    await saidaRepo.updateParticipant(saidaId, p.member_id, {
+      participant_type: 'trabalhador',
+      own_weapon: false,
+      brought_own: false,
+      received_org_material: false,
+      weapon_item_id: null,
+    });
   }
 
   // Marca session_started_at → panel transita para Phase 2.
   await query('UPDATE operations SET session_started_at = NOW() WHERE id = $1', [saidaId]);
 
   log(
-    `[SAIDA] Iniciar sessão #${saidaId} por ${interaction.user.tag}: ${keptCount} caract, ${demotedCount} demoted trab (total ${inscritos.length}).`
+    `[SAIDA] Iniciar sessão #${saidaId} por ${interaction.user.tag}: ${caracterizados.length} caract, ${trabalhadores.length} trab (total ${inscritos.length}).`
   );
 
   refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
 
-  // DM só aos demitidos (quem ficou caract já sabia que ia lutar).
-  if (demotedCount > 0) {
-    const demotedIds = allParts
-      .filter(
-        p =>
-          p.participant_type === 'trabalhador' &&
-          !inscritos.some(i => i.member_id === p.member_id && i.participant_type === 'trabalhador')
-      )
-      // ↑ essa filter é pesada; simplifica: refetch participants depois das updates
-      .map(p => p.discord_id)
-      .filter(Boolean);
+  // DM só a quem passou para trabalhador (quem ficou caract já sabia).
+  if (trabalhadores.length > 0) {
     (async () => {
-      const fresh = await saidaRepo.getParticipants(saidaId);
-      for (const p of fresh.filter(x => x.participant_type === 'trabalhador')) {
+      for (const p of trabalhadores) {
         try {
           const user = await interaction.client.users.fetch(p.discord_id).catch(() => null);
           if (!user) continue;
           await user
             .send({
               content:
-                `${EMOJI.INFO} Saída #${saidaId} iniciada — foste designado como **trabalhador** (overflow: havia mais de ${maxChar} inscritos).\n` +
-                `Bot escolheu via KDA/MVP/arma/material. Chefia pode trocar manualmente no painel.`,
+                `${EMOJI.INFO} Saída #${saidaId} iniciada — ficas como **trabalhador** (havia mais de ${maxChar} inscritos).\n` +
+                `Bot escolheu os ${maxChar} melhores por KDA/MVP/arma/material (chefia + patrão di zona têm lugar reservado).\n` +
+                `A chefia pode trocar manualmente no painel se precisar.`,
             })
             .catch(() => {});
         } catch {
@@ -799,11 +778,11 @@ async function handleSessionIniciar(interaction) {
   }
 
   const summary =
-    demotedCount > 0
-      ? `${EMOJI.OK} **Sessão #${saidaId} iniciada.** Overflow: ${inscritos.length} inscritos, ${maxChar} cabem:\n` +
-        `🔫 **${keptCount}** caracterizados · 🔧 **${demotedCount}** demitidos para trabalhador (auto-pick por KDA).\n` +
-        `_Demitidos receberam DM. Podes trocar manualmente se precisares._`
-      : `${EMOJI.OK} **Sessão #${saidaId} iniciada.** ${keptCount} caracterizados (todos cabem; nada demitido).`;
+    trabalhadores.length > 0
+      ? `${EMOJI.OK} **Sessão #${saidaId} iniciada.** ${inscritos.length} inscritos, ${maxChar} slots para caract:\n` +
+        `🔫 **${caracterizados.length}** caracterizados (chefia + patrão têm lugar reservado) · 🔧 **${trabalhadores.length}** trabalhadores (auto-pick por KDA).\n` +
+        `_Trabalhadores receberam DM. Podes trocar manualmente no painel._`
+      : `${EMOJI.OK} **Sessão #${saidaId} iniciada.** ${caracterizados.length} caracterizados (todos cabem).`;
 
   return safeReply(interaction, { content: summary }, { messageClass: 'BANAL' });
 }
