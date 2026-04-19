@@ -119,11 +119,15 @@ async function handleCreateSaidaButton(interaction) {
       .setMaxValues(1)
       .addOptions(options)
   );
-  await safeReply(interaction, {
-    content: `${EMOJI.SAIDA} Que tipo de saída vais criar?`,
-    components: [row],
-    flags: MessageFlags.Ephemeral,
-  });
+  await safeReply(
+    interaction,
+    {
+      content: `${EMOJI.SAIDA} Que tipo de saída vais criar?`,
+      components: [row],
+      flags: MessageFlags.Ephemeral,
+    },
+    { messageClass: 'BANAL', ttlMs: 30_000 }
+  );
 }
 
 // Step 2: tipo seleccionado → dropdown de spots (em vez de ir já ao modal).
@@ -146,10 +150,16 @@ async function handleCreateTypeSelect(interaction) {
       .addOptions(spotOpts)
   );
 
-  return safeUpdate(interaction, {
-    content: `${EMOJI.SAIDA} Escolhe o spot da saída:`,
-    components: [row],
-  });
+  // TTL 30s — se user não pica o spot em 30s, dropdown auto-desaparece.
+  // handleCreateSpotSelect também tenta delete imediato após showModal.
+  return safeUpdate(
+    interaction,
+    {
+      content: `${EMOJI.SAIDA} Escolhe o spot da saída:`,
+      components: [row],
+    },
+    { messageClass: 'BANAL', ttlMs: 30_000 }
+  );
 }
 
 // Step 3: spot seleccionado → abre modal final com data/hora/notas
@@ -206,6 +216,14 @@ async function handleCreateSpotSelect(interaction) {
       )
     );
   await safeShowModal(interaction, modal);
+
+  // Discord não permite update + showModal. Tenta delete imediato do ephemeral
+  // do dropdown do spot; TTL em handleCreateTypeSelect é backstop.
+  if (interaction.message) {
+    setImmediate(() => {
+      interaction.message.delete().catch(() => {});
+    });
+  }
 }
 
 async function handleCreateSaidaModal(interaction) {
