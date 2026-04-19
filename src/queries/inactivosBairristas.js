@@ -32,6 +32,11 @@ const DEFAULT_DIAS = 14;
 const DEFAULT_MIN_ENTRADA = 3;
 
 async function _scan() {
+  // Subqueries correlacionadas — evita cartesian explosion dos múltiplos LEFT
+  // JOINs (members × movements × participants × kills multiplicava rows e
+  // exigia DISTINCT em tudo). Sem filtro de movement_type — qualquer linha em
+  // inventory_movements com member_id = m.id é actividade real (inclui
+  // devolucao_saida, consumo_saida, apreendido, craftado, etc.).
   const res = await query(
     `SELECT
        m.id,
@@ -42,30 +47,28 @@ async function _scan() {
        m.joined_at,
        m.created_at,
        COALESCE(
-         SUM(
-           CASE WHEN im.movement_type IN ('entrega_bairrista', 'venda_bairrista', 'entrega_oficial')
-                THEN im.quantity ELSE 0 END
-         ), 0
-       )::int AS material_qtd,
-       COUNT(DISTINCT im.id) FILTER (
-         WHERE im.movement_type IN ('entrega_bairrista', 'venda_bairrista', 'entrega_oficial')
+         (SELECT COUNT(*) FROM inventory_movements im WHERE im.member_id = m.id),
+         0
        )::int AS material_movs,
-       COUNT(DISTINCT op.operation_id)::int AS saidas_count,
-       COUNT(DISTINCT k.id)::int AS kills,
+       COALESCE(
+         (SELECT COUNT(DISTINCT op.operation_id) FROM operation_participants op WHERE op.member_id = m.id),
+         0
+       )::int AS saidas_count,
+       COALESCE(
+         (SELECT COUNT(*) FROM kill_logs k WHERE k.killer_id = m.id),
+         0
+       )::int AS kills,
        GREATEST(
-         MAX(im.created_at)::date,
-         MAX(o.date),
-         MAX(k.created_at)::date
+         (SELECT MAX(im.created_at)::date FROM inventory_movements im WHERE im.member_id = m.id),
+         (SELECT MAX(o.date) FROM operation_participants op
+            JOIN operations o ON o.id = op.operation_id
+           WHERE op.member_id = m.id),
+         (SELECT MAX(k.created_at)::date FROM kill_logs k WHERE k.killer_id = m.id)
        ) AS last_activity
      FROM members m
-     LEFT JOIN inventory_movements im ON im.member_id = m.id
-     LEFT JOIN operation_participants op ON op.member_id = m.id
-     LEFT JOIN operations o ON o.id = op.operation_id
-     LEFT JOIN kill_logs k ON k.killer_id = m.id
      WHERE m.role = 'bairrista'
        AND m.status = 'ativo'
        AND m.deleted_at IS NULL
-     GROUP BY m.id
      ORDER BY last_activity ASC NULLS FIRST, m.joined_at ASC`
   );
   return res.rows;
