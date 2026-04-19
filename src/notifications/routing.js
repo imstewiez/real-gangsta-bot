@@ -83,25 +83,22 @@ function _onMemberNicknameChanged(evt) {
   return _publish('ORG_LIFECYCLE', { embeds: [embed] });
 }
 
-// saida.opened: o session panel publicado em publishSessionEmbed já é a
-// "notificação" pública + interactiva. Evita embed duplicado no mesmo canal.
-// saida.participant_added: session panel refresca-se em tempo real com a
-// lista de participantes — log de cada inscrição é spam.
-// Ambos suprimidos por design (eventos ainda chegam aos sheet projections).
-
-function _onSaidaStarted(evt) {
-  const embed = templates.saidaLifecycleEmbed({ ...evt, event: 'started' });
-  return _publish('SAIDAS_EVENTS', { embeds: [embed] });
+// SAÍDA LIFECYCLE — mute público.
+// saida.opened + saida.participant_added já eram no-op (session panel cobre).
+// saida.started/closed/material_issued também passam a no-op público:
+//   - painel vivo (saidaSession) muda de estado visualmente
+//   - saidaResultsPublisher envia 1 embed compacto no fecho (phase 1)
+//   - manter NOTIFICATIONS_SAIDAS publicava 3º embed (started + closed +
+//     material_issued) duplicando info já visível no painel vivo
+// Eventos continuam a emitir para sheet projections e outros subscribers.
+function _onSaidaStarted(_evt) {
+  return Promise.resolve();
 }
-function _onSaidaClosed(evt) {
-  // Resultado "rico" (3 embeds) continua a vir do saidaResultsPublisher —
-  // este canal recebe uma versão compacta para timeline.
-  const embed = templates.saidaLifecycleEmbed({ ...evt, event: 'closed' });
-  return _publish('SAIDAS_EVENTS', { embeds: [embed] });
+function _onSaidaClosed(_evt) {
+  return Promise.resolve();
 }
-function _onSaidaMaterialIssued(evt) {
-  const embed = templates.saidaLifecycleEmbed({ ...evt, event: 'material_issued' });
-  return _publish('SAIDAS_EVENTS', { embeds: [embed] });
+function _onSaidaMaterialIssued(_evt) {
+  return Promise.resolve();
 }
 
 // Kills continuam a ter o seu publish rico próprio (publishKillToChannel)
