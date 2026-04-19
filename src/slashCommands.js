@@ -92,6 +92,26 @@ const commands = [
     ),
 
   new SlashCommandBuilder()
+    .setName('inactivos-bairristas')
+    .setDescription('Lista bairristas com pouca ou nenhuma actividade — para avaliar kick (chefia)')
+    .addIntegerOption(opt =>
+      opt
+        .setName('dias_sem_actividade')
+        .setDescription('Dias sem actividade para considerar inactivo (default 30)')
+        .setRequired(false)
+        .setMinValue(1)
+        .setMaxValue(365)
+    )
+    .addIntegerOption(opt =>
+      opt
+        .setName('min_dias_entrada')
+        .setDescription('Ignora bairristas que entraram há menos de N dias (default 14)')
+        .setRequired(false)
+        .setMinValue(0)
+        .setMaxValue(365)
+    ),
+
+  new SlashCommandBuilder()
     .setName('sync-sheets')
     .setDescription('Diagnóstico e resync do Google Sheets (chefia)')
     .addStringOption(opt =>
