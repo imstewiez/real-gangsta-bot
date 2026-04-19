@@ -28,8 +28,8 @@ const { brandEmbed } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
 
-const DEFAULT_DIAS = 30;
-const DEFAULT_MIN_ENTRADA = 14;
+const DEFAULT_DIAS = 14;
+const DEFAULT_MIN_ENTRADA = 3;
 
 async function _scan() {
   const res = await query(
@@ -118,16 +118,20 @@ async function _handleInner(interaction) {
 
   const rows = await _scan();
 
-  // Filtra: entrou há >= minEntrada dias E (zero actividade OU last_activity >= diasThreshold dias)
-  const candidates = rows
-    .map(r => {
-      const joinedDaysAgo = _daysBetween(r.joined_at || r.created_at) || 0;
-      const lastActivityDaysAgo = r.last_activity ? _daysBetween(r.last_activity) : null;
-      const totalActivity = (r.material_movs || 0) + (r.saidas_count || 0) + (r.kills || 0);
-      return { ...r, joinedDaysAgo, lastActivityDaysAgo, totalActivity };
-    })
-    .filter(r => r.joinedDaysAgo >= minEntrada)
-    .filter(r => r.totalActivity === 0 || (r.lastActivityDaysAgo !== null && r.lastActivityDaysAgo >= diasThreshold));
+  const enriched = rows.map(r => {
+    const joinedDaysAgo = _daysBetween(r.joined_at || r.created_at) || 0;
+    const lastActivityDaysAgo = r.last_activity ? _daysBetween(r.last_activity) : null;
+    const totalActivity = (r.material_movs || 0) + (r.saidas_count || 0) + (r.kills || 0);
+    return { ...r, joinedDaysAgo, lastActivityDaysAgo, totalActivity };
+  });
+
+  // Split: newcomers (filtrados por min_dias_entrada) vs eligible
+  const newcomers = enriched.filter(r => r.joinedDaysAgo < minEntrada);
+  const eligible = enriched.filter(r => r.joinedDaysAgo >= minEntrada);
+
+  const candidates = eligible.filter(
+    r => r.totalActivity === 0 || (r.lastActivityDaysAgo !== null && r.lastActivityDaysAgo >= diasThreshold)
+  );
 
   // Ordena: zero activity primeiro, depois por last_activity mais antiga.
   candidates.sort((a, b) => {
@@ -138,14 +142,34 @@ async function _handleInner(interaction) {
     return lb - la;
   });
 
+  // Zero candidatos elegíveis — mostra newcomers com zero actividade como info
+  // para o staff decidir se quer apertar com min_dias_entrada:0.
   if (!candidates.length) {
+    const newcomersZero = newcomers.filter(r => r.totalActivity === 0).slice(0, 15);
+    const lines = [];
+    lines.push(
+      `Com os thresholds actuais (entrada ≥ **${minEntrada}d** · inactividade ≥ **${diasThreshold}d**),\n` +
+        `nenhum dos **${eligible.length}** bairristas elegíveis está a ser flagged.`
+    );
+    if (newcomers.length > 0) {
+      lines.push(`\n**${newcomers.length}** bairrista(s) foram excluídos por terem entrado há < ${minEntrada}d.`);
+      if (newcomersZero.length > 0) {
+        lines.push(
+          `\nDestes, **${newcomersZero.length}** têm **zero actividade registada**:\n` +
+            newcomersZero
+              .map(
+                n =>
+                  `• **${n.nickname || n.display_name}** · <@${n.discord_id}> · entrou ${_formatDaysAgo(n.joined_at || n.created_at)}`
+              )
+              .join('\n')
+        );
+        lines.push(`\n_Para os incluir, corre com \`min_dias_entrada:0\` (ou menor que ${minEntrada})._`);
+      }
+    }
     const embed = brandEmbed('MOVEMENT')
-      .setColor(0x2ecc71)
-      .setTitle(`${EMOJI.OK} Zero candidatos a kick`)
-      .setDescription(
-        `Com os thresholds actuais (entrada ≥ **${minEntrada}d** · inactividade ≥ **${diasThreshold}d**),\n` +
-          `todos os **${rows.length}** bairristas activos têm pelo menos uma actividade recente.`
-      );
+      .setColor(newcomersZero.length > 0 ? 0xf39c12 : 0x2ecc71)
+      .setTitle(`${newcomersZero.length > 0 ? EMOJI.WARN : EMOJI.OK} Nenhum candidato nos thresholds`)
+      .setDescription(lines.join('\n').slice(0, 3900));
     return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
   }
 
