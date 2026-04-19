@@ -350,11 +350,18 @@ async function handleCloseSessionDirect(interaction) {
       .setMaxValues(1)
       .addOptions(resultOptions)
   );
-  return safeReply(interaction, {
-    content: `${EMOJI.FECHAR} Saída **#${saidaId}** — qual foi o resultado?`,
-    components: [row],
-    flags: MessageFlags.Ephemeral,
-  });
+  // TTL 30s — se user não pica em 30s, dropdown auto-desaparece.
+  // Quando user pica, handleCloseResultSelect tenta deletar explicitamente
+  // (mais imediato); este é só fallback.
+  return safeReply(
+    interaction,
+    {
+      content: `${EMOJI.FECHAR} Saída **#${saidaId}** — qual foi o resultado?`,
+      components: [row],
+      flags: MessageFlags.Ephemeral,
+    },
+    { messageClass: 'BANAL', ttlMs: 30_000 }
+  );
 }
 
 async function handleCloseSaidaSelect(interaction) {
@@ -439,6 +446,16 @@ async function handleCloseResultSelect(interaction) {
     .setTitle(`${EMOJI.FECHAR} Fechar #${saidaId} — ${resultLabel}`.slice(0, 45))
     .addComponents(...fields);
   await safeShowModal(interaction, modal);
+
+  // Discord API não permite update + showModal na mesma interaction. Depois
+  // de showModal, tenta deletar o ephemeral do dropdown (source message) para
+  // não ficar pendurado. Se falhar (common em ephemerals), o TTL de 30s em
+  // handleCloseSessionDirect limpa eventualmente.
+  if (interaction.message) {
+    setImmediate(() => {
+      interaction.message.delete().catch(() => {});
+    });
+  }
 }
 
 async function handleCloseSaidaModal(interaction) {
