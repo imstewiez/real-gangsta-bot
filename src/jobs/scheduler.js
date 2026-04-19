@@ -215,6 +215,13 @@ function startAll(client) {
     { runOnStart: true }
   );
 
+  // Saida request expirer — 1/min. Auto-rejeita pedidos 'requested' com
+  // idade > SAIDA_REQUEST_TTL_MINUTES (default 15min). DM ao requester.
+  registerJob('saida_request_expirer', 60 * 1000, async client => {
+    const { expireStaleRequests } = require('../saidas/saidaEngine');
+    return await expireStaleRequests(client);
+  });
+
   for (const job of jobs) {
     job.timer = setInterval(() => runJob(job), job.intervalMs);
     job.timer.unref();

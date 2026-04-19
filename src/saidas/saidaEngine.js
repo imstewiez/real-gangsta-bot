@@ -510,6 +510,86 @@ async function getResultProgress(saidaId) {
   };
 }
 
+/**
+ * Job periódico: auto-rejeita pedidos `requested` mais antigos que
+ * SAIDA_REQUEST_TTL_MINUTES (default 15min). Só actua sobre saídas ainda
+ * em estados activos; pedidos de saídas já canceladas/concluídas são
+ * deixados em paz (serão limpos por cascade em operations.delete).
+ *
+ * DM ao requester a avisar — melhor que silêncio.
+ *
+ * Idempotente: correr N vezes não parte nada.
+ */
+async function expireStaleRequests(client) {
+  const CONFIG = require('../config');
+  const { query } = require('../db');
+  const ttlMin = Number(CONFIG.SAIDA_REQUEST_TTL_MINUTES || 15);
+  if (!(ttlMin > 0)) return { expired: 0 };
+
+  const stale = await query(
+    `SELECT op.id, op.operation_id, op.member_id, m.discord_id, m.display_name,
+            o.status, o.spot, o.created_by
+       FROM operation_participants op
+       JOIN operations o ON o.id = op.operation_id
+       JOIN members m ON m.id = op.member_id
+      WHERE op.participant_type = 'requested'
+        AND op.created_at < NOW() - ($1::int * INTERVAL '1 minute')
+        AND o.status IN ('aberta','em_preparacao','em_curso')`,
+    [ttlMin]
+  );
+
+  let expired = 0;
+  for (const row of stale.rows) {
+    try {
+      const del = await query(
+        `DELETE FROM operation_participants
+          WHERE id = $1 AND participant_type = 'requested'`,
+        [row.id]
+      );
+      if (del.rowCount === 0) continue;
+      expired++;
+      await logAudit({
+        action: 'saida_request_expired',
+        entityType: 'saida',
+        entityId: String(row.operation_id),
+        actorId: 'system:auto',
+        afterState: { memberId: row.member_id, displayName: row.display_name, ttlMin },
+      });
+
+      if (client && row.discord_id) {
+        (async () => {
+          try {
+            const user = await client.users.fetch(row.discord_id).catch(() => null);
+            if (user) {
+              await user
+                .send({
+                  content:
+                    `⏱️ O teu pedido para entrar na saída #${row.operation_id}${row.spot ? ` (${row.spot})` : ''} ` +
+                    `expirou (> ${ttlMin} min sem resposta da chefia).\n` +
+                    `Se ainda queres juntar-te, clica **"Pedir para Juntar"** outra vez no painel.`,
+                })
+                .catch(() => {});
+            }
+          } catch (_) {
+            /* non-fatal */
+          }
+        })();
+      }
+
+      // Refresh painel da saída afectada para remover da lista de requested.
+      if (client) {
+        const saidaSession = require('./saidaSession');
+        saidaSession.refreshSessionEmbed(client, row.operation_id).catch(() => {});
+      }
+    } catch (e) {
+      warn(`[SAIDA-REQUEST-EXPIRER] participant #${row.id} falhou: ${e.message}`);
+    }
+  }
+
+  if (expired > 0) log(`[SAIDA-REQUEST-EXPIRER] ${expired} pedido(s) expirado(s) após ${ttlMin}min.`);
+  return { expired };
+}
+
 async function reconcileSaidaMaterials(saidaId) {
   const summary = await saidaRepo.getMaterialSummary(saidaId);
   const fornecido = summary.fornecido?.total || 0;
@@ -885,6 +965,7 @@ module.exports = {
   getSaidaSummary,
   reconcileSaidaMaterials,
   getResultProgress,
+  expireStaleRequests,
   MOVEMENT_TYPE_BY_DIRECTION,
   ALLOWED_TRANSITIONS,
   _assertTransition,
