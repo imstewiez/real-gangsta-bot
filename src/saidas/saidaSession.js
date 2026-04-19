@@ -275,6 +275,26 @@ async function buildSessionEmbed(saidaId) {
       )
     );
 
+    // Admin row 1 — gestão (swap + approve). Non-admins vêem mas são rejeitados.
+    const adminMgmtRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`saida::session_swap_open::${saidaId}`)
+        .setLabel('Trocar Caract ↔ Trab')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('🔄')
+        .setDisabled(characterized.length + workers.length === 0)
+    );
+    if (requested.length > 0) {
+      adminMgmtRow.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`saida::session_approve_open::${saidaId}`)
+          .setLabel(`Aprovar Pedidos (${requested.length})`)
+          .setStyle(ButtonStyle.Primary)
+          .setEmoji('✅')
+      );
+    }
+    components.push(adminMgmtRow);
+
     components.push(
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -820,6 +840,236 @@ async function handleSessionPedirJuntar(interaction) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Phase 2 handlers — Admin swap + approve/reject requests
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function handleSessionSwapOpen(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const { isChefia } = require('../permissions/permissionEngine');
+  if (!isChefia(interaction.member)) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.BLOQUEADO} Só chefia pode trocar participantes.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'WARN' }
+    );
+  }
+
+  const saidaId = parseInt(interaction.customId.split('::')[2]);
+  const participants = await saidaRepo.getParticipants(saidaId);
+  const swappable = participants.filter(p => ['caracterizado', 'trabalhador'].includes(p.participant_type));
+  if (!swappable.length) {
+    return safeReply(
+      interaction,
+      {
+        content: `${EMOJI.INFO} Sem participantes para trocar ainda.`,
+        flags: MessageFlags.Ephemeral,
+      },
+      { messageClass: 'BANAL' }
+    );
+  }
+
+  const options = swappable.slice(0, 25).map(p => {
+    const from = p.participant_type === 'caracterizado' ? '🔫 Caract' : '🔧 Trab';
+    const to = p.participant_type === 'caracterizado' ? '🔧 Trab' : '🔫 Caract';
+    return new StringSelectMenuOptionBuilder()
+      .setLabel(`${p.display_name || 'Participante'} · ${from} → ${to}`.slice(0, 100))
+      .setValue(String(p.member_id));
+  });
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(`saida::session_swap_pick::${saidaId}`)
+    .setPlaceholder('Escolhe quem trocar')
+    .addOptions(options);
+
+  return safeReply(
+    interaction,
+    {
+      content: `**Saída #${saidaId}** — trocar caract ↔ trab.\nO tipo vai inverter para quem escolheres.`,
+      components: [new ActionRowBuilder().addComponents(select)],
+      flags: MessageFlags.Ephemeral,
+    },
+    { messageClass: 'FLOW' }
+  );
+}
+
+async function handleSessionSwapPick(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const { isChefia } = require('../permissions/permissionEngine');
+  if (!isChefia(interaction.member)) return;
+  await interaction.deferUpdate();
+
+  const saidaId = parseInt(interaction.customId.split('::')[2]);
+  const memberId = parseInt(interaction.values[0]);
+
+  const participants = await saidaRepo.getParticipants(saidaId);
+  const p = participants.find(x => x.member_id === memberId);
+  if (!p) {
+    return interaction.editReply({ content: `${EMOJI.ERRO} Participante não encontrado.`, components: [] });
+  }
+
+  const newType = p.participant_type === 'caracterizado' ? 'trabalhador' : 'caracterizado';
+  const updates = { participant_type: newType };
+  if (newType === 'trabalhador') {
+    // Demote → strip weapon info (trab não carrega arma).
+    updates.own_weapon = false;
+    updates.brought_own = false;
+    updates.received_org_material = false;
+    updates.weapon_item_id = null;
+  }
+  await saidaRepo.updateParticipant(saidaId, memberId, updates);
+  log(`[SAIDA] Swap por ${interaction.user.tag}: ${p.display_name} → ${newType} (saída #${saidaId}).`);
+
+  refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
+  await interaction.editReply({
+    content: `${EMOJI.OK} **${p.display_name}** agora é **${newType}**.`,
+    components: [],
+  });
+  scheduleDeleteInteractionReply(interaction, 10_000);
+}
+
+async function handleSessionApproveOpen(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const { isChefia } = require('../permissions/permissionEngine');
+  if (!isChefia(interaction.member)) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.BLOQUEADO} Só chefia pode aprovar pedidos.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'WARN' }
+    );
+  }
+
+  const saidaId = parseInt(interaction.customId.split('::')[2]);
+  const participants = await saidaRepo.getParticipants(saidaId);
+  const requested = participants.filter(p => p.participant_type === 'requested');
+  if (!requested.length) {
+    return safeReply(
+      interaction,
+      {
+        content: `${EMOJI.INFO} Sem pedidos pendentes.`,
+        flags: MessageFlags.Ephemeral,
+      },
+      { messageClass: 'BANAL' }
+    );
+  }
+
+  const options = requested
+    .slice(0, 25)
+    .map(p =>
+      new StringSelectMenuOptionBuilder()
+        .setLabel(`${p.display_name || 'Participante'}`.slice(0, 100))
+        .setValue(String(p.member_id))
+    );
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(`saida::session_approve_pick::${saidaId}`)
+    .setPlaceholder('Escolhe quem aprovar / rejeitar')
+    .addOptions(options);
+
+  return safeReply(
+    interaction,
+    {
+      content: `**Saída #${saidaId}** — ${requested.length} pedido(s) pendente(s). Escolhe um para decidir.`,
+      components: [new ActionRowBuilder().addComponents(select)],
+      flags: MessageFlags.Ephemeral,
+    },
+    { messageClass: 'FLOW' }
+  );
+}
+
+async function handleSessionApprovePick(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const { isChefia } = require('../permissions/permissionEngine');
+  if (!isChefia(interaction.member)) return;
+
+  const saidaId = parseInt(interaction.customId.split('::')[2]);
+  const memberId = parseInt(interaction.values[0]);
+
+  const participants = await saidaRepo.getParticipants(saidaId);
+  const p = participants.find(x => x.member_id === memberId && x.participant_type === 'requested');
+  if (!p) {
+    return safeUpdate(
+      interaction,
+      { content: `${EMOJI.ERRO} Pedido já tratado por outro admin.`, components: [] },
+      { messageClass: 'WARN' }
+    );
+  }
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`saida::session_approve_decide::${saidaId}::${memberId}::approve`)
+      .setLabel('Aprovar (→ trabalhador)')
+      .setStyle(ButtonStyle.Success)
+      .setEmoji('✅'),
+    new ButtonBuilder()
+      .setCustomId(`saida::session_approve_decide::${saidaId}::${memberId}::reject`)
+      .setLabel('Rejeitar (remover)')
+      .setStyle(ButtonStyle.Danger)
+      .setEmoji('⛔')
+  );
+  return safeUpdate(
+    interaction,
+    {
+      content: `**Pedido:** <@${p.discord_id}> (**${p.display_name || '—'}**)\nEntra como trabalhador? Podes trocar para caract depois via "Trocar Caract ↔ Trab".`,
+      components: [row],
+    },
+    { messageClass: 'FLOW' }
+  );
+}
+
+async function handleSessionApproveDecide(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const { isChefia } = require('../permissions/permissionEngine');
+  if (!isChefia(interaction.member)) return;
+  await interaction.deferUpdate();
+
+  const parts = interaction.customId.split('::');
+  const saidaId = parseInt(parts[2]);
+  const memberId = parseInt(parts[3]);
+  const decision = parts[4]; // 'approve' | 'reject'
+
+  const participants = await saidaRepo.getParticipants(saidaId);
+  const p = participants.find(x => x.member_id === memberId && x.participant_type === 'requested');
+  if (!p) {
+    return interaction.editReply({
+      content: `${EMOJI.INFO} Pedido já tratado.`,
+      components: [],
+    });
+  }
+
+  if (decision === 'approve') {
+    await saidaRepo.updateParticipant(saidaId, memberId, { participant_type: 'trabalhador' });
+    log(`[SAIDA] Pedido aprovado por ${interaction.user.tag}: ${p.display_name} → trabalhador (saída #${saidaId}).`);
+    // DM ao user a avisar.
+    try {
+      const user = await interaction.client.users.fetch(p.discord_id).catch(() => null);
+      if (user) {
+        await user
+          .send({ content: `${EMOJI.OK} Pedido aceite — entras como **trabalhador** na saída #${saidaId}.` })
+          .catch(() => {});
+      }
+    } catch {
+      /* ignore */
+    }
+    refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
+    await interaction.editReply({
+      content: `${EMOJI.OK} **${p.display_name}** aprovado como trabalhador.`,
+      components: [],
+    });
+  } else {
+    // reject — remove o participant record inteiro.
+    const { query } = require('../db');
+    await query('DELETE FROM operation_participants WHERE operation_id = $1 AND member_id = $2', [saidaId, memberId]);
+    log(`[SAIDA] Pedido rejeitado por ${interaction.user.tag}: ${p.display_name} (saída #${saidaId}).`);
+    refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
+    await interaction.editReply({
+      content: `${EMOJI.OK} Pedido de **${p.display_name}** rejeitado.`,
+      components: [],
+    });
+  }
+  scheduleDeleteInteractionReply(interaction, 10_000);
+}
+
 module.exports = {
   buildSessionEmbed,
   publishSessionEmbed,
@@ -831,4 +1081,9 @@ module.exports = {
   handleSessionCancel,
   handleSessionIniciar,
   handleSessionPedirJuntar,
+  handleSessionSwapOpen,
+  handleSessionSwapPick,
+  handleSessionApproveOpen,
+  handleSessionApprovePick,
+  handleSessionApproveDecide,
 };

@@ -93,6 +93,10 @@ const SELECT_ROUTES = [
 
   // Caracterizado self-serve — weapon pick (step 3 do fluxo)
   prefix('saida::weapon_pick::', saidaSession.handleCaracterizadoWeaponPick),
+
+  // Session management — admin swap + approve request picks
+  prefix('saida::session_swap_pick::', saidaSession.handleSessionSwapPick),
+  prefix('saida::session_approve_pick::', saidaSession.handleSessionApprovePick),
 ];
 
 async function handleSelect(interaction) {

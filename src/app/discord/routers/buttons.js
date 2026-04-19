@@ -90,6 +90,9 @@ const BUTTON_ROUTES = [
   prefix('saida::session_cancel::', saidaSession.handleSessionCancel),
   prefix('saida::session_iniciar::', saidaSession.handleSessionIniciar),
   prefix('saida::session_pedir_juntar::', saidaSession.handleSessionPedirJuntar),
+  prefix('saida::session_swap_open::', saidaSession.handleSessionSwapOpen),
+  prefix('saida::session_approve_open::', saidaSession.handleSessionApproveOpen),
+  prefix('saida::session_approve_decide::', saidaSession.handleSessionApproveDecide),
 
   // Saída — resultado individual (self-service) + weapon return queue
   prefix('saida::submit_result::', saidaIndividual.handleOpenSubmitResult),
