@@ -271,11 +271,14 @@ async function publishResults(client, saidaId) {
   const participants = await saidaRepo.getParticipants(saidaId);
 
   try {
+    // Single-embed output — reduzido de 3 embeds (resumo + destaques + impacto)
+    // para 1 embed compacto. Spam control: painel vivo da saída já cobre
+    // estado operacional; este é o arquivo/relatório pós-mortem.
+    // Destaques e impacto all-time ficam disponíveis noutros canais (ranking,
+    // analytics) — não poluem o canal operacional.
     const resumo = await buildResumoEmbed(saida, participants);
-    const destaques = buildDestaquesEmbed(saida, participants);
-    const impacto = await buildImpactoEmbed(saida);
-    await channel.send({ embeds: [resumo, destaques, impacto], allowedMentions: { parse: [] } });
-    log(`[RESULTS] Saída #${saidaId} publicada em ${channel.id}.`);
+    await channel.send({ embeds: [resumo], allowedMentions: { parse: [] } });
+    log(`[RESULTS] Saída #${saidaId} publicada em ${channel.id} (1 embed compacto).`);
     return { posted: true };
   } catch (e) {
     warn(`[RESULTS] publish falhou: ${e.message}`);
