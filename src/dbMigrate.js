@@ -136,6 +136,17 @@ async function ensureCriticalSchema(client) {
       name: 'managed_topic_categories index',
       sql: 'CREATE INDEX IF NOT EXISTS ix_managed_topic_categories_role ON managed_topic_categories (role)',
     },
+    {
+      name: 'operation_participants.participant_type constraint (pending/requested)',
+      sql: `DO $$ BEGIN
+              ALTER TABLE operation_participants
+                DROP CONSTRAINT IF EXISTS operation_participants_participant_type_check;
+              ALTER TABLE operation_participants
+                ADD CONSTRAINT operation_participants_participant_type_check
+                CHECK (participant_type IN ('caracterizado', 'trabalhador', 'pending', 'requested'));
+            EXCEPTION WHEN others THEN NULL;
+            END $$`,
+    },
   ];
   let applied = 0;
   for (const { name, sql } of ddls) {
