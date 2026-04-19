@@ -90,27 +90,25 @@ async function handleCreateSaidaButton(interaction) {
       { messageClass: 'WARN' }
     );
   }
-  // Step 1: select tipo de saída (predefinido — zero erros humanos)
-  const options = SAIDA_TYPES.map(t => ({
-    label: {
-      craft: 'Craft',
-      dominio: 'Domínio',
-      ataque: 'Ataque',
-      defesa: 'Defesa',
-      recolha: 'Recolha',
-      outra: 'Outra',
-    }[t],
-    description: {
-      craft: 'Produção no spot',
-      dominio: 'Controlo de zona',
-      ataque: 'Ataque ofensivo',
-      defesa: 'Defesa de posição',
-      recolha: 'Recolha de material',
-      outra: 'Outro tipo',
-    }[t],
-    value: t,
-    emoji: { craft: '🛠️', dominio: '🏴', ataque: '⚔️', defesa: '🛡️', recolha: '📦', outra: '📋' }[t],
-  }));
+  // Step 1: select tipo de saída — UI simplificada para 2 opções por
+  // feedback: "Farm" (agrega recolha) e "Craft/Venda" (produção + venda).
+  // Em DB continua a armazenar operation_type IN (craft, dominio, ataque,
+  // defesa, recolha, outra) — farm→recolha, craft_venda→craft. Enum DB
+  // preservado para retrocompat.
+  const options = [
+    {
+      label: 'Farm',
+      description: 'Recolha de material no spot',
+      value: 'recolha',
+      emoji: '📦',
+    },
+    {
+      label: 'Craft / Venda',
+      description: 'Produção ou venda no spot',
+      value: 'craft',
+      emoji: '🛠️',
+    },
+  ];
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId('saida::select_create_type')

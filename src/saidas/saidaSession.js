@@ -61,9 +61,15 @@ async function buildSessionEmbed(saidaId) {
   const maxChar = saida.max_participants || 12;
   const slotsLeft = Math.max(0, maxChar - characterized.length);
 
-  // Phase 1 (pre-start): há pendentes, admin ainda não clicou "Iniciar Sessão".
-  // Phase 2 (post-start): nenhum pending, caracts+trabs já assignados.
-  const isPreStart = pending.length > 0;
+  // Phase 1 (pre-start): admin ainda não clicou "Iniciar Sessão" — ninguém
+  // ainda foi assinado como caract ou trab. Inclui estado inicial (zero
+  // inscritos) E inscrições em curso (alguns pending).
+  // Phase 2 (post-start): há caracts OU trabs, i.e. auto-pick já correu.
+  // Bug corrigido: logic anterior usava `pending.length > 0` que tornava
+  // saídas novas (0 participantes) automaticamente Phase 2 → utilizadores
+  // viam "Pedir para Juntar" (que requer aprovação admin) em vez do botão
+  // "Inscrever-me" directo.
+  const isPreStart = characterized.length === 0 && workers.length === 0;
 
   const type = SAIDA_TYPE[saida.operation_type] || saida.operation_type;
   // Data no formato canónico dd/mm/yyyy. Só mostra hora se foi marcada
