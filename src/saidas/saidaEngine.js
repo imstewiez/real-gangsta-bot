@@ -419,6 +419,26 @@ async function finalizeSaida(saidaId, actorId) {
   if (_client) {
     const { publishResults } = require('./saidaResultsPublisher');
     publishResults(_client, saidaId).catch(e => warn(`[SAIDA] publishResults: ${e.message}`));
+
+    // Cleanup: apaga a mensagem do painel vivo no canal operacional.
+    // Só o embed rico no canal de RESULTS permanece como arquivo. Canal
+    // operacional fica limpo automaticamente no conclude (pedido do user).
+    if (saida.session_message_id && saida.session_channel_id) {
+      (async () => {
+        try {
+          const channel = await _client.channels.fetch(saida.session_channel_id).catch(() => null);
+          if (channel?.isTextBased?.()) {
+            const msg = await channel.messages.fetch(saida.session_message_id).catch(() => null);
+            if (msg) {
+              await msg.delete();
+              log(`[SAIDA] Painel da saída #${saidaId} apagado do canal operacional.`);
+            }
+          }
+        } catch (e) {
+          warn(`[SAIDA] cleanup session message #${saidaId} falhou: ${e.message}`);
+        }
+      })();
+    }
   }
 
   // Event bus

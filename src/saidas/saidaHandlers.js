@@ -488,16 +488,16 @@ async function handleCloseSaidaModal(interaction) {
   const saidaSession = require('./saidaSession');
   saidaSession.refreshSessionEmbed(interaction.client, ctx.saidaId).catch(() => {});
 
-  // Phase 4: removido o ping público "Cada um preenche o resultado ↑" com
-  // @mentions em massa. O painel vivo da sessão (saidaSession) já mostra:
-  //   - Status "🔶 Em liquidação"
-  //   - Lista de participantes com ✅/⏳ por cada um
-  //   - Botão "✅ Preencher o meu Resultado"
-  // O ping duplicava esta info e gerava @everyone-grande no canal. Staff
-  // que queira chamar a atenção tem o botão "Relembrar Pendentes" explícito
-  // (handleRepingPendentes) como opt-in.
-
   const resultLabel = RESULT_NAME[result] || result;
+
+  // Phase 8b: DM cada participante automaticamente com botão para preencher
+  // o resultado. Substitui o antigo ping público (removido em phase 4) por
+  // notificações privadas — zero spam no canal, cada um recebe na sua DM.
+  // Se DMs estiverem desligadas, fallback: painel vivo tem botão também.
+  const saidaIndividual = require('./saidaIndividualResult');
+  saidaIndividual.dmParticipantsForResults(interaction.client, ctx.saidaId, resultLabel).catch(e => {
+    warn(`[CLOSE] dmParticipantsForResults falhou (non-fatal): ${e.message}`);
+  });
   return safeReply(
     interaction,
     {

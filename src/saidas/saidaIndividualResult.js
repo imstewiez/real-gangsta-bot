@@ -695,18 +695,82 @@ async function handleWeaponDecide(interaction) {
 }
 
 /**
- * _checkAllResultsSubmitted — antigamente enviava um embed "todos preencheram"
- * no canal da sessão como ping ao staff para finalizar. Removido por phase 3
- * do refactor de single living message: o painel vivo da sessão já mostra
- * o progresso (✅/⏳ por participante + "X/Y submetidos"). Embed paralelo
- * era redundância pura no mesmo canal.
+ * _checkAllResultsSubmitted — quando o último participante submete,
+ * finaliza automaticamente a saída (antes era trigger de embed "todos
+ * preencheram"; agora é auto-finalize).
  *
- * Função mantida como no-op para preservar os call sites sem ter de mexer em
- * todos os handlers que a chamam. Se no futuro quisermos um ping opcional
- * (DM ao staff, outro canal), é aqui que se adiciona — com opt-in explícito.
+ * Fluxo novo:
+ *   - após cada submit, chama getResultProgress
+ *   - se allDone e saída ainda em_liquidacao → finalizeSaida com actor 'system:auto'
+ *   - finalize corre scoring, publica embed de resultados, e deleta o
+ *     session_message (cleanup do canal operacional)
  */
-async function _checkAllResultsSubmitted(_client, _saidaId) {
-  return; // no-op — painel vivo cobre UX.
+async function _checkAllResultsSubmitted(client, saidaId) {
+  const saida = await saidaRepo.findById(saidaId);
+  if (!saida || saida.status !== 'em_liquidacao') return;
+
+  const saidaEngine = require('./saidaEngine');
+  const progress = await saidaEngine.getResultProgress(saidaId);
+  if (!progress.allDone) return;
+
+  // Todos preencheram — auto-finalize.
+  try {
+    await saidaEngine.finalizeSaida(saidaId, 'system:auto');
+    log(`[AUTO-FINALIZE] Saída #${saidaId} finalizada automaticamente (todos submeteram).`);
+  } catch (e) {
+    warn(`[AUTO-FINALIZE] Saída #${saidaId} falhou: ${e.message}`);
+  }
+}
+
+/**
+ * dmParticipantsForResults — envia DM a cada participante da saída com um
+ * botão para preencher o resultado. Chamado pelo handleCloseSaidaModal
+ * em vez do antigo ping público (removido em phase 4).
+ *
+ * Cada DM tem um embed com o resultado (Vitória/Derrota/…) e um botão
+ * `saida::submit_result::<saidaId>`. Mesmo customId do botão no painel
+ * da sessão — handler único (handleOpenSubmitResult).
+ *
+ * Se o user tiver DMs desligadas, a mensagem falha silenciosamente — o
+ * user pode sempre usar o painel da sessão no canal.
+ */
+async function dmParticipantsForResults(client, saidaId, resultLabel) {
+  if (!client) return;
+  const saida = await saidaRepo.findById(saidaId);
+  if (!saida) return;
+  const participants = await saidaRepo.getParticipants(saidaId);
+  if (!participants.length) return;
+
+  const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+  const { brandEmbed } = require('../shared/embedBuilders');
+
+  for (const p of participants) {
+    if (!p.discord_id) continue;
+    try {
+      const user = await client.users.fetch(p.discord_id).catch(() => null);
+      if (!user) continue;
+      const embed = brandEmbed('MOVEMENT')
+        .setColor(0xe67e22)
+        .setTitle(`${EMOJI.SAIDA} Saída #${saidaId} — ${resultLabel}`)
+        .setDescription(
+          `A sessão **#${saidaId}** (spot: **${saida.spot || '—'}**) foi fechada pela chefia.\n\n` +
+            `Preenche o teu resultado individual aqui — o modal pergunta:\n` +
+            `• **Sobreviveste?**\n• **Quantas kills fizeste?**\n` +
+            (p.received_org_material && !p.own_weapon ? '• **Arma devolvida?** (tinhas arma da org)\n' : '') +
+            `\nQuando todos submetem, a saída fecha-se automaticamente.`
+        );
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`saida::submit_result::${saidaId}`)
+          .setLabel('Preencher o meu Resultado')
+          .setStyle(ButtonStyle.Primary)
+          .setEmoji('✅')
+      );
+      await user.send({ embeds: [embed], components: [row] }).catch(() => {});
+    } catch (e) {
+      warn(`[DM-RESULTS] DM a ${p.discord_id} falhou: ${e.message}`);
+    }
+  }
 }
 
 module.exports = {
@@ -716,4 +780,5 @@ module.exports = {
   handleOpenWeaponQueue,
   handleWeaponConfirmPick,
   handleWeaponDecide,
+  dmParticipantsForResults,
 };
