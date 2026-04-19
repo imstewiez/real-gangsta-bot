@@ -27,6 +27,7 @@ const {
   RESULT_DESCRIPTION,
 } = require('../content');
 const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
+const { warn } = require('../logger');
 
 // Context efémero por user durante fluxos multi-step.
 // TTL de 15 minutos — limpa entradas abandonadas automaticamente.
