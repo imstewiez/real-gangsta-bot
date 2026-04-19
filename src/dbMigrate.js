@@ -147,6 +147,10 @@ async function ensureCriticalSchema(client) {
             EXCEPTION WHEN others THEN NULL;
             END $$`,
     },
+    {
+      name: 'operations.session_started_at column',
+      sql: 'ALTER TABLE operations ADD COLUMN IF NOT EXISTS session_started_at TIMESTAMPTZ',
+    },
   ];
   let applied = 0;
   for (const { name, sql } of ddls) {

@@ -61,15 +61,12 @@ async function buildSessionEmbed(saidaId) {
   const maxChar = saida.max_participants || 12;
   const slotsLeft = Math.max(0, maxChar - characterized.length);
 
-  // Phase 1 (pre-start): admin ainda não clicou "Iniciar Sessão" — ninguém
-  // ainda foi assinado como caract ou trab. Inclui estado inicial (zero
-  // inscritos) E inscrições em curso (alguns pending).
-  // Phase 2 (post-start): há caracts OU trabs, i.e. auto-pick já correu.
-  // Bug corrigido: logic anterior usava `pending.length > 0` que tornava
-  // saídas novas (0 participantes) automaticamente Phase 2 → utilizadores
-  // viam "Pedir para Juntar" (que requer aprovação admin) em vez do botão
-  // "Inscrever-me" directo.
-  const isPreStart = characterized.length === 0 && workers.length === 0;
+  // Phase 1 (pre-start): admin ainda não clicou "Iniciar Sessão". Inscritos
+  // entram directo como caracterizado; Iniciar depois demite para trab se
+  // houver > max_participants.
+  // Phase 2 (post-start): admin iniciou, identificado por session_started_at.
+  // Pedir para Juntar só aparece aqui (requer approve).
+  const isPreStart = !saida.session_started_at;
 
   const type = SAIDA_TYPE[saida.operation_type] || saida.operation_type;
   // Data no formato canónico dd/mm/yyyy. Só mostra hora se foi marcada
@@ -112,8 +109,10 @@ async function buildSessionEmbed(saidaId) {
   ];
 
   if (isPreStart) {
-    // Phase 1: só mostra "Inscritos" (tudo pending misturado).
-    lines.push('', `📝 **Inscritos** ${pending.length}${maxChar ? ` · máx ${maxChar} caracterizados` : ''}`);
+    // Phase 1: inscritos entram directos como caracts; Iniciar depois demite
+    // para trab se > maxChar via auto-pick.
+    const overflow = characterized.length > maxChar ? ` · ⚠ ${characterized.length - maxChar} serão demitidos` : '';
+    lines.push('', `📝 **Inscritos** ${characterized.length}${maxChar ? `/${maxChar}` : ''}${overflow}`);
   } else {
     lines.push('', `🔫 **Caracterizados** ${characterized.length}/${maxChar} · 🔧 **Trabalhadores** ${workers.length}`);
   }
@@ -133,19 +132,7 @@ async function buildSessionEmbed(saidaId) {
   // Indicador de resultado individual (para estados em_liquidacao e concluida)
   const showResultStatus = isInLiquidacao || isConcluded;
 
-  // Phase 1 (pre-start): lista combinada de pendentes.
-  if (isPreStart && pending.length) {
-    lines.push('', '**── Inscritos (aguardam auto-pick) ──**');
-    for (const p of pending) {
-      const weaponName = p.weapon_item_id ? weaponMap.get(p.weapon_item_id) : null;
-      const srcIcon = p.own_weapon ? '🔫' : p.received_org_material ? '📦' : '⏳';
-      const srcLabel = p.own_weapon ? 'própria' : p.received_org_material ? 'quer da org' : 'sem arma';
-      const weaponFull = weaponName ? `${srcIcon} ${weaponName} (${srcLabel})` : `${srcIcon} ${srcLabel}`;
-      lines.push(`• <@${p.discord_id}> · ${weaponFull}`);
-    }
-  }
-
-  if (!isPreStart && characterized.length) {
+  if (characterized.length) {
     lines.push('', '**── Caracterizados ──**');
     for (const p of characterized) {
       const weaponName = p.weapon_item_id ? weaponMap.get(p.weapon_item_id) : null;
@@ -163,7 +150,7 @@ async function buildSessionEmbed(saidaId) {
       lines.push(`• <@${p.discord_id}> · ${weaponFull}${resultMark}`);
     }
   }
-  if (!isPreStart && workers.length) {
+  if (workers.length) {
     lines.push('', '**── Trabalhadores ──**');
     for (const p of workers) {
       let resultMark = '';
@@ -247,14 +234,14 @@ async function buildSessionEmbed(saidaId) {
       )
     );
 
-    // Staff row — Iniciar Sessão (auto-pick) + Fechar (direct abort).
+    // Staff row — Iniciar Sessão (no-op se ≤ maxChar; auto-pick demite se >) + Fechar.
     components.push(
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`saida::session_iniciar::${saidaId}`)
-          .setLabel(`🚀 Iniciar Sessão (${pending.length} inscritos)`)
+          .setLabel(`🚀 Iniciar Sessão (${characterized.length})`)
           .setStyle(ButtonStyle.Primary)
-          .setDisabled(pending.length === 0),
+          .setDisabled(characterized.length === 0),
         new ButtonBuilder()
           .setCustomId(`saida::session_close_direct::${saidaId}`)
           .setLabel('Fechar Sessão')
@@ -558,13 +545,15 @@ async function handleCaracterizadoWeaponPick(interaction) {
 
   try {
     const item = await inventoryRepo.getItemById(weaponItemId);
-    // Agora guarda como 'pending' — admin corre auto-pick que decide caract/trab
-    // baseado em KDA/MVP/arma própria/material contribuído.
+    // Guarda directo como 'caracterizado' — user pede que quem se inscreve
+    // no início entre já a lutar. Só no Iniciar Sessão é que, se houver mais
+    // de maxChar (default 12), o bot demite os piores para trabalhador via
+    // auto-pick.
     await saidaEngine.addParticipant(
       saidaId,
       interaction.user.id,
       {
-        participantType: 'pending',
+        participantType: 'caracterizado',
         ownWeapon: source === 'own',
         broughtOwn: source === 'own',
         receivedOrgMaterial: source === 'org',
@@ -576,9 +565,9 @@ async function handleCaracterizadoWeaponPick(interaction) {
     );
 
     const weaponName = item?.name || 'arma';
-    const srcLabel = source === 'own' ? 'própria' : 'da org (se picado caract)';
+    const srcLabel = source === 'own' ? 'própria' : 'da org';
     await interaction.editReply({
-      content: `${EMOJI.OK} Inscrito na saída #${saidaId} — arma ${srcLabel}: **${weaponName}**.\n_Aguarda Iniciar Sessão para saberes se vais caracterizado ou trabalhador._`,
+      content: `${EMOJI.OK} Inscrito como **caracterizado** na saída #${saidaId} — arma ${srcLabel}: **${weaponName}**.`,
       components: [],
     });
     // Auto-delete informativo — 10s.
@@ -724,8 +713,8 @@ async function handleSessionIniciar(interaction) {
   }
 
   const allParts = await saidaRepo.getParticipants(saidaId);
-  const pending = allParts.filter(p => p.participant_type === 'pending');
-  if (!pending.length) {
+  const inscritos = allParts.filter(p => p.participant_type === 'caracterizado' || p.participant_type === 'pending');
+  if (!inscritos.length) {
     return safeReply(
       interaction,
       { content: `${EMOJI.INFO} Ninguém inscrito ainda. Espera que alguém clique "Inscrever-me".` },
@@ -734,59 +723,87 @@ async function handleSessionIniciar(interaction) {
   }
 
   const maxChar = saida.max_participants || 12;
-  const { autoPickCaracterizados } = require('./autoPickCaracterizados');
-  const { caracterizados, trabalhadores, scored } = await autoPickCaracterizados(pending, maxChar);
+  const { query } = require('../db');
 
-  // Bulk update — caract fica com os dados originais (arma). Trab perde
-  // weapon_item_id e received_org_material porque não vai carregar arma.
-  for (const p of caracterizados) {
-    await saidaRepo.updateParticipant(saidaId, p.member_id, { participant_type: 'caracterizado' });
-  }
-  for (const p of trabalhadores) {
-    await saidaRepo.updateParticipant(saidaId, p.member_id, {
-      participant_type: 'trabalhador',
-      own_weapon: false,
-      brought_own: false,
-      received_org_material: false,
-      weapon_item_id: null,
-    });
-  }
+  let demotedCount = 0;
+  let keptCount = inscritos.length;
 
-  log(
-    `[SAIDA] Iniciar sessão #${saidaId} por ${interaction.user.tag}: ${caracterizados.length} caract, ${trabalhadores.length} trab.`
-  );
-
-  // Refresh panel
-  refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
-
-  // DM cada um com a sua designação.
-  (async () => {
-    for (const s of scored) {
-      const p = s.participant;
-      const isCaract = caracterizados.some(c => c.member_id === p.member_id);
-      try {
-        const user = await interaction.client.users.fetch(p.discord_id).catch(() => null);
-        if (!user) continue;
-        const role = isCaract ? '🔫 **Caracterizado**' : '🔧 **Trabalhador**';
-        await user
-          .send({
-            content:
-              `${EMOJI.OK} Saída #${saidaId} iniciada — vais como ${role}.\n` +
-              (isCaract
-                ? 'Prepara-te: quando a chefia fechar, recebes a DM para preencher o teu resultado (kills/sobreviveste/arma).'
-                : 'Organização: a chefia definiu-te para suporte de material.'),
-          })
-          .catch(() => {});
-      } catch {
-        /* ignore */
+  if (inscritos.length > maxChar) {
+    // Overflow — auto-pick top maxChar mantém como caract, resto demite a trab.
+    const { autoPickCaracterizados } = require('./autoPickCaracterizados');
+    const { caracterizados, trabalhadores } = await autoPickCaracterizados(inscritos, maxChar);
+    for (const p of caracterizados) {
+      // Mantém tudo; só garante participant_type='caracterizado' (se estava 'pending' legacy).
+      if (p.participant_type !== 'caracterizado') {
+        await saidaRepo.updateParticipant(saidaId, p.member_id, { participant_type: 'caracterizado' });
       }
     }
-  })();
+    for (const p of trabalhadores) {
+      await saidaRepo.updateParticipant(saidaId, p.member_id, {
+        participant_type: 'trabalhador',
+        own_weapon: false,
+        brought_own: false,
+        received_org_material: false,
+        weapon_item_id: null,
+      });
+    }
+    demotedCount = trabalhadores.length;
+    keptCount = caracterizados.length;
+  } else {
+    // Cabem todos como caract. Garante tipo correcto caso algum esteja 'pending' legacy.
+    for (const p of inscritos) {
+      if (p.participant_type !== 'caracterizado') {
+        await saidaRepo.updateParticipant(saidaId, p.member_id, { participant_type: 'caracterizado' });
+      }
+    }
+  }
+
+  // Marca session_started_at → panel transita para Phase 2.
+  await query('UPDATE operations SET session_started_at = NOW() WHERE id = $1', [saidaId]);
+
+  log(
+    `[SAIDA] Iniciar sessão #${saidaId} por ${interaction.user.tag}: ${keptCount} caract, ${demotedCount} demoted trab (total ${inscritos.length}).`
+  );
+
+  refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
+
+  // DM só aos demitidos (quem ficou caract já sabia que ia lutar).
+  if (demotedCount > 0) {
+    const demotedIds = allParts
+      .filter(
+        p =>
+          p.participant_type === 'trabalhador' &&
+          !inscritos.some(i => i.member_id === p.member_id && i.participant_type === 'trabalhador')
+      )
+      // ↑ essa filter é pesada; simplifica: refetch participants depois das updates
+      .map(p => p.discord_id)
+      .filter(Boolean);
+    (async () => {
+      const fresh = await saidaRepo.getParticipants(saidaId);
+      for (const p of fresh.filter(x => x.participant_type === 'trabalhador')) {
+        try {
+          const user = await interaction.client.users.fetch(p.discord_id).catch(() => null);
+          if (!user) continue;
+          await user
+            .send({
+              content:
+                `${EMOJI.INFO} Saída #${saidaId} iniciada — foste designado como **trabalhador** (overflow: havia mais de ${maxChar} inscritos).\n` +
+                `Bot escolheu via KDA/MVP/arma/material. Chefia pode trocar manualmente no painel.`,
+            })
+            .catch(() => {});
+        } catch {
+          /* ignore */
+        }
+      }
+    })();
+  }
 
   const summary =
-    `${EMOJI.OK} **Sessão #${saidaId} iniciada.** Auto-pick:\n` +
-    `🔫 **${caracterizados.length}** caracterizados · 🔧 **${trabalhadores.length}** trabalhadores\n\n` +
-    `_Todos receberam DM com a sua designação. Podes trocar manualmente no painel se precisares._`;
+    demotedCount > 0
+      ? `${EMOJI.OK} **Sessão #${saidaId} iniciada.** Overflow: ${inscritos.length} inscritos, ${maxChar} cabem:\n` +
+        `🔫 **${keptCount}** caracterizados · 🔧 **${demotedCount}** demitidos para trabalhador (auto-pick por KDA).\n` +
+        `_Demitidos receberam DM. Podes trocar manualmente se precisares._`
+      : `${EMOJI.OK} **Sessão #${saidaId} iniciada.** ${keptCount} caracterizados (todos cabem; nada demitido).`;
 
   return safeReply(interaction, { content: summary }, { messageClass: 'BANAL' });
 }
