@@ -56,8 +56,14 @@ async function buildSessionEmbed(saidaId) {
   const participants = await saidaRepo.getParticipants(saidaId);
   const characterized = participants.filter(p => p.participant_type === 'caracterizado');
   const workers = participants.filter(p => p.participant_type === 'trabalhador');
+  const pending = participants.filter(p => p.participant_type === 'pending');
+  const requested = participants.filter(p => p.participant_type === 'requested');
   const maxChar = saida.max_participants || 12;
   const slotsLeft = Math.max(0, maxChar - characterized.length);
+
+  // Phase 1 (pre-start): há pendentes, admin ainda não clicou "Iniciar Sessão".
+  // Phase 2 (post-start): nenhum pending, caracts+trabs já assignados.
+  const isPreStart = pending.length > 0;
 
   const type = SAIDA_TYPE[saida.operation_type] || saida.operation_type;
   // Data no formato canónico dd/mm/yyyy. Só mostra hora se foi marcada
@@ -97,9 +103,14 @@ async function buildSessionEmbed(saidaId) {
     `> ${statusEmoji} **${statusLabel}**`,
     '',
     `📍 **${saida.spot || '—'}** · 📅 ${dateLine} · 👑 ${leader}`,
-    '',
-    `🔫 **Caracterizados** ${characterized.length}/${maxChar} · 🔧 **Trabalhadores** ${workers.length}`,
   ];
+
+  if (isPreStart) {
+    // Phase 1: só mostra "Inscritos" (tudo pending misturado).
+    lines.push('', `📝 **Inscritos** ${pending.length}${maxChar ? ` · máx ${maxChar} caracterizados` : ''}`);
+  } else {
+    lines.push('', `🔫 **Caracterizados** ${characterized.length}/${maxChar} · 🔧 **Trabalhadores** ${workers.length}`);
+  }
 
   if (saida.notes) lines.push(`> 📝 _${saida.notes}_`);
 
@@ -116,7 +127,19 @@ async function buildSessionEmbed(saidaId) {
   // Indicador de resultado individual (para estados em_liquidacao e concluida)
   const showResultStatus = isInLiquidacao || isConcluded;
 
-  if (characterized.length) {
+  // Phase 1 (pre-start): lista combinada de pendentes.
+  if (isPreStart && pending.length) {
+    lines.push('', '**── Inscritos (aguardam auto-pick) ──**');
+    for (const p of pending) {
+      const weaponName = p.weapon_item_id ? weaponMap.get(p.weapon_item_id) : null;
+      const srcIcon = p.own_weapon ? '🔫' : p.received_org_material ? '📦' : '⏳';
+      const srcLabel = p.own_weapon ? 'própria' : p.received_org_material ? 'quer da org' : 'sem arma';
+      const weaponFull = weaponName ? `${srcIcon} ${weaponName} (${srcLabel})` : `${srcIcon} ${srcLabel}`;
+      lines.push(`• <@${p.discord_id}> · ${weaponFull}`);
+    }
+  }
+
+  if (!isPreStart && characterized.length) {
     lines.push('', '**── Caracterizados ──**');
     for (const p of characterized) {
       const weaponName = p.weapon_item_id ? weaponMap.get(p.weapon_item_id) : null;
@@ -134,7 +157,7 @@ async function buildSessionEmbed(saidaId) {
       lines.push(`• <@${p.discord_id}> · ${weaponFull}${resultMark}`);
     }
   }
-  if (workers.length) {
+  if (!isPreStart && workers.length) {
     lines.push('', '**── Trabalhadores ──**');
     for (const p of workers) {
       let resultMark = '';
@@ -146,6 +169,13 @@ async function buildSessionEmbed(saidaId) {
         resultMark = ' ⏳';
       }
       lines.push(`• <@${p.discord_id}>${resultMark}`);
+    }
+  }
+  // Pedidos de entrada em sessão activa (post-start) — visíveis para admin.
+  if (requested.length) {
+    lines.push('', `**── Pedidos pendentes (${requested.length}) ──**`);
+    for (const p of requested) {
+      lines.push(`• <@${p.discord_id}> — aguarda aprovação`);
     }
   }
 
@@ -194,19 +224,15 @@ async function buildSessionEmbed(saidaId) {
 
   const components = [];
 
-  if (isOpen) {
-    // Row 1 — inscrição self-service (participante escolhe arma no dropdown)
+  if (isOpen && isPreStart) {
+    // Phase 1 — pré-start: single "Inscrever-me" button (saves as pending).
+    // Admin vê "Iniciar Sessão" que dispara auto-pick.
     components.push(
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`saida::session_caracterizado::${saidaId}`)
-          .setLabel(`🔫 Caracterizado (${characterized.length}/${maxChar})`)
-          .setStyle(slotsLeft > 0 ? ButtonStyle.Success : ButtonStyle.Secondary)
-          .setDisabled(slotsLeft === 0),
-        new ButtonBuilder()
-          .setCustomId(`saida::session_trabalhador::${saidaId}`)
-          .setLabel(`🔧 Trabalhador (${workers.length})`)
-          .setStyle(ButtonStyle.Primary),
+          .setLabel(`✍️ Inscrever-me (${pending.length})`)
+          .setStyle(ButtonStyle.Success),
         new ButtonBuilder()
           .setCustomId(`saida::session_cancel::${saidaId}`)
           .setLabel('Sair')
@@ -215,8 +241,40 @@ async function buildSessionEmbed(saidaId) {
       )
     );
 
-    // Row 2 — staff: fechar sessão (vai directo para o select de resultado,
-    // sem ter de escolher a saída outra vez — já estamos nela)
+    // Staff row — Iniciar Sessão (auto-pick) + Fechar (direct abort).
+    components.push(
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`saida::session_iniciar::${saidaId}`)
+          .setLabel(`🚀 Iniciar Sessão (${pending.length} inscritos)`)
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(pending.length === 0),
+        new ButtonBuilder()
+          .setCustomId(`saida::session_close_direct::${saidaId}`)
+          .setLabel('Fechar Sessão')
+          .setStyle(ButtonStyle.Danger)
+          .setEmoji(EMOJI.FECHAR)
+      )
+    );
+  } else if (isOpen) {
+    // Phase 2 — post-start: já não há inscrição self-service por default.
+    // Admin controla (swap, aprovar pedidos, fechar). User externo pode
+    // "Pedir para Juntar" que cria um requested.
+    components.push(
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`saida::session_pedir_juntar::${saidaId}`)
+          .setLabel('Pedir para Juntar')
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji('🙋'),
+        new ButtonBuilder()
+          .setCustomId(`saida::session_cancel::${saidaId}`)
+          .setLabel('Sair')
+          .setStyle(ButtonStyle.Danger)
+          .setEmoji(EMOJI.APAGAR)
+      )
+    );
+
     components.push(
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -474,11 +532,13 @@ async function handleCaracterizadoWeaponPick(interaction) {
 
   try {
     const item = await inventoryRepo.getItemById(weaponItemId);
+    // Agora guarda como 'pending' — admin corre auto-pick que decide caract/trab
+    // baseado em KDA/MVP/arma própria/material contribuído.
     await saidaEngine.addParticipant(
       saidaId,
       interaction.user.id,
       {
-        participantType: 'caracterizado',
+        participantType: 'pending',
         ownWeapon: source === 'own',
         broughtOwn: source === 'own',
         receivedOrgMaterial: source === 'org',
@@ -490,9 +550,9 @@ async function handleCaracterizadoWeaponPick(interaction) {
     );
 
     const weaponName = item?.name || 'arma';
-    const srcLabel = source === 'own' ? 'própria' : 'da org';
+    const srcLabel = source === 'own' ? 'própria' : 'da org (se picado caract)';
     await interaction.editReply({
-      content: `${EMOJI.OK} Registado como **caracterizado** na saída #${saidaId} — arma ${srcLabel}: **${weaponName}**.`,
+      content: `${EMOJI.OK} Inscrito na saída #${saidaId} — arma ${srcLabel}: **${weaponName}**.\n_Aguarda Iniciar Sessão para saberes se vais caracterizado ou trabalhador._`,
       components: [],
     });
     // Auto-delete informativo — 10s.
@@ -610,6 +670,156 @@ async function handleSessionCancel(interaction) {
   refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Phase 2 handlers — Iniciar Sessão (auto-pick) + Pedir para Juntar
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function handleSessionIniciar(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const { isChefia } = require('../permissions/permissionEngine');
+  if (!isChefia(interaction.member)) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.BLOQUEADO} Só chefia pode iniciar a sessão.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'WARN' }
+    );
+  }
+
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const saidaId = parseInt(interaction.customId.split('::')[2]);
+
+  const saida = await saidaRepo.findById(saidaId);
+  if (!saida || saida.status !== 'aberta') {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} Saída #${saidaId} não está aberta.` },
+      { messageClass: 'ERROR' }
+    );
+  }
+
+  const allParts = await saidaRepo.getParticipants(saidaId);
+  const pending = allParts.filter(p => p.participant_type === 'pending');
+  if (!pending.length) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.INFO} Ninguém inscrito ainda. Espera que alguém clique "Inscrever-me".` },
+      { messageClass: 'BANAL' }
+    );
+  }
+
+  const maxChar = saida.max_participants || 12;
+  const { autoPickCaracterizados } = require('./autoPickCaracterizados');
+  const { caracterizados, trabalhadores, scored } = await autoPickCaracterizados(pending, maxChar);
+
+  // Bulk update — caract fica com os dados originais (arma). Trab perde
+  // weapon_item_id e received_org_material porque não vai carregar arma.
+  for (const p of caracterizados) {
+    await saidaRepo.updateParticipant(saidaId, p.member_id, { participant_type: 'caracterizado' });
+  }
+  for (const p of trabalhadores) {
+    await saidaRepo.updateParticipant(saidaId, p.member_id, {
+      participant_type: 'trabalhador',
+      own_weapon: false,
+      brought_own: false,
+      received_org_material: false,
+      weapon_item_id: null,
+    });
+  }
+
+  log(
+    `[SAIDA] Iniciar sessão #${saidaId} por ${interaction.user.tag}: ${caracterizados.length} caract, ${trabalhadores.length} trab.`
+  );
+
+  // Refresh panel
+  refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
+
+  // DM cada um com a sua designação.
+  (async () => {
+    for (const s of scored) {
+      const p = s.participant;
+      const isCaract = caracterizados.some(c => c.member_id === p.member_id);
+      try {
+        const user = await interaction.client.users.fetch(p.discord_id).catch(() => null);
+        if (!user) continue;
+        const role = isCaract ? '🔫 **Caracterizado**' : '🔧 **Trabalhador**';
+        await user
+          .send({
+            content:
+              `${EMOJI.OK} Saída #${saidaId} iniciada — vais como ${role}.\n` +
+              (isCaract
+                ? 'Prepara-te: quando a chefia fechar, recebes a DM para preencher o teu resultado (kills/sobreviveste/arma).'
+                : 'Organização: a chefia definiu-te para suporte de material.'),
+          })
+          .catch(() => {});
+      } catch {
+        /* ignore */
+      }
+    }
+  })();
+
+  const summary =
+    `${EMOJI.OK} **Sessão #${saidaId} iniciada.** Auto-pick:\n` +
+    `🔫 **${caracterizados.length}** caracterizados · 🔧 **${trabalhadores.length}** trabalhadores\n\n` +
+    `_Todos receberam DM com a sua designação. Podes trocar manualmente no painel se precisares._`;
+
+  return safeReply(interaction, { content: summary }, { messageClass: 'BANAL' });
+}
+
+async function handleSessionPedirJuntar(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const saidaId = parseInt(interaction.customId.split('::')[2]);
+
+  const member = await memberRepo.findByDiscordId(interaction.user.id);
+  if (!member) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} Não estás registado na firma.` },
+      { messageClass: 'ERROR' }
+    );
+  }
+
+  const participants = await saidaRepo.getParticipants(saidaId);
+  const existing = participants.find(p => p.member_id === member.id);
+  if (existing) {
+    return safeReply(
+      interaction,
+      {
+        content: `${EMOJI.BLOQUEADO} Já estás na saída como **${existing.participant_type}**.`,
+      },
+      { messageClass: 'WARN' }
+    );
+  }
+
+  try {
+    await saidaEngine.addParticipant(
+      saidaId,
+      interaction.user.id,
+      {
+        participantType: 'requested',
+        ownWeapon: false,
+        broughtOwn: false,
+        receivedOrgMaterial: false,
+        notes: '',
+      },
+      interaction.user.id,
+      interaction.guild
+    );
+    refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
+    return safeReply(
+      interaction,
+      {
+        content:
+          `${EMOJI.OK} Pedido enviado à chefia.\n` +
+          `Se for aprovado, entras como **trabalhador** (chefia pode trocar para caracterizado).`,
+      },
+      { messageClass: 'BANAL' }
+    );
+  } catch (e) {
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'ERROR' });
+  }
+}
+
 module.exports = {
   buildSessionEmbed,
   publishSessionEmbed,
@@ -619,4 +829,6 @@ module.exports = {
   handleCaracterizadoWeaponPick,
   handleSessionTrabalhador,
   handleSessionCancel,
+  handleSessionIniciar,
+  handleSessionPedirJuntar,
 };

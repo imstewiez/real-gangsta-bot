@@ -83,11 +83,13 @@ const BUTTON_ROUTES = [
   prefix('avail::summary::', availHandleSummary),
   prefix('avail::refresh::', availHandleRefresh),
 
-  // Saída session — auto-registo interactivo (self-serve weapon pick)
+  // Saída session — single-signup flow (saves as pending, admin Iniciar roda auto-pick)
   prefix('saida::session_caracterizado::', saidaSession.handleSessionCaracterizado),
   prefix('saida::source::', saidaSession.handleCaracterizadoSource),
   prefix('saida::session_trabalhador::', saidaSession.handleSessionTrabalhador),
   prefix('saida::session_cancel::', saidaSession.handleSessionCancel),
+  prefix('saida::session_iniciar::', saidaSession.handleSessionIniciar),
+  prefix('saida::session_pedir_juntar::', saidaSession.handleSessionPedirJuntar),
 
   // Saída — resultado individual (self-service) + weapon return queue
   prefix('saida::submit_result::', saidaIndividual.handleOpenSubmitResult),
