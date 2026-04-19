@@ -695,34 +695,18 @@ async function handleWeaponDecide(interaction) {
 }
 
 /**
- * Verifica se todos os participantes já preencheram resultado. Se sim,
- * envia notificação no canal da sessão para staff finalizar.
+ * _checkAllResultsSubmitted — antigamente enviava um embed "todos preencheram"
+ * no canal da sessão como ping ao staff para finalizar. Removido por phase 3
+ * do refactor de single living message: o painel vivo da sessão já mostra
+ * o progresso (✅/⏳ por participante + "X/Y submetidos"). Embed paralelo
+ * era redundância pura no mesmo canal.
+ *
+ * Função mantida como no-op para preservar os call sites sem ter de mexer em
+ * todos os handlers que a chamam. Se no futuro quisermos um ping opcional
+ * (DM ao staff, outro canal), é aqui que se adiciona — com opt-in explícito.
  */
-async function _checkAllResultsSubmitted(client, saidaId) {
-  const saida = await saidaRepo.findById(saidaId);
-  if (!saida || saida.status !== 'em_liquidacao') return;
-
-  const saidaEngine = require('./saidaEngine');
-  const progress = await saidaEngine.getResultProgress(saidaId);
-  if (!progress.allDone) return;
-
-  // Todos preencheram — notificar no canal da sessão
-  const channelId = saida.session_channel_id;
-  if (!channelId || !client) return;
-
-  const channel = await client.channels.fetch(channelId).catch(() => null);
-  if (!channel?.isTextBased?.()) return;
-
-  const { brandEmbed } = require('../shared/embedBuilders');
-  const embed = brandEmbed('MOVEMENT')
-    .setColor(0x2ecc71)
-    .setTitle(`${EMOJI.OK} Saída #${saidaId} — Todos preencheram!`)
-    .setDescription(
-      `**${progress.submitted}/${progress.total}** participantes submeteram o resultado.\n\n` +
-        'Staff — carrega em **"Finalizar e Publicar"** no painel da sessão ↑ para calcular scores, MVP e publicar os resultados finais.'
-    );
-
-  await channel.send({ embeds: [embed] }).catch(() => {});
+async function _checkAllResultsSubmitted(_client, _saidaId) {
+  return; // no-op — painel vivo cobre UX.
 }
 
 module.exports = {
