@@ -70,54 +70,125 @@ async function buildResumoEmbed(saida, participants) {
   const L = SAIDAS.LABELS;
   const characterized = participants.filter(p => p.participant_type === 'caracterizado');
   const workers = participants.filter(p => p.participant_type === 'trabalhador');
-  const ownWeaponCount = participants.filter(p => p.own_weapon).length;
   const leaderName = await resolveLeaderName(saida);
 
-  const fields = [
+  const fields = [];
+
+  // ── BLOCO 1: cabeçalho (spot, tipo, líder, data, inimigo, resultado) ───
+  fields.push(
     { name: L.SPOT, value: saida.spot || '—', inline: true },
     { name: L.TIPO, value: type, inline: true },
     { name: L.LIDER, value: leaderName, inline: true },
     { name: 'Data', value: formatPtDateOnly(saida.date), inline: true },
-    {
-      name: 'Na saída',
-      value: `**${participants.length}** (${characterized.length} caract. · ${workers.length} trab.)`,
-      inline: true,
-    },
-    { name: L.RESULTADO, value: `${meta.emoji} **${meta.label}**`, inline: true },
-  ];
-
-  if (ownWeaponCount > 0) {
-    fields.push({ name: '🔫 Arma própria', value: String(ownWeaponCount), inline: true });
+    { name: L.RESULTADO, value: `${meta.emoji} **${meta.label}**`, inline: true }
+  );
+  if (saida.had_fight) {
+    fields.push({ name: L.INIMIGO, value: formatEnemy(saida.enemy_name, saida.enemy_faction), inline: true });
+  } else {
+    fields.push({ name: '\u200b', value: '\u200b', inline: true }); // alignment spacer
   }
 
+  // ── BLOCO 2: combate (totais) ──────────────────────────────────────────
   if (saida.had_fight) {
-    fields.push(
-      { name: L.INIMIGO, value: formatEnemy(saida.enemy_name, saida.enemy_faction), inline: true },
-      { name: `${EMOJI.KILL} ${L.KILLS}`, value: String(saida.our_kills || 0), inline: true },
-      { name: `${EMOJI.MORTE} ${L.MORTES}`, value: String(saida.deaths || 0), inline: true }
+    const totalKills = participants.reduce((a, p) => a + Number(p.kills || 0), 0);
+    const totalDeaths = participants.filter(p => p.died).length;
+    const vivos = participants.length - totalDeaths;
+    fields.push({
+      name: `${EMOJI.COMBATE || '⚔️'} Combate`,
+      value: `${EMOJI.KILL} **${totalKills}** kills · ${EMOJI.MORTE} **${totalDeaths}** mortes · ✅ **${vivos}** vivos`,
+      inline: false,
+    });
+  }
+
+  // ── BLOCO 3: participantes (com kills individuais + estado) ────────────
+  // Ordena: MVP primeiro, depois por kills desc, depois por nome.
+  const mvp = participants.find(p => p.mvp_flag);
+  const sortedParts = [...participants].sort((a, b) => {
+    if (a.mvp_flag && !b.mvp_flag) return -1;
+    if (b.mvp_flag && !a.mvp_flag) return 1;
+    const ak = Number(a.kills || 0);
+    const bk = Number(b.kills || 0);
+    if (ak !== bk) return bk - ak;
+    return String(a.display_name || '').localeCompare(String(b.display_name || ''));
+  });
+  if (sortedParts.length) {
+    const lines = sortedParts.map((p, i) => {
+      const tag = p.participant_type === 'trabalhador' ? '🔧' : '🔫';
+      const kills = Number(p.kills || 0);
+      const killsStr = kills > 0 ? ` · **${kills}** kill${kills === 1 ? '' : 's'}` : '';
+      const status = p.died ? ' · 💀' : ' · ✅';
+      const mvpBadge = p.mvp_flag ? ` ${EMOJI.MVP}` : '';
+      const medal = i === 0 && kills > 0 ? '🥇 ' : i === 1 && kills > 0 ? '🥈 ' : i === 2 && kills > 0 ? '🥉 ' : '• ';
+      return `${medal}${tag} <@${p.discord_id}>${mvpBadge}${killsStr}${status}`;
+    });
+    fields.push({
+      name: `👥 Participantes (${participants.length}: ${characterized.length} caract. · ${workers.length} trab.)`,
+      value: lines.join('\n').slice(0, 1020),
+      inline: false,
+    });
+  }
+
+  // ── BLOCO 4: material & lucro (sem bruto, sem consumido) ───────────────
+  const materialLines = [];
+  if (Number(saida.supplied_value || 0) > 0) {
+    materialLines.push(`${EMOJI.MATERIAL} Fornecido (armas): **${formatMoney(saida.supplied_value)}**`);
+  }
+  if (Number(saida.returned_value || 0) > 0) {
+    materialLines.push(`${EMOJI.DEVOLVER} Devolvido (armas): **${formatMoney(saida.returned_value)}**`);
+  }
+  if (Number(saida.lost_value || 0) > 0) {
+    materialLines.push(`${EMOJI.PERDIDO} Perdido (armas): **${formatMoney(saida.lost_value)}**`);
+  }
+  if (saida.had_craft && (saida.craft_amount || 0) > 0) {
+    materialLines.push(`${EMOJI.CRAFT} Craftado: **${saida.craft_amount}** un.`);
+  }
+  if (materialLines.length) {
+    fields.push({ name: '📦 Material', value: materialLines.join('\n'), inline: false });
+  }
+
+  // Lucro líquido — destaque visual único. Bruto e Consumido REMOVIDOS do
+  // display (user feedback: bruto não tem significado operacional; consumido
+  // é transitório interno da saída).
+  const netLine = `**${formatMoney(saida.net_value)}** · ${profitTag(saida.net_value)}`;
+  fields.push({ name: `${EMOJI.DINHEIRO} ${L.LUCRO_LIQUIDO}`, value: netLine, inline: false });
+
+  // ── BLOCO 5: MVP ───────────────────────────────────────────────────────
+  if (mvp) {
+    const kScore = Math.round(mvp.performance_score || 0);
+    const dScore = Math.round(mvp.discipline_score || 0);
+    fields.push({
+      name: `${EMOJI.MVP} MVP`,
+      value: `<@${mvp.discord_id}> · ${mvp.kills || 0} kills · peso **${kScore}** · disciplina **${dScore}%**`,
+      inline: false,
+    });
+  }
+
+  // ── BLOCO 6: impacto histórico (spot winrate + all-time) ───────────────
+  const impactLines = [];
+  if (saida.spot) {
+    const ss = await spotStatsRepo.getBySpot(saida.spot).catch(() => null);
+    if (ss && ss.total_saidas > 0) {
+      const winRate = Math.round((ss.wins / ss.total_saidas) * 100);
+      impactLines.push(
+        `📍 Spot **${saida.spot}**: ${ss.total_saidas} saídas · ${ss.wins}W/${ss.losses}L/${ss.draws}D · **${winRate}%** WR · net ${formatMoney(ss.total_net_value)}`
+      );
+    }
+  }
+  const topKillers = await killRepo.getLeaderboard(3).catch(() => []);
+  if (topKillers.length) {
+    const medals = [EMOJI.MEDAL_1, EMOJI.MEDAL_2, EMOJI.MEDAL_3];
+    impactLines.push(
+      `🎯 Top killers: ${topKillers.map((k, i) => `${medals[i]} <@${k.discord_id}> (${k.kills})`).join(' · ')}`
     );
   }
-
-  if (saida.had_craft) {
-    const craftUnits = saida.craft_amount || 0;
-    fields.push({ name: `${EMOJI.CRAFT} Craftado`, value: `**${craftUnits}** unidades`, inline: true });
+  if (impactLines.length) {
+    fields.push({ name: '📊 Impacto histórico', value: impactLines.join('\n').slice(0, 1020), inline: false });
   }
-  if (saida.had_domination) fields.push({ name: 'Domínio', value: EMOJI.OK, inline: true });
 
-  fields.push(
-    { name: `${EMOJI.MATERIAL} ${L.MATERIAL_FORNECIDO}`, value: formatMoney(saida.supplied_value), inline: true },
-    { name: `${EMOJI.DEVOLVER} ${L.MATERIAL_DEVOLVIDO}`, value: formatMoney(saida.returned_value), inline: true },
-    { name: `${EMOJI.PERDIDO} ${L.MATERIAL_PERDIDO}`, value: formatMoney(saida.lost_value), inline: true },
-    { name: `${EMOJI.CRAFT} Consumido`, value: formatMoney(saida.consumed_value), inline: true },
-    { name: `${EMOJI.LUCRO} ${L.LUCRO_BRUTO}`, value: formatMoney(saida.gross_value), inline: true },
-    {
-      name: `${EMOJI.DINHEIRO} ${L.LUCRO_LIQUIDO} (${profitTag(saida.net_value)})`,
-      value: formatMoney(saida.net_value),
-      inline: true,
-    }
-  );
-
-  if (saida.result_notes) fields.push({ name: 'Notas', value: saida.result_notes.slice(0, 200), inline: false });
+  // Notas — opcional, último.
+  if (saida.result_notes) {
+    fields.push({ name: '📝 Notas', value: saida.result_notes.slice(0, 500), inline: false });
+  }
 
   return brandEmbed('MOVEMENT')
     .setColor(meta.color)
