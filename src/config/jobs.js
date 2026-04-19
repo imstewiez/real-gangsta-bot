@@ -12,5 +12,5 @@ module.exports = {
   BAIRRISTA_WEEKLY_SUMMARY_DAY: optNum('BAIRRISTA_WEEKLY_SUMMARY_DAY', 5), // 5 = sexta
   // Cooldown em spots após criar uma saída — durante este tempo, nenhuma
   // outra saída da org pode abrir no mesmo spot.
-  SPOT_COOLDOWN_MINUTES: optNum('SPOT_COOLDOWN_MINUTES', 30),
+  SPOT_COOLDOWN_MINUTES: optNum('SPOT_COOLDOWN_MINUTES', 60),
 };
