@@ -494,18 +494,26 @@ async function finalizeSaida(saidaId, actorId) {
 }
 
 /**
- * Verifica quantos participantes já preencheram resultado individual.
- * Retorna { total, submitted, pending, allDone }.
+ * Verifica o progresso de liquidação de uma saída.
+ *
+ * `allDone` = todos os resultados individuais submetidos **E** nenhuma arma
+ * em estado `declared_returned` (que requer confirmação staff OG+ via
+ * "Confirmar Armas"). Auto-finalize só arranca quando `allDone = true`;
+ * manual finalize pode forçar.
+ *
+ * Retorna { total, submitted, pending, pendingWeapons, allDone, participants }.
  */
 async function getResultProgress(saidaId) {
   const participants = await saidaRepo.getParticipants(saidaId);
-  const submitted = participants.filter(p => p.individual_result_submitted).length;
   const total = participants.length;
+  const submitted = participants.filter(p => p.individual_result_submitted).length;
+  const pendingWeapons = participants.filter(p => p.weapon_return_status === 'declared_returned').length;
   return {
     total,
     submitted,
     pending: total - submitted,
-    allDone: submitted >= total && total > 0,
+    pendingWeapons,
+    allDone: submitted >= total && total > 0 && pendingWeapons === 0,
     participants,
   };
 }

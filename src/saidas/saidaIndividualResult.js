@@ -678,6 +678,12 @@ async function handleWeaponDecide(interaction) {
   const saidaSession = require('./saidaSession');
   saidaSession.refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
 
+  // Uma confirmação de arma pode ter sido a última peça em falta — se todos
+  // submeteram E já não há declared_returned, o auto-finalize devia arrancar
+  // aqui. Antes só arrancava em handleSubmitResultModal, deixando saídas
+  // em limbo se o último resultado submetido tinha arma a confirmar.
+  _checkAllResultsSubmitted(interaction.client, saidaId).catch(() => {});
+
   const decisionLabel = {
     confirmed: '✅ **Confirmada** — arma devolvida',
     rejected: '⛔ **Rejeitada** — não devolveu',
@@ -720,11 +726,21 @@ async function _checkAllResultsSubmitted(client, saidaId) {
     const saidaEngine = require('./saidaEngine');
     const progress = await saidaEngine.getResultProgress(saidaId);
     log(
-      `[AUTO-FINALIZE] Saída #${saidaId} progress: ${progress.submitted}/${progress.total} allDone=${progress.allDone}`
+      `[AUTO-FINALIZE] Saída #${saidaId} progress: ${progress.submitted}/${progress.total} pendingWeapons=${progress.pendingWeapons} allDone=${progress.allDone}`
     );
-    if (!progress.allDone) return;
+    if (!progress.allDone) {
+      // Caso específico: todos submeteram mas há armas em declared_returned
+      // à espera de confirmação OG+. Não auto-finalize — staff tem de
+      // confirmar armas primeiro via "Confirmar Armas".
+      if (progress.submitted >= progress.total && progress.pendingWeapons > 0) {
+        log(
+          `[AUTO-FINALIZE] Saída #${saidaId} tem ${progress.pendingWeapons} arma(s) por confirmar — skip auto-finalize.`
+        );
+      }
+      return;
+    }
 
-    log(`[AUTO-FINALIZE] Saída #${saidaId} — a finalizar (todos submeteram).`);
+    log(`[AUTO-FINALIZE] Saída #${saidaId} — a finalizar (todos submeteram + armas confirmadas).`);
     await saidaEngine.finalizeSaida(saidaId, 'system:auto');
     log(`[AUTO-FINALIZE] Saída #${saidaId} finalizada com sucesso.`);
   } catch (e) {

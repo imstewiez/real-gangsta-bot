@@ -186,24 +186,30 @@ async function buildSessionEmbed(saidaId) {
     lines.push(`${EMOJI.PENDENTE} **${submittedCount}/${totalCount}** resultado(s) preenchido(s)`);
 
     if (submittedCount >= totalCount && totalCount > 0) {
-      // Auto-finalize fallback: se passaram > 2min desde o último submit e
-      // a saída ainda está em_liquidacao, provavelmente o auto-finalize
-      // falhou silenciosamente. Avisa chefia para finalizar manualmente em
-      // vez de ficar silenciosa. Sem coluna extra — staleness deduzida.
-      const lastSubmitAt = participants
-        .map(p => (p.individual_result_at ? new Date(p.individual_result_at).getTime() : 0))
-        .reduce((a, b) => Math.max(a, b), 0);
-      const staleMs = lastSubmitAt ? Date.now() - lastSubmitAt : 0;
-      // 5 min threshold — finalize real inclui publicar embed + delete msg +
-      // stats + event bus; 2 min era tight e podia trip durante finalize
-      // em voo. Mensagem softer ("se estiver preso") em vez de acusar falha.
-      const AUTO_FINALIZE_STALE_THRESHOLD = 5 * 60_000;
-      if (staleMs > AUTO_FINALIZE_STALE_THRESHOLD) {
+      if (pendingWeapon > 0) {
+        // Bloqueio explícito: auto-finalize NÃO corre enquanto houver armas
+        // em declared_returned. Chefia/oficiais têm de confirmar via
+        // "Confirmar Armas" primeiro. Torna claro que a sessão está à
+        // espera deles, não preso.
         lines.push(
-          `${EMOJI.OK} **Todos preencheram!** Se o auto-finalize estiver preso (${Math.round(staleMs / 60_000)} min), clica **"Finalizar e Publicar"** ↓`
+          `${EMOJI.WARN} **Todos preencheram, mas faltam ${pendingWeapon} arma(s) a confirmar** — chefia/oficial clica **"Confirmar Armas"** ↓`
         );
       } else {
-        lines.push(`${EMOJI.OK} **Todos preencheram!** Staff pode finalizar ↓`);
+        // Auto-finalize fallback: se passaram > 5min desde o último submit e
+        // a saída ainda está em_liquidacao, provavelmente o auto-finalize
+        // falhou silenciosamente. Mensagem softer ("se estiver preso").
+        const lastSubmitAt = participants
+          .map(p => (p.individual_result_at ? new Date(p.individual_result_at).getTime() : 0))
+          .reduce((a, b) => Math.max(a, b), 0);
+        const staleMs = lastSubmitAt ? Date.now() - lastSubmitAt : 0;
+        const AUTO_FINALIZE_STALE_THRESHOLD = 5 * 60_000;
+        if (staleMs > AUTO_FINALIZE_STALE_THRESHOLD) {
+          lines.push(
+            `${EMOJI.OK} **Todos preencheram!** Se o auto-finalize estiver preso (${Math.round(staleMs / 60_000)} min), clica **"Finalizar e Publicar"** ↓`
+          );
+        } else {
+          lines.push(`${EMOJI.OK} **Todos preencheram!** Staff pode finalizar ↓`);
+        }
       }
     } else {
       // Cockpit: lista explícita de quem falta, para chefia ver rapidamente
