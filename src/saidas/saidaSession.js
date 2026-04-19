@@ -723,31 +723,81 @@ async function handleSessionIniciar(interaction) {
   }
 
   const maxChar = saida.max_participants || 12;
-  const { query } = require('../db');
+  const { queryWithTransaction } = require('../db');
   const { autoPickCaracterizados } = require('./autoPickCaracterizados');
 
   // Sempre corre auto-pick — internamente protege chefia + patrao_di_zona
   // (lugar reservado, nunca vão para trabalhador). Bairristas/oficiais
   // competem pelos slots restantes por KDA/MVP/arma/material.
-  const { caracterizados, trabalhadores } = await autoPickCaracterizados(inscritos, maxChar);
+  const { caracterizados, trabalhadores, scored } = await autoPickCaracterizados(inscritos, maxChar);
 
-  for (const p of caracterizados) {
-    if (p.participant_type !== 'caracterizado') {
-      await saidaRepo.updateParticipant(saidaId, p.member_id, { participant_type: 'caracterizado' });
-    }
-  }
-  for (const p of trabalhadores) {
-    await saidaRepo.updateParticipant(saidaId, p.member_id, {
-      participant_type: 'trabalhador',
-      own_weapon: false,
-      brought_own: false,
-      received_org_material: false,
-      weapon_item_id: null,
+  // Atómico: bulk updates + session_started_at num só BEGIN/COMMIT. Se falha
+  // a meio (ex.: coluna inexistente, constraint violation), rollback deixa
+  // a saída intacta. Antes podia ficar metade promovido / session_started_at
+  // não gravado.
+  try {
+    await queryWithTransaction(async client => {
+      for (const p of caracterizados) {
+        if (p.participant_type !== 'caracterizado') {
+          await client.query(
+            `UPDATE operation_participants SET participant_type = 'caracterizado'
+              WHERE operation_id = $1 AND member_id = $2`,
+            [saidaId, p.member_id]
+          );
+        }
+      }
+      for (const p of trabalhadores) {
+        await client.query(
+          `UPDATE operation_participants
+              SET participant_type = 'trabalhador',
+                  own_weapon = FALSE,
+                  brought_own_material = FALSE,
+                  received_org_material = FALSE,
+                  weapon_item_id = NULL
+            WHERE operation_id = $1 AND member_id = $2`,
+          [saidaId, p.member_id]
+        );
+      }
+      await client.query('UPDATE operations SET session_started_at = NOW() WHERE id = $1', [saidaId]);
     });
+  } catch (e) {
+    warn(`[SAIDA] Iniciar sessão #${saidaId} falhou (rollback): ${e.message}`);
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} Falha a iniciar sessão — tenta outra vez. (${e.message})` },
+      { messageClass: 'ERROR' }
+    );
   }
 
-  // Marca session_started_at → panel transita para Phase 2.
-  await query('UPDATE operations SET session_started_at = NOW() WHERE id = $1', [saidaId]);
+  // Audit trail — regista a decisão completa (promoções/despromoções + scores)
+  // para que "porque é que fui trabalhador?" tenha resposta rastreável.
+  const { logAudit } = require('../audit/auditEngine');
+  logAudit({
+    action: 'saida_session_started',
+    entityType: 'saida',
+    entityId: String(saidaId),
+    actorId: interaction.user.id,
+    afterState: {
+      maxChar,
+      totalInscritos: inscritos.length,
+      caracterizados: scored
+        .filter(s => caracterizados.some(c => c.member_id === s.participant.member_id))
+        .map(s => ({
+          memberId: s.participant.member_id,
+          displayName: s.participant.display_name,
+          score: s.protected ? 'protected' : Number(s.score.toFixed(2)),
+          role: s.participant.member_role,
+        })),
+      trabalhadores: scored
+        .filter(s => trabalhadores.some(t => t.member_id === s.participant.member_id))
+        .map(s => ({
+          memberId: s.participant.member_id,
+          displayName: s.participant.display_name,
+          score: Number(s.score.toFixed(2)),
+          role: s.participant.member_role,
+        })),
+    },
+  }).catch(() => {});
 
   log(
     `[SAIDA] Iniciar sessão #${saidaId} por ${interaction.user.tag}: ${caracterizados.length} caract, ${trabalhadores.length} trab (total ${inscritos.length}).`
@@ -910,17 +960,28 @@ async function handleSessionSwapPick(interaction) {
     return interaction.editReply({ content: `${EMOJI.ERRO} Participante não encontrado.`, components: [] });
   }
 
-  const newType = p.participant_type === 'caracterizado' ? 'trabalhador' : 'caracterizado';
+  const previousType = p.participant_type;
+  const newType = previousType === 'caracterizado' ? 'trabalhador' : 'caracterizado';
   const updates = { participant_type: newType };
   if (newType === 'trabalhador') {
     // Demote → strip weapon info (trab não carrega arma).
     updates.own_weapon = false;
-    updates.brought_own = false;
+    updates.brought_own_material = false;
     updates.received_org_material = false;
     updates.weapon_item_id = null;
   }
   await saidaRepo.updateParticipant(saidaId, memberId, updates);
   log(`[SAIDA] Swap por ${interaction.user.tag}: ${p.display_name} → ${newType} (saída #${saidaId}).`);
+
+  const { logAudit } = require('../audit/auditEngine');
+  logAudit({
+    action: 'saida_participant_swapped',
+    entityType: 'saida',
+    entityId: String(saidaId),
+    actorId: interaction.user.id,
+    beforeState: { memberId, displayName: p.display_name, participantType: previousType },
+    afterState: { memberId, displayName: p.display_name, participantType: newType },
+  }).catch(() => {});
 
   refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
   await interaction.editReply({

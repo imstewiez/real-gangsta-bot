@@ -195,7 +195,7 @@ async function startSaida(saidaId, actorId) {
 }
 
 async function cancelSaida(saidaId, actorId) {
-  await _assertTransition(saidaId, 'cancelada');
+  const before = await _assertTransition(saidaId, 'cancelada');
   const s = await saidaRepo.updateStatus(saidaId, 'cancelada');
   await logAudit({
     action: 'saida_cancelled',
@@ -203,6 +203,16 @@ async function cancelSaida(saidaId, actorId) {
     entityId: String(saidaId),
     actorId,
   });
+
+  // Liberta o cooldown do spot (se ainda pertencer a esta saída) — sem isto
+  // ficaria bloqueado até expirar o TTL, mesmo já cancelada.
+  if (before.spot) {
+    const spotCooldown = require('./spotCooldown');
+    spotCooldown
+      .releaseCooldownForSaida(before.spot, saidaId)
+      .catch(e => warn(`[SAIDA] releaseCooldown falhou para "${before.spot}": ${e.message}`));
+  }
+
   return s;
 }
 

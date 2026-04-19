@@ -136,6 +136,52 @@ async function startCooldown({ spot, saidaId, saidaType, leaderName, minutes } =
 }
 
 /**
+ * Liberta o cooldown de um spot SE ainda pertencer à saída indicada.
+ * Usado por `cancelSaida` para não manter o spot bloqueado a seguir a um
+ * cancelamento. Filtro por `saida_id` evita apagar um cooldown que tenha
+ * sido entretanto substituído por outra saída posterior (o UPSERT em
+ * `startCooldown` reescreve a row).
+ *
+ * Best-effort sobre a notificação Discord — edita para "livre" se existir.
+ */
+async function releaseCooldownForSaida(spot, saidaId) {
+  if (!spot || !saidaId) return { released: false };
+  const r = await query(
+    `DELETE FROM spot_cooldowns
+      WHERE spot = $1 AND saida_id = $2
+    RETURNING notification_channel_id, notification_msg_id`,
+    [spot, saidaId]
+  );
+  const row = r.rows[0];
+  if (!row) return { released: false };
+
+  if (_client && row.notification_channel_id && row.notification_msg_id) {
+    (async () => {
+      try {
+        const ch = await _client.channels.fetch(row.notification_channel_id).catch(() => null);
+        if (ch?.isTextBased?.()) {
+          const msg = await ch.messages.fetch(row.notification_msg_id).catch(() => null);
+          if (msg) {
+            const freeEmbed = applyLogo(
+              brandEmbed('SHORT')
+                .setColor(0x2ecc71)
+                .setTitle(`${EMOJI.OK} Spot Livre — ${spot}`)
+                .setDescription(`_Saída #${saidaId} foi cancelada — spot disponível de novo._`)
+            );
+            await msg.edit({ embeds: [freeEmbed] }).catch(() => {});
+          }
+        }
+      } catch (_) {
+        /* non-fatal */
+      }
+    })();
+  }
+
+  log(`[SPOT-COOLDOWN] Spot "${spot}" libertado (saida=${saidaId} cancelada).`);
+  return { released: true };
+}
+
+/**
  * Job do scheduler: limpa cooldowns expirados e edita as mensagens para
  * indicar que o spot está livre. Idempotente — correr 2× não parte nada.
  */
@@ -179,4 +225,4 @@ async function runExpirer(client) {
   return { cleaned };
 }
 
-module.exports = { setClient, getStatus, startCooldown, runExpirer, formatRemaining };
+module.exports = { setClient, getStatus, startCooldown, releaseCooldownForSaida, runExpirer, formatRemaining };
