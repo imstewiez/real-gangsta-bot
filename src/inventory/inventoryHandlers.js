@@ -1066,6 +1066,68 @@ async function handleCartRepeat(interaction) {
   return _refreshCartPanel(interaction, cart, { extraNote: `🔁 _Pré-preenchido com ${last.lines.length} linha(s) da última submissão. Preços actualizados._` });
 }
 
+// ── Preview (Rever) ─────────────────────────────────────────────────────────
+async function handleCartPreview(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const tipo = interaction.customId.split('::')[2];
+  const bairristaCart = require('./bairristaCart');
+  const cart = bairristaCart.getCart(interaction.user.id);
+  if (!cart || cart.tipo !== tipo) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.PENDENTE} Carrinho expirado.`, flags: MessageFlags.Ephemeral },
+      { dismissible: true }
+    );
+  }
+  if (!cart.lines.length) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.WARN} Nada para rever — carrinho vazio.`, flags: MessageFlags.Ephemeral },
+      { dismissible: true }
+    );
+  }
+
+  // Contexto de ranking/promoção — current state, delta não previsão.
+  const { bairristaStatsRepo } = require('../repositories');
+  const { weekBounds } = require('../util');
+  const { start } = weekBounds();
+  const weekStartStr = start.toISOString().split('T')[0];
+  const [weeklyBefore, rankCurrent, promotion] = await Promise.all([
+    bairristaStatsRepo.getWeeklyMaterialStats(interaction.user.id).catch(() => null),
+    bairristaStatsRepo.getRankingPosition(interaction.user.id, weekStartStr).catch(() => null),
+    (async () => {
+      const { getPromotionProgress } = require('../members/autoPromotionEngine');
+      return await getPromotionProgress(interaction.user.id).catch(() => null);
+    })(),
+  ]);
+
+  const previewEmbed = bairristaCart.buildCartPreview(cart, {
+    weeklyBefore,
+    rankCurrent,
+    promotion: promotion && !promotion.maxedOut ? promotion : null,
+  });
+  return safeUpdate(interaction, {
+    content: '',
+    embeds: [previewEmbed],
+    components: bairristaCart.buildPreviewComponents(tipo),
+  });
+}
+
+async function handleCartPreviewBack(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const tipo = interaction.customId.split('::')[2];
+  const bairristaCart = require('./bairristaCart');
+  const cart = bairristaCart.getCart(interaction.user.id);
+  if (!cart || cart.tipo !== tipo) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.PENDENTE} Carrinho expirado.`, flags: MessageFlags.Ephemeral },
+      { dismissible: true }
+    );
+  }
+  return _refreshCartPanel(interaction, cart);
+}
+
 // ── Submeter carrinho ───────────────────────────────────────────────────────
 async function handleCartSubmit(interaction) {
   if (isDuplicate(interaction.id)) return;
@@ -1181,4 +1243,6 @@ module.exports = {
   handleCartRepeat,
   handleCartSubmit,
   handleCartUndo,
+  handleCartPreview,
+  handleCartPreviewBack,
 };

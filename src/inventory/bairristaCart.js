@@ -174,8 +174,14 @@ function buildCartComponents(cart, { canRepeat = false } = {}) {
   }
   rows.push(addRow);
 
-  // Row 2: Submit / Cancel (submit disabled se vazio)
+  // Row 2: Rever (preview) / Submit / Cancel
   const submitRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`invcart::preview::${tipo}`)
+      .setLabel('Rever')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('🔍')
+      .setDisabled(!hasLines),
     new ButtonBuilder()
       .setCustomId(`invcart::submit::${tipo}`)
       .setLabel(hasLines ? `Submeter ${cart.lines.length} linha(s)` : 'Submeter')
@@ -266,6 +272,26 @@ function buildCartPreview(cart, context = {}) {
 }
 
 /**
+ * Components para o painel de preview — Voltar + Submeter directo.
+ */
+function buildPreviewComponents(tipo) {
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`invcart::preview_back::${tipo}`)
+        .setLabel('Voltar ao carrinho')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('⬅️'),
+      new ButtonBuilder()
+        .setCustomId(`invcart::submit::${tipo}`)
+        .setLabel('Confirmar e submeter')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('✅')
+    ),
+  ];
+}
+
+/**
  * Builder para o feedback pós-submit (com botão de undo).
  */
 function buildSubmissionFeedback({ submissionId, tipo, totalQty, totalValue, lineCount, promotionLine }) {
@@ -308,5 +334,6 @@ module.exports = {
   buildCartEmbed,
   buildCartComponents,
   buildCartPreview,
+  buildPreviewComponents,
   buildSubmissionFeedback,
 };
