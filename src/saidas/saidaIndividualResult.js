@@ -706,19 +706,31 @@ async function handleWeaponDecide(interaction) {
  *     session_message (cleanup do canal operacional)
  */
 async function _checkAllResultsSubmitted(client, saidaId) {
-  const saida = await saidaRepo.findById(saidaId);
-  if (!saida || saida.status !== 'em_liquidacao') return;
-
-  const saidaEngine = require('./saidaEngine');
-  const progress = await saidaEngine.getResultProgress(saidaId);
-  if (!progress.allDone) return;
-
-  // Todos preencheram — auto-finalize.
   try {
+    const saida = await saidaRepo.findById(saidaId);
+    if (!saida) {
+      warn(`[AUTO-FINALIZE] Saída #${saidaId} não encontrada.`);
+      return;
+    }
+    if (saida.status !== 'em_liquidacao') {
+      log(`[AUTO-FINALIZE] Saída #${saidaId} status=${saida.status}, skip (já tratada ou não em liquidação).`);
+      return;
+    }
+
+    const saidaEngine = require('./saidaEngine');
+    const progress = await saidaEngine.getResultProgress(saidaId);
+    log(
+      `[AUTO-FINALIZE] Saída #${saidaId} progress: ${progress.submitted}/${progress.total} allDone=${progress.allDone}`
+    );
+    if (!progress.allDone) return;
+
+    log(`[AUTO-FINALIZE] Saída #${saidaId} — a finalizar (todos submeteram).`);
     await saidaEngine.finalizeSaida(saidaId, 'system:auto');
-    log(`[AUTO-FINALIZE] Saída #${saidaId} finalizada automaticamente (todos submeteram).`);
+    log(`[AUTO-FINALIZE] Saída #${saidaId} finalizada com sucesso.`);
   } catch (e) {
-    warn(`[AUTO-FINALIZE] Saída #${saidaId} falhou: ${e.message}`);
+    // Log verboso para diagnosticar erros de auto-finalize que antes eram
+    // engolidos silenciosamente (.catch(() => {}) no call site).
+    warn(`[AUTO-FINALIZE] Saída #${saidaId} falhou: ${e.message}\n${e.stack || ''}`);
   }
 }
 
