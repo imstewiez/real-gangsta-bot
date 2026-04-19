@@ -488,8 +488,14 @@ async function handleCloseSaidaModal(interaction) {
   const saidaSession = require('./saidaSession');
   saidaSession.refreshSessionEmbed(interaction.client, ctx.saidaId).catch(() => {});
 
-  // Ping participantes no canal da sessão para preencherem resultados
-  _pingParticipantsForResults(interaction.client, ctx.saidaId, result, closedData?.participants || []).catch(() => {});
+  // Phase 4: removido o ping público "Cada um preenche o resultado ↑" com
+  // @mentions em massa. O painel vivo da sessão (saidaSession) já mostra:
+  //   - Status "🔶 Em liquidação"
+  //   - Lista de participantes com ✅/⏳ por cada um
+  //   - Botão "✅ Preencher o meu Resultado"
+  // O ping duplicava esta info e gerava @everyone-grande no canal. Staff
+  // que queira chamar a atenção tem o botão "Relembrar Pendentes" explícito
+  // (handleRepingPendentes) como opt-in.
 
   const resultLabel = RESULT_NAME[result] || result;
   return safeReply(
@@ -499,53 +505,6 @@ async function handleCloseSaidaModal(interaction) {
     },
     { dismissible: true }
   );
-}
-
-/**
- * Ping participantes no canal da sessão para preencherem os resultados.
- * Mensagem personalizada — lista cada participante com o que precisa preencher.
- */
-async function _pingParticipantsForResults(client, saidaId, result, participants) {
-  const saida = await saidaRepo.findById(saidaId);
-  const channelId = saida?.session_channel_id;
-  if (!channelId || !client) return;
-
-  const channel = await client.channels.fetch(channelId).catch(() => null);
-  if (!channel?.isTextBased?.()) return;
-
-  const discordIds = participants.map(p => p.discord_id).filter(Boolean);
-  if (!discordIds.length) return;
-
-  const mentions = discordIds.map(id => `<@${id}>`).join(' ');
-  const resultLabel = RESULT_NAME[result] || result;
-
-  // Lista personalizada por participante
-  const participantLines = participants.map(p => {
-    const typeTag = p.participant_type === 'trabalhador' ? '🔧 trabalhador' : '🔫 caracterizado';
-    const needsWeapon = p.received_org_material && !p.own_weapon;
-    const weaponTag = needsWeapon ? ' · 📦 **arma da org** (precisas dizer se devolveste)' : '';
-    return `⏳ <@${p.discord_id}> — ${typeTag}${weaponTag}`;
-  });
-
-  const { brandEmbed } = require('../shared/embedBuilders');
-  const embed = brandEmbed('MOVEMENT')
-    .setColor(0xe67e22)
-    .setTitle(`${EMOJI.SAIDA} Saída #${saidaId} — ${resultLabel}`)
-    .setDescription(
-      '**A chefia fechou a saída.** Cada um preenche o resultado ↑\n\n' +
-        `Cliquem no botão **"${EMOJI.OK} Preencher o meu Resultado"** no painel acima.\n` +
-        'O modal pede: **sobreviveste?**, **kills**, **arma devolvida?** (se aplicável).\n\n' +
-        participantLines.join('\n') +
-        `\n\n${EMOJI.PENDENTE} **${discordIds.length}** resultado(s) por preencher — a sessão só fecha com dados de todos.`
-    );
-
-  await channel
-    .send({
-      content: mentions,
-      embeds: [embed],
-      allowedMentions: { users: discordIds },
-    })
-    .catch(() => {});
 }
 
 /**
