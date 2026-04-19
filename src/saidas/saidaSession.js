@@ -38,7 +38,7 @@ const {
 } = require('discord.js');
 const { saidaRepo, memberRepo, inventoryRepo } = require('../repositories');
 const saidaEngine = require('./saidaEngine');
-const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply, safeUpdate, isDuplicate, scheduleDeleteInteractionReply } = require('../shared/interactionHelpers');
 const { brandEmbed, applyLogo, rankBadge } = require('../shared/embedBuilders');
 const { EMOJI, SAIDA_TYPE } = require('../content');
 const CONFIG = require('../config');
@@ -68,7 +68,12 @@ async function buildSessionEmbed(saidaId) {
     const t = String(saida.scheduled_time).slice(0, 5);
     if (t && t !== '00:00') dateLine += ` · ${t}`;
   }
-  const leader = saida.leader_name ? `<@${saida.leader_discord_id}>` : '—';
+  // Líder = sempre o criador da saída. operations.leader_id raramente é
+  // preenchido (requeria UI de assign que não existe); created_by (discord_id
+  // do utilizador que abriu a saída) é o sinal fiável. Fallback para
+  // leader_discord_id se created_by ausente em saídas muito antigas.
+  const leaderId = saida.created_by || saida.leader_discord_id;
+  const leader = leaderId ? `<@${leaderId}>` : '—';
 
   const isClosed = saida.status === 'cancelada';
   const isConcluded = saida.status === 'concluida';
@@ -442,7 +447,9 @@ async function handleCaracterizadoSource(interaction) {
     .addOptions(options);
 
   const row = new ActionRowBuilder().addComponents(select);
-  return safeReply(
+  // safeUpdate substitui o ephemeral "como te armas?" (step 1) pelo select.
+  // Antes era safeReply que criava um 2º ephemeral → stacking visível.
+  return safeUpdate(
     interaction,
     {
       content:
@@ -450,7 +457,6 @@ async function handleCaracterizadoSource(interaction) {
           ? `**Saída #${saidaId}** — escolhe a arma que queres da org.`
           : `**Saída #${saidaId}** — diz qual é a tua arma.`,
       components: [row],
-      flags: MessageFlags.Ephemeral,
     },
     { messageClass: 'FLOW' }
   );
@@ -489,6 +495,8 @@ async function handleCaracterizadoWeaponPick(interaction) {
       content: `${EMOJI.OK} Registado como **caracterizado** na saída #${saidaId} — arma ${srcLabel}: **${weaponName}**.`,
       components: [],
     });
+    // Auto-delete informativo — 10s.
+    scheduleDeleteInteractionReply(interaction, 10_000);
 
     refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
   } catch (e) {
@@ -496,6 +504,7 @@ async function handleCaracterizadoWeaponPick(interaction) {
       content: `${EMOJI.ERRO} ${e.message}`,
       components: [],
     });
+    scheduleDeleteInteractionReply(interaction, 10_000);
   }
 }
 

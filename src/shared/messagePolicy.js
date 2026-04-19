@@ -35,7 +35,7 @@ const MessageClass = Object.freeze({
  * e densidade típica de informação.
  */
 const TTL_MS = Object.freeze({
-  BANAL: 20_000,
+  BANAL: 10_000, // "guardado", confirmações — 10s (dropado de 20s por UX feedback)
   WARN: 45_000,
   ERROR: 60_000,
   RESULT: 60_000,
