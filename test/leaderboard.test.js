@@ -30,11 +30,7 @@ require.cache[resolved('db.js')] = {
   },
 };
 
-const {
-  dayBounds,
-  monthBoundsUTC,
-  periodBounds,
-} = require('../src/leaderboard/leaderboardEngine');
+const { dayBounds, monthBoundsUTC, periodBounds } = require('../src/leaderboard/leaderboardEngine');
 
 const {
   formatLeaderLine,
@@ -45,11 +41,7 @@ const {
   PERIOD_LABEL,
 } = require('../src/leaderboard/leaderboardPanel');
 
-const {
-  canUserRefresh,
-  markUserRefresh,
-  REFRESH_COOLDOWN_MS,
-} = require('../src/leaderboard/leaderboardPublisher');
+const { canUserRefresh, markUserRefresh, REFRESH_COOLDOWN_MS } = require('../src/leaderboard/leaderboardPublisher');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Period bounds
@@ -309,7 +301,7 @@ describe('leaderboardPublisher — global debounce', () => {
     require.cache[resolved('db.js')] = {
       exports: {
         pool: { connect: async () => ({ query: async () => ({ rows: [] }), release: () => {} }) },
-        query: async (sql) => {
+        query: async sql => {
           if (/SELECT channel_id, message_id, last_refreshed_at FROM leaderboard_messages/.test(sql)) {
             return { rows: [{ channel_id: 'ch', message_id: 'msg-123', last_refreshed_at: new Date() }] };
           }

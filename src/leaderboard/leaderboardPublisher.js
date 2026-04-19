@@ -17,11 +17,7 @@ const { query } = require('../db');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
 const { getAllPeriodsLeaders, getPeriodLeaders } = require('./leaderboardEngine');
-const {
-  buildLeaderboardEmbed,
-  buildLeaderboardComponents,
-  buildDetailsEmbed,
-} = require('./leaderboardPanel');
+const { buildLeaderboardEmbed, buildLeaderboardComponents, buildDetailsEmbed } = require('./leaderboardPanel');
 
 let _client = null;
 function setClient(client) {
@@ -51,10 +47,9 @@ async function _upsertState(channelId, messageId) {
 }
 
 async function _touchState(channelId) {
-  await query(
-    `UPDATE leaderboard_messages SET last_refreshed_at = NOW(), updated_at = NOW() WHERE channel_id = $1`,
-    [channelId]
-  );
+  await query(`UPDATE leaderboard_messages SET last_refreshed_at = NOW(), updated_at = NOW() WHERE channel_id = $1`, [
+    channelId,
+  ]);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -124,12 +119,10 @@ async function publishOrRefresh(client = _client, { force = false } = {}) {
     // Fall-through: cria novo (state stale).
   }
 
-  const msg = await channel
-    .send({ embeds: [embed], components, allowedMentions: { parse: [] } })
-    .catch(e => {
-      warn(`[LEADERBOARD] send falhou: ${e.message}`);
-      return null;
-    });
+  const msg = await channel.send({ embeds: [embed], components, allowedMentions: { parse: [] } }).catch(e => {
+    warn(`[LEADERBOARD] send falhou: ${e.message}`);
+    return null;
+  });
   if (!msg) return { skipped: 'send_failed' };
   await _upsertState(channelId, msg.id);
   log(`[LEADERBOARD] Published new live message ${msg.id} em ${channelId}.`);

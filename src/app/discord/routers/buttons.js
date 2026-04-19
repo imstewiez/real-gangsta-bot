@@ -69,10 +69,7 @@ const chefiaActions = require('../../../panels/chefiaActions');
 const patraoDiZonaActions = require('../../../panels/patraoDiZonaActions');
 
 // ── Leaderboard live panel ─────────────────────────────────────────────────
-const {
-  handleLeaderboardDetails,
-  handleLeaderboardRefresh,
-} = require('../../../leaderboard/leaderboardHandlers');
+const { handleLeaderboardDetails, handleLeaderboardRefresh } = require('../../../leaderboard/leaderboardHandlers');
 
 // ── Perfil Operacional (drill-downs) ───────────────────────────────────────
 const perfilMaterial = require('../../../perfil/perfilMaterial');

@@ -19,11 +19,7 @@
  *     vê. Permite "ver mais" sem poluir o canal.
  */
 
-const {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-} = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { brandEmbed, rankBadge } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 
@@ -145,7 +141,11 @@ function buildLeaderboardComponents() {
       .setEmoji(PERIOD_ICON.monthly)
   );
   const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('lb::refresh').setLabel('Atualizar agora').setStyle(ButtonStyle.Secondary).setEmoji('🔄')
+    new ButtonBuilder()
+      .setCustomId('lb::refresh')
+      .setLabel('Atualizar agora')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('🔄')
   );
   return [row1, row2];
 }

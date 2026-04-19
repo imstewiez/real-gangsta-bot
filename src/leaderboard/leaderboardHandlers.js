@@ -56,9 +56,7 @@ async function handleLeaderboardRefresh(interaction) {
   try {
     const r = await publishOrRefresh(interaction.client);
     if (r.skipped) {
-      return interaction
-        .editReply({ content: `${EMOJI.WARN} Refresh ignorado: ${r.skipped}.` })
-        .catch(() => {});
+      return interaction.editReply({ content: `${EMOJI.WARN} Refresh ignorado: ${r.skipped}.` }).catch(() => {});
     }
     return interaction
       .editReply({

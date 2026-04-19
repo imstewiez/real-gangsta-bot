@@ -218,12 +218,10 @@ async function notifyBairristaBatch(opts) {
       embed.setFooter({ text: `submission ${opts.submissionId.slice(0, 8)}` });
     }
 
-    const msg = await channel
-      .send({ embeds: [embed], allowedMentions: { parse: [] } })
-      .catch(e => {
-        warn(`[BAIRRISTA-LOG] send batch falhou: ${e.message}`);
-        return null;
-      });
+    const msg = await channel.send({ embeds: [embed], allowedMentions: { parse: [] } }).catch(e => {
+      warn(`[BAIRRISTA-LOG] send batch falhou: ${e.message}`);
+      return null;
+    });
     return { messageId: msg?.id || null, channelId: channel.id };
   } catch (e) {
     warn(`[BAIRRISTA-LOG] notifyBairristaBatch falhou: ${e.message}`);

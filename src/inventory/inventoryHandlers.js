@@ -763,11 +763,7 @@ async function _refreshCartPanel(interaction, cart, { extraNote } = {}) {
   let canRepeat = false;
   if (member) {
     const movementType =
-      cart.tipo === 'venda'
-        ? 'venda_bairrista'
-        : member.role === 'oficial'
-          ? 'entrega_oficial'
-          : 'entrega_bairrista';
+      cart.tipo === 'venda' ? 'venda_bairrista' : member.role === 'oficial' ? 'entrega_oficial' : 'entrega_bairrista';
     const last = await inventoryRepo.getLastSubmissionForMember(member.id, movementType).catch(() => null);
     canRepeat = Boolean(last?.lines?.length);
   }
@@ -789,7 +785,10 @@ async function handleCartAdd(interaction) {
   if (!cart || cart.tipo !== tipo) {
     return safeReply(
       interaction,
-      { content: `${EMOJI.PENDENTE} Carrinho expirado. Volta a clicar em "Registar Material".`, flags: MessageFlags.Ephemeral },
+      {
+        content: `${EMOJI.PENDENTE} Carrinho expirado. Volta a clicar em "Registar Material".`,
+        flags: MessageFlags.Ephemeral,
+      },
       { dismissible: true }
     );
   }
@@ -807,11 +806,7 @@ async function handleCartCategory(interaction) {
   const tipo = interaction.customId.split('::')[2];
   const category = interaction.values[0];
   if (category === 'none') return;
-  const menu = await buildItemSelectMenuForCategory(
-    `invcart::pick::${tipo}::${category}`,
-    'Escolhe o item',
-    category
-  );
+  const menu = await buildItemSelectMenuForCategory(`invcart::pick::${tipo}::${category}`, 'Escolhe o item', category);
   return safeUpdate(interaction, {
     content: `Item da categoria **${category}**:`,
     embeds: [],
@@ -830,7 +825,11 @@ async function handleCartItemPick(interaction) {
 
   const item = await inventoryRepo.getItemById(itemId);
   if (!item) {
-    return safeReply(interaction, { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(
+      interaction,
+      { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral },
+      { dismissible: true }
+    );
   }
 
   const isVenda = tipo === 'venda';
@@ -890,11 +889,7 @@ async function handleCartQtyModal(interaction) {
   const bairristaCart = require('./bairristaCart');
   const cart = bairristaCart.getCart(interaction.user.id);
   if (!cart || cart.tipo !== tipo) {
-    return safeReply(
-      interaction,
-      { content: `${EMOJI.PENDENTE} Carrinho expirado. Recomeça.` },
-      { dismissible: true }
-    );
+    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Carrinho expirado. Recomeça.` }, { dismissible: true });
   }
 
   const qty = parseInt(getModalField(interaction, 'quantity'));
@@ -1063,7 +1058,9 @@ async function handleCartRepeat(interaction) {
     });
   }
   bairristaCart.saveCart(interaction.user.id, cart);
-  return _refreshCartPanel(interaction, cart, { extraNote: `🔁 _Pré-preenchido com ${last.lines.length} linha(s) da última submissão. Preços actualizados._` });
+  return _refreshCartPanel(interaction, cart, {
+    extraNote: `🔁 _Pré-preenchido com ${last.lines.length} linha(s) da última submissão. Preços actualizados._`,
+  });
 }
 
 // ── Preview (Rever) ─────────────────────────────────────────────────────────
@@ -1174,14 +1171,14 @@ async function handleCartSubmit(interaction) {
       createdBy: interaction.user.id,
     });
   } catch (e) {
-    return interaction
-      .editReply({ content: `${EMOJI.ERRO} ${e.message}`, embeds: [], components: [] })
-      .catch(() => {});
+    return interaction.editReply({ content: `${EMOJI.ERRO} ${e.message}`, embeds: [], components: [] }).catch(() => {});
   }
 
   // Auto-promoção — mantém mesma UX do single-item
   const { checkAndPromote, getPromotionProgress, formatTierName } = require('../members/autoPromotionEngine');
-  const promoResult = await checkAndPromote(interaction.user.id, interaction.guild, interaction.client).catch(() => null);
+  const promoResult = await checkAndPromote(interaction.user.id, interaction.guild, interaction.client).catch(
+    () => null
+  );
   let promotionLine = '';
   if (promoResult?.promoted) {
     promotionLine = `${EMOJI.LIDER} **Subida automática** — agora és **${formatTierName(promoResult.to)}**!`;
@@ -1220,9 +1217,7 @@ async function handleCartUndo(interaction) {
     client: interaction.client,
   });
   if (!r.undone) {
-    return interaction
-      .editReply({ content: `${EMOJI.WARN} ${r.reason}`, embeds: [], components: [] })
-      .catch(() => {});
+    return interaction.editReply({ content: `${EMOJI.WARN} ${r.reason}`, embeds: [], components: [] }).catch(() => {});
   }
   return interaction
     .editReply({

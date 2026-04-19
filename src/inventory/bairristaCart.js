@@ -63,9 +63,7 @@ function clearCart(discordId) {
  * Fundir evita duplicados visuais quando o user adiciona o mesmo item 2×.
  */
 function addLine(cart, { itemId, itemName, category, quantity, unitPrice, basePrice }) {
-  const existing = cart.lines.find(
-    l => l.itemId === itemId && (l.unitPrice ?? null) === (unitPrice ?? null)
-  );
+  const existing = cart.lines.find(l => l.itemId === itemId && (l.unitPrice ?? null) === (unitPrice ?? null));
   if (existing) {
     existing.quantity += quantity;
   } else {
@@ -128,7 +126,10 @@ function buildCartEmbed(cart, { extraNote } = {}) {
       const valTag = lineValue > 0 ? ` → **${lineValue.toLocaleString('pt-PT')}€**` : '';
       lines.push(`**${i + 1}.** ${l.itemName} · **${l.quantity}×**${priceTag}${valTag}`);
     }
-    lines.push('', `**Total:** ${totalQty} unidades${totalValue > 0 ? ` · **${totalValue.toLocaleString('pt-PT')}€**` : ''}`);
+    lines.push(
+      '',
+      `**Total:** ${totalQty} unidades${totalValue > 0 ? ` · **${totalValue.toLocaleString('pt-PT')}€**` : ''}`
+    );
   }
 
   if (cart.globalNotes) {
@@ -261,7 +262,10 @@ function buildCartPreview(cart, context = {}) {
   const SANITY_QTY = 10000;
   const huge = cart.lines.filter(l => l.quantity > SANITY_QTY);
   if (huge.length) {
-    lines.push('', `${EMOJI.WARN} **Atenção:** ${huge.length} linha(s) com qty > ${SANITY_QTY.toLocaleString('pt-PT')}. Confirma se é mesmo este o valor.`);
+    lines.push(
+      '',
+      `${EMOJI.WARN} **Atenção:** ${huge.length} linha(s) com qty > ${SANITY_QTY.toLocaleString('pt-PT')}. Confirma se é mesmo este o valor.`
+    );
   }
 
   const embed = brandEmbed('MOVEMENT')
@@ -297,9 +301,7 @@ function buildPreviewComponents(tipo) {
 function buildSubmissionFeedback({ submissionId, tipo, totalQty, totalValue, lineCount, promotionLine }) {
   const isVenda = tipo === 'venda';
   const title = isVenda ? `${EMOJI.LUCRO} Venda submetida` : `${EMOJI.MATERIAL} Entrega submetida`;
-  const lines = [
-    `**${lineCount}** linha(s) · **${totalQty.toLocaleString('pt-PT')}** unidades`,
-  ];
+  const lines = [`**${lineCount}** linha(s) · **${totalQty.toLocaleString('pt-PT')}** unidades`];
   if (totalValue > 0) lines.push(`Valor: **${totalValue.toLocaleString('pt-PT')}€**`);
   if (promotionLine) lines.push('', promotionLine);
   lines.push('', `_Podes desfazer esta submissão nos próximos 5 min._`);

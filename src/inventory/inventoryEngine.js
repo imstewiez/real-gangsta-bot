@@ -352,7 +352,10 @@ async function undoSubmission({ submissionId, requesterDiscordId, client = null 
   // Janela de tempo: última insert da submission.
   const newest = rows.reduce((a, r) => Math.max(a, new Date(r.created_at).getTime()), 0);
   if (Date.now() - newest > UNDO_WINDOW_MS) {
-    return { undone: false, reason: `Passaram mais de ${Math.round(UNDO_WINDOW_MS / 60_000)} min — não podes desfazer.` };
+    return {
+      undone: false,
+      reason: `Passaram mais de ${Math.round(UNDO_WINDOW_MS / 60_000)} min — não podes desfazer.`,
+    };
   }
 
   // Captura info do log para editar depois

@@ -121,8 +121,20 @@ describe('autoPickCaracterizados — protected roles', () => {
     _setStats(10, { kd: 0, mvp: 0, surv: 0, material: 0 });
     _setStats(20, { kd: 5, mvp: 5, surv: 1, material: 0 });
     const participants = [
-      { member_id: 10, member_role: 'chefia', own_weapon: false, participant_type: 'pending', created_at: '2026-01-01' },
-      { member_id: 20, member_role: 'bairrista', own_weapon: false, participant_type: 'pending', created_at: '2026-01-01' },
+      {
+        member_id: 10,
+        member_role: 'chefia',
+        own_weapon: false,
+        participant_type: 'pending',
+        created_at: '2026-01-01',
+      },
+      {
+        member_id: 20,
+        member_role: 'bairrista',
+        own_weapon: false,
+        participant_type: 'pending',
+        created_at: '2026-01-01',
+      },
     ];
     const { caracterizados, trabalhadores } = await autoPickCaracterizados(participants, 1);
     // chefia tem lugar reservado; maxChar=1 → sobra 0 slots para competitive → bairrista fica trab
@@ -136,9 +148,27 @@ describe('autoPickCaracterizados — protected roles', () => {
     _setStats(1, { kd: 10, mvp: 0, surv: 0, material: 0 });
     _setStats(2, { kd: 1, mvp: 0, surv: 0, material: 0 });
     const participants = [
-      { member_id: 1, member_role: 'bairrista', own_weapon: false, participant_type: 'pending', created_at: '2026-01-01' },
-      { member_id: 2, member_role: 'bairrista', own_weapon: false, participant_type: 'pending', created_at: '2026-01-01' },
-      { member_id: 99, member_role: 'patrao_di_zona', own_weapon: false, participant_type: 'pending', created_at: '2026-01-01' },
+      {
+        member_id: 1,
+        member_role: 'bairrista',
+        own_weapon: false,
+        participant_type: 'pending',
+        created_at: '2026-01-01',
+      },
+      {
+        member_id: 2,
+        member_role: 'bairrista',
+        own_weapon: false,
+        participant_type: 'pending',
+        created_at: '2026-01-01',
+      },
+      {
+        member_id: 99,
+        member_role: 'patrao_di_zona',
+        own_weapon: false,
+        participant_type: 'pending',
+        created_at: '2026-01-01',
+      },
     ];
     const { caracterizados, trabalhadores } = await autoPickCaracterizados(participants, 2);
     // 1 protected + 1 vaga → apenas kd=10 (member 1) vai. member 2 (kd=1) fica trab.
@@ -152,7 +182,13 @@ describe('autoPickCaracterizados — protected roles', () => {
     const participants = [
       { member_id: 1, member_role: 'chefia', own_weapon: false, participant_type: 'pending', created_at: '2026-01-01' },
       { member_id: 2, member_role: 'chefia', own_weapon: false, participant_type: 'pending', created_at: '2026-01-01' },
-      { member_id: 3, member_role: 'patrao_di_zona', own_weapon: false, participant_type: 'pending', created_at: '2026-01-01' },
+      {
+        member_id: 3,
+        member_role: 'patrao_di_zona',
+        own_weapon: false,
+        participant_type: 'pending',
+        created_at: '2026-01-01',
+      },
     ];
     const { caracterizados, trabalhadores } = await autoPickCaracterizados(participants, 1);
     assert.equal(caracterizados.length, 3);
@@ -171,8 +207,20 @@ describe('autoPickCaracterizados — ties', () => {
     _setStats(1, { kd: 2, mvp: 0, surv: 0, material: 0 });
     _setStats(2, { kd: 2, mvp: 0, surv: 0, material: 0 });
     const participants = [
-      { member_id: 1, member_role: 'bairrista', own_weapon: false, participant_type: 'pending', created_at: '2026-01-02T10:00:00Z' },
-      { member_id: 2, member_role: 'bairrista', own_weapon: false, participant_type: 'pending', created_at: '2026-01-02T09:00:00Z' },
+      {
+        member_id: 1,
+        member_role: 'bairrista',
+        own_weapon: false,
+        participant_type: 'pending',
+        created_at: '2026-01-02T10:00:00Z',
+      },
+      {
+        member_id: 2,
+        member_role: 'bairrista',
+        own_weapon: false,
+        participant_type: 'pending',
+        created_at: '2026-01-02T09:00:00Z',
+      },
     ];
     const { caracterizados } = await autoPickCaracterizados(participants, 1);
     // member 2 inscreveu 1h antes → ganha o desempate
@@ -198,8 +246,20 @@ describe('autoPickCaracterizados — edge cases', () => {
     _setStats(1, { kd: 1, mvp: 0, surv: 0, material: 0 });
     _setStats(2, { kd: 2, mvp: 0, surv: 0, material: 0 });
     const participants = [
-      { member_id: 1, member_role: 'bairrista', own_weapon: false, participant_type: 'pending', created_at: '2026-01-01' },
-      { member_id: 2, member_role: 'bairrista', own_weapon: false, participant_type: 'pending', created_at: '2026-01-01' },
+      {
+        member_id: 1,
+        member_role: 'bairrista',
+        own_weapon: false,
+        participant_type: 'pending',
+        created_at: '2026-01-01',
+      },
+      {
+        member_id: 2,
+        member_role: 'bairrista',
+        own_weapon: false,
+        participant_type: 'pending',
+        created_at: '2026-01-01',
+      },
     ];
     const { caracterizados, trabalhadores } = await autoPickCaracterizados(participants, 12);
     assert.equal(caracterizados.length, 2);
@@ -223,9 +283,27 @@ describe('autoPickCaracterizados — cenário pedir_juntar (simula alerta)', () 
     _setStats(99, { kd: 5, mvp: 0, surv: 0, material: 0 });
 
     const currentCaracs = [
-      { member_id: 1, member_role: 'bairrista', own_weapon: false, participant_type: 'caracterizado', created_at: '2026-01-01' },
-      { member_id: 2, member_role: 'bairrista', own_weapon: false, participant_type: 'caracterizado', created_at: '2026-01-01' },
-      { member_id: 3, member_role: 'bairrista', own_weapon: false, participant_type: 'caracterizado', created_at: '2026-01-01' },
+      {
+        member_id: 1,
+        member_role: 'bairrista',
+        own_weapon: false,
+        participant_type: 'caracterizado',
+        created_at: '2026-01-01',
+      },
+      {
+        member_id: 2,
+        member_role: 'bairrista',
+        own_weapon: false,
+        participant_type: 'caracterizado',
+        created_at: '2026-01-01',
+      },
+      {
+        member_id: 3,
+        member_role: 'bairrista',
+        own_weapon: false,
+        participant_type: 'caracterizado',
+        created_at: '2026-01-01',
+      },
     ];
     const newRequester = {
       member_id: 99,
@@ -249,8 +327,20 @@ describe('autoPickCaracterizados — cenário pedir_juntar (simula alerta)', () 
     _setStats(99, { kd: 0.5, mvp: 0, surv: 0, material: 0 });
 
     const currentCaracs = [
-      { member_id: 1, member_role: 'bairrista', own_weapon: false, participant_type: 'caracterizado', created_at: '2026-01-01' },
-      { member_id: 2, member_role: 'bairrista', own_weapon: false, participant_type: 'caracterizado', created_at: '2026-01-01' },
+      {
+        member_id: 1,
+        member_role: 'bairrista',
+        own_weapon: false,
+        participant_type: 'caracterizado',
+        created_at: '2026-01-01',
+      },
+      {
+        member_id: 2,
+        member_role: 'bairrista',
+        own_weapon: false,
+        participant_type: 'caracterizado',
+        created_at: '2026-01-01',
+      },
     ];
     const newRequester = {
       member_id: 99,

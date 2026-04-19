@@ -79,15 +79,43 @@ describe('bairristaCart — addLine merge', () => {
 
   it('mesmo itemId mas preço custom diferente → NÃO funde', () => {
     const c = bairristaCart.createCart('U001', 'venda');
-    bairristaCart.addLine(c, { itemId: 1, itemName: 'Pregos', category: 'metais', quantity: 5, unitPrice: 15, basePrice: 10 });
-    bairristaCart.addLine(c, { itemId: 1, itemName: 'Pregos', category: 'metais', quantity: 3, unitPrice: 20, basePrice: 10 });
+    bairristaCart.addLine(c, {
+      itemId: 1,
+      itemName: 'Pregos',
+      category: 'metais',
+      quantity: 5,
+      unitPrice: 15,
+      basePrice: 10,
+    });
+    bairristaCart.addLine(c, {
+      itemId: 1,
+      itemName: 'Pregos',
+      category: 'metais',
+      quantity: 3,
+      unitPrice: 20,
+      basePrice: 10,
+    });
     assert.equal(c.lines.length, 2, 'preços diferentes → linhas separadas');
   });
 
   it('mesmo itemId: um com custom, outro sem → não funde', () => {
     const c = bairristaCart.createCart('U001', 'venda');
-    bairristaCart.addLine(c, { itemId: 1, itemName: 'Pregos', category: 'metais', quantity: 5, unitPrice: 15, basePrice: 10 });
-    bairristaCart.addLine(c, { itemId: 1, itemName: 'Pregos', category: 'metais', quantity: 3, unitPrice: null, basePrice: 10 });
+    bairristaCart.addLine(c, {
+      itemId: 1,
+      itemName: 'Pregos',
+      category: 'metais',
+      quantity: 5,
+      unitPrice: 15,
+      basePrice: 10,
+    });
+    bairristaCart.addLine(c, {
+      itemId: 1,
+      itemName: 'Pregos',
+      category: 'metais',
+      quantity: 3,
+      unitPrice: null,
+      basePrice: 10,
+    });
     assert.equal(c.lines.length, 2);
   });
 });
@@ -166,7 +194,14 @@ describe('bairristaCart — buildCartEmbed', () => {
 
   it('flag ⚡ em linha de venda com preço custom', () => {
     const c = bairristaCart.createCart('U3', 'venda');
-    bairristaCart.addLine(c, { itemId: 1, itemName: 'Pregos', category: 'metais', quantity: 5, unitPrice: 15, basePrice: 10 });
+    bairristaCart.addLine(c, {
+      itemId: 1,
+      itemName: 'Pregos',
+      category: 'metais',
+      quantity: 5,
+      unitPrice: 15,
+      basePrice: 10,
+    });
     const embed = bairristaCart.buildCartEmbed(c);
     assert.match(embed.data.description, /⚡/);
     bairristaCart.clearCart('U3');
