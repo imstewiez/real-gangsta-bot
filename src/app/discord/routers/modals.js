@@ -11,6 +11,8 @@ const {
   handleAddItemModal,
   handleEditPriceModal,
   handleEncomendaModal,
+  handleCartQtyModal,
+  handleCartNotesModal,
 } = require('../../../inventory/inventoryHandlers');
 const {
   handleCreateSaidaModal,
@@ -31,13 +33,17 @@ const MODAL_ROUTES = [
   exact('onboard::modal_tag', handleTagModal),
   prefix('onboard::modal_deny::', handleDenyModalSubmit),
 
-  // Inventory
+  // Inventory (legacy single-item + cart modals)
   exact('inv::modal_entrega_bairrista', handleQuantityModal),
   exact('inv::modal_venda_bairrista', handleQuantityModal),
   exact('inv::modal_ajuste_manual', handleAdjustModal),
   exact('inv::modal_add_item', handleAddItemModal),
   exact('inv::modal_edit_price', handleEditPriceModal),
   exact('inv::modal_encomenda', handleEncomendaModal),
+
+  // Bairrista cart modals (migration 038)
+  prefix('invcart::qty_modal::', handleCartQtyModal),
+  prefix('invcart::notes_modal::', handleCartNotesModal),
 
   // Saída
   exact('saida::modal_create', handleCreateSaidaModal),

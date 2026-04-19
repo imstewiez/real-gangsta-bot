@@ -30,6 +30,12 @@ const {
   handleStockCommand,
   handleAdjustStockButton,
   handleGerirMateriaisButton,
+  handleCartAdd,
+  handleCartNotesButton,
+  handleCartCancel,
+  handleCartRepeat,
+  handleCartSubmit,
+  handleCartUndo,
 } = require('../../../inventory/inventoryHandlers');
 const {
   handleCreateSaidaButton,
@@ -123,6 +129,14 @@ const BUTTON_ROUTES = [
   exact('onboard::meu_pedido', handleMeuPedido),
   prefix('onboard::approve::', approveHandler),
   prefix('onboard::deny::', denyHandler),
+
+  // Bairrista cart (migration 038) — multi-item flow
+  prefix('invcart::add::', handleCartAdd),
+  prefix('invcart::notes::', handleCartNotesButton),
+  prefix('invcart::cancel::', handleCartCancel),
+  prefix('invcart::repeat::', handleCartRepeat),
+  prefix('invcart::submit::', handleCartSubmit),
+  prefix('invcart::undo::', handleCartUndo),
 
   // Bairrista / Oficial — painel bairrista
   exact('bairrista::registar_material', handleRegistarMaterialButton),

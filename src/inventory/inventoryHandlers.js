@@ -78,18 +78,27 @@ async function handleRegistarMaterialButton(interaction) {
   });
 }
 
-// Step 2: Escolheu entrega ou venda → mostra dropdown de materiais (in-place)
+// Step 2: Escolheu entrega ou venda → inicia carrinho (novo fluxo multi-item)
 async function handleTipoRegistoSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const tipo = interaction.values[0]; // 'entrega' ou 'venda'
-  _setItemCtx(interaction.user.id, { tipo });
 
-  const prefix = tipo === 'venda' ? 'inv::cat_venda' : 'inv::cat_entrega';
-  const menu = await buildCategorySelectMenu(prefix, 'Seleciona a categoria');
-  await safeUpdate(interaction, {
-    content: tipo === 'venda' ? INVENTORY.PROMPTS.QUE_MATERIAL_VENDA : INVENTORY.PROMPTS.QUE_MATERIAL_ENTREGA,
-    components: [menu],
-  });
+  const bairristaCart = require('./bairristaCart');
+  const cart = bairristaCart.createCart(interaction.user.id, tipo);
+
+  // "Repetir última" visível se existe submission recente do mesmo tipo.
+  const member = await memberRepo.findByDiscordId(interaction.user.id);
+  let canRepeat = false;
+  if (member) {
+    const movementType =
+      tipo === 'venda' ? 'venda_bairrista' : member.role === 'oficial' ? 'entrega_oficial' : 'entrega_bairrista';
+    const last = await inventoryRepo.getLastSubmissionForMember(member.id, movementType).catch(() => null);
+    canRepeat = Boolean(last?.lines?.length);
+  }
+
+  const embed = bairristaCart.buildCartEmbed(cart);
+  const components = bairristaCart.buildCartComponents(cart, { canRepeat });
+  await safeUpdate(interaction, { content: '', embeds: [embed], components });
 }
 
 // Step 2b: Escolheu categoria → mostra items dessa categoria
@@ -740,6 +749,405 @@ async function handleEncomendaModal(interaction) {
   return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// BAIRRISTA CART — multi-item flow (migration 038 + bairristaCart.js)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Re-render do painel do carrinho após mutação. Usa editReply se a
+ * interaction já foi deferida; senão safeUpdate (component interaction).
+ */
+async function _refreshCartPanel(interaction, cart, { extraNote } = {}) {
+  const bairristaCart = require('./bairristaCart');
+  const member = await memberRepo.findByDiscordId(interaction.user.id).catch(() => null);
+  let canRepeat = false;
+  if (member) {
+    const movementType =
+      cart.tipo === 'venda'
+        ? 'venda_bairrista'
+        : member.role === 'oficial'
+          ? 'entrega_oficial'
+          : 'entrega_bairrista';
+    const last = await inventoryRepo.getLastSubmissionForMember(member.id, movementType).catch(() => null);
+    canRepeat = Boolean(last?.lines?.length);
+  }
+  const embed = bairristaCart.buildCartEmbed(cart, { extraNote });
+  const components = bairristaCart.buildCartComponents(cart, { canRepeat });
+  const payload = { content: '', embeds: [embed], components };
+  if (interaction.deferred || interaction.replied) {
+    await interaction.editReply(payload).catch(() => {});
+  } else {
+    await safeUpdate(interaction, payload);
+  }
+}
+
+// ── Add item → mostra categoria select ──────────────────────────────────────
+async function handleCartAdd(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const tipo = interaction.customId.split('::')[2];
+  const cart = require('./bairristaCart').getCart(interaction.user.id);
+  if (!cart || cart.tipo !== tipo) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.PENDENTE} Carrinho expirado. Volta a clicar em "Registar Material".`, flags: MessageFlags.Ephemeral },
+      { dismissible: true }
+    );
+  }
+  const menu = await buildCategorySelectMenu(`invcart::cat::${tipo}`, 'Escolhe a categoria');
+  return safeUpdate(interaction, {
+    content: `Escolhe a categoria do item a adicionar:`,
+    embeds: [],
+    components: [menu],
+  });
+}
+
+// ── Categoria escolhida → mostra itens ──────────────────────────────────────
+async function handleCartCategory(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const tipo = interaction.customId.split('::')[2];
+  const category = interaction.values[0];
+  if (category === 'none') return;
+  const menu = await buildItemSelectMenuForCategory(
+    `invcart::pick::${tipo}::${category}`,
+    'Escolhe o item',
+    category
+  );
+  return safeUpdate(interaction, {
+    content: `Item da categoria **${category}**:`,
+    embeds: [],
+    components: [menu],
+  });
+}
+
+// ── Item escolhido → abre modal qty (+ preço custom em vendas) ─────────────
+async function handleCartItemPick(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const parts = interaction.customId.split('::');
+  const tipo = parts[2];
+  const category = parts[3];
+  const itemId = parseInt(interaction.values[0]);
+  if (!itemId || itemId === 'none') return;
+
+  const item = await inventoryRepo.getItemById(itemId);
+  if (!item) {
+    return safeReply(interaction, { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral }, { dismissible: true });
+  }
+
+  const isVenda = tipo === 'venda';
+  const basePrice = parseFloat(item.estimated_value) || 0;
+
+  const modalRows = [
+    new ActionRowBuilder().addComponents(
+      new TextInputBuilder()
+        .setCustomId('quantity')
+        .setLabel('Quantidade')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('Ex: 10')
+        .setRequired(true)
+        .setMaxLength(10)
+    ),
+  ];
+  if (isVenda) {
+    modalRows.push(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('unit_price')
+          .setLabel(`Preço por unidade (base: ${basePrice}€)`)
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder(`${basePrice} — deixa em branco para usar base`)
+          .setRequired(false)
+          .setMaxLength(10)
+      )
+    );
+  }
+
+  const modal = new ModalBuilder()
+    .setCustomId(`invcart::qty_modal::${tipo}::${itemId}::${category}`)
+    .setTitle(`${isVenda ? 'Vender' : 'Entregar'} ${item.name}`.slice(0, 45))
+    .addComponents(...modalRows);
+
+  await safeShowModal(interaction, modal);
+
+  // Discord API: update + showModal incompatível. Delete explícito do painel
+  // do item-pick para não ficar pendurado; re-render do carrinho acontece
+  // quando o modal for submetido.
+  if (interaction.message) {
+    setImmediate(() => {
+      interaction.message.delete().catch(() => {});
+    });
+  }
+}
+
+// ── Qty modal submetido → adiciona linha + re-render painel ─────────────────
+async function handleCartQtyModal(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const parts = interaction.customId.split('::');
+  const tipo = parts[2];
+  const itemId = parseInt(parts[3]);
+
+  const bairristaCart = require('./bairristaCart');
+  const cart = bairristaCart.getCart(interaction.user.id);
+  if (!cart || cart.tipo !== tipo) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.PENDENTE} Carrinho expirado. Recomeça.` },
+      { dismissible: true }
+    );
+  }
+
+  const qty = parseInt(getModalField(interaction, 'quantity'));
+  if (isNaN(qty) || qty <= 0) {
+    return safeReply(interaction, { content: ERRORS.INVALID_QUANTITY() }, { dismissible: true });
+  }
+
+  const item = await inventoryRepo.getItemById(itemId);
+  if (!item) {
+    return safeReply(interaction, { content: ERRORS.ITEM_NOT_FOUND() }, { dismissible: true });
+  }
+  const basePrice = parseFloat(item.estimated_value) || 0;
+
+  let unitPrice = null;
+  if (tipo === 'venda') {
+    const raw = getModalField(interaction, 'unit_price');
+    if (raw && raw.trim()) {
+      const parsed = parseFloat(raw.replace(',', '.'));
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        return safeReply(interaction, { content: `${EMOJI.ERRO} Preço inválido.` }, { dismissible: true });
+      }
+      // Só guarda custom se diferente do base.
+      if (parsed !== basePrice) unitPrice = parsed;
+    }
+  }
+
+  bairristaCart.addLine(cart, {
+    itemId: item.id,
+    itemName: item.name,
+    category: item.category,
+    quantity: qty,
+    unitPrice,
+    basePrice,
+  });
+  bairristaCart.saveCart(interaction.user.id, cart);
+
+  return _refreshCartPanel(interaction, cart);
+}
+
+// ── Remover uma linha via select menu ───────────────────────────────────────
+async function handleCartLineAction(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const tipo = interaction.customId.split('::')[2];
+  const value = interaction.values[0]; // "remove:<idx>"
+  const [action, idxStr] = value.split(':');
+
+  const bairristaCart = require('./bairristaCart');
+  const cart = bairristaCart.getCart(interaction.user.id);
+  if (!cart || cart.tipo !== tipo) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.PENDENTE} Carrinho expirado.`, flags: MessageFlags.Ephemeral },
+      { dismissible: true }
+    );
+  }
+
+  if (action === 'remove') {
+    const idx = parseInt(idxStr);
+    bairristaCart.removeLine(cart, idx);
+    bairristaCart.saveCart(interaction.user.id, cart);
+  }
+  return _refreshCartPanel(interaction, cart);
+}
+
+// ── Notas globais ───────────────────────────────────────────────────────────
+async function handleCartNotesButton(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const tipo = interaction.customId.split('::')[2];
+  const cart = require('./bairristaCart').getCart(interaction.user.id);
+  if (!cart) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.PENDENTE} Carrinho expirado.`, flags: MessageFlags.Ephemeral },
+      { dismissible: true }
+    );
+  }
+  const modal = new ModalBuilder()
+    .setCustomId(`invcart::notes_modal::${tipo}`)
+    .setTitle('Notas da submissão')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('notes')
+          .setLabel('Notas (visível no log)')
+          .setStyle(TextInputStyle.Paragraph)
+          .setRequired(false)
+          .setMaxLength(500)
+          .setValue(cart.globalNotes || '')
+      )
+    );
+  await safeShowModal(interaction, modal);
+}
+
+async function handleCartNotesModal(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const tipo = interaction.customId.split('::')[2];
+  const bairristaCart = require('./bairristaCart');
+  const cart = bairristaCart.getCart(interaction.user.id);
+  if (!cart || cart.tipo !== tipo) {
+    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Carrinho expirado.` }, { dismissible: true });
+  }
+  const notes = getModalField(interaction, 'notes') || '';
+  bairristaCart.setNotes(cart, notes);
+  bairristaCart.saveCart(interaction.user.id, cart);
+  return _refreshCartPanel(interaction, cart);
+}
+
+// ── Cancelar carrinho ───────────────────────────────────────────────────────
+async function handleCartCancel(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  require('./bairristaCart').clearCart(interaction.user.id);
+  return safeUpdate(
+    interaction,
+    {
+      content: `${EMOJI.OK} Carrinho cancelado. Sem alterações no stock.`,
+      embeds: [],
+      components: [],
+    },
+    { dismissible: true }
+  );
+}
+
+// ── Repetir última entrega/venda ────────────────────────────────────────────
+async function handleCartRepeat(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const tipo = interaction.customId.split('::')[2];
+  const bairristaCart = require('./bairristaCart');
+  const cart = bairristaCart.getCart(interaction.user.id);
+  if (!cart || cart.tipo !== tipo) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.PENDENTE} Carrinho expirado.`, flags: MessageFlags.Ephemeral },
+      { dismissible: true }
+    );
+  }
+  const member = await memberRepo.findByDiscordId(interaction.user.id);
+  if (!member) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} Não estás registado.`, flags: MessageFlags.Ephemeral },
+      { dismissible: true }
+    );
+  }
+  const movementType =
+    tipo === 'venda' ? 'venda_bairrista' : member.role === 'oficial' ? 'entrega_oficial' : 'entrega_bairrista';
+  const last = await inventoryRepo.getLastSubmissionForMember(member.id, movementType);
+  if (!last?.lines?.length) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.INFO} Não tens submissão anterior deste tipo.`, flags: MessageFlags.Ephemeral },
+      { dismissible: true }
+    );
+  }
+  // Re-resolve preços: usa base actual do catálogo (evita time-travel).
+  for (const line of last.lines) {
+    const item = await inventoryRepo.getItemById(line.item_id).catch(() => null);
+    if (!item) continue;
+    bairristaCart.addLine(cart, {
+      itemId: line.item_id,
+      itemName: line.item_name,
+      category: line.category,
+      quantity: line.quantity,
+      unitPrice: null, // não re-usa preço custom antigo
+      basePrice: parseFloat(item.estimated_value) || 0,
+    });
+  }
+  bairristaCart.saveCart(interaction.user.id, cart);
+  return _refreshCartPanel(interaction, cart, { extraNote: `🔁 _Pré-preenchido com ${last.lines.length} linha(s) da última submissão. Preços actualizados._` });
+}
+
+// ── Submeter carrinho ───────────────────────────────────────────────────────
+async function handleCartSubmit(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const tipo = interaction.customId.split('::')[2];
+  const bairristaCart = require('./bairristaCart');
+  const cart = bairristaCart.getCart(interaction.user.id);
+  if (!cart || cart.tipo !== tipo) {
+    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Carrinho expirado.` }, { dismissible: true });
+  }
+  if (!cart.lines.length) {
+    return safeReply(interaction, { content: `${EMOJI.WARN} Carrinho vazio.` }, { dismissible: true });
+  }
+
+  const { recordDeliveryBatch } = require('./inventoryEngine');
+  let result;
+  try {
+    result = await recordDeliveryBatch({
+      discordId: interaction.user.id,
+      tipo,
+      lines: cart.lines.map(l => ({
+        itemId: l.itemId,
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+      })),
+      globalNotes: cart.globalNotes,
+      createdBy: interaction.user.id,
+    });
+  } catch (e) {
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
+  }
+
+  bairristaCart.clearCart(interaction.user.id);
+
+  // Auto-promoção — mantém mesma UX do single-item
+  const { checkAndPromote, getPromotionProgress, formatTierName } = require('../members/autoPromotionEngine');
+  const promoResult = await checkAndPromote(interaction.user.id, interaction.guild, interaction.client).catch(() => null);
+  let promotionLine = '';
+  if (promoResult?.promoted) {
+    promotionLine = `${EMOJI.LIDER} **Subida automática** — agora és **${formatTierName(promoResult.to)}**!`;
+  } else {
+    const progress = await getPromotionProgress(interaction.user.id).catch(() => null);
+    if (progress && !progress.maxedOut && progress.threshold) {
+      promotionLine = `${EMOJI.TOPO} Progresso → ${progress.nextTierName}: **${progress.progress}%** (faltam ${progress.remaining.toLocaleString('pt-PT')})`;
+    }
+  }
+
+  const feedback = bairristaCart.buildSubmissionFeedback({
+    submissionId: result.submissionId,
+    tipo,
+    totalQty: result.totalQty,
+    totalValue: result.totalValue,
+    lineCount: result.lines.length,
+    promotionLine,
+  });
+
+  return interaction.editReply({ content: '', embeds: [feedback.embed], components: feedback.components });
+}
+
+// ── Undo submission ─────────────────────────────────────────────────────────
+async function handleCartUndo(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const submissionId = interaction.customId.split('::')[2];
+  const { undoSubmission } = require('./inventoryEngine');
+  const r = await undoSubmission({
+    submissionId,
+    requesterDiscordId: interaction.user.id,
+    client: interaction.client,
+  });
+  if (!r.undone) {
+    return safeReply(interaction, { content: `${EMOJI.WARN} ${r.reason}` }, { dismissible: true });
+  }
+  return interaction.editReply({
+    content: `${EMOJI.OK} Submissão desfeita — ${r.deletedCount} linha(s) removida(s). O stock foi restaurado.`,
+    embeds: [],
+    components: [],
+  });
+}
+
 module.exports = {
   handleRegistarMaterialButton,
   handleTipoRegistoSelect,
@@ -761,4 +1169,16 @@ module.exports = {
   handleEncomendaSelect,
   handleEncomendaModal,
   pendingItemSelections,
+  // Cart handlers
+  handleCartAdd,
+  handleCartCategory,
+  handleCartItemPick,
+  handleCartQtyModal,
+  handleCartLineAction,
+  handleCartNotesButton,
+  handleCartNotesModal,
+  handleCartCancel,
+  handleCartRepeat,
+  handleCartSubmit,
+  handleCartUndo,
 };

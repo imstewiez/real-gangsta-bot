@@ -14,6 +14,9 @@ const {
   handleEditItemSelect,
   handleDeactivateItemSelect,
   handleReactivateItemSelect,
+  handleCartCategory,
+  handleCartItemPick,
+  handleCartLineAction,
 } = require('../../../inventory/inventoryHandlers');
 const {
   handleCloseSaidaSelect,
@@ -46,13 +49,18 @@ const SELECT_ROUTES = [
   // Availability
   prefix('avail::vote_select::', availHandleVoteSelect),
 
-  // Inventory — registo de material (2-step: categoria → item)
+  // Inventory — registo de material (ponto de entrada: cart flow)
   exact('inv::select_tipo_registo', handleTipoRegistoSelect),
   prefix('inv::cat_', handleCategorySelect),
   exact('inv::select_item_entrega', handleItemSelect),
   exact('inv::select_item_venda', handleItemSelect),
   exact('inv::select_ajuste', handleAdjustSelect),
   exact('inv::select_encomenda', handleEncomendaSelect),
+
+  // Inventory — BAIRRISTA CART multi-item flow (migration 038)
+  prefix('invcart::cat::', handleCartCategory),
+  prefix('invcart::pick::', handleCartItemPick),
+  prefix('invcart::line_action::', handleCartLineAction),
 
   // Inventory — gestão
   exact('inv::select_gerir_action', handleGerirActionSelect),
