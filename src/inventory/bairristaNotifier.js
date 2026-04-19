@@ -145,6 +145,123 @@ async function notifyBairristaMovement(opts) {
 }
 
 /**
+ * Publica log agregado de uma submission multi-item no canal dos Bairristas.
+ *
+ * Um só embed para a submission inteira (em vez de N embeds como o
+ * antigo notifyBairristaMovement). Devolve { messageId, channelId } para
+ * permitir edit/delete pelo undo.
+ *
+ * @param {object} opts
+ * @returns {Promise<{ messageId: string|null, channelId: string|null }>}
+ */
+async function notifyBairristaBatch(opts) {
+  if (!_client) return { messageId: null, channelId: null };
+
+  try {
+    const channel = await _findOrCreateChannel();
+    if (!channel) return { messageId: null, channelId: null };
+
+    const isVenda = opts.tipo === 'venda';
+    const L = BAIRRISTAS.LOG;
+    const baseTitle = isVenda ? L.VENDA_TITLE : L.ENTREGA_TITLE;
+    const title = opts.lines.length > 1 ? `${baseTitle} · ${opts.lines.length} itens` : baseTitle;
+    const color = isVenda ? 0xf1c40f : 0x2ecc71;
+
+    const fields = [
+      { name: L.MEMBER, value: `<@${opts.memberDiscordId}>`, inline: true },
+      { name: 'Total Qty', value: `**${opts.totalQty.toLocaleString('pt-PT')}**`, inline: true },
+    ];
+    if (opts.totalValue > 0) {
+      fields.push({
+        name: L.VALUE,
+        value: `**${opts.totalValue.toLocaleString('pt-PT')}€**`,
+        inline: true,
+      });
+    }
+
+    // Lista de itens dentro do embed — 1 linha por item, flag ⚡ se preço
+    // custom (vendas). Slice 20 para cobrir edge case (raro > 5 itens).
+    const itemLines = opts.lines.slice(0, 20).map(l => {
+      const valTag = l.lineValue > 0 ? ` · **${l.lineValue.toLocaleString('pt-PT')}€**` : '';
+      const priceTag =
+        isVenda && l.unitPrice != null
+          ? ` ⚡@${l.unitPrice}€` // preço custom diferente do base
+          : '';
+      return `• **${l.quantity}×** ${l.itemName}${priceTag}${valTag}`;
+    });
+    if (opts.lines.length > 20) {
+      itemLines.push(`… +${opts.lines.length - 20} itens`);
+    }
+    fields.push({ name: L.ITEM, value: itemLines.join('\n').slice(0, 1024), inline: false });
+
+    if (opts.weekStats) {
+      const ws = opts.weekStats;
+      fields.push({
+        name: L.WEEK_TOTAL,
+        value: `**${(ws.totalQty || 0).toLocaleString('pt-PT')}** (${ws.deliveries || 0}e · ${ws.sales || 0}v)`,
+        inline: true,
+      });
+    }
+    if (opts.rankPosition) {
+      fields.push({
+        name: L.RANK_IMPACT,
+        value: `${rankBadge(opts.rankPosition.position)}/${opts.rankPosition.total}`,
+        inline: true,
+      });
+    }
+    if (opts.notes) {
+      fields.push({ name: L.NOTES, value: opts.notes.slice(0, 200), inline: false });
+    }
+
+    const embed = brandEmbed('MOVEMENT').setColor(color).setTitle(title).addFields(fields);
+    if (opts.submissionId) {
+      embed.setFooter({ text: `submission ${opts.submissionId.slice(0, 8)}` });
+    }
+
+    const msg = await channel
+      .send({ embeds: [embed], allowedMentions: { parse: [] } })
+      .catch(e => {
+        warn(`[BAIRRISTA-LOG] send batch falhou: ${e.message}`);
+        return null;
+      });
+    return { messageId: msg?.id || null, channelId: channel.id };
+  } catch (e) {
+    warn(`[BAIRRISTA-LOG] notifyBairristaBatch falhou: ${e.message}`);
+    return { messageId: null, channelId: null };
+  }
+}
+
+/**
+ * Edita a mensagem de uma submission cancelada — prefixa título com
+ * "❌ Cancelada" e muda cor para cinza. Não apaga — preserva histórico
+ * visual no canal.
+ */
+async function editBairristaBatchAsCancelled(client, channelId, messageId) {
+  if (!client || !channelId || !messageId) return false;
+  try {
+    const ch = await client.channels.fetch(channelId).catch(() => null);
+    if (!ch?.isTextBased?.()) return false;
+    const msg = await ch.messages.fetch(messageId).catch(() => null);
+    if (!msg) return false;
+    const original = msg.embeds?.[0];
+    if (!original) return false;
+
+    const updated = brandEmbed('MOVEMENT')
+      .setColor(0x95a5a6)
+      .setTitle(`❌ Cancelada — ${original.title || 'submission'}`)
+      .setDescription('_Esta submission foi desfeita pelo autor dentro da janela de 5 min._')
+      .addFields(original.fields || []);
+    if (original.footer?.text) updated.setFooter({ text: original.footer.text });
+
+    await msg.edit({ embeds: [updated] }).catch(() => {});
+    return true;
+  } catch (e) {
+    warn(`[BAIRRISTA-LOG] editBairristaBatchAsCancelled falhou: ${e.message}`);
+    return false;
+  }
+}
+
+/**
  * Publica resumo diário/semanal no canal dos Bairristas.
  */
 async function publishSummary(embed) {
@@ -161,6 +278,8 @@ async function publishSummary(embed) {
 module.exports = {
   setClient,
   notifyBairristaMovement,
+  notifyBairristaBatch,
+  editBairristaBatchAsCancelled,
   publishSummary,
   _findOrCreateChannel,
   CHANNEL_DEF,

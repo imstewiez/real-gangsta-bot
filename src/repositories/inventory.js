@@ -54,14 +54,116 @@ async function recordMovement({
   notes = '',
   operationId = null,
   createdBy,
+  // Campos novos (migration 038) — opcionais para não afectar callers
+  // existentes (saídas, ajustes). Só cart-based submissions os populam.
+  submissionId = null,
+  unitPrice = null,
+  client = null, // opcional: pg client já em transacção (recordDeliveryBatch)
 }) {
-  const res = await query(
+  const runner = client || { query: (sql, values) => query(sql, values) };
+  const res = await runner.query(
     `INSERT INTO inventory_movements
-     (movement_type, item_id, quantity, member_id, member_role, origin, destination, context, notes, saida_id, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-    [movementType, itemId, quantity, memberId, memberRole, origin, destination, context, notes, operationId, createdBy]
+     (movement_type, item_id, quantity, member_id, member_role, origin, destination,
+      context, notes, saida_id, created_by, submission_id, unit_price)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+    [
+      movementType,
+      itemId,
+      quantity,
+      memberId,
+      memberRole,
+      origin,
+      destination,
+      context,
+      notes,
+      operationId,
+      createdBy,
+      submissionId,
+      unitPrice,
+    ]
   );
   return res.rows[0];
+}
+
+/**
+ * Actualiza log_message_id / log_channel_id em bulk para os movements de
+ * uma submission. Chamado após o batch notifier postar o embed — assim
+ * o undo pode encontrar e editar a mensagem sem state em memória.
+ */
+async function attachSubmissionLogMessage(submissionId, messageId, channelId) {
+  if (!submissionId || !messageId) return null;
+  const res = await query(
+    `UPDATE inventory_movements
+        SET log_message_id = $2, log_channel_id = $3
+      WHERE submission_id = $1
+    RETURNING id`,
+    [submissionId, messageId, channelId || null]
+  );
+  return res.rowCount;
+}
+
+/**
+ * Lookup dos movements de uma submission — usado pelo undo.
+ * Devolve rows com item_name para edição do log embed.
+ */
+async function getSubmissionMovements(submissionId) {
+  if (!submissionId) return [];
+  const res = await query(
+    `SELECT im.*, i.name AS item_name,
+            COALESCE(im.unit_price, i.estimated_value, 0) AS effective_price
+       FROM inventory_movements im
+       JOIN items i ON i.id = im.item_id
+      WHERE im.submission_id = $1
+      ORDER BY im.created_at`,
+    [submissionId]
+  );
+  return res.rows;
+}
+
+/**
+ * Devolve a submission mais recente de um membro de um tipo específico
+ * (entrega_bairrista ou venda_bairrista), para "Repetir última".
+ * Só itemId + quantity — preço é re-resolvido na altura (evita time-travel
+ * de preços antigos).
+ */
+async function getLastSubmissionForMember(memberId, movementType) {
+  if (!memberId) return null;
+  const sub = await query(
+    `SELECT submission_id, MAX(created_at) AS last_at
+       FROM inventory_movements
+      WHERE member_id = $1
+        AND submission_id IS NOT NULL
+        AND movement_type = $2
+      GROUP BY submission_id
+      ORDER BY last_at DESC
+      LIMIT 1`,
+    [memberId, movementType]
+  );
+  if (!sub.rows[0]) return null;
+  const sid = sub.rows[0].submission_id;
+  const lines = await query(
+    `SELECT im.item_id, i.name AS item_name, i.category, im.quantity
+       FROM inventory_movements im
+       JOIN items i ON i.id = im.item_id
+      WHERE im.submission_id = $1
+      ORDER BY im.id`,
+    [sid]
+  );
+  return {
+    submissionId: sid,
+    lastAt: sub.rows[0].last_at,
+    lines: lines.rows,
+  };
+}
+
+/**
+ * Hard delete de todos os movements de uma submission. Idempotente.
+ * Caller deve verificar janela de tempo e autorização antes de chamar.
+ */
+async function deleteSubmission(submissionId) {
+  if (!submissionId) return 0;
+  const res = await query(`DELETE FROM inventory_movements WHERE submission_id = $1`, [submissionId]);
+  return res.rowCount;
 }
 
 // ── Stock balance — sinal por movement_type ─────────────────────────────────
@@ -203,4 +305,8 @@ module.exports = {
   getMovementsByOperation,
   getMemberTotals,
   getWeeklyMovements,
+  attachSubmissionLogMessage,
+  getSubmissionMovements,
+  getLastSubmissionForMember,
+  deleteSubmission,
 };
