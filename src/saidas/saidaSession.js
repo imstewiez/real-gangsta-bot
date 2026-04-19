@@ -194,10 +194,13 @@ async function buildSessionEmbed(saidaId) {
         .map(p => (p.individual_result_at ? new Date(p.individual_result_at).getTime() : 0))
         .reduce((a, b) => Math.max(a, b), 0);
       const staleMs = lastSubmitAt ? Date.now() - lastSubmitAt : 0;
-      const AUTO_FINALIZE_STALE_THRESHOLD = 2 * 60_000;
+      // 5 min threshold — finalize real inclui publicar embed + delete msg +
+      // stats + event bus; 2 min era tight e podia trip durante finalize
+      // em voo. Mensagem softer ("se estiver preso") em vez de acusar falha.
+      const AUTO_FINALIZE_STALE_THRESHOLD = 5 * 60_000;
       if (staleMs > AUTO_FINALIZE_STALE_THRESHOLD) {
         lines.push(
-          `${EMOJI.WARN} **Auto-finalize pendente há ${Math.round(staleMs / 60_000)} min** — clica **"Finalizar e Publicar"** ↓`
+          `${EMOJI.OK} **Todos preencheram!** Se o auto-finalize estiver preso (${Math.round(staleMs / 60_000)} min), clica **"Finalizar e Publicar"** ↓`
         );
       } else {
         lines.push(`${EMOJI.OK} **Todos preencheram!** Staff pode finalizar ↓`);
