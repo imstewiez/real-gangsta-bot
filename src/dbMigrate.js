@@ -151,6 +151,30 @@ async function ensureCriticalSchema(client) {
       name: 'operations.session_started_at column',
       sql: 'ALTER TABLE operations ADD COLUMN IF NOT EXISTS session_started_at TIMESTAMPTZ',
     },
+    {
+      name: 'inventory_movements cart columns (migration 038)',
+      sql: `ALTER TABLE inventory_movements
+              ADD COLUMN IF NOT EXISTS submission_id   UUID,
+              ADD COLUMN IF NOT EXISTS unit_price      NUMERIC(12,2),
+              ADD COLUMN IF NOT EXISTS log_message_id  TEXT,
+              ADD COLUMN IF NOT EXISTS log_channel_id  TEXT`,
+    },
+    {
+      name: 'inventory_movements.submission_id index',
+      sql: `CREATE INDEX IF NOT EXISTS idx_inventory_movements_submission_id
+              ON inventory_movements (submission_id)
+              WHERE submission_id IS NOT NULL`,
+    },
+    {
+      name: 'leaderboard_messages table (migration 039)',
+      sql: `CREATE TABLE IF NOT EXISTS leaderboard_messages (
+              channel_id         TEXT PRIMARY KEY,
+              message_id         TEXT NOT NULL,
+              last_refreshed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )`,
+    },
   ];
   let applied = 0;
   for (const { name, sql } of ddls) {
