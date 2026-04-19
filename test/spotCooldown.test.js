@@ -113,9 +113,9 @@ describe('spotCooldown.startCooldown', () => {
     const before = Date.now();
     await spotCooldown.startCooldown({ spot: 'Default Test', saidaId: 1 });
     const expiresAtParam = _queries[0].values[1];
-    // Default é 30min.
-    assert.ok(expiresAtParam.getTime() >= before + 29 * 60_000);
-    assert.ok(expiresAtParam.getTime() <= before + 31 * 60_000);
+    // Default é 60min (mudou de 30 em 2026-04-19 por feedback).
+    assert.ok(expiresAtParam.getTime() >= before + 59 * 60_000);
+    assert.ok(expiresAtParam.getTime() <= before + 61 * 60_000);
   });
 });
 
