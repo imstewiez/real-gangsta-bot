@@ -222,6 +222,21 @@ function startAll(client) {
     return await expireStaleRequests(client);
   });
 
+  // Leaderboard live refresh — 5 min. runOnStart garante panel publicado
+  // sem esperar pelo 1º intervalo após reboot. Idempotente via DB state.
+  registerJob(
+    'leaderboard_refresh',
+    5 * 60 * 1000,
+    async client => {
+      const { publishOrRefresh, setClient } = require('../leaderboard/leaderboardPublisher');
+      setClient(client);
+      // force=true: scheduler sempre refresca no tick (ignora debounce
+      // global que só protege path manual contra burst de N users).
+      return await publishOrRefresh(client, { force: true });
+    },
+    { runOnStart: true }
+  );
+
   for (const job of jobs) {
     job.timer = setInterval(() => runJob(job), job.intervalMs);
     job.timer.unref();

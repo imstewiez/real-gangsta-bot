@@ -68,6 +68,12 @@ const {
 const chefiaActions = require('../../../panels/chefiaActions');
 const patraoDiZonaActions = require('../../../panels/patraoDiZonaActions');
 
+// ── Leaderboard live panel ─────────────────────────────────────────────────
+const {
+  handleLeaderboardDetails,
+  handleLeaderboardRefresh,
+} = require('../../../leaderboard/leaderboardHandlers');
+
 // ── Perfil Operacional (drill-downs) ───────────────────────────────────────
 const perfilMaterial = require('../../../perfil/perfilMaterial');
 const perfilPvp = require('../../../perfil/perfilPvp');
@@ -90,6 +96,10 @@ const BUTTON_ROUTES = [
   prefix('avail::all::', availHandleVoteAll),
   prefix('avail::summary::', availHandleSummary),
   prefix('avail::refresh::', availHandleRefresh),
+
+  // Leaderboard live panel — details ephemeral + refresh manual
+  prefix('lb::details::', handleLeaderboardDetails),
+  exact('lb::refresh', handleLeaderboardRefresh),
 
   // Saída session — single-signup flow (saves as pending, admin Iniciar roda auto-pick)
   prefix('saida::session_caracterizado::', saidaSession.handleSessionCaracterizado),

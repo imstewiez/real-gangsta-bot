@@ -29,4 +29,8 @@ module.exports = {
   PANEL_OFICIAIS_CHANNEL_ID: guildId('PANEL_OFICIAIS_CHANNEL_ID', 'channels'),
   PANEL_CHEFIA_CHANNEL_ID: optId('PANEL_CHEFIA_CHANNEL_ID'),
   PANEL_PATRAO_DI_ZONA_CHANNEL_ID: optId('PANEL_PATRAO_DI_ZONA_CHANNEL_ID'),
+  // Leaderboard live — panel premium com tops diário/semanal/mensal por
+  // categoria (activity, MVP, KDA, entregue, vendido). Default fornecido
+  // pelo user; override via env para outros servidores.
+  LEADERBOARD_CHANNEL_ID: optId('LEADERBOARD_CHANNEL_ID', '1495444344197615757'),
 };
