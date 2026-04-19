@@ -1131,17 +1131,37 @@ async function handleCartPreviewBack(interaction) {
 // ── Submeter carrinho ───────────────────────────────────────────────────────
 async function handleCartSubmit(interaction) {
   if (isDuplicate(interaction.id)) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  // deferUpdate (não deferReply ephemeral): grey-out dos botões do painel
+  // durante a submissão evita double-click → double-submit. Também permite
+  // editReply substituir o painel do carrinho pelo embed de feedback na
+  // mesma mensagem — uma submissão, uma mensagem.
+  await interaction.deferUpdate().catch(() => {});
 
   const tipo = interaction.customId.split('::')[2];
   const bairristaCart = require('./bairristaCart');
   const cart = bairristaCart.getCart(interaction.user.id);
   if (!cart || cart.tipo !== tipo) {
-    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Carrinho expirado.` }, { dismissible: true });
+    return interaction
+      .editReply({ content: `${EMOJI.PENDENTE} Carrinho expirado.`, embeds: [], components: [] })
+      .catch(() => {});
   }
   if (!cart.lines.length) {
-    return safeReply(interaction, { content: `${EMOJI.WARN} Carrinho vazio.` }, { dismissible: true });
+    return interaction
+      .editReply({ content: `${EMOJI.WARN} Carrinho vazio.`, embeds: [], components: [] })
+      .catch(() => {});
   }
+
+  // Snapshot + clear IMEDIATO — se o user conseguir 2 cliques antes do
+  // deferUpdate grey-out (race raro), a segunda execução encontra o
+  // cart já vazio e aborta. Defence-in-depth contra double-submit.
+  const linesSnapshot = cart.lines.map(l => ({
+    itemId: l.itemId,
+    quantity: l.quantity,
+    unitPrice: l.unitPrice,
+  }));
+  const globalNotesSnapshot = cart.globalNotes;
+  bairristaCart.clearCart(interaction.user.id);
 
   const { recordDeliveryBatch } = require('./inventoryEngine');
   let result;
@@ -1149,19 +1169,15 @@ async function handleCartSubmit(interaction) {
     result = await recordDeliveryBatch({
       discordId: interaction.user.id,
       tipo,
-      lines: cart.lines.map(l => ({
-        itemId: l.itemId,
-        quantity: l.quantity,
-        unitPrice: l.unitPrice,
-      })),
-      globalNotes: cart.globalNotes,
+      lines: linesSnapshot,
+      globalNotes: globalNotesSnapshot,
       createdBy: interaction.user.id,
     });
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
+    return interaction
+      .editReply({ content: `${EMOJI.ERRO} ${e.message}`, embeds: [], components: [] })
+      .catch(() => {});
   }
-
-  bairristaCart.clearCart(interaction.user.id);
 
   // Auto-promoção — mantém mesma UX do single-item
   const { checkAndPromote, getPromotionProgress, formatTierName } = require('../members/autoPromotionEngine');
@@ -1191,7 +1207,10 @@ async function handleCartSubmit(interaction) {
 // ── Undo submission ─────────────────────────────────────────────────────────
 async function handleCartUndo(interaction) {
   if (isDuplicate(interaction.id)) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  // deferUpdate pela mesma razão que handleCartSubmit: evita double-click
+  // race + substitui o feedback (com botão undo) pela confirmação de undo
+  // na mesma mensagem.
+  await interaction.deferUpdate().catch(() => {});
 
   const submissionId = interaction.customId.split('::')[2];
   const { undoSubmission } = require('./inventoryEngine');
@@ -1201,13 +1220,17 @@ async function handleCartUndo(interaction) {
     client: interaction.client,
   });
   if (!r.undone) {
-    return safeReply(interaction, { content: `${EMOJI.WARN} ${r.reason}` }, { dismissible: true });
+    return interaction
+      .editReply({ content: `${EMOJI.WARN} ${r.reason}`, embeds: [], components: [] })
+      .catch(() => {});
   }
-  return interaction.editReply({
-    content: `${EMOJI.OK} Submissão desfeita — ${r.deletedCount} linha(s) removida(s). O stock foi restaurado.`,
-    embeds: [],
-    components: [],
-  });
+  return interaction
+    .editReply({
+      content: `${EMOJI.OK} Submissão desfeita — ${r.deletedCount} linha(s) removida(s). O stock foi restaurado.`,
+      embeds: [],
+      components: [],
+    })
+    .catch(() => {});
 }
 
 module.exports = {
