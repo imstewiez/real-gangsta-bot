@@ -24,8 +24,21 @@ const { brandEmbed } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
 const { queueChannelOp } = require('../discordQueue');
+const { TIER_EMOJI } = require('../discord/structureTemplate');
 
 const DEFAULT_NAME = 'BAIRRISTAS';
+
+// Pattern de canal de bairrista: <tier_emoji>・<tier_label> - <nickname>.
+// Usado para varrer Discord e apanhar canais NÃO tracked em resident_channels
+// mas que claramente são tópicos de bairrista (YB, Gunão, GF, etc.).
+const TIER_EMOJIS = Object.values(TIER_EMOJI);
+function _looksLikeBairristaChannel(name) {
+  const str = String(name || '');
+  const firstChar = Array.from(str)[0]; // primeiro "grapheme" (emoji de tier)
+  if (!TIER_EMOJIS.includes(firstChar)) return false;
+  // Segunda posição deve ser o `・` (separador do padrão).
+  return str.includes('・');
+}
 
 async function _cloneOverwritesFromPrimary(guild) {
   const primary = CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID;
@@ -80,6 +93,17 @@ async function _ensureCategory(guild, name, actorTag) {
 }
 
 async function _moveAllTopicsInto(guild, targetCatId) {
+  const moved = [];
+  const skipped = [];
+  const failed = [];
+  const seen = new Set(); // channel IDs já processados — evita duplicação entre as 2 passes
+
+  const isFullErr = e => {
+    const msg = String(e?.message || '');
+    return msg.includes('CHANNEL_PARENT_MAX_CHANNELS') || msg.includes('Maximum number of channels');
+  };
+
+  // PASS 1 — canais tracked em resident_channels.active (nome vem da DB).
   const active = await query(
     `SELECT rc.channel_id, m.display_name
        FROM resident_channels rc
@@ -87,11 +111,10 @@ async function _moveAllTopicsInto(guild, targetCatId) {
       WHERE rc.status = 'active'
       ORDER BY m.display_name ASC`
   );
-  const moved = [];
-  const skipped = [];
-  const failed = [];
-
+  let stop = false;
   for (const r of active.rows) {
+    if (stop) break;
+    seen.add(r.channel_id);
     try {
       const ch = await guild.channels.fetch(r.channel_id).catch(() => null);
       if (!ch) {
@@ -107,11 +130,35 @@ async function _moveAllTopicsInto(guild, targetCatId) {
       moved.push({ name: r.display_name, channelId: r.channel_id });
     } catch (e) {
       failed.push({ name: r.display_name, channelId: r.channel_id, error: e.message });
-      // Se a categoria encheu, stop — os seguintes vão falhar todos.
-      const msg = String(e.message || '');
-      if (msg.includes('CHANNEL_PARENT_MAX_CHANNELS') || msg.includes('Maximum number of channels')) {
-        warn(`[NOVA-CATEGORIA] Categoria target cheia — a parar após ${moved.length} movidos.`);
-        break;
+      if (isFullErr(e)) {
+        warn(`[NOVA-CATEGORIA] Target cheia em pass 1 — a parar.`);
+        stop = true;
+      }
+    }
+  }
+
+  // PASS 2 — canais em Discord que MATCH o pattern de bairrista mas NÃO estão
+  // tracked em resident_channels (ex: canais órfãos, criados manualmente, de
+  // bot antigo). Move-os também para a categoria target.
+  if (!stop) {
+    const untracked = Array.from(guild.channels.cache.values()).filter(
+      c => c.type === ChannelType.GuildText && !seen.has(c.id) && _looksLikeBairristaChannel(c.name)
+    );
+    for (const ch of untracked) {
+      if (stop) break;
+      try {
+        if (ch.parentId === targetCatId) {
+          skipped.push({ name: ch.name, reason: 'já na categoria (untracked)' });
+          continue;
+        }
+        await queueChannelOp(() => ch.setParent(targetCatId, { lockPermissions: false }));
+        moved.push({ name: ch.name, channelId: ch.id, untracked: true });
+      } catch (e) {
+        failed.push({ name: ch.name, channelId: ch.id, error: e.message });
+        if (isFullErr(e)) {
+          warn(`[NOVA-CATEGORIA] Target cheia em pass 2 — a parar.`);
+          stop = true;
+        }
       }
     }
   }
