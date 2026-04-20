@@ -6,7 +6,6 @@
 
 const { handleTagModal, handleDenyModalSubmit } = require('../../../onboarding/onboardingHandlers');
 const {
-  handleQuantityModal,
   handleAdjustModal,
   handleAddItemModal,
   handleEditPriceModal,
@@ -33,9 +32,7 @@ const MODAL_ROUTES = [
   exact('onboard::modal_tag', handleTagModal),
   prefix('onboard::modal_deny::', handleDenyModalSubmit),
 
-  // Inventory (legacy single-item + cart modals)
-  exact('inv::modal_entrega_bairrista', handleQuantityModal),
-  exact('inv::modal_venda_bairrista', handleQuantityModal),
+  // Inventory (staff admin + cart modals)
   exact('inv::modal_ajuste_manual', handleAdjustModal),
   exact('inv::modal_add_item', handleAddItemModal),
   exact('inv::modal_edit_price', handleEditPriceModal),

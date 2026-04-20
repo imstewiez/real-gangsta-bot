@@ -8,8 +8,8 @@ const {
   StringSelectMenuBuilder,
 } = require('discord.js');
 const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
-const { successEmbed, stockEmbed, brandEmbed, progressBar } = require('../shared/embedBuilders');
-const { recordDelivery, adjustStock, getCurrentStock } = require('./inventoryEngine');
+const { successEmbed, stockEmbed, brandEmbed } = require('../shared/embedBuilders');
+const { adjustStock, getCurrentStock } = require('./inventoryEngine');
 const {
   buildCategorySelectMenu,
   buildItemSelectMenuForCategory,
@@ -108,19 +108,17 @@ async function handleTipoRegistoSelect(interaction) {
   await safeUpdate(interaction, { content: '', embeds: [embed], components });
 }
 
-// Step 2b: Escolheu categoria → mostra items dessa categoria
+// Step 2b: Escolheu categoria → mostra items dessa categoria.
+// Usado pelos fluxos staff (ajuste / edit / deactivate / encomenda) — o
+// fluxo bairrista entrega/venda migrou para bairristaCart + itemSearch.
 async function handleCategorySelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const category = interaction.values[0];
   if (category === 'none') return;
-  const ctx = pendingItemSelections.get(interaction.user.id);
 
-  // Determinar o customId do próximo passo baseado no fluxo
   const customId = interaction.customId;
   let itemPrefix;
-  if (customId.includes('cat_venda')) itemPrefix = 'inv::select_item_venda';
-  else if (customId.includes('cat_entrega')) itemPrefix = 'inv::select_item_entrega';
-  else if (customId.includes('cat_ajuste')) itemPrefix = 'inv::select_ajuste';
+  if (customId.includes('cat_ajuste')) itemPrefix = 'inv::select_ajuste';
   else if (customId.includes('cat_edit')) itemPrefix = 'inv::select_edit_item';
   else if (customId.includes('cat_deactivate')) itemPrefix = 'inv::select_deactivate_item';
   else if (customId.includes('cat_encomenda')) itemPrefix = 'inv::select_encomenda';
@@ -131,164 +129,6 @@ async function handleCategorySelect(interaction) {
     content: INVENTORY.PROMPTS.CATEGORY_ITEM(category),
     components: [menu],
   });
-}
-
-// Step 3: Escolheu o item → mostra modal com quantidade
-async function handleItemSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
-
-  const itemId = interaction.values[0];
-  if (itemId === 'none') {
-    return safeReply(
-      interaction,
-      { content: 'Sem itens disponíveis.', flags: MessageFlags.Ephemeral },
-      { dismissible: true }
-    );
-  }
-
-  const item = await inventoryRepo.getItemById(parseInt(itemId));
-  if (!item) {
-    return safeReply(
-      interaction,
-      { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
-    );
-  }
-
-  const customId = interaction.customId;
-  const isVenda = customId.includes('venda');
-  const pending = pendingItemSelections.get(interaction.user.id) || {};
-  pending.itemId = parseInt(itemId);
-  pending.itemName = item.name;
-  pending.itemPrice = parseFloat(item.estimated_value) || 0;
-  pending.movementType = isVenda ? 'venda_bairrista' : 'entrega_bairrista';
-  _setItemCtx(interaction.user.id, pending);
-
-  const modal = new ModalBuilder()
-    .setCustomId(isVenda ? 'inv::modal_venda_bairrista' : 'inv::modal_entrega_bairrista')
-    .setTitle(isVenda ? `Vender ${item.name}` : `Entregar ${item.name}`)
-    .addComponents(
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('quantity')
-          .setLabel(`Quantidade${isVenda && pending.itemPrice ? ` (${pending.itemPrice}\u20AC cada)` : ''}`)
-          .setStyle(TextInputStyle.Short)
-          .setPlaceholder('Ex: 10')
-          .setRequired(true)
-          .setMaxLength(10)
-      ),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('notes')
-          .setLabel('Observações (opcional)')
-          .setStyle(TextInputStyle.Paragraph)
-          .setPlaceholder('Notas adicionais...')
-          .setRequired(false)
-          .setMaxLength(500)
-      )
-    );
-
-  await safeShowModal(interaction, modal);
-}
-
-// Step 4: Modal submetido → regista o movimento
-async function handleQuantityModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-  const pending = pendingItemSelections.get(interaction.user.id);
-  if (!pending) {
-    return safeReply(interaction, { content: 'Sessão expirada. Tenta novamente.' }, { dismissible: true });
-  }
-
-  const quantityStr = getModalField(interaction, 'quantity');
-  const notes = getModalField(interaction, 'notes');
-  const quantity = parseInt(quantityStr);
-
-  if (isNaN(quantity) || quantity <= 0) {
-    return safeReply(interaction, { content: ERRORS.INVALID_QUANTITY() }, { dismissible: true });
-  }
-
-  try {
-    const member = await memberRepo.findByDiscordId(interaction.user.id);
-    let movementType = pending.movementType;
-    if (member?.role === 'oficial' && movementType === 'entrega_bairrista') {
-      movementType = 'entrega_oficial';
-    }
-
-    const result = await recordDelivery({
-      discordId: interaction.user.id,
-      itemId: pending.itemId,
-      quantity,
-      movementType,
-      notes,
-      createdBy: interaction.user.id,
-    });
-
-    pendingItemSelections.delete(interaction.user.id);
-
-    const isVenda = movementType === 'venda_bairrista';
-    const movValue = quantity * (pending.itemPrice || 0);
-    const balanceAfter = result?.balanceAfter ?? null;
-
-    // ── Auto-promoção ──────────────────────────────────────────────────────
-    const { checkAndPromote, getPromotionProgress, formatTierName } = require('../members/autoPromotionEngine');
-    const promoResult = await checkAndPromote(interaction.user.id, interaction.guild, interaction.client).catch(
-      () => null
-    );
-
-    const title = isVenda ? `${EMOJI.LUCRO} Venda guardada` : `${EMOJI.MATERIAL} Entrega guardada`;
-
-    const embed = brandEmbed('MOVEMENT').setTitle(title);
-    const fields = [
-      { name: 'Item', value: `**${pending.itemName}**`, inline: true },
-      { name: 'Quantidade', value: `**${quantity}**`, inline: true },
-    ];
-    if (movValue > 0) {
-      fields.push({
-        name: 'Valor',
-        value: `**${movValue.toLocaleString('pt-PT')} €**\n*${pending.itemPrice}€/un.*`,
-        inline: true,
-      });
-    }
-    if (balanceAfter !== null) {
-      fields.push({
-        name: `${EMOJI.STOCK} Stock actual`,
-        value: `**${balanceAfter.toLocaleString('pt-PT')}** em casa`,
-        inline: true,
-      });
-    }
-    if (notes) {
-      fields.push({ name: 'Notas', value: notes, inline: false });
-    }
-    embed.addFields(fields);
-
-    // Progresso / promoção
-    if (promoResult?.promoted) {
-      embed.addFields({
-        name: `${EMOJI.LIDER} Subida automática`,
-        value: `Parabéns — subiste para **${formatTierName(promoResult.to)}**.`,
-        inline: false,
-      });
-    } else {
-      const progress = await getPromotionProgress(interaction.user.id).catch(() => null);
-      if (progress && !progress.maxedOut && progress.threshold) {
-        const bar = progressBar(parseFloat(progress.progress), 100, { width: 12 });
-        embed.addFields({
-          name: `${EMOJI.TOPO} Progresso → ${progress.nextTierName}`,
-          value:
-            `${bar} **${progress.progress}%**\n` +
-            `**${(progress.totalQty || 0).toLocaleString('pt-PT')}** / ${progress.threshold.toLocaleString('pt-PT')}` +
-            ` · falta **${progress.remaining.toLocaleString('pt-PT')}**`,
-          inline: false,
-        });
-      }
-    }
-
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
-  } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
-  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1254,8 +1094,6 @@ module.exports = {
   handleRegistarMaterialButton,
   handleTipoRegistoSelect,
   handleCategorySelect,
-  handleItemSelect,
-  handleQuantityModal,
   handleStockCommand,
   handleAdjustStockButton,
   handleAdjustSelect,

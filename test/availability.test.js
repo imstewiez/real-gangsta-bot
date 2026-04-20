@@ -91,7 +91,7 @@ describe('availabilityEngine — UI builders', () => {
     assert.match(todayDateString(), /^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it('buildEmbed tem título e fields por slot', () => {
+  it('buildEmbed tem título, fields por slot e total de votantes no description', () => {
     const tallies = [
       { slotId: 1, label: '20:30', position: 0, counts: { disponivel: 3, indisponivel: 1 } },
       { slotId: 2, label: '21:30', position: 1, counts: { talvez: 2 } },
@@ -101,7 +101,11 @@ describe('availabilityEngine — UI builders', () => {
     assert.ok(json.title.includes('Presença'));
     assert.equal(json.fields.length, 2);
     assert.ok(json.fields[0].name.includes('20:30'));
-    assert.ok(json.footer.text.includes('4 pessoas votaram'));
+    // Embed redesign: total de votantes aparece no description (com emoji 👥)
+    // e o footer tem metadata da sessão.
+    assert.ok(json.description.includes('4'));
+    assert.ok(json.description.includes('votaram'));
+    assert.ok(json.footer.text.includes(`sessão #${fakeSession.id}`));
   });
 
   it('buildComponents respeita os limites do Discord (≤5 rows, ≤25 options no select)', () => {

@@ -1,59 +1,29 @@
 'use strict';
 /**
- * Chefia panel — acções de botão que não pertencem a módulos maiores.
- *
- * Cobre os 5 botões mais leves do painel chefia:
- *   - abrir_disponibilidade
- *   - publicar_radio
+ * Chefia panel — acções ligeiras do painel chefia:
  *   - listar_stickys
  *   - ver_tops
  *   - ver_logs
  *
  * Os restantes botões chefia (criar_saida, fechar_saida, registar_material,
  * gerir_materiais, etc.) vivem nos módulos de domínio respectivos.
+ *
+ * Disponibilidade diária é 100% automática via `availability_auto_publish`
+ * (src/jobs/scheduler.js).
+ *
+ * Rádio tem painel sticky dedicado em RADIO_PANEL_CHANNEL_ID — publicado
+ * pelo bootstrap de painéis. Sem botão chefia para publicar ad-hoc.
  */
 
 const { MessageFlags } = require('discord.js');
-const CONFIG = require('../config');
 const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed, rankingEmbed } = require('../shared/embedBuilders');
-const { ERRORS, EMOJI, SUCCESS } = require('../content');
+const { ERRORS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
-const { radioRepo, stickyRepo } = require('../repositories');
+const { stickyRepo } = require('../repositories');
 const { getRecentLogs } = require('../audit/auditEngine');
 const { weekBounds } = require('../util');
 const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
-
-// `abrirDisponibilidade` removido — a sessão diária é agora 100%
-// automática via job `availability_auto_publish` em src/jobs/scheduler.js
-// (corre 5/5 min, age à hora configurada em AVAILABILITY_AUTO_PUBLISH_HOUR).
-
-async function publicarRadio(interaction) {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  const states = await radioRepo.getAllStates();
-  const { buildEmbed, buildComponents } = require('../radio/radioEngine');
-  const client = interaction.client;
-  const targetCh = CONFIG.RADIO_PUBLISH_CHANNEL_ID
-    ? await client.channels.fetch(CONFIG.RADIO_PUBLISH_CHANNEL_ID).catch(() => null)
-    : interaction.channel;
-  if (!targetCh?.isTextBased?.()) {
-    return safeReply(
-      interaction,
-      {
-        content: 'Canal de publicação não disponível.',
-      },
-      { dismissible: true }
-    );
-  }
-  await targetCh.send({ embeds: [buildEmbed(states)], components: buildComponents() });
-  return safeReply(
-    interaction,
-    {
-      content: SUCCESS.PUBLISHED(targetCh.id),
-    },
-    { dismissible: true }
-  );
-}
 
 async function listarStickys(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -97,7 +67,6 @@ async function verLogs(interaction) {
 }
 
 module.exports = {
-  publicarRadio,
   listarStickys,
   verTops,
   verLogs,

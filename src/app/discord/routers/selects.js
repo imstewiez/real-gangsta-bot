@@ -6,7 +6,6 @@
 
 const {
   handleTipoRegistoSelect,
-  handleItemSelect,
   handleCategorySelect,
   handleAdjustSelect,
   handleEncomendaSelect,
@@ -52,8 +51,6 @@ const SELECT_ROUTES = [
   // Inventory — registo de material (ponto de entrada: cart flow)
   exact('inv::select_tipo_registo', handleTipoRegistoSelect),
   prefix('inv::cat_', handleCategorySelect),
-  exact('inv::select_item_entrega', handleItemSelect),
-  exact('inv::select_item_venda', handleItemSelect),
   exact('inv::select_ajuste', handleAdjustSelect),
   exact('inv::select_encomenda', handleEncomendaSelect),
 
