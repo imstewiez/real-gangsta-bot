@@ -62,6 +62,9 @@ const SELECT_ROUTES = [
   prefix('invcart::pick::', handleCartItemPick),
   prefix('invcart::line_action::', handleCartLineAction),
 
+  // Searchable item picker — user selecciona do select filtrado
+  prefix('itemsearch::pick::', require('../../../inventory/itemSearch').handlePick),
+
   // Inventory — gestão
   exact('inv::select_gerir_action', handleGerirActionSelect),
   exact('inv::select_edit_item', handleEditItemSelect),

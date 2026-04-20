@@ -900,16 +900,26 @@ async function handleMaterialDirectionSelect(interaction) {
 }
 
 // Step intermediário: categoria seleccionada → mostrar itens dessa categoria
+// Adiciona botão "🔎 Procurar" em row separado para o user poder pesquisar
+// directamente no catálogo inteiro em vez de scrollar.
 async function handleMaterialCategorySelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const category = interaction.values[0];
   if (category === 'none') return;
   const customId = interaction.customId;
-  const itemPrefix = customId.includes('cat_issue') ? 'saida::issue_select_item' : 'saida::select_material_item';
+  const isIssue = customId.includes('cat_issue');
+  const itemPrefix = isIssue ? 'saida::issue_select_item' : 'saida::select_material_item';
   const menu = await buildItemSelectMenuForCategory(itemPrefix, 'Seleciona o item', category);
+  const itemSearch = require('../inventory/itemSearch');
+  const searchRow = new ActionRowBuilder().addComponents(
+    itemSearch.buildSearchButton(isIssue ? 'saida_issue' : 'saida_material', {
+      label: 'Procurar em todo o catálogo',
+      style: 2, // Secondary
+    })
+  );
   await safeUpdate(interaction, {
     content: SAIDAS.PROMPTS.ESCOLHE_CATEGORIA_MATERIAL.replace('{category}', category),
-    components: [menu],
+    components: [menu, searchRow],
   });
 }
 
@@ -1148,6 +1158,90 @@ async function handleIssueQtyModal(interaction) {
     return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
   }
 }
+
+// ── Registo de pick handlers do itemSearch ─────────────────────────────────
+// Quando user pica um item no select filtrado, estes reencaminham para o
+// modal de quantidade que os flows já usam (saida::modal_material_qty +
+// saida::issue_modal_qty).
+(() => {
+  const itemSearch = require('../inventory/itemSearch');
+
+  itemSearch.registerPickHandler('saida_material', async ({ interaction, item }) => {
+    const ctx = pendingSaidaContext.get(interaction.user.id);
+    if (!ctx || ctx.action !== 'material_op') {
+      return safeReply(
+        interaction,
+        { content: `${EMOJI.PENDENTE} Sessão expirada. Recomeça o fluxo.`, flags: MessageFlags.Ephemeral },
+        { dismissible: true }
+      );
+    }
+    ctx.itemId = item.id;
+    _setContext(interaction.user.id, ctx);
+    const MF = MODALS.SAIDA_MATERIAL.FIELDS;
+    const modal = new ModalBuilder()
+      .setCustomId('saida::modal_material_qty')
+      .setTitle(`${ctx.direction} — ${item.name}`.slice(0, 45))
+      .addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('quantity')
+            .setLabel(MF.qty.label)
+            .setStyle(TextInputStyle.Short)
+            .setRequired(MF.qty.required)
+            .setMaxLength(MF.qty.maxLength)
+            .setPlaceholder(MF.qty.placeholder)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('notes')
+            .setLabel(MF.notes.label)
+            .setStyle(TextInputStyle.Paragraph)
+            .setRequired(MF.notes.required)
+            .setMaxLength(MF.notes.maxLength)
+        )
+      );
+    parentStore.deleteParentEphemeral(interaction.user.id).catch(() => {});
+    await safeShowModal(interaction, modal);
+  });
+
+  itemSearch.registerPickHandler('saida_issue', async ({ interaction, item }) => {
+    const ctx = pendingSaidaContext.get(interaction.user.id);
+    if (!ctx || ctx.action !== 'issue_to_participant') {
+      return safeReply(
+        interaction,
+        { content: `${EMOJI.PENDENTE} Sessão expirada. Recomeça o fluxo.`, flags: MessageFlags.Ephemeral },
+        { dismissible: true }
+      );
+    }
+    ctx.itemId = item.id;
+    _setContext(interaction.user.id, ctx);
+    const IF = MODALS.SAIDA_MATERIAL.FIELDS;
+    const modal = new ModalBuilder()
+      .setCustomId('saida::issue_modal_qty')
+      .setTitle(`${EMOJI.FORNECER} Fornecer — ${item.name}`.slice(0, 45))
+      .addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('quantity')
+            .setLabel(IF.qty.label)
+            .setStyle(TextInputStyle.Short)
+            .setRequired(IF.qty.required)
+            .setMaxLength(IF.qty.maxLength)
+            .setPlaceholder(IF.qty.placeholder)
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('notes')
+            .setLabel(IF.notes.label)
+            .setStyle(TextInputStyle.Paragraph)
+            .setRequired(IF.notes.required)
+            .setMaxLength(IF.notes.maxLength)
+        )
+      );
+    parentStore.deleteParentEphemeral(interaction.user.id).catch(() => {});
+    await safeShowModal(interaction, modal);
+  });
+})();
 
 module.exports = {
   handleCreateSaidaButton,

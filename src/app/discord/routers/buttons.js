@@ -71,6 +71,9 @@ const patraoDiZonaActions = require('../../../panels/patraoDiZonaActions');
 // ── Leaderboard live panel ─────────────────────────────────────────────────
 const { handleLeaderboardDetails, handleLeaderboardRefresh } = require('../../../leaderboard/leaderboardHandlers');
 
+// ── Searchable item picker (itemsearch::open::<purpose>) ───────────────────
+const itemSearch = require('../../../inventory/itemSearch');
+
 // ── Perfil Operacional (drill-downs) ───────────────────────────────────────
 const perfilMaterial = require('../../../perfil/perfilMaterial');
 const perfilPvp = require('../../../perfil/perfilPvp');
@@ -97,6 +100,9 @@ const BUTTON_ROUTES = [
   // Leaderboard live panel — details ephemeral + refresh manual
   prefix('lb::details::', handleLeaderboardDetails),
   exact('lb::refresh', handleLeaderboardRefresh),
+
+  // Searchable item picker — botão abre modal com text input
+  prefix('itemsearch::open::', itemSearch.handleOpenButton),
 
   // Saída session — single-signup flow (saves as pending, admin Iniciar roda auto-pick)
   prefix('saida::session_caracterizado::', saidaSession.handleSessionCaracterizado),

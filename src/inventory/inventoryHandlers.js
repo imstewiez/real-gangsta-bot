@@ -822,23 +822,9 @@ async function handleCartCategory(interaction) {
 }
 
 // ── Item escolhido → abre modal qty (+ preço custom em vendas) ─────────────
-async function handleCartItemPick(interaction) {
-  if (isDuplicate(interaction.id)) return;
-  const parts = interaction.customId.split('::');
-  const tipo = parts[2];
-  const category = parts[3];
-  const itemId = parseInt(interaction.values[0]);
-  if (!itemId || itemId === 'none') return;
-
-  const item = await inventoryRepo.getItemById(itemId);
-  if (!item) {
-    return safeReply(
-      interaction,
-      { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
-    );
-  }
-
+// Extraído como função para ser reutilizado pelo cart normal (cascade) E
+// pelo itemSearch (modal de pesquisa → select filtrado → aqui).
+async function _openCartQtyModal(interaction, tipo, item, { category = 'search' } = {}) {
   const isVenda = tipo === 'venda';
   const basePrice = parseFloat(item.estimated_value) || 0;
 
@@ -868,18 +854,44 @@ async function handleCartItemPick(interaction) {
   }
 
   const modal = new ModalBuilder()
-    .setCustomId(`invcart::qty_modal::${tipo}::${itemId}::${category}`)
+    .setCustomId(`invcart::qty_modal::${tipo}::${item.id}::${category}`)
     .setTitle(`${isVenda ? 'Vender' : 'Entregar'} ${item.name}`.slice(0, 45))
     .addComponents(...modalRows);
 
-  // ⚠ Fecha o ephemeral com o dropdown ANTES de mostrar o modal (padrão
-  // RoboCop). interaction.message.delete() silently falha para ephemerals;
-  // o único método que funciona é parent.deleteReply() via webhook da
-  // interaction original. Fire-and-forget mas síncrono dentro do mesmo tick.
   parentStore.deleteParentEphemeral(interaction.user.id).catch(() => {});
-
   await safeShowModal(interaction, modal);
 }
+
+async function handleCartItemPick(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const parts = interaction.customId.split('::');
+  const tipo = parts[2];
+  const category = parts[3];
+  const itemId = parseInt(interaction.values[0]);
+  if (!itemId || itemId === 'none') return;
+
+  const item = await inventoryRepo.getItemById(itemId);
+  if (!item) {
+    return safeReply(
+      interaction,
+      { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral },
+      { dismissible: true }
+    );
+  }
+  return _openCartQtyModal(interaction, tipo, item, { category });
+}
+
+// Registo de handlers para o itemSearch dispatcher — um purpose por fluxo.
+// Registado aqui (module load time) para evitar circular deps.
+(() => {
+  const itemSearch = require('./itemSearch');
+  itemSearch.registerPickHandler('cart_entrega', async ({ interaction, item }) => {
+    return _openCartQtyModal(interaction, 'entrega', item);
+  });
+  itemSearch.registerPickHandler('cart_venda', async ({ interaction, item }) => {
+    return _openCartQtyModal(interaction, 'venda', item);
+  });
+})();
 
 // ── Qty modal submetido → adiciona linha + re-render painel ─────────────────
 async function handleCartQtyModal(interaction) {

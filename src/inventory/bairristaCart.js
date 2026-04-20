@@ -149,15 +149,17 @@ function buildCartComponents(cart, { canRepeat = false } = {}) {
   const rows = [];
 
   // Row 1: Pesquisar / Adicionar (categoria) / Notas / Repetir última
-  // Pesquisar é o path rápido — modal text input com fuzzy match elimina
-  // o cascade de dropdowns para quem sabe o nome do item.
+  // Pesquisar é o path rápido — modal text input com fuzzy match + normalização
+  // elimina o cascade de dropdowns para quem sabe o nome do item. O customId
+  // `itemsearch::open::cart_<tipo>` é tratado pelo módulo partilhado
+  // src/inventory/itemSearch.js (purpose-based dispatch).
   const addRow = new ActionRowBuilder();
   addRow.addComponents(
     new ButtonBuilder()
-      .setCustomId(`invcart::search::${tipo}`)
-      .setLabel('Pesquisar')
+      .setCustomId(`itemsearch::open::cart_${tipo}`)
+      .setLabel('Procurar item')
       .setStyle(ButtonStyle.Primary)
-      .setEmoji('🔍')
+      .setEmoji('🔎')
   );
   addRow.addComponents(
     new ButtonBuilder()

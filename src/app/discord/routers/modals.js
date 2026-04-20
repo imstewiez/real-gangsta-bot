@@ -45,6 +45,9 @@ const MODAL_ROUTES = [
   prefix('invcart::qty_modal::', handleCartQtyModal),
   prefix('invcart::notes_modal::', handleCartNotesModal),
 
+  // Searchable item picker — modal submit devolve filtered select
+  prefix('itemsearch::modal::', require('../../../inventory/itemSearch').handleSubmitModal),
+
   // Saída
   exact('saida::modal_create', handleCreateSaidaModal),
   exact('saida::modal_close', handleCloseSaidaModal),
