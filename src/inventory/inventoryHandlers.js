@@ -24,6 +24,10 @@ const { EMOJI, ERRORS, MODALS, INVENTORY } = require('../content');
 const { createSessionStore } = require('../shared/sessionStore');
 const pendingItemSelections = createSessionStore('inventory', { ttlMs: 15 * 60 * 1000 });
 
+// Store da interaction-parent para cada user — permite fechar o ephemeral
+// com dropdowns pendurados antes de abrir um modal (padrão RoboCop).
+const parentStore = require('../shared/parentInteractionStore');
+
 function _setItemCtx(userId, ctx) {
   pendingItemSelections.set(userId, ctx);
 }
@@ -76,6 +80,9 @@ async function handleRegistarMaterialButton(interaction) {
     components: [row],
     flags: MessageFlags.Ephemeral,
   });
+  // Regista a interaction-parent — permite que qualquer handler da cascade
+  // feche este ephemeral antes de abrir um modal.
+  parentStore.setParent(interaction.user.id, interaction);
 }
 
 // Step 2: Escolheu entrega ou venda → inicia carrinho (novo fluxo multi-item)
@@ -865,22 +872,21 @@ async function handleCartItemPick(interaction) {
     .setTitle(`${isVenda ? 'Vender' : 'Entregar'} ${item.name}`.slice(0, 45))
     .addComponents(...modalRows);
 
-  await safeShowModal(interaction, modal);
+  // ⚠ Fecha o ephemeral com o dropdown ANTES de mostrar o modal (padrão
+  // RoboCop). interaction.message.delete() silently falha para ephemerals;
+  // o único método que funciona é parent.deleteReply() via webhook da
+  // interaction original. Fire-and-forget mas síncrono dentro do mesmo tick.
+  parentStore.deleteParentEphemeral(interaction.user.id).catch(() => {});
 
-  // Discord API: update + showModal incompatível. Delete explícito do painel
-  // do item-pick para não ficar pendurado; re-render do carrinho acontece
-  // quando o modal for submetido.
-  if (interaction.message) {
-    setImmediate(() => {
-      interaction.message.delete().catch(() => {});
-    });
-  }
+  await safeShowModal(interaction, modal);
 }
 
 // ── Qty modal submetido → adiciona linha + re-render painel ─────────────────
 async function handleCartQtyModal(interaction) {
   if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  // Novo ephemeral é o novo "pai" — futuros modais na cascade vão fechá-lo.
+  parentStore.setParent(interaction.user.id, interaction);
 
   const parts = interaction.customId.split('::');
   const tipo = parts[2];
@@ -980,12 +986,15 @@ async function handleCartNotesButton(interaction) {
           .setValue(cart.globalNotes || '')
       )
     );
+  // Fecha o painel do carrinho antes do modal abrir (ver handleCartItemPick).
+  parentStore.deleteParentEphemeral(interaction.user.id).catch(() => {});
   await safeShowModal(interaction, modal);
 }
 
 async function handleCartNotesModal(interaction) {
   if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  parentStore.setParent(interaction.user.id, interaction);
   const tipo = interaction.customId.split('::')[2];
   const bairristaCart = require('./bairristaCart');
   const cart = bairristaCart.getCart(interaction.user.id);
@@ -1002,6 +1011,7 @@ async function handleCartNotesModal(interaction) {
 async function handleCartCancel(interaction) {
   if (isDuplicate(interaction.id)) return;
   require('./bairristaCart').clearCart(interaction.user.id);
+  parentStore.clearParent(interaction.user.id);
   return safeUpdate(
     interaction,
     {

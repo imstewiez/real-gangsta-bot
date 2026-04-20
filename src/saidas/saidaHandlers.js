@@ -33,6 +33,7 @@ const { warn } = require('../logger');
 // TTL de 15 minutos — limpa entradas abandonadas automaticamente.
 const { createSessionStore } = require('../shared/sessionStore');
 const pendingSaidaContext = createSessionStore('saida', { ttlMs: 15 * 60 * 1000 });
+const parentStore = require('../shared/parentInteractionStore');
 
 // Wrapper que adiciona timestamp ao guardar contexto
 function _setContext(userId, ctx) {
@@ -126,6 +127,7 @@ async function handleCreateSaidaButton(interaction) {
     },
     { messageClass: 'BANAL', ttlMs: 30_000 }
   );
+  parentStore.setParent(interaction.user.id, interaction);
 }
 
 // Step 2: tipo seleccionado → dropdown de spots (em vez de ir já ao modal).
@@ -213,15 +215,10 @@ async function handleCreateSpotSelect(interaction) {
           .setMaxLength(F.notes.maxLength)
       )
     );
+  // Fecha o ephemeral do dropdown (spot select) antes do modal abrir —
+  // via parent.deleteReply(), o único método que funciona para ephemerals.
+  parentStore.deleteParentEphemeral(interaction.user.id).catch(() => {});
   await safeShowModal(interaction, modal);
-
-  // Discord não permite update + showModal. Tenta delete imediato do ephemeral
-  // do dropdown do spot; TTL em handleCreateTypeSelect é backstop.
-  if (interaction.message) {
-    setImmediate(() => {
-      interaction.message.delete().catch(() => {});
-    });
-  }
 }
 
 async function handleCreateSaidaModal(interaction) {
@@ -366,10 +363,9 @@ async function handleCloseSessionDirect(interaction) {
       .setMaxValues(1)
       .addOptions(resultOptions)
   );
-  // TTL 30s — se user não pica em 30s, dropdown auto-desaparece.
-  // Quando user pica, handleCloseResultSelect tenta deletar explicitamente
-  // (mais imediato); este é só fallback.
-  return safeReply(
+  // TTL 30s backstop. Parent guardado → handleCloseResultSelect fecha
+  // o ephemeral explicitamente antes do modal abrir.
+  const reply = await safeReply(
     interaction,
     {
       content: `${EMOJI.FECHAR} Saída **#${saidaId}** — qual foi o resultado?`,
@@ -378,6 +374,8 @@ async function handleCloseSessionDirect(interaction) {
     },
     { messageClass: 'BANAL', ttlMs: 30_000 }
   );
+  parentStore.setParent(interaction.user.id, interaction);
+  return reply;
 }
 
 async function handleCloseSaidaSelect(interaction) {
@@ -461,17 +459,9 @@ async function handleCloseResultSelect(interaction) {
     .setCustomId('saida::modal_close')
     .setTitle(`${EMOJI.FECHAR} Fechar #${saidaId} — ${resultLabel}`.slice(0, 45))
     .addComponents(...fields);
+  // Fecha o ephemeral do result-select antes do modal abrir.
+  parentStore.deleteParentEphemeral(interaction.user.id).catch(() => {});
   await safeShowModal(interaction, modal);
-
-  // Discord API não permite update + showModal na mesma interaction. Depois
-  // de showModal, tenta deletar o ephemeral do dropdown (source message) para
-  // não ficar pendurado. Se falhar (common em ephemerals), o TTL de 30s em
-  // handleCloseSessionDirect limpa eventualmente.
-  if (interaction.message) {
-    setImmediate(() => {
-      interaction.message.delete().catch(() => {});
-    });
-  }
 }
 
 async function handleCloseSaidaModal(interaction) {
