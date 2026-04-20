@@ -33,4 +33,6 @@ module.exports = {
   // categoria (activity, MVP, KDA, entregue, vendido). Default fornecido
   // pelo user; override via env para outros servidores.
   LEADERBOARD_CHANNEL_ID: optId('LEADERBOARD_CHANNEL_ID', '1495444344197615757'),
+  // Painel de rádio fixo (sticky). Default fornecido pelo user; override via env.
+  RADIO_PANEL_CHANNEL_ID: optId('RADIO_PANEL_CHANNEL_ID', '1490397808531079449'),
 };

@@ -177,7 +177,6 @@ const BUTTON_ROUTES = [
   exact('chefia::ver_stock', handleStockCommand),
   exact('chefia::ajustar_stock', handleAdjustStockButton),
   exact('chefia::gerir_materiais', handleGerirMateriaisButton),
-  exact('chefia::publicar_radio', chefiaActions.publicarRadio),
   exact('chefia::listar_stickys', chefiaActions.listarStickys),
   exact('chefia::ver_tops', chefiaActions.verTops),
   exact('chefia::ver_logs', chefiaActions.verLogs),

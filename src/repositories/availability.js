@@ -25,6 +25,20 @@ async function getLatestSession(channelId) {
   return res.rows[0] || null;
 }
 
+/**
+ * Sessões abertas anteriores à data indicada — usado pelo job diário para
+ * fechar forçadamente a sessão do dia anterior às 7h antes de criar nova.
+ */
+async function findOpenBefore(channelId, sessionDate) {
+  const res = await query(
+    `SELECT * FROM availability_sessions
+       WHERE channel_id = $1 AND status = 'open' AND session_date < $2
+       ORDER BY session_date ASC`,
+    [channelId, sessionDate]
+  );
+  return res.rows;
+}
+
 async function createSession({ sessionDate, channelId, createdBy, headerText, mentionRoleIds, slots }) {
   return queryWithTransaction(async client => {
     const sess = await client.query(
@@ -152,6 +166,7 @@ module.exports = {
   getOpenSession,
   getSessionById,
   getLatestSession,
+  findOpenBefore,
   createSession,
   getSlots,
   setMessageId,

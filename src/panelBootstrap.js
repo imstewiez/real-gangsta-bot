@@ -8,6 +8,7 @@ const { buildOficialPanel } = require('./panels/oficialPanel');
 const { buildChefiaPanel } = require('./panels/chefiaPanel');
 const { buildPatraoDiZonaPanel } = require('./panels/patraoDiZonaPanel');
 const { buildEntradaPanel } = require('./panels/entradaPanel');
+const { buildRadioPanel } = require('./panels/radioPanel');
 const { CATEGORY_BY_KEY, bold } = require('./discord/structureTemplate');
 
 // Auto-discover: se PANEL_*_CHANNEL_ID não estiver definido, procura o canal
@@ -59,6 +60,12 @@ const PANELS = [
     autoCategoryKey: 'GUETTO',
     build: buildPatraoDiZonaPanel,
     stickySource: 'panel:patrao_di_zona',
+  },
+  {
+    key: 'panel_radio',
+    channelKey: 'RADIO_PANEL_CHANNEL_ID',
+    build: buildRadioPanel, // async — lê estado actual do radioRepo
+    stickySource: 'panel:radio',
   },
 ];
 
@@ -114,7 +121,8 @@ async function bootstrapPanel(client, panelDef) {
 
     const panelMessages = await getStateKey('panelMessages', {});
     const existingMessageId = panelMessages[panelDef.key];
-    const payload = panelDef.build();
+    // build() pode ser sync ou async (radio lê DB). Await tolera ambos.
+    const payload = await panelDef.build();
 
     if (existingMessageId) {
       try {
@@ -187,7 +195,7 @@ async function upsertPanelSticky(panelDef, channelId, actorId = 'system:panel-bo
 //   - botões são renomeados/reorganizados
 // O estado anterior (panelMessages) é limpo e todos os painéis voltam
 // a seguir o caminho "sem mensagem existente" → delete old + create new.
-const PANELS_SCHEMA_VERSION = 7;
+const PANELS_SCHEMA_VERSION = 8;
 
 async function _maybeForceRebuild() {
   const stored = await getStateKey('panelsSchemaVersion', 0);
@@ -249,6 +257,23 @@ async function backfillResidentPanels(client) {
       WHERE rc.status = 'active'`
   );
 
+  // Detecção robusta do painel — o painel pode ter sido postado no primeiro
+  // dia de vida do canal, há centenas de mensagens atrás. fetch({limit:30})
+  // apanha apenas as mais recentes e falha. Aqui combina:
+  //   (a) últimas 30 mensagens (caso o painel tenha sido reposted)
+  //   (b) 100 mais antigas via after:'0' (canto oposto — habitual de painel)
+  async function _hasBairristaPanel(ch, botId) {
+    const matches = m =>
+      m.author?.id === botId &&
+      m.components?.length &&
+      m.components.some(row => row.components?.some(c => c.customId?.startsWith('bairrista::')));
+    const recent = await ch.messages.fetch({ limit: 30 }).catch(() => null);
+    if (recent && [...recent.values()].some(matches)) return true;
+    const oldest = await ch.messages.fetch({ limit: 100, after: '0' }).catch(() => null);
+    if (oldest && [...oldest.values()].some(matches)) return true;
+    return false;
+  }
+
   let posted = 0,
     skipped = 0,
     failed = 0;
@@ -260,15 +285,7 @@ async function backfillResidentPanels(client) {
         continue;
       }
 
-      // Procura mensagem existente do bot que seja o painel
-      const messages = await ch.messages.fetch({ limit: 30 }).catch(() => null);
-      const existing = messages?.find(
-        m =>
-          m.author?.id === client.user.id &&
-          m.components?.length &&
-          m.components.some(row => row.components?.some(c => c.customId?.startsWith('bairrista::')))
-      );
-      if (existing) {
+      if (await _hasBairristaPanel(ch, client.user.id)) {
         skipped++;
         continue;
       }

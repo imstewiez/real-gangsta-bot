@@ -25,8 +25,28 @@ const {
 } = require('./radioEngine');
 const { safeReply } = require('../shared/interactionHelpers');
 const { successEmbed, brandEmbed } = require('../shared/embedBuilders');
+const { isOficial, isChefia } = require('../permissions/permissionEngine');
 const { RADIO, EMOJI, MODALS } = require('../content');
 const { warn } = require('../logger');
+
+// OG+ = Oficial (OG, Real Gangster) ou Chefia (Kingpin, Manda-Chuva).
+function _canManageRadio(member) {
+  return isOficial(member) || isChefia(member);
+}
+
+async function _denyIfNotOG(interaction) {
+  if (_canManageRadio(interaction.member)) return false;
+  const { MessageFlags } = require('discord.js');
+  await safeReply(
+    interaction,
+    {
+      content: `${EMOJI.BLOQUEADO} Apenas OG+ pode alterar a rádio.`,
+      flags: MessageFlags.Ephemeral,
+    },
+    { dismissible: true }
+  );
+  return true;
+}
 
 function parseId(customId) {
   return customId.split('::');
@@ -46,6 +66,7 @@ async function refreshMessage(interaction) {
 }
 
 async function handleRandom(interaction) {
+  if (await _denyIfNotOG(interaction)) return;
   const [, , type] = parseId(interaction.customId);
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   try {
@@ -64,6 +85,7 @@ async function handleRandom(interaction) {
 }
 
 async function handleSet(interaction) {
+  if (await _denyIfNotOG(interaction)) return;
   const [, , type] = parseId(interaction.customId);
   if (!TYPE_META[type]) return;
   const meta = TYPE_META[type];
@@ -94,6 +116,7 @@ async function handleSet(interaction) {
 }
 
 async function handleSetModal(interaction) {
+  if (await _denyIfNotOG(interaction)) return;
   const [, , type] = parseId(interaction.customId);
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const value = interaction.fields.getTextInputValue('value');
@@ -115,6 +138,7 @@ async function handleSetModal(interaction) {
 }
 
 async function handleSwap(interaction) {
+  if (await _denyIfNotOG(interaction)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   try {
     const swapped = await swapRadios({ actorId: interaction.user.id });

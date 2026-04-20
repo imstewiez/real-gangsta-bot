@@ -31,9 +31,8 @@ function buildChefiaPanel() {
     btn('chefia::gerir_materiais', B.GERIR_MATERIAIS)
   );
 
-  // Row 3 — Gestão + Dados
+  // Row 3 — Gestão + Dados. Rádio tem painel próprio em RADIO_PANEL_CHANNEL_ID.
   const row3 = buttonRow(
-    btn('chefia::publicar_radio', B.RADIO),
     btn('chefia::listar_stickys', B.STICKYS),
     btn('chefia::ver_tops', B.TOPS),
     btn('chefia::ver_logs', B.LOGS)

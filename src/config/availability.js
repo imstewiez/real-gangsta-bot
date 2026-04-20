@@ -12,5 +12,7 @@ module.exports = {
   // Auto-publish: job corre de 5 em 5 min e age só na hora indicada
   // (idempotente via unique index). Default: meia-noite local.
   AVAILABILITY_AUTO_PUBLISH_ENABLED: optBool('AVAILABILITY_AUTO_PUBLISH_ENABLED', true),
-  AVAILABILITY_AUTO_PUBLISH_HOUR: optNum('AVAILABILITY_AUTO_PUBLISH_HOUR', 0),
+  // Hora do reset diário (local). Default 7h — fecha sessão anterior + abre
+  // nova. Mudou de 0h→7h por pedido do user (reset à manhã).
+  AVAILABILITY_AUTO_PUBLISH_HOUR: optNum('AVAILABILITY_AUTO_PUBLISH_HOUR', 7),
 };

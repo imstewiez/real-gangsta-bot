@@ -38,37 +38,79 @@ function _stackedBar(counts, width = 10) {
   return '█'.repeat(Math.max(0, y)) + '▒'.repeat(Math.max(0, m)) + '░'.repeat(Math.max(0, n));
 }
 
+// Identifica a "melhor hora" — slot com mais ✅. Empate → mais cedo.
+function _findPeakSlot(tallies) {
+  let best = null;
+  for (const t of tallies) {
+    const yes = t.counts.disponivel || 0;
+    if (yes === 0) continue;
+    if (!best || yes > best.yes) best = { label: t.label, yes, maybe: t.counts.talvez || 0 };
+  }
+  return best;
+}
+
+// Fmt dia da semana em PT-PT (seg, ter, qua…).
+function _weekdayPt(dateStr) {
+  try {
+    const d = new Date(`${String(dateStr).split('T')[0]}T12:00:00`);
+    return new Intl.DateTimeFormat('pt-PT', { weekday: 'long', timeZone: 'Europe/Lisbon' }).format(d);
+  } catch {
+    return '';
+  }
+}
+
 function buildEmbed(session, tallies, totalVoters) {
   const { EMOJI } = require('../content');
+  const dateStr = String(session.session_date).split('T')[0];
+  const weekday = _weekdayPt(dateStr);
+  const isClosed = session.status === 'closed';
+
+  // Peak slot — "melhor hora" em destaque
+  const peak = _findPeakSlot(tallies);
+  const peakLine = peak
+    ? `🎯 **Pico:** ${peak.label} · ${peak.yes} ✅${peak.maybe ? ` · ${peak.maybe} ⏰` : ''}`
+    : '_Ainda sem votos — sê o primeiro._';
+
+  const statusLine = isClosed
+    ? `${EMOJI.BLOQUEADO} **Sessão fechada** — votos congelados.`
+    : '🗳️ _Usa o menu abaixo para marcar a tua presença. Podes mudar a qualquer altura._';
+
+  const voterLabel = totalVoters === 1 ? 'bairrista votou' : 'bairristas votaram';
+  const voterBadge = totalVoters === 0 ? '_ninguém ainda_' : `**${totalVoters}** ${voterLabel}`;
+
   const embed = brandEmbed('HOUSE')
-    .setTitle(`${EMOJI.PRESENCA} Presença — ${session.session_date.toString().split('T')[0]}`)
+    .setColor(isClosed ? 0x95a5a6 : 0x3498db)
+    .setTitle(`${EMOJI.PRESENCA}  Presença do Bairro`)
     .setDescription(
       [
-        `**${session.header_text || pickHeader()}**`,
+        `**${weekday.charAt(0).toUpperCase() + weekday.slice(1)}**, ${dateStr}`,
         '',
-        session.status === 'closed'
-          ? `${EMOJI.BLOQUEADO} _Sessão fechada — votos congelados._`
-          : 'Vota no menu abaixo. Podes mudar a qualquer momento.',
+        peakLine,
+        `👥 ${voterBadge}`,
+        '',
+        statusLine,
       ].join('\n')
     );
 
-  // Um field por slot, contagens dos 3 estados + barra empilhada.
+  // Slots em grelha de 3 colunas — 1 field por slot. Cada field mostra
+  // horário (inline), barra empilhada compacta, e contagens por estado
+  // na mesma linha.
   for (const t of tallies) {
-    const bar = _stackedBar(t.counts);
-    const counts = STATE_ORDER.map(state => {
-      const m = STATE_META[state];
-      return `${m.emoji} **${t.counts[state] || 0}**`;
-    }).join('   ');
+    const bar = _stackedBar(t.counts, 8);
+    const y = t.counts.disponivel || 0;
+    const m = t.counts.talvez || 0;
+    const n = t.counts.indisponivel || 0;
+    const total = y + m + n;
+    const breakdown = total > 0 ? `✅ ${y}  ⏰ ${m}  ❌ ${n}` : '_sem votos_';
     embed.addFields({
-      name: `${EMOJI.ZONA} ${t.label}`,
-      value: `\`${bar}\`\n${counts}`,
+      name: `🕒 ${t.label}`,
+      value: `\`${bar}\`\n${breakdown}`,
       inline: true,
     });
   }
 
-  const voters = totalVoters === 1 ? 'pessoa votou' : 'pessoas votaram';
   embed.setFooter({
-    text: `Firma RedWood · ${totalVoters} ${voters} · sessão #${session.id}`,
+    text: `Firma RedWood · sessão #${session.id}${isClosed ? ' · fechada' : ' · reset amanhã às 07:00'}`,
   });
   return embed;
 }

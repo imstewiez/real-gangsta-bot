@@ -137,12 +137,18 @@ function startAll(client) {
     { runOnStart: true }
   );
 
-  // Catalog prices — corre semanalmente (7 dias). Substitui o antigo
-  // slash /precario; lê config/prices-catalog.json e aplica preços.
-  registerJob('catalog_prices', 7 * 24 * 60 * 60 * 1000, async () => {
-    const { runCatalogPricesSync } = require('./catalogPricesJob');
-    return await runCatalogPricesSync();
-  });
+  // Catalog prices — corre semanalmente (7 dias) E em cada boot
+  // (runOnStart) para garantir que prices-catalog.json fica imediatamente
+  // aplicado à DB após cada deploy. Substitui o antigo slash /precario.
+  registerJob(
+    'catalog_prices',
+    7 * 24 * 60 * 60 * 1000,
+    async () => {
+      const { runCatalogPricesSync } = require('./catalogPricesJob');
+      return await runCatalogPricesSync();
+    },
+    { runOnStart: true }
+  );
 
   // Sticky messages — refresh time-based (modo repost com threshold_minutes)
   registerJob('sticky_time_refresh', 60 * 1000, async client => {
@@ -163,19 +169,28 @@ function startAll(client) {
   // configurada (idempotente por canal+data via índice único da DB).
   if (CONFIG.AVAILABILITY_AUTO_PUBLISH_ENABLED && CONFIG.AVAILABILITY_CHANNEL_ID) {
     const { availabilityRepo } = require('../repositories');
-    const { createSession, todayDateString } = require('../availability/availabilityEngine');
+    const { createSession, closeSession, todayDateString } = require('../availability/availabilityEngine');
     registerJob('availability_auto_publish', 5 * 60 * 1000, async client => {
       const now = new Date();
       if (now.getHours() !== CONFIG.AVAILABILITY_AUTO_PUBLISH_HOUR) return { skipped: 'wrong_hour' };
       const date = todayDateString();
+
+      // Fecha qualquer sessão aberta do dia anterior ANTES de criar a nova.
+      // Reset diário completo às 07:00 — os votos do dia ficam congelados
+      // (historial) e uma sessão fresca substitui-a.
+      const prevOpen = await availabilityRepo.findOpenBefore(CONFIG.AVAILABILITY_CHANNEL_ID, date).catch(() => []);
+      for (const sess of prevOpen) {
+        await closeSession({ client, sessionId: sess.id, actorId: 'system:daily-reset' }).catch(() => {});
+      }
+
       const existing = await availabilityRepo.getOpenSession(CONFIG.AVAILABILITY_CHANNEL_ID, date);
-      if (existing) return { skipped: 'already_open', sessionId: existing.id };
+      if (existing) return { skipped: 'already_open', sessionId: existing.id, closedPrev: prevOpen.length };
       const { session } = await createSession({
         client,
         channelId: CONFIG.AVAILABILITY_CHANNEL_ID,
         createdBy: 'system:auto-publish',
       });
-      return { sessionId: session.id };
+      return { sessionId: session.id, closedPrev: prevOpen.length };
     });
   }
 
