@@ -148,19 +148,28 @@ function buildCartComponents(cart, { canRepeat = false } = {}) {
   const hasLines = cart.lines.length > 0;
   const rows = [];
 
-  // Row 1: Adicionar / Notas / Repetir última
+  // Row 1: Pesquisar / Adicionar (categoria) / Notas / Repetir última
+  // Pesquisar é o path rápido — modal text input com fuzzy match elimina
+  // o cascade de dropdowns para quem sabe o nome do item.
   const addRow = new ActionRowBuilder();
   addRow.addComponents(
     new ButtonBuilder()
-      .setCustomId(`invcart::add::${tipo}`)
-      .setLabel('Adicionar item')
+      .setCustomId(`invcart::search::${tipo}`)
+      .setLabel('Pesquisar')
       .setStyle(ButtonStyle.Primary)
-      .setEmoji('➕')
+      .setEmoji('🔍')
+  );
+  addRow.addComponents(
+    new ButtonBuilder()
+      .setCustomId(`invcart::add::${tipo}`)
+      .setLabel('Por categoria')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('📁')
   );
   addRow.addComponents(
     new ButtonBuilder()
       .setCustomId(`invcart::notes::${tipo}`)
-      .setLabel(cart.globalNotes ? 'Editar notas' : 'Adicionar notas')
+      .setLabel(cart.globalNotes ? 'Editar notas' : 'Notas')
       .setStyle(ButtonStyle.Secondary)
       .setEmoji('📝')
   );
@@ -168,7 +177,7 @@ function buildCartComponents(cart, { canRepeat = false } = {}) {
     addRow.addComponents(
       new ButtonBuilder()
         .setCustomId(`invcart::repeat::${tipo}`)
-        .setLabel('Repetir última')
+        .setLabel('Repetir')
         .setStyle(ButtonStyle.Secondary)
         .setEmoji('🔁')
     );

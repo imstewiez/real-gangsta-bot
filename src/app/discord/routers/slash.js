@@ -15,6 +15,7 @@ const ranking = require('../../../queries/ranking');
 const saidasMinhas = require('../../../queries/saidasMinhas');
 const versao = require('../../../queries/versao');
 const transfer = require('../../../queries/transfer');
+const entregaVendaRapida = require('../../../queries/entregaVendaRapida');
 
 const { handleRegisterKillButton } = require('../../../kills/killHandlers');
 const { handleMovimento } = require('../../../members/bairristaHandlers');
@@ -39,6 +40,10 @@ const SLASH_ROUTES = {
   movimento: handleMovimento,
   kill: handleRegisterKillButton,
   'meu-pedido': handleMeuPedido,
+
+  // ── Entrega/venda rápida (autocomplete por nome do item)
+  entrega: entregaVendaRapida.handleEntrega,
+  venda: entregaVendaRapida.handleVenda,
 
   // ── Staff operacional
   audit: audit.handle,

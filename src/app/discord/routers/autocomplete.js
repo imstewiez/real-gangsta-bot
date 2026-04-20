@@ -19,6 +19,8 @@ async function itemAutocomplete(interaction, focused) {
 const AUTOCOMPLETE = {
   stock: { item: itemAutocomplete },
   transfer: { item: itemAutocomplete },
+  entrega: { item: itemAutocomplete },
+  venda: { item: itemAutocomplete },
 };
 
 async function handleAutocomplete(interaction) {

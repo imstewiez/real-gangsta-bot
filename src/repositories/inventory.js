@@ -19,6 +19,40 @@ async function getItemByName(name) {
   return res.rows[0] || null;
 }
 
+/**
+ * Fuzzy match por nome — para busca em modals de cart/inventário.
+ * Estratégia:
+ *   1. Exact case-insensitive match → prioritário
+ *   2. Prefix match (começa com o termo) — ordenado por length asc
+ *   3. Substring match (contém o termo) — ordenado por length asc
+ * Devolve até `limit` resultados, com _score entre 3 (exact) e 1 (substring).
+ */
+async function searchItemsByName(term, { limit = 5, activeOnly = true } = {}) {
+  if (!term || String(term).trim().length < 2) return [];
+  const t = String(term).trim();
+  const wildcard = `%${t}%`;
+  const prefix = `${t}%`;
+  const whereActive = activeOnly ? 'AND active = true' : '';
+  const res = await query(
+    `
+    SELECT *,
+           CASE
+             WHEN LOWER(name) = LOWER($1) THEN 3
+             WHEN LOWER(name) LIKE LOWER($2) THEN 2
+             WHEN LOWER(name) LIKE LOWER($3) THEN 1
+             ELSE 0
+           END AS _score,
+           LENGTH(name) AS _len
+      FROM items
+     WHERE (LOWER(name) = LOWER($1) OR LOWER(name) LIKE LOWER($2) OR LOWER(name) LIKE LOWER($3)) ${whereActive}
+     ORDER BY _score DESC, _len ASC, name ASC
+     LIMIT $4
+  `,
+    [t, prefix, wildcard, limit]
+  );
+  return res.rows;
+}
+
 async function createItem({ name, category = 'outros', unit = 'unidade', estimatedValue = null, notes = '' }) {
   const res = await query(
     `INSERT INTO items (name, category, unit, estimated_value, notes)
@@ -296,6 +330,7 @@ module.exports = {
   getItems,
   getItemById,
   getItemByName,
+  searchItemsByName,
   createItem,
   updateItem,
   recordMovement,

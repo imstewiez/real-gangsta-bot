@@ -146,6 +146,41 @@ const commands = [
     .setDescription('Logs de auditoria')
     .addIntegerOption(opt => opt.setName('limite').setDescription('Registos (default 20)').setRequired(false)),
 
+  // ── Entregas / Vendas rápidas com autocomplete por nome do item ──
+  // User escreve o nome parcial → Discord filtra em tempo real.
+  new SlashCommandBuilder()
+    .setName('entrega')
+    .setDescription('Registar entrega rápida de 1 item (com pesquisa por nome)')
+    .addStringOption(opt =>
+      opt
+        .setName('item')
+        .setDescription('Nome do item (escreve para pesquisar)')
+        .setRequired(true)
+        .setAutocomplete(true)
+    )
+    .addIntegerOption(opt => opt.setName('quantidade').setDescription('Unidades').setRequired(true).setMinValue(1))
+    .addStringOption(opt => opt.setName('nota').setDescription('Nota (opcional)').setRequired(false)),
+
+  new SlashCommandBuilder()
+    .setName('venda')
+    .setDescription('Registar venda rápida de 1 item (com pesquisa por nome)')
+    .addStringOption(opt =>
+      opt
+        .setName('item')
+        .setDescription('Nome do item (escreve para pesquisar)')
+        .setRequired(true)
+        .setAutocomplete(true)
+    )
+    .addIntegerOption(opt => opt.setName('quantidade').setDescription('Unidades').setRequired(true).setMinValue(1))
+    .addIntegerOption(opt =>
+      opt
+        .setName('preco')
+        .setDescription('Preço custom por unidade em € (opcional — default = catálogo)')
+        .setRequired(false)
+        .setMinValue(0)
+    )
+    .addStringOption(opt => opt.setName('nota').setDescription('Nota (opcional)').setRequired(false)),
+
   new SlashCommandBuilder()
     .setName('transfer')
     .setDescription('Mover material entre casas')
