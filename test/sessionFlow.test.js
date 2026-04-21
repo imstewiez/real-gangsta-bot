@@ -127,18 +127,19 @@ describe('templates saídas — novos eventos', () => {
 describe('content — BUTTONS.CHEFIA limpo', () => {
   const { BUTTONS } = require('../src/content');
 
-  it('só tem 9 entradas top-level', () => {
+  it('só tem 8 entradas top-level (RADIO removida — painel sticky próprio)', () => {
     const keys = Object.keys(BUTTONS.CHEFIA);
-    assert.equal(keys.length, 9);
+    assert.equal(keys.length, 8);
   });
 
-  it('não tem PARTICIPANTES nem MATERIAL_SAIDA nem FORNECER', () => {
+  it('não tem botões removidos', () => {
     assert.equal(BUTTONS.CHEFIA.PARTICIPANTES, undefined);
     assert.equal(BUTTONS.CHEFIA.MATERIAL_SAIDA, undefined);
     assert.equal(BUTTONS.CHEFIA.FORNECER, undefined);
     assert.equal(BUTTONS.CHEFIA.DISPONIBILIDADE, undefined);
     assert.equal(BUTTONS.CHEFIA.FECHAR_SAIDA, undefined);
     assert.equal(BUTTONS.CHEFIA.STATS, undefined);
+    assert.equal(BUTTONS.CHEFIA.RADIO, undefined);
   });
 
   it('ainda tem CRIAR_SAIDA, VER_SAIDAS, TOPS, LOGS', () => {
