@@ -207,10 +207,26 @@ async function main() {
       }
     }
 
-    console.log('\n--- Sheets ---');
-    console.log('  A tab `saidas` é event-driven. Corre no Discord para sincronizar:');
-    console.log('    /sync-sheets acao:all');
-    console.log('\n✓ Limpeza concluída. Próximo boot do bot reflecte tudo.');
+    // 9. Sheets — trigger syncAll directamente. O syncEngine faz clearRange
+    //    + re-write de cada tab a partir da DB, pelo que linhas stale das
+    //    saídas apagadas desaparecem do Google Sheet.
+    console.log('\n--- Sheets resync (clearRange + rewrite) ---');
+    try {
+      const { syncAll } = require('../../src/sheets/syncEngine');
+      const results = await syncAll();
+      for (const r of results) {
+        if (r.error) {
+          console.log(`  ⚠ ${r.tab}: ${r.error}`);
+        } else {
+          console.log(`  ✓ ${r.tab}: ${r.ops} ops em ${r.ms}ms`);
+        }
+      }
+    } catch (e) {
+      console.warn(`  ⚠ Sheets resync falhou: ${e.message}`);
+      console.log('    Fallback: corre no Discord `/sync-sheets acao:all`.');
+    }
+
+    console.log('\n✓ Limpeza concluída.');
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('\n✖ ERRO — ROLLBACK feito:', err.message);
