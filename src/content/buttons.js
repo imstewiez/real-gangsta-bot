@@ -58,8 +58,7 @@ const BUTTONS = {
     VER_STOCK: { label: 'Ver Stock', emoji: E.STOCK, style: STYLE.PRIMARY },
     AJUSTAR_STOCK: { label: 'Ajustar Stock', emoji: E.AJUSTAR, style: STYLE.SECONDARY },
     GERIR_MATERIAIS: { label: 'Gerir Materiais', emoji: E.EDITAR, style: STYLE.SECONDARY },
-    // Gestão + Dados
-    RADIO: { label: 'Painel Rádio', emoji: E.RADIO, style: STYLE.PRIMARY },
+    // Gestão + Dados. Rádio tem painel sticky próprio em RADIO_PANEL_CHANNEL_ID.
     STICKYS: { label: 'Stickys', emoji: E.STICKY, style: STYLE.SECONDARY },
     TOPS: { label: 'Topo', emoji: E.TOPO, style: STYLE.SECONDARY },
     LOGS: { label: 'Logs', emoji: E.AUDIT, style: STYLE.SECONDARY },

@@ -20,7 +20,7 @@
  */
 
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { brandEmbed, rankBadge } = require('../shared/embedBuilders');
+const { brandEmbed, rankBadge, COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 
 // Ícones canónicos por categoria — consistentes no embed e nos buttons.
@@ -93,7 +93,7 @@ function formatLeaderLine(category, leader) {
 
 function buildLeaderboardEmbed({ daily, weekly, monthly, refreshedAt }) {
   const embed = brandEmbed('TOP')
-    .setColor(0xf1c40f)
+    .setColor(COLOR.GOLD)
     .setTitle(`🏆  Leaderboard da Firma  🏆`)
     .setDescription(
       [
@@ -187,7 +187,7 @@ function buildDetailsEmbed(periodData) {
   const { period, label, categories } = periodData;
   const pIcon = PERIOD_ICON[period] || '•';
   const embed = brandEmbed('TOP')
-    .setColor(0x3498db)
+    .setColor(COLOR.INFO)
     .setTitle(`${pIcon} Top 5 — ${PERIOD_LABEL[period]}`)
     .setDescription(`_${label}_`);
 

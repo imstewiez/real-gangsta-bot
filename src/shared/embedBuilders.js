@@ -6,6 +6,22 @@ const { formatPtDate, formatPtDateOnly } = require('./formatPtDate');
 
 const { EMOJI, footer, ROLE, STATUS, SAIDA_TYPE, ONBOARDING, INVENTORY, RANKINGS } = content;
 
+// ── Colour palette ──────────────────────────────────────────────────────────
+// Canonical hex por estado semântico. Antes espalhado em ~39 sítios como
+// literais; centralizar aqui permite alterar "sucesso" num só lugar e
+// garante consistência visual entre embeds do mesmo tipo.
+const COLOR = Object.freeze({
+  BRAND: CONFIG.BOT_COLOR,
+  SUCCESS: 0x2ecc71, // verde — entregas, confirmações
+  GOLD: 0xf1c40f, // amarelo — vendas, ranking, destaque
+  INFO: 0x3498db, // azul — neutro, em curso
+  WARNING: 0xe67e22, // laranja — em_liquidacao, atenção
+  WARNING_SOFT: 0xf39c12, // laranja soft — avisos menos críticos
+  DANGER: 0xe74c3c, // vermelho — combate, spot queimado
+  ERROR: 0xc0392b, // vermelho escuro — erro
+  MUTED: 0x95a5a6, // cinzento — cancelada, concluída, fechada
+});
+
 // ── Brand embeds ────────────────────────────────────────────────────────────
 
 // Footer assinado pela Firma RedWood. Icone opcional via BOT_LOGO_URL.
@@ -121,20 +137,29 @@ function applyLogo(embed) {
 
 function successEmbed(title, description) {
   return brandEmbed()
+    .setColor(COLOR.SUCCESS)
     .setTitle(`${EMOJI.OK} ${title}`)
     .setDescription(description || null);
 }
 
 function errorEmbed(title, description) {
   return brandEmbed()
-    .setColor(0xc0392b)
+    .setColor(COLOR.ERROR)
     .setTitle(`${EMOJI.WARN} ${title}`)
     .setDescription(description || null);
 }
 
 function infoEmbed(title, description) {
   return brandEmbed()
+    .setColor(COLOR.INFO)
     .setTitle(title)
+    .setDescription(description || null);
+}
+
+function warningEmbed(title, description) {
+  return brandEmbed()
+    .setColor(COLOR.WARNING)
+    .setTitle(`${EMOJI.WARN} ${title}`)
     .setDescription(description || null);
 }
 
@@ -230,11 +255,13 @@ function welcomeChannelEmbed(memberName) {
 }
 
 module.exports = {
+  COLOR,
   brandEmbed,
   applyLogo,
   successEmbed,
   errorEmbed,
   infoEmbed,
+  warningEmbed,
   stockEmbed,
   operationEmbed,
   rankingEmbed,

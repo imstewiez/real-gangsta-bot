@@ -22,7 +22,7 @@
 const CONFIG = require('../config');
 const { query } = require('../db');
 const { log, warn } = require('../logger');
-const { brandEmbed, applyLogo } = require('../shared/embedBuilders');
+const { brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { formatPtDate } = require('../shared/formatPtDate');
 
@@ -102,7 +102,7 @@ async function startCooldown({ spot, saidaId, saidaType, leaderName, minutes } =
       if (channel && channel.isTextBased?.()) {
         const embed = applyLogo(
           brandEmbed('SHORT')
-            .setColor(0xe74c3c)
+            .setColor(COLOR.DANGER)
             .setTitle(`${EMOJI.WARN} Spot Queimado — ${spot}`)
             .setDescription(
               `A org acabou de abrir uma saída neste spot.\n` +
@@ -164,7 +164,7 @@ async function releaseCooldownForSaida(spot, saidaId) {
           if (msg) {
             const freeEmbed = applyLogo(
               brandEmbed('SHORT')
-                .setColor(0x2ecc71)
+                .setColor(COLOR.SUCCESS)
                 .setTitle(`${EMOJI.OK} Spot Livre — ${spot}`)
                 .setDescription(`_Saída #${saidaId} foi cancelada — spot disponível de novo._`)
             );
@@ -205,7 +205,7 @@ async function runExpirer(client) {
             const originalEmbed = msg.embeds?.[0];
             const freeEmbed = applyLogo(
               brandEmbed('SHORT')
-                .setColor(0x2ecc71)
+                .setColor(COLOR.SUCCESS)
                 .setTitle(`${EMOJI.OK} Spot Livre — ${row.spot}`)
                 .setDescription(
                   (originalEmbed?.title ? `_Cooldown da saída #${row.saida_id || '—'} terminou._\n\n` : '') +

@@ -102,7 +102,6 @@ const PANELS = {
       VER_STOCK: 'Ver Stock',
       AJUSTAR_STOCK: 'Ajustar Stock',
       GERIR_MATERIAIS: 'Gerir Materiais',
-      RADIO: 'Painel Rádio',
       STICKYS: 'Stickys',
       TOPS: 'Topo',
       LOGS: 'Logs',

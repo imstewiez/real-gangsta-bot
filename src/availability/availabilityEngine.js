@@ -17,7 +17,7 @@ const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, 
 const CONFIG = require('../config');
 const { availabilityRepo } = require('../repositories');
 const { logAudit } = require('../audit/auditEngine');
-const { brandEmbed } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { pickHeader, stateMeta, STATE_ORDER, STATE_META } = require('./availabilityTemplates');
 const { log, warn } = require('../logger');
 
@@ -79,7 +79,7 @@ function buildEmbed(session, tallies, totalVoters) {
   const voterBadge = totalVoters === 0 ? '_ninguém ainda_' : `**${totalVoters}** ${voterLabel}`;
 
   const embed = brandEmbed('HOUSE')
-    .setColor(isClosed ? 0x95a5a6 : 0x3498db)
+    .setColor(isClosed ? COLOR.MUTED : COLOR.INFO)
     .setTitle(`${EMOJI.PRESENCA}  Presença do Bairro`)
     .setDescription(
       [

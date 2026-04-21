@@ -39,7 +39,7 @@ const {
 const { saidaRepo, memberRepo, inventoryRepo } = require('../repositories');
 const saidaEngine = require('./saidaEngine');
 const { safeReply, safeUpdate, isDuplicate, scheduleDeleteInteractionReply } = require('../shared/interactionHelpers');
-const { brandEmbed, applyLogo, rankBadge } = require('../shared/embedBuilders');
+const { brandEmbed, applyLogo, rankBadge, COLOR } = require('../shared/embedBuilders');
 const { EMOJI, SAIDA_TYPE } = require('../content');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
@@ -242,7 +242,7 @@ async function buildSessionEmbed(saidaId) {
     if (pendingWeapon > 0) lines.push(`${EMOJI.WARN} **${pendingWeapon}** devolução(ões) de arma pendente(s)`);
   }
 
-  const embedColor = isClosed ? 0x95a5a6 : isConcluded ? 0x2ecc71 : isInLiquidacao ? 0xe67e22 : 0x3498db;
+  const embedColor = isClosed ? COLOR.MUTED : isConcluded ? COLOR.SUCCESS : isInLiquidacao ? COLOR.WARNING : COLOR.INFO;
   const embed = brandEmbed('MOVEMENT').setColor(embedColor).setDescription(lines.join('\n'));
 
   const components = [];
