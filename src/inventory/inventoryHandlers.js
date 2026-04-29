@@ -1025,7 +1025,16 @@ async function handleCartSubmit(interaction) {
         embeds: [approverEmbed],
         components: bairristaCart.buildDeliveryApproverComponents(),
       })
-      .catch(() => {});
+      .catch(() =>
+        interaction
+          .followUp({
+            content: '',
+            embeds: [approverEmbed],
+            components: bairristaCart.buildDeliveryApproverComponents(),
+            flags: MessageFlags.Ephemeral,
+          })
+          .catch(() => {})
+      );
   }
 
   // Snapshot + clear IMEDIATO — se o user conseguir 2 cliques antes do
