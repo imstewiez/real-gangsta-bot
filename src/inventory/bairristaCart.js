@@ -364,7 +364,9 @@ function buildDeliveryRequestEmbed({ requestId, memberName, memberDiscordId, lin
     .setColor(0xf39c12)
     .setTitle(`${EMOJI.MATERIAL} Entrega pendente de confirmaÃ§Ã£o`)
     .setDescription(
-      [`Bairrista: <@${memberDiscordId}>${memberName ? ` (${memberName})` : ''}`, '', body, '', ...summaryLines].join('\n')
+      [`Bairrista: <@${memberDiscordId}>${memberName ? ` (${memberName})` : ''}`, '', body, '', ...summaryLines].join(
+        '\n'
+      )
     )
     .setFooter({ text: `pedido ${String(requestId).slice(0, 8)}` });
 }
