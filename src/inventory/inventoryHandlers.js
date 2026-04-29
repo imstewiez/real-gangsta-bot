@@ -991,24 +991,22 @@ async function handleCartPreviewBack(interaction) {
 async function handleCartSubmit(interaction) {
   if (isDuplicate(interaction.id)) return;
 
-  // deferUpdate (não deferReply ephemeral): grey-out dos botões do painel
-  // durante a submissão evita double-click → double-submit. Também permite
-  // editReply substituir o painel do carrinho pelo embed de feedback na
-  // mesma mensagem — uma submissão, uma mensagem.
-  await interaction.deferUpdate().catch(() => {});
-
   const tipo = interaction.customId.split('::')[2];
   const bairristaCart = require('./bairristaCart');
   const cart = bairristaCart.getCart(interaction.user.id);
   if (!cart || cart.tipo !== tipo) {
-    return interaction
-      .editReply({ content: `${EMOJI.PENDENTE} Carrinho expirado.`, embeds: [], components: [] })
-      .catch(() => {});
+    return safeUpdate(
+      interaction,
+      { content: `${EMOJI.PENDENTE} Carrinho expirado.`, embeds: [], components: [] },
+      { dismissible: false }
+    );
   }
   if (!cart.lines.length) {
-    return interaction
-      .editReply({ content: `${EMOJI.WARN} Carrinho vazio.`, embeds: [], components: [] })
-      .catch(() => {});
+    return safeUpdate(
+      interaction,
+      { content: `${EMOJI.WARN} Carrinho vazio.`, embeds: [], components: [] },
+      { dismissible: false }
+    );
   }
 
   if (tipo === 'entrega') {
@@ -1016,30 +1014,23 @@ async function handleCartSubmit(interaction) {
       .buildCartEmbed(cart, {
         extraNote:
           `${EMOJI.PENDENTE} Escolhe o OG+ que vai receber/confirmar esta entrega. ` +
-          'O stock sÃ³ muda depois dessa pessoa aceitar.',
+          'O stock s\u00f3 muda depois dessa pessoa aceitar.',
       })
       .setTitle(`${EMOJI.MATERIAL} Confirmar entrega com OG+`);
-    return interaction
-      .editReply({
+    return safeUpdate(
+      interaction,
+      {
         content: '',
         embeds: [approverEmbed],
         components: bairristaCart.buildDeliveryApproverComponents(),
-      })
-      .catch(() =>
-        interaction
-          .followUp({
-            content: '',
-            embeds: [approverEmbed],
-            components: bairristaCart.buildDeliveryApproverComponents(),
-            flags: MessageFlags.Ephemeral,
-          })
-          .catch(() => {})
-      );
+      },
+      { dismissible: false }
+    );
   }
 
-  // Snapshot + clear IMEDIATO — se o user conseguir 2 cliques antes do
-  // deferUpdate grey-out (race raro), a segunda execução encontra o
-  // cart já vazio e aborta. Defence-in-depth contra double-submit.
+  // For direct submissions, acknowledge first so a double-click cannot submit twice.
+  await interaction.deferUpdate().catch(() => {});
+
   const linesSnapshot = cart.lines.map(l => ({
     itemId: l.itemId,
     quantity: l.quantity,
@@ -1062,18 +1053,17 @@ async function handleCartSubmit(interaction) {
     return interaction.editReply({ content: `${EMOJI.ERRO} ${e.message}`, embeds: [], components: [] }).catch(() => {});
   }
 
-  // Auto-promoção — mantém mesma UX do single-item
   const { checkAndPromote, getPromotionProgress, formatTierName } = require('../members/autoPromotionEngine');
   const promoResult = await checkAndPromote(interaction.user.id, interaction.guild, interaction.client).catch(
     () => null
   );
   let promotionLine = '';
   if (promoResult?.promoted) {
-    promotionLine = `${EMOJI.LIDER} **Subida automática** — agora és **${formatTierName(promoResult.to)}**!`;
+    promotionLine = `${EMOJI.LIDER} **Subida autom\u00e1tica** \u2014 agora \u00e9s **${formatTierName(promoResult.to)}**!`;
   } else {
     const progress = await getPromotionProgress(interaction.user.id).catch(() => null);
     if (progress && !progress.maxedOut && progress.threshold) {
-      promotionLine = `${EMOJI.TOPO} Progresso → ${progress.nextTierName}: **${progress.progress}%** (faltam ${progress.remaining.toLocaleString('pt-PT')})`;
+      promotionLine = `${EMOJI.TOPO} Progresso \u2192 ${progress.nextTierName}: **${progress.progress}%** (faltam ${progress.remaining.toLocaleString('pt-PT')})`;
     }
   }
 
