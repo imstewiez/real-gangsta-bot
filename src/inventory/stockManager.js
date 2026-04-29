@@ -10,7 +10,7 @@
  *   - findItemByName: busca por nome (ignora acentos/case)
  */
 
-const { query } = require('../db');
+const { query, withAdvisoryLock } = require('../db');
 const { logAudit } = require('../audit/auditEngine');
 
 const VALID_LOCATIONS = ['armazem', 'grupo'];
@@ -123,40 +123,67 @@ async function removeStock({
   return { id: r.rows[0].id };
 }
 
+function _stockBalanceSql(location) {
+  return {
+    text: `
+      SELECT COALESCE(SUM(
+        CASE
+          WHEN movement_type IN ('saldo_inicial','entrega_bairrista','venda_bairrista','entrega_oficial','devolucao_saida','apreendido','craftado')
+            THEN quantity
+          WHEN movement_type IN ('fornecimento_org','consumo_saida','perda_saida')
+            THEN -quantity
+          WHEN movement_type = 'ajuste_manual' THEN quantity
+          ELSE 0
+        END
+      ), 0)::int AS balance
+      FROM inventory_movements
+      WHERE item_id = $1 AND location = $2
+    `,
+    values: location,
+  };
+}
+
 async function transferStock({ itemId, quantity, fromLocation, toLocation, actor, notes = '' }) {
   if (!VALID_LOCATIONS.includes(fromLocation)) throw new Error(`Casa origem inválida: ${fromLocation}`);
   if (!VALID_LOCATIONS.includes(toLocation)) throw new Error(`Casa destino inválida: ${toLocation}`);
   if (fromLocation === toLocation) throw new Error('Origem e destino não podem ser iguais');
   if (!Number.isInteger(quantity) || quantity <= 0) throw new Error('Quantidade tem de ser inteiro positivo');
 
-  const current = await getCurrentStock(itemId, fromLocation);
-  if (current < quantity) {
-    throw new Error(`Stock insuficiente em ${fromLocation}: tem ${current}, queres mover ${quantity}`);
-  }
+  const lockKey = `stock-transfer:${itemId}:${fromLocation}`;
+  return withAdvisoryLock(lockKey, async client => {
+    const balanceQuery = _stockBalanceSql(fromLocation);
+    const currentResult = await client.query(balanceQuery.text, [itemId, balanceQuery.values]);
+    const current = currentResult.rows[0]?.balance || 0;
+    if (current < quantity) {
+      throw new Error(`Stock insuficiente em ${fromLocation}: tem ${current}, queres mover ${quantity}`);
+    }
 
-  // Par de movimentos ajuste_manual: -X numa casa, +X na outra. Saldo global mantém-se.
-  const ctx = `transfer ${fromLocation} → ${toLocation}`;
-  const out = await query(
-    `INSERT INTO inventory_movements
-     (movement_type, item_id, quantity, location, created_by, context, notes)
-     VALUES ('ajuste_manual', $1, $2, $3, $4, $5, $6) RETURNING id`,
-    [itemId, -quantity, fromLocation, actor, ctx, notes]
-  );
-  const inv = await query(
-    `INSERT INTO inventory_movements
-     (movement_type, item_id, quantity, location, created_by, context, notes)
-     VALUES ('ajuste_manual', $1, $2, $3, $4, $5, $6) RETURNING id`,
-    [itemId, quantity, toLocation, actor, ctx, notes]
-  );
-  await logAudit({
-    action: 'stock_transfer',
-    entityType: 'inventory',
-    entityId: String(itemId),
-    actorId: actor,
-    afterState: { quantity, fromLocation, toLocation },
-    context: notes,
-  }).catch(() => {});
-  return { outId: out.rows[0].id, inId: inv.rows[0].id };
+    // Par de movimentos ajuste_manual: -X numa casa, +X na outra. Saldo global mantém-se.
+    const ctx = `transfer ${fromLocation} → ${toLocation}`;
+    const out = await client.query(
+      `INSERT INTO inventory_movements
+       (movement_type, item_id, quantity, location, created_by, context, notes)
+       VALUES ('ajuste_manual', $1, $2, $3, $4, $5, $6) RETURNING id`,
+      [itemId, -quantity, fromLocation, actor, ctx, notes]
+    );
+    const inv = await client.query(
+      `INSERT INTO inventory_movements
+       (movement_type, item_id, quantity, location, created_by, context, notes)
+       VALUES ('ajuste_manual', $1, $2, $3, $4, $5, $6) RETURNING id`,
+      [itemId, quantity, toLocation, actor, ctx, notes]
+    );
+
+    await logAudit({
+      action: 'stock_transfer',
+      entityType: 'inventory',
+      entityId: String(itemId),
+      actorId: actor,
+      afterState: { quantity, fromLocation, toLocation },
+      context: notes,
+    }).catch(() => {});
+
+    return { outId: out.rows[0].id, inId: inv.rows[0].id };
+  });
 }
 
 async function adjustStock({ itemId, newTotal, location, actor, reason = 'contagem manual' }) {
