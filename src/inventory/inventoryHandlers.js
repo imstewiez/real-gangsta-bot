@@ -1139,7 +1139,7 @@ async function handleDeliveryApproverSelect(interaction) {
   if (!approverMember || !canOpenSession(approverMember)) {
     return interaction
       .editReply({
-        content: `${EMOJI.ERRO} Tens de escolher um OG ou alguÃ©m acima na hierarquia.`,
+        content: `${EMOJI.ERRO} Tens de escolher um OG ou alguém acima na hierarquia.`,
         embeds: [],
         components: bairristaCart.buildDeliveryApproverComponents(),
       })
@@ -1200,8 +1200,8 @@ async function handleDeliveryApproverSelect(interaction) {
 
     const msg =
       delivered === 'pendente'
-        ? 'Pedido criado, mas nÃ£o consegui notificar o OG+. Pede-lhe para abrir a mensagem de confirmaÃ§Ã£o se tiver sido entregue noutro canal.'
-        : `Pedido enviado para <@${approverId}> (${delivered}). O stock sÃ³ muda quando a entrega for aceite.`;
+        ? 'Pedido criado, mas não consegui notificar o OG+. Pede-lhe para abrir a mensagem de confirmação se tiver sido entregue noutro canal.'
+        : `Pedido enviado para <@${approverId}> (${delivered}). O stock só muda quando a entrega for aceite.`;
 
     return interaction.editReply({ content: `${EMOJI.OK} ${msg}`, embeds: [], components: [] }).catch(() => {});
   } catch (e) {

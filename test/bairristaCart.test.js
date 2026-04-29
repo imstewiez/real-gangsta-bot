@@ -270,6 +270,23 @@ describe('bairristaCart — buildCartComponents', () => {
     assert.doesNotThrow(() => approverRows.map(row => row.toJSON()));
     assert.doesNotThrow(() => decisionRows.map(row => row.toJSON()));
   });
+
+  it('embed de pedido de entrega não tem mojibake no texto visível', () => {
+    const embed = bairristaCart.buildDeliveryRequestEmbed({
+      requestId: '12345678-aaaa-bbbb-cccc-ddddeeeeffff',
+      memberName: 'Alice',
+      memberDiscordId: '111',
+      lines: [{ itemName: 'Ferro', quantity: 2 }],
+      totalQty: 2,
+      totalValue: 50,
+      notes: 'Tudo ok',
+    });
+    const visible = JSON.stringify(embed.toJSON());
+
+    assert.match(visible, /confirmação/);
+    assert.match(visible, /50€/);
+    assert.doesNotMatch(visible, /Ã|Â|â/);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

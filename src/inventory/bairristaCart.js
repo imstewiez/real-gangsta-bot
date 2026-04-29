@@ -351,14 +351,14 @@ function buildDeliveryApproverComponents() {
 }
 
 function buildDeliveryRequestEmbed({ requestId, memberName, memberDiscordId, lines, totalQty, totalValue, notes }) {
-  const body = lines.map(l => `â€¢ **${l.itemName}** Â· **${l.quantity.toLocaleString('pt-PT')}Ã—**`).join('\n');
+  const body = lines.map(l => `- **${l.itemName}** · **${l.quantity.toLocaleString('pt-PT')}x**`).join('\n');
   const summaryLines = [`Total: **${totalQty.toLocaleString('pt-PT')}** unidades`];
-  if (totalValue > 0) summaryLines.push(`Valor estimado: **${totalValue.toLocaleString('pt-PT')}â‚¬**`);
+  if (totalValue > 0) summaryLines.push(`Valor estimado: **${totalValue.toLocaleString('pt-PT')}€**`);
   if (notes) summaryLines.push('', `Notas: _${notes}_`);
 
   return brandEmbed('MOVEMENT')
     .setColor(0xf39c12)
-    .setTitle(`${EMOJI.MATERIAL} Entrega pendente de confirmaÃ§Ã£o`)
+    .setTitle(`${EMOJI.MATERIAL} Entrega pendente de confirmação`)
     .setDescription(
       [`Bairrista: <@${memberDiscordId}>${memberName ? ` (${memberName})` : ''}`, '', body, '', ...summaryLines].join(
         '\n'

@@ -131,10 +131,10 @@ async function enrichCartLines(tipo, lines) {
     if (!line?.itemId) throw new Error('Line sem itemId.');
     const qty = Number(line.quantity);
     if (!Number.isFinite(qty) || qty <= 0) {
-      throw new Error(`Quantidade invÃ¡lida para item ${line.itemId}.`);
+      throw new Error(`Quantidade inválida para item ${line.itemId}.`);
     }
     const item = await inventoryRepo.getItemById(line.itemId);
-    if (!item) throw new Error(`Item ${line.itemId} nÃ£o encontrado.`);
+    if (!item) throw new Error(`Item ${line.itemId} não encontrado.`);
 
     const basePrice = parseFloat(item.estimated_value) || 0;
     const customRaw = tipo === 'venda' ? Number(line.unitPrice) : null;
@@ -463,11 +463,11 @@ async function recordDeliveryBatch({ discordId, tipo, lines, globalNotes = '', c
 
 async function createDeliveryRequest({ discordId, approverDiscordId, lines, globalNotes = '', createdBy }) {
   if (!Array.isArray(lines) || lines.length === 0) {
-    throw new Error('Carrinho vazio â€” adiciona pelo menos 1 item antes de submeter.');
+    throw new Error('Carrinho vazio — adiciona pelo menos 1 item antes de submeter.');
   }
 
   const member = await memberRepo.findByDiscordId(discordId);
-  if (!member) throw new Error('Membro nÃ£o encontrado.');
+  if (!member) throw new Error('Membro não encontrado.');
 
   const enrichedLines = await enrichCartLines('entrega', lines);
   const { totalQty, totalValue } = batchTotals(enrichedLines);
@@ -506,12 +506,12 @@ async function createDeliveryRequest({ discordId, approverDiscordId, lines, glob
 async function decideDeliveryRequest({ requestId, decisionBy, approve, reason = '' }) {
   const txResult = await queryWithTransaction(async client => {
     const request = await deliveryRequestRepo.findPendingByIdForUpdate(requestId, client);
-    if (!request) return { ok: false, reason: 'Pedido nÃ£o encontrado.' };
+    if (!request) return { ok: false, reason: 'Pedido não encontrado.' };
     if (request.status !== 'pending') {
-      return { ok: false, reason: `Pedido jÃ¡ foi ${request.status}.` };
+      return { ok: false, reason: `Pedido já foi ${request.status}.` };
     }
     if (request.approver_discord_id !== decisionBy) {
-      return { ok: false, reason: 'SÃ³ o OG+ escolhido pode decidir esta entrega.' };
+      return { ok: false, reason: 'Só o OG+ escolhido pode decidir esta entrega.' };
     }
 
     if (!approve) {
@@ -524,7 +524,7 @@ async function decideDeliveryRequest({ requestId, decisionBy, approve, reason = 
     }
 
     const member = await memberRepo.findByDiscordId(request.requester_discord_id);
-    if (!member) return { ok: false, reason: 'Membro do pedido jÃ¡ nÃ£o existe.' };
+    if (!member) return { ok: false, reason: 'Membro do pedido já não existe.' };
 
     const enrichedLines = await enrichCartLines('entrega', request.lines);
     const submissionId = crypto.randomUUID();
