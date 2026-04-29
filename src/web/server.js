@@ -31,15 +31,14 @@ function createServer(port = 3000) {
   const server = http.createServer(async (req, res) => {
     const url = req.url?.split('?')[0];
 
-    // Liveness: retorna 200 apenas quando o ready hook completou com sucesso
-    // (Discord conectado, DB pronta, scheduler a correr). Durante o boot
-    // retorna 503 para que o Railway não envie tráfego antes do bot estar pronto.
+    // Liveness for Railway: the HTTP process is up. Full readiness stays on
+    // /ready because Discord login, locks and migrations can take longer.
     if (url === '/health' || url === '/live') {
-      const code = _ready ? 200 : 503;
-      res.writeHead(code, { 'Content-Type': 'application/json' });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(
         JSON.stringify({
-          status: _ready ? 'ok' : 'not_ready',
+          status: 'ok',
+          ready: _ready,
           bot: CONFIG.BOT_INTERNAL_NAME,
           uptimeSec: Math.floor((Date.now() - _bootTime) / 1000),
         })
