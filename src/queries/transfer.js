@@ -5,9 +5,21 @@
 
 const { MessageFlags } = require('discord.js');
 const { safeReply } = require('../shared/interactionHelpers');
-const { EMOJI } = require('../content');
+const { EMOJI, ERRORS } = require('../content');
+const { canManageInventory } = require('../permissions/permissionEngine');
 
 async function handle(interaction) {
+  if (!canManageInventory(interaction.member)) {
+    return safeReply(
+      interaction,
+      {
+        content: ERRORS.NO_PERMISSION('mover material entre casas'),
+        flags: MessageFlags.Ephemeral,
+      },
+      { dismissible: true }
+    );
+  }
+
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const sm = require('../inventory/stockManager');
   const itemName = interaction.options.getString('item');
