@@ -262,6 +262,14 @@ describe('bairristaCart — buildCartComponents', () => {
     assert.equal(withLines.length, 3, 'com linhas: Add + Submit + line_action select');
     bairristaCart.clearCart('U8');
   });
+
+  it('componentes de confirmação de entrega serializam sem emojis inválidos', () => {
+    const approverRows = bairristaCart.buildDeliveryApproverComponents();
+    const decisionRows = bairristaCart.buildDeliveryDecisionComponents('12345678-aaaa-bbbb-cccc-ddddeeeeffff');
+
+    assert.doesNotThrow(() => approverRows.map(row => row.toJSON()));
+    assert.doesNotThrow(() => decisionRows.map(row => row.toJSON()));
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

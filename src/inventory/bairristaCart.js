@@ -345,11 +345,7 @@ function buildDeliveryApproverComponents() {
         .setMaxValues(1)
     ),
     new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('invcart::cancel::entrega')
-        .setLabel('Cancelar')
-        .setStyle(ButtonStyle.Danger)
-        .setEmoji('âŒ')
+      new ButtonBuilder().setCustomId('invcart::cancel::entrega').setLabel('Cancelar').setStyle(ButtonStyle.Danger)
     ),
   ];
 }
@@ -377,13 +373,11 @@ function buildDeliveryDecisionComponents(requestId) {
       new ButtonBuilder()
         .setCustomId(`invdelivery::approve::${requestId}`)
         .setLabel('Aceitar entrega')
-        .setStyle(ButtonStyle.Success)
-        .setEmoji('âœ…'),
+        .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
         .setCustomId(`invdelivery::reject::${requestId}`)
         .setLabel('Recusar')
         .setStyle(ButtonStyle.Danger)
-        .setEmoji('âŒ')
     ),
   ];
 }

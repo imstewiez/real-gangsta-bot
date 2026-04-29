@@ -1010,22 +1010,33 @@ async function handleCartSubmit(interaction) {
   }
 
   if (tipo === 'entrega') {
-    const approverEmbed = bairristaCart
-      .buildCartEmbed(cart, {
-        extraNote:
-          `${EMOJI.PENDENTE} Escolhe o OG+ que vai receber/confirmar esta entrega. ` +
-          'O stock s\u00f3 muda depois dessa pessoa aceitar.',
-      })
-      .setTitle(`${EMOJI.MATERIAL} Confirmar entrega com OG+`);
-    return safeUpdate(
-      interaction,
-      {
-        content: '',
-        embeds: [approverEmbed],
-        components: bairristaCart.buildDeliveryApproverComponents(),
-      },
-      { dismissible: false }
-    );
+    try {
+      const approverEmbed = bairristaCart
+        .buildCartEmbed(cart, {
+          extraNote:
+            `${EMOJI.PENDENTE} Escolhe o OG+ que vai receber/confirmar esta entrega. ` +
+            'O stock s\u00f3 muda depois dessa pessoa aceitar.',
+        })
+        .setTitle(`${EMOJI.MATERIAL} Confirmar entrega com OG+`);
+      return safeUpdate(
+        interaction,
+        {
+          content: '',
+          embeds: [approverEmbed],
+          components: bairristaCart.buildDeliveryApproverComponents(),
+        },
+        { dismissible: false }
+      );
+    } catch (e) {
+      return safeReply(
+        interaction,
+        {
+          content: `${EMOJI.ERRO} Falha ao abrir confirma\u00e7\u00e3o da entrega: ${e.message}`,
+          flags: MessageFlags.Ephemeral,
+        },
+        { dismissible: false }
+      );
+    }
   }
 
   // For direct submissions, acknowledge first so a double-click cannot submit twice.
@@ -1159,39 +1170,49 @@ async function handleDeliveryApproverSelect(interaction) {
   bairristaCart.clearCart(interaction.user.id);
   parentStore.clearParent(interaction.user.id);
 
-  const requestEmbed = bairristaCart.buildDeliveryRequestEmbed({
-    requestId: result.request.id,
-    memberName: result.member.display_name,
-    memberDiscordId: result.member.discord_id,
-    lines: result.lines,
-    totalQty: result.totalQty,
-    totalValue: result.totalValue,
-    notes: globalNotesSnapshot,
-  });
-  const decisionComponents = bairristaCart.buildDeliveryDecisionComponents(result.request.id);
-
-  let delivered = 'DM';
   try {
-    await approverMember.send({ embeds: [requestEmbed], components: decisionComponents });
-  } catch {
-    delivered = 'canal';
-    await interaction.channel
-      ?.send({
-        content: `<@${approverId}> tens uma entrega para confirmar.`,
-        embeds: [requestEmbed],
-        components: decisionComponents,
+    const requestEmbed = bairristaCart.buildDeliveryRequestEmbed({
+      requestId: result.request.id,
+      memberName: result.member.display_name,
+      memberDiscordId: result.member.discord_id,
+      lines: result.lines,
+      totalQty: result.totalQty,
+      totalValue: result.totalValue,
+      notes: globalNotesSnapshot,
+    });
+    const decisionComponents = bairristaCart.buildDeliveryDecisionComponents(result.request.id);
+
+    let delivered = 'DM';
+    try {
+      await approverMember.send({ embeds: [requestEmbed], components: decisionComponents });
+    } catch {
+      delivered = 'canal';
+      await interaction.channel
+        ?.send({
+          content: `<@${approverId}> tens uma entrega para confirmar.`,
+          embeds: [requestEmbed],
+          components: decisionComponents,
+        })
+        .catch(() => {
+          delivered = 'pendente';
+        });
+    }
+
+    const msg =
+      delivered === 'pendente'
+        ? 'Pedido criado, mas nÃ£o consegui notificar o OG+. Pede-lhe para abrir a mensagem de confirmaÃ§Ã£o se tiver sido entregue noutro canal.'
+        : `Pedido enviado para <@${approverId}> (${delivered}). O stock sÃ³ muda quando a entrega for aceite.`;
+
+    return interaction.editReply({ content: `${EMOJI.OK} ${msg}`, embeds: [], components: [] }).catch(() => {});
+  } catch (e) {
+    return interaction
+      .editReply({
+        content: `${EMOJI.ERRO} Pedido criado, mas falhou a notifica\u00e7\u00e3o do OG+: ${e.message}`,
+        embeds: [],
+        components: [],
       })
-      .catch(() => {
-        delivered = 'pendente';
-      });
+      .catch(() => {});
   }
-
-  const msg =
-    delivered === 'pendente'
-      ? 'Pedido criado, mas nÃ£o consegui notificar o OG+. Pede-lhe para abrir a mensagem de confirmaÃ§Ã£o se tiver sido entregue noutro canal.'
-      : `Pedido enviado para <@${approverId}> (${delivered}). O stock sÃ³ muda quando a entrega for aceite.`;
-
-  return interaction.editReply({ content: `${EMOJI.OK} ${msg}`, embeds: [], components: [] }).catch(() => {});
 }
 
 async function handleDeliveryDecision(interaction) {
