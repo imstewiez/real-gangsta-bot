@@ -1,4 +1,6 @@
 'use strict';
+const fs = require('fs');
+const path = require('path');
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { loadMigrations } = require('../src/dbMigrate');
@@ -40,5 +42,10 @@ describe('migrations', () => {
     const files = migrations.map(m => m.file);
     const sorted = [...files].sort();
     assert.deepEqual(files, sorted, 'Migration files not sorted by prefix');
+  });
+
+  it('Docker image includes migrations directory', () => {
+    const dockerfile = fs.readFileSync(path.join(__dirname, '..', 'Dockerfile'), 'utf8');
+    assert.match(dockerfile, /COPY\s+migrations\/\s+\.\/migrations\//);
   });
 });
