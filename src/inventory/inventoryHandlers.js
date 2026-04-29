@@ -16,7 +16,7 @@ const {
   buildStockAdjustmentModal,
 } = require('./inventoryMenus');
 const { inventoryRepo, memberRepo } = require('../repositories');
-const { isChefia } = require('../permissions/permissionEngine');
+const { isChefia, canOpenSession } = require('../permissions/permissionEngine');
 const { EMOJI, ERRORS, MODALS, INVENTORY } = require('../content');
 
 // Context efémero por user para fluxos multi-step de inventário.
@@ -1011,6 +1011,23 @@ async function handleCartSubmit(interaction) {
       .catch(() => {});
   }
 
+  if (tipo === 'entrega') {
+    const approverEmbed = bairristaCart
+      .buildCartEmbed(cart, {
+        extraNote:
+          `${EMOJI.PENDENTE} Escolhe o OG+ que vai receber/confirmar esta entrega. ` +
+          'O stock sÃ³ muda depois dessa pessoa aceitar.',
+      })
+      .setTitle(`${EMOJI.MATERIAL} Confirmar entrega com OG+`);
+    return interaction
+      .editReply({
+        content: '',
+        embeds: [approverEmbed],
+        components: bairristaCart.buildDeliveryApproverComponents(),
+      })
+      .catch(() => {});
+  }
+
   // Snapshot + clear IMEDIATO — se o user conseguir 2 cliques antes do
   // deferUpdate grey-out (race raro), a segunda execução encontra o
   // cart já vazio e aborta. Defence-in-depth contra double-submit.
@@ -1090,6 +1107,137 @@ async function handleCartUndo(interaction) {
     .catch(() => {});
 }
 
+async function handleDeliveryApproverSelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  await interaction.deferUpdate().catch(() => {});
+
+  const approverId = interaction.values[0];
+  const bairristaCart = require('./bairristaCart');
+  const cart = bairristaCart.getCart(interaction.user.id);
+  if (!cart || cart.tipo !== 'entrega') {
+    return interaction
+      .editReply({ content: `${EMOJI.PENDENTE} Carrinho expirado.`, embeds: [], components: [] })
+      .catch(() => {});
+  }
+
+  let approverMember = null;
+  try {
+    approverMember = await interaction.guild.members.fetch(approverId);
+  } catch {
+    approverMember = null;
+  }
+  if (!approverMember || !canOpenSession(approverMember)) {
+    return interaction
+      .editReply({
+        content: `${EMOJI.ERRO} Tens de escolher um OG ou alguÃ©m acima na hierarquia.`,
+        embeds: [],
+        components: bairristaCart.buildDeliveryApproverComponents(),
+      })
+      .catch(() => {});
+  }
+
+  const linesSnapshot = cart.lines.map(l => ({
+    itemId: l.itemId,
+    quantity: l.quantity,
+    unitPrice: l.unitPrice,
+  }));
+  const globalNotesSnapshot = cart.globalNotes;
+
+  const { createDeliveryRequest } = require('./inventoryEngine');
+  let result;
+  try {
+    result = await createDeliveryRequest({
+      discordId: interaction.user.id,
+      approverDiscordId: approverId,
+      lines: linesSnapshot,
+      globalNotes: globalNotesSnapshot,
+      createdBy: interaction.user.id,
+    });
+  } catch (e) {
+    return interaction.editReply({ content: `${EMOJI.ERRO} ${e.message}`, embeds: [], components: [] }).catch(() => {});
+  }
+
+  bairristaCart.clearCart(interaction.user.id);
+  parentStore.clearParent(interaction.user.id);
+
+  const requestEmbed = bairristaCart.buildDeliveryRequestEmbed({
+    requestId: result.request.id,
+    memberName: result.member.display_name,
+    memberDiscordId: result.member.discord_id,
+    lines: result.lines,
+    totalQty: result.totalQty,
+    totalValue: result.totalValue,
+    notes: globalNotesSnapshot,
+  });
+  const decisionComponents = bairristaCart.buildDeliveryDecisionComponents(result.request.id);
+
+  let delivered = 'DM';
+  try {
+    await approverMember.send({ embeds: [requestEmbed], components: decisionComponents });
+  } catch {
+    delivered = 'canal';
+    await interaction.channel
+      ?.send({
+        content: `<@${approverId}> tens uma entrega para confirmar.`,
+        embeds: [requestEmbed],
+        components: decisionComponents,
+      })
+      .catch(() => {
+        delivered = 'pendente';
+      });
+  }
+
+  const msg =
+    delivered === 'pendente'
+      ? 'Pedido criado, mas nÃ£o consegui notificar o OG+. Pede-lhe para abrir a mensagem de confirmaÃ§Ã£o se tiver sido entregue noutro canal.'
+      : `Pedido enviado para <@${approverId}> (${delivered}). O stock sÃ³ muda quando a entrega for aceite.`;
+
+  return interaction.editReply({ content: `${EMOJI.OK} ${msg}`, embeds: [], components: [] }).catch(() => {});
+}
+
+async function handleDeliveryDecision(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  await interaction.deferUpdate().catch(() => {});
+
+  const [, action, requestId] = interaction.customId.split('::');
+  const approve = action === 'approve';
+  const { decideDeliveryRequest } = require('./inventoryEngine');
+  const result = await decideDeliveryRequest({
+    requestId,
+    decisionBy: interaction.user.id,
+    approve,
+  });
+
+  if (!result.ok) {
+    return interaction
+      .editReply({ content: `${EMOJI.WARN} ${result.reason}`, embeds: [], components: [] })
+      .catch(() => {});
+  }
+
+  if (!approve) {
+    return interaction
+      .editReply({
+        content: `${EMOJI.OK} Entrega recusada. Nada foi alterado no stock.`,
+        embeds: [],
+        components: [],
+      })
+      .catch(() => {});
+  }
+
+  const { checkAndPromote } = require('../members/autoPromotionEngine');
+  await checkAndPromote(result.member.discord_id, interaction.guild, interaction.client).catch(() => null);
+
+  return interaction
+    .editReply({
+      content:
+        `${EMOJI.OK} Entrega aceite. ` +
+        `${result.totalQty.toLocaleString('pt-PT')} unidade(s) foram confirmadas no stock para <@${result.member.discord_id}>.`,
+      embeds: [],
+      components: [],
+    })
+    .catch(() => {});
+}
+
 module.exports = {
   handleRegistarMaterialButton,
   handleTipoRegistoSelect,
@@ -1121,6 +1269,8 @@ module.exports = {
   handleCartRepeat,
   handleCartSubmit,
   handleCartUndo,
+  handleDeliveryApproverSelect,
+  handleDeliveryDecision,
   handleCartPreview,
   handleCartPreviewBack,
 };

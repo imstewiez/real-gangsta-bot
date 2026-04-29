@@ -1,6 +1,6 @@
 'use strict';
 const crypto = require('crypto');
-const { inventoryRepo, memberRepo, bairristaStatsRepo } = require('../repositories');
+const { inventoryRepo, memberRepo, bairristaStatsRepo, deliveryRequestRepo } = require('../repositories');
 const { queryWithTransaction } = require('../db');
 const { logAudit } = require('../audit/auditEngine');
 const { notifyMovement } = require('./stockNotifier');
@@ -123,6 +123,141 @@ async function recordDelivery({
     .catch(e => warn(`[EVENT] material.registered: ${e.message}`));
 
   return { movement, member, item, balanceAfter: Number(balanceAfter ?? 0) };
+}
+
+async function enrichCartLines(tipo, lines) {
+  const enrichedLines = [];
+  for (const line of lines) {
+    if (!line?.itemId) throw new Error('Line sem itemId.');
+    const qty = Number(line.quantity);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      throw new Error(`Quantidade invÃ¡lida para item ${line.itemId}.`);
+    }
+    const item = await inventoryRepo.getItemById(line.itemId);
+    if (!item) throw new Error(`Item ${line.itemId} nÃ£o encontrado.`);
+
+    const basePrice = parseFloat(item.estimated_value) || 0;
+    const customRaw = tipo === 'venda' ? Number(line.unitPrice) : null;
+    const hasCustom = Number.isFinite(customRaw) && customRaw >= 0 && customRaw !== basePrice;
+    const effectivePrice = hasCustom ? customRaw : basePrice;
+
+    enrichedLines.push({
+      itemId: item.id,
+      itemName: item.name,
+      category: item.category,
+      quantity: qty,
+      basePrice,
+      unitPrice: hasCustom ? customRaw : null,
+      effectivePrice,
+      lineValue: qty * effectivePrice,
+    });
+  }
+  return enrichedLines;
+}
+
+function batchTotals(enrichedLines) {
+  return {
+    totalQty: enrichedLines.reduce((a, l) => a + l.quantity, 0),
+    totalValue: enrichedLines.reduce((a, l) => a + l.lineValue, 0),
+  };
+}
+
+async function afterBatchCommitted({
+  submissionId,
+  movements,
+  member,
+  tipo,
+  movementType,
+  enrichedLines,
+  globalNotes,
+  createdBy,
+}) {
+  metrics.inventoryMovements.inc(enrichedLines.length);
+
+  const { totalQty, totalValue } = batchTotals(enrichedLines);
+
+  await logAudit({
+    action: 'bairrista_submission',
+    entityType: 'inventory',
+    entityId: submissionId,
+    actorId: createdBy,
+    afterState: {
+      submissionId,
+      tipo,
+      movementType,
+      memberName: member.display_name,
+      lines: enrichedLines.map(l => ({
+        item: l.itemName,
+        qty: l.quantity,
+        unitPrice: l.unitPrice,
+        effectivePrice: l.effectivePrice,
+        value: l.lineValue,
+      })),
+      totalQty,
+      totalValue,
+    },
+    context: globalNotes,
+  });
+
+  for (const l of enrichedLines) {
+    const balanceAfter = await inventoryRepo.getStockForItem(l.itemId).catch(() => null);
+    eventBus
+      .emitAsync('material.registered', {
+        movementId: movements.find(m => m.item_id === l.itemId)?.id,
+        submissionId,
+        movementType,
+        itemId: l.itemId,
+        itemName: l.itemName,
+        itemValue: l.effectivePrice,
+        quantity: l.quantity,
+        memberId: member.id,
+        memberDiscordId: member.discord_id,
+        memberRole: member.role,
+        operationId: null,
+        actorId: createdBy,
+        balanceAfter,
+        notes: globalNotes,
+        at: new Date(),
+      })
+      .catch(e => warn(`[EVENT] material.registered: ${e.message}`));
+  }
+
+  log(
+    `[BAIRRISTA-BATCH] ${member.display_name} (${tipo}) submetteu ${enrichedLines.length} linhas, ${totalQty} qty, ${totalValue}â‚¬ â€” submission=${submissionId}`
+  );
+
+  (async () => {
+    try {
+      const { start } = weekBounds();
+      const weekStartStr = start.toISOString().split('T')[0];
+      const [weekStats, rankPosition] = await Promise.all([
+        bairristaStatsRepo.getWeeklyMaterialStats(member.discord_id).catch(() => null),
+        bairristaStatsRepo.getRankingPosition(member.discord_id, weekStartStr).catch(() => null),
+      ]);
+      const logResult = await notifyBairristaBatch({
+        submissionId,
+        movementType,
+        tipo,
+        lines: enrichedLines,
+        totalQty,
+        totalValue,
+        memberName: member.display_name,
+        memberDiscordId: member.discord_id,
+        notes: globalNotes,
+        weekStats,
+        rankPosition,
+      }).catch(() => null);
+      if (logResult?.messageId) {
+        await inventoryRepo
+          .attachSubmissionLogMessage(submissionId, logResult.messageId, logResult.channelId)
+          .catch(() => {});
+      }
+    } catch (e) {
+      warn(`[BAIRRISTA-BATCH] log notify falhou: ${e.message}`);
+    }
+  })();
+
+  return { totalQty, totalValue };
 }
 
 /**
@@ -326,6 +461,146 @@ async function recordDeliveryBatch({ discordId, tipo, lines, globalNotes = '', c
   };
 }
 
+async function createDeliveryRequest({ discordId, approverDiscordId, lines, globalNotes = '', createdBy }) {
+  if (!Array.isArray(lines) || lines.length === 0) {
+    throw new Error('Carrinho vazio â€” adiciona pelo menos 1 item antes de submeter.');
+  }
+
+  const member = await memberRepo.findByDiscordId(discordId);
+  if (!member) throw new Error('Membro nÃ£o encontrado.');
+
+  const enrichedLines = await enrichCartLines('entrega', lines);
+  const { totalQty, totalValue } = batchTotals(enrichedLines);
+  const requestId = crypto.randomUUID();
+
+  const request = await deliveryRequestRepo.create({
+    id: requestId,
+    requesterMemberId: member.id,
+    requesterDiscordId: member.discord_id,
+    approverDiscordId,
+    lines: enrichedLines,
+    notes: globalNotes,
+    totalQty,
+    totalValue,
+    createdBy,
+  });
+
+  await logAudit({
+    action: 'delivery_request_created',
+    entityType: 'inventory_delivery_request',
+    entityId: requestId,
+    actorId: createdBy,
+    afterState: {
+      approverDiscordId,
+      memberName: member.display_name,
+      lines: enrichedLines.map(l => ({ item: l.itemName, qty: l.quantity })),
+      totalQty,
+      totalValue,
+    },
+    context: globalNotes,
+  });
+
+  return { request, member, lines: enrichedLines, totalQty, totalValue };
+}
+
+async function decideDeliveryRequest({ requestId, decisionBy, approve, reason = '' }) {
+  const txResult = await queryWithTransaction(async client => {
+    const request = await deliveryRequestRepo.findPendingByIdForUpdate(requestId, client);
+    if (!request) return { ok: false, reason: 'Pedido nÃ£o encontrado.' };
+    if (request.status !== 'pending') {
+      return { ok: false, reason: `Pedido jÃ¡ foi ${request.status}.` };
+    }
+    if (request.approver_discord_id !== decisionBy) {
+      return { ok: false, reason: 'SÃ³ o OG+ escolhido pode decidir esta entrega.' };
+    }
+
+    if (!approve) {
+      const updated = await deliveryRequestRepo.markDecision(
+        requestId,
+        { status: 'rejected', decisionBy, decisionReason: reason },
+        { client }
+      );
+      return { ok: true, approved: false, request: updated };
+    }
+
+    const member = await memberRepo.findByDiscordId(request.requester_discord_id);
+    if (!member) return { ok: false, reason: 'Membro do pedido jÃ¡ nÃ£o existe.' };
+
+    const enrichedLines = await enrichCartLines('entrega', request.lines);
+    const submissionId = crypto.randomUUID();
+    const movementType = member.role === 'oficial' ? 'entrega_oficial' : 'entrega_bairrista';
+    const notes = [request.notes, `Confirmado por <@${decisionBy}>`].filter(Boolean).join('\n');
+    const movements = [];
+
+    for (const l of enrichedLines) {
+      const movement = await inventoryRepo.recordMovement({
+        movementType,
+        itemId: l.itemId,
+        quantity: l.quantity,
+        memberId: member.id,
+        memberRole: member.role,
+        origin: 'membro',
+        destination: 'org',
+        context: '',
+        notes,
+        operationId: null,
+        createdBy: decisionBy,
+        submissionId,
+        unitPrice: null,
+        client,
+      });
+      movements.push(movement);
+    }
+
+    const updated = await deliveryRequestRepo.markDecision(
+      requestId,
+      { status: 'approved', decisionBy, movementSubmissionId: submissionId },
+      { client }
+    );
+
+    return {
+      ok: true,
+      approved: true,
+      request: updated,
+      member,
+      lines: enrichedLines,
+      movements,
+      movementType,
+      submissionId,
+      notes,
+    };
+  });
+
+  if (!txResult.ok) return txResult;
+
+  await logAudit({
+    action: txResult.approved ? 'delivery_request_approved' : 'delivery_request_rejected',
+    entityType: 'inventory_delivery_request',
+    entityId: requestId,
+    actorId: decisionBy,
+    afterState: {
+      status: txResult.approved ? 'approved' : 'rejected',
+      movementSubmissionId: txResult.submissionId || null,
+    },
+    context: reason,
+  });
+
+  if (!txResult.approved) return txResult;
+
+  const totals = await afterBatchCommitted({
+    submissionId: txResult.submissionId,
+    movements: txResult.movements,
+    member: txResult.member,
+    tipo: 'entrega',
+    movementType: txResult.movementType,
+    enrichedLines: txResult.lines,
+    globalNotes: txResult.notes,
+    createdBy: decisionBy,
+  });
+
+  return { ...txResult, ...totals };
+}
+
 /**
  * Desfaz uma submission dentro de UNDO_WINDOW_MS. Hard delete de todos
  * os movements + audit log + edit da mensagem no log-bairristas. O
@@ -479,6 +754,8 @@ async function getStockForItem(itemId) {
 module.exports = {
   recordDelivery,
   recordDeliveryBatch,
+  createDeliveryRequest,
+  decideDeliveryRequest,
   undoSubmission,
   adjustStock,
   getCurrentStock,

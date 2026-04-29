@@ -36,6 +36,7 @@ const {
   handleCartRepeat,
   handleCartSubmit,
   handleCartUndo,
+  handleDeliveryDecision,
   handleCartPreview,
   handleCartPreviewBack,
 } = require('../../../inventory/inventoryHandlers');
@@ -154,6 +155,8 @@ const BUTTON_ROUTES = [
   prefix('invcart::undo::', handleCartUndo),
   prefix('invcart::preview_back::', handleCartPreviewBack),
   prefix('invcart::preview::', handleCartPreview),
+  prefix('invdelivery::approve::', handleDeliveryDecision),
+  prefix('invdelivery::reject::', handleDeliveryDecision),
 
   // Bairrista / Oficial — painel bairrista
   exact('bairrista::registar_material', handleRegistarMaterialButton),

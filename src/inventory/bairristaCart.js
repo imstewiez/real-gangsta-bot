@@ -22,6 +22,7 @@ const {
   ButtonStyle,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
+  UserSelectMenuBuilder,
 } = require('discord.js');
 const { createSessionStore } = require('../shared/sessionStore');
 const { brandEmbed } = require('../shared/embedBuilders');
@@ -334,6 +335,57 @@ function buildSubmissionFeedback({ submissionId, tipo, totalQty, totalValue, lin
   return { embed, components: [row] };
 }
 
+function buildDeliveryApproverComponents() {
+  return [
+    new ActionRowBuilder().addComponents(
+      new UserSelectMenuBuilder()
+        .setCustomId('invdelivery::approver')
+        .setPlaceholder('Escolhe o OG+ que vai confirmar a entrega')
+        .setMinValues(1)
+        .setMaxValues(1)
+    ),
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('invcart::cancel::entrega')
+        .setLabel('Cancelar')
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji('âŒ')
+    ),
+  ];
+}
+
+function buildDeliveryRequestEmbed({ requestId, memberName, memberDiscordId, lines, totalQty, totalValue, notes }) {
+  const body = lines.map(l => `â€¢ **${l.itemName}** Â· **${l.quantity.toLocaleString('pt-PT')}Ã—**`).join('\n');
+  const summaryLines = [`Total: **${totalQty.toLocaleString('pt-PT')}** unidades`];
+  if (totalValue > 0) summaryLines.push(`Valor estimado: **${totalValue.toLocaleString('pt-PT')}â‚¬**`);
+  if (notes) summaryLines.push('', `Notas: _${notes}_`);
+
+  return brandEmbed('MOVEMENT')
+    .setColor(0xf39c12)
+    .setTitle(`${EMOJI.MATERIAL} Entrega pendente de confirmaÃ§Ã£o`)
+    .setDescription(
+      [`Bairrista: <@${memberDiscordId}>${memberName ? ` (${memberName})` : ''}`, '', body, '', ...summaryLines].join('\n')
+    )
+    .setFooter({ text: `pedido ${String(requestId).slice(0, 8)}` });
+}
+
+function buildDeliveryDecisionComponents(requestId) {
+  return [
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`invdelivery::approve::${requestId}`)
+        .setLabel('Aceitar entrega')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('âœ…'),
+      new ButtonBuilder()
+        .setCustomId(`invdelivery::reject::${requestId}`)
+        .setLabel('Recusar')
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji('âŒ')
+    ),
+  ];
+}
+
 module.exports = {
   cartStore,
   createCart,
@@ -349,4 +401,7 @@ module.exports = {
   buildCartPreview,
   buildPreviewComponents,
   buildSubmissionFeedback,
+  buildDeliveryApproverComponents,
+  buildDeliveryRequestEmbed,
+  buildDeliveryDecisionComponents,
 };

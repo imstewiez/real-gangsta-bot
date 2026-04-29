@@ -27,11 +27,13 @@ function resolved(rel) {
 const _insertedMovements = [];
 let _failOnItemId = null; // força erro num INSERT de um item específico
 let _submissionRows = [];
+const _deliveryRequests = new Map();
 
 function _reset() {
   _insertedMovements.length = 0;
   _failOnItemId = null;
   _submissionRows = [];
+  _deliveryRequests.clear();
 }
 
 // Items de catálogo para mock
@@ -173,6 +175,38 @@ require.cache[resolved('repositories/index.js')] = {
       getWeeklyMaterialStats: async () => ({ totalQty: 0, deliveries: 0, sales: 0 }),
       getRankingPosition: async () => ({ position: 5, total: 10 }),
     },
+    deliveryRequestRepo: {
+      create: async data => {
+        const row = {
+          id: data.id,
+          requester_member_id: data.requesterMemberId,
+          requester_discord_id: data.requesterDiscordId,
+          approver_discord_id: data.approverDiscordId,
+          status: 'pending',
+          lines: data.lines,
+          notes: data.notes,
+          total_qty: data.totalQty,
+          total_value: data.totalValue,
+          created_by: data.createdBy,
+          created_at: new Date().toISOString(),
+        };
+        _deliveryRequests.set(row.id, row);
+        return row;
+      },
+      findPendingByIdForUpdate: async id => _deliveryRequests.get(id) || null,
+      markDecision: async (id, patch) => {
+        const row = _deliveryRequests.get(id);
+        if (!row) return null;
+        Object.assign(row, {
+          status: patch.status,
+          decision_by: patch.decisionBy,
+          decision_reason: patch.decisionReason || '',
+          movement_submission_id: patch.movementSubmissionId || null,
+          decided_at: new Date().toISOString(),
+        });
+        return row;
+      },
+    },
   },
 };
 
@@ -201,7 +235,13 @@ require.cache[resolved('core/eventBus.js')] = {
   exports: { emitAsync: async () => {} },
 };
 
-const { recordDeliveryBatch, undoSubmission, UNDO_WINDOW_MS } = require('../src/inventory/inventoryEngine');
+const {
+  recordDeliveryBatch,
+  createDeliveryRequest,
+  decideDeliveryRequest,
+  undoSubmission,
+  UNDO_WINDOW_MS,
+} = require('../src/inventory/inventoryEngine');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // recordDeliveryBatch
@@ -413,5 +453,84 @@ describe('undoSubmission — janela + ownership', () => {
 
   it('UNDO_WINDOW_MS = 5 min', () => {
     assert.equal(UNDO_WINDOW_MS, 5 * 60_000);
+  });
+});
+
+describe('delivery requests - confirmacao OG+', () => {
+  beforeEach(() => _reset());
+
+  it('criar pedido pendente nao insere movements', async () => {
+    const r = await createDeliveryRequest({
+      discordId: _members.bairrista.discord_id,
+      approverDiscordId: _members.oficial.discord_id,
+      lines: [{ itemId: 1, quantity: 7 }],
+      createdBy: _members.bairrista.discord_id,
+    });
+
+    assert.equal(r.request.status, 'pending');
+    assert.equal(r.totalQty, 7);
+    assert.equal(_insertedMovements.length, 0);
+    assert.equal(_submissionRows.length, 0);
+  });
+
+  it('aprovar pedido cria ledger para o bairrista', async () => {
+    const pending = await createDeliveryRequest({
+      discordId: _members.bairrista.discord_id,
+      approverDiscordId: _members.oficial.discord_id,
+      lines: [{ itemId: 1, quantity: 7 }],
+      createdBy: _members.bairrista.discord_id,
+    });
+
+    const r = await decideDeliveryRequest({
+      requestId: pending.request.id,
+      decisionBy: _members.oficial.discord_id,
+      approve: true,
+    });
+
+    assert.equal(r.ok, true);
+    assert.equal(r.approved, true);
+    assert.equal(r.request.status, 'approved');
+    assert.equal(_insertedMovements.length, 1);
+    assert.equal(_insertedMovements[0].movement_type, 'entrega_bairrista');
+    assert.equal(_insertedMovements[0].member_id, _members.bairrista.id);
+  });
+
+  it('recusar pedido nao cria ledger', async () => {
+    const pending = await createDeliveryRequest({
+      discordId: _members.bairrista.discord_id,
+      approverDiscordId: _members.oficial.discord_id,
+      lines: [{ itemId: 1, quantity: 7 }],
+      createdBy: _members.bairrista.discord_id,
+    });
+
+    const r = await decideDeliveryRequest({
+      requestId: pending.request.id,
+      decisionBy: _members.oficial.discord_id,
+      approve: false,
+    });
+
+    assert.equal(r.ok, true);
+    assert.equal(r.approved, false);
+    assert.equal(r.request.status, 'rejected');
+    assert.equal(_insertedMovements.length, 0);
+  });
+
+  it('outro user nao decide pedido', async () => {
+    const pending = await createDeliveryRequest({
+      discordId: _members.bairrista.discord_id,
+      approverDiscordId: _members.oficial.discord_id,
+      lines: [{ itemId: 1, quantity: 7 }],
+      createdBy: _members.bairrista.discord_id,
+    });
+
+    const r = await decideDeliveryRequest({
+      requestId: pending.request.id,
+      decisionBy: 'OTHER',
+      approve: true,
+    });
+
+    assert.equal(r.ok, false);
+    assert.match(r.reason, /OG\+/);
+    assert.equal(_insertedMovements.length, 0);
   });
 });
