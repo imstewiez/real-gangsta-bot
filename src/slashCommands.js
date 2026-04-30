@@ -502,6 +502,79 @@ const commands = [
             )
         )
     ),
+
+  // ── Catálogo melhorado ──
+  new SlashCommandBuilder()
+    .setName('catalogo-melhorado')
+    .setDescription('Catálogo interativo com filtros')
+    .addStringOption(o =>
+      o
+        .setName('categoria')
+        .setDescription('Filtrar categoria')
+        .setRequired(false)
+        .addChoices(
+          { name: 'Drogas', value: 'drogas' },
+          { name: 'Armas', value: 'armas' },
+          { name: 'Munições', value: 'munições' },
+          { name: 'Equipamento', value: 'equipamento' },
+          { name: 'Veículos', value: 'veículos' },
+          { name: 'Outros', value: 'outros' }
+        )
+    )
+    .addStringOption(o => o.setName('pesquisa').setDescription('Pesquisar por nome').setRequired(false)),
+
+  // ── Stock melhorado ──
+  new SlashCommandBuilder()
+    .setName('stock-melhorado')
+    .setDescription('Stock com detalhes')
+    .addStringOption(o => o.setName('item').setDescription('Item específico').setRequired(false).setAutocomplete(true)),
+
+  // ── Ajuda / Documentação ──
+  new SlashCommandBuilder()
+    .setName('ajuda')
+    .setDescription('Centro de ajuda')
+    .addStringOption(o =>
+      o
+        .setName('topico')
+        .setDescription('Tópico')
+        .setRequired(false)
+        .addChoices(
+          { name: 'Como entregar', value: 'entregar' },
+          { name: 'Como vender', value: 'vender' },
+          { name: 'Como encomendar', value: 'encomendar' },
+          { name: 'Saídas', value: 'saidas' },
+          { name: 'Prémios', value: 'premios' },
+          { name: 'Disponibilidade', value: 'disponibilidade' },
+          { name: 'Cargos', value: 'cargos' }
+        )
+    ),
+
+  // ── Tutorial progressivo ──
+  new SlashCommandBuilder()
+    .setName('tutorial')
+    .setDescription('Tutorial para novos membros')
+    .addIntegerOption(o =>
+      o.setName('passo').setDescription('Passo (1-8)').setRequired(false).setMinValue(1).setMaxValue(8)
+    ),
+
+  // ── Simular permissões ──
+  new SlashCommandBuilder()
+    .setName('simular-permissoes')
+    .setDescription('Simular permissões de um cargo (OG+)')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addStringOption(o =>
+      o
+        .setName('cargo')
+        .setDescription('Cargo')
+        .setRequired(true)
+        .addChoices(
+          { name: 'Young Blood', value: 'young_blood' },
+          { name: 'Bairrista', value: 'bairrista' },
+          { name: 'Official', value: 'official' },
+          { name: 'Patrão di Zona', value: 'patrao_di_zona' },
+          { name: 'OG', value: 'og' }
+        )
+    ),
 ];
 
 module.exports = { commands };
