@@ -26,7 +26,10 @@ async function handle(interaction) {
       `SELECT position, hybrid_score FROM weekly_rankings WHERE member_id=$1 AND week_start=(SELECT MAX(week_start) FROM weekly_rankings) LIMIT 1`,
       [m.id]
     ),
-    query(`SELECT COUNT(*)::int as n FROM inventory_delivery_requests WHERE requester_member_id=$1 AND status='pending'`, [m.id]),
+    query(
+      `SELECT COUNT(*)::int as n FROM inventory_delivery_requests WHERE requester_member_id=$1 AND status='pending'`,
+      [m.id]
+    ),
     query(
       `SELECT COUNT(*)::int as n FROM orders WHERE member_id=$1 AND status IN ('pending','received','under_review')`,
       [m.id]
