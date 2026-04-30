@@ -23,4 +23,6 @@ module.exports = {
   memberLifecycleRepo: require('./memberLifecycle'),
   weeklyGoalsRepo: require('./weeklyGoals'),
   dataQualityRepo: require('./dataQuality'),
+  maintenanceRepo: require('./maintenance'),
+  incidentRepo: require('./incident'),
 };

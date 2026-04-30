@@ -427,6 +427,81 @@ const commands = [
           { name: 'Este mês', value: 'month' }
         )
     ),
+
+  // ── Modo Manutenção ──
+  new SlashCommandBuilder()
+    .setName('manutencao')
+    .setDescription('Modo manutenção (OG+)')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addSubcommand(sc => sc.setName('status').setDescription('Ver estado'))
+    .addSubcommand(sc =>
+      sc
+        .setName('ativar')
+        .setDescription('Activar')
+        .addStringOption(o => o.setName('motivo').setDescription('Motivo').setRequired(false))
+    )
+    .addSubcommand(sc => sc.setName('desativar').setDescription('Desactivar')),
+
+  // ── Incidentes ──
+  new SlashCommandBuilder()
+    .setName('incidentes')
+    .setDescription('Gestão de incidentes (OG+)')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addSubcommand(sc =>
+      sc
+        .setName('listar')
+        .setDescription('Listar')
+        .addStringOption(o =>
+          o
+            .setName('estado')
+            .setDescription('Filtrar')
+            .setRequired(false)
+            .addChoices(
+              { name: 'Aberto', value: 'open' },
+              { name: 'Em análise', value: 'analysing' },
+              { name: 'Resolvido', value: 'resolved' },
+              { name: 'Ignorado', value: 'ignored' }
+            )
+        )
+    )
+    .addSubcommand(sc =>
+      sc
+        .setName('criar')
+        .setDescription('Criar')
+        .addStringOption(o => o.setName('titulo').setDescription('Título').setRequired(true))
+        .addStringOption(o => o.setName('descricao').setDescription('Descrição').setRequired(false))
+        .addStringOption(o =>
+          o
+            .setName('severidade')
+            .setDescription('Severidade')
+            .setRequired(false)
+            .addChoices(
+              { name: 'Baixa', value: 'low' },
+              { name: 'Média', value: 'medium' },
+              { name: 'Alta', value: 'high' },
+              { name: 'Crítica', value: 'critical' }
+            )
+        )
+        .addStringOption(o => o.setName('fonte').setDescription('Fonte').setRequired(false))
+    )
+    .addSubcommand(sc =>
+      sc
+        .setName('resolver')
+        .setDescription('Resolver/actualizar')
+        .addIntegerOption(o => o.setName('id').setDescription('ID').setRequired(true))
+        .addStringOption(o =>
+          o
+            .setName('estado')
+            .setDescription('Novo estado')
+            .setRequired(true)
+            .addChoices(
+              { name: 'Aberto', value: 'open' },
+              { name: 'Em análise', value: 'analysing' },
+              { name: 'Resolvido', value: 'resolved' },
+              { name: 'Ignorado', value: 'ignored' }
+            )
+        )
+    ),
 ];
 
 module.exports = { commands };
