@@ -33,6 +33,9 @@ const metas = require('../../../queries/metas');
 const qualidadeDados = require('../../../queries/qualidadeDados');
 const lifecycle = require('../../../queries/lifecycle');
 const promover = require('../../../queries/promover');
+const painelPendencias = require('../../../queries/painelPendencias');
+const meuPainel = require('../../../queries/meuPainel');
+const relatorio = require('../../../queries/relatorio');
 const { commandsByName } = require('../../../lib/metrics');
 
 const SLASH_ROUTES = {
@@ -67,6 +70,9 @@ const SLASH_ROUTES = {
   'qualidade-dados': qualidadeDados.handle,
   lifecycle: lifecycle.handle,
   promover: promover.handle,
+  'painel-pendencias': painelPendencias.handle,
+  'meu-painel': meuPainel.handle,
+  relatorio: relatorio.handle,
 };
 
 async function handleSlash(interaction) {

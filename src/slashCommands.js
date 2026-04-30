@@ -401,6 +401,32 @@ const commands = [
         )
         .addStringOption(o => o.setName('motivo').setDescription('Motivo').setRequired(false))
     ),
+
+  // ── Painel de pendências ──
+  new SlashCommandBuilder()
+    .setName('painel-pendencias')
+    .setDescription('Cockpit de pendências da chefia (OG+)')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  // ── Meu painel pessoal ──
+  new SlashCommandBuilder().setName('meu-painel').setDescription('O teu centro de notificações pessoal'),
+
+  // ── Relatórios ──
+  new SlashCommandBuilder()
+    .setName('relatorio')
+    .setDescription('Relatório de actividade (OG+)')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addStringOption(o =>
+      o
+        .setName('periodo')
+        .setDescription('Período')
+        .setRequired(false)
+        .addChoices(
+          { name: 'Hoje', value: 'day' },
+          { name: 'Esta semana', value: 'week' },
+          { name: 'Este mês', value: 'month' }
+        )
+    ),
 ];
 
 module.exports = { commands };
