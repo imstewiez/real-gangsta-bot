@@ -28,6 +28,11 @@ const novaCategoriaTopicos = require('../../../queries/novaCategoriaTopicos');
 const dedupTopicos = require('../../../queries/dedupTopicos');
 const inactivosBairristas = require('../../../queries/inactivosBairristas');
 const premios = require('../../../queries/premios');
+const gerirItens = require('../../../queries/gerirItens');
+const metas = require('../../../queries/metas');
+const qualidadeDados = require('../../../queries/qualidadeDados');
+const lifecycle = require('../../../queries/lifecycle');
+const promover = require('../../../queries/promover');
 const { commandsByName } = require('../../../lib/metrics');
 
 const SLASH_ROUTES = {
@@ -57,6 +62,11 @@ const SLASH_ROUTES = {
   'dedup-topicos': dedupTopicos.handle,
   'inactivos-bairristas': inactivosBairristas.handle,
   premios: premios.handle,
+  'gerir-itens': gerirItens.handle,
+  metas: metas.handle,
+  'qualidade-dados': qualidadeDados.handle,
+  lifecycle: lifecycle.handle,
+  promover: promover.handle,
 };
 
 async function handleSlash(interaction) {

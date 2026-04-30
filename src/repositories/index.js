@@ -19,4 +19,8 @@ module.exports = {
   deliveryRequestRepo: require('./deliveryRequest'),
   ordersRepo: require('./orders'),
   prizeRepo: require('./prizeRepo'),
+  itemAdminRepo: require('./itemAdmin'),
+  memberLifecycleRepo: require('./memberLifecycle'),
+  weeklyGoalsRepo: require('./weeklyGoals'),
+  dataQualityRepo: require('./dataQuality'),
 };
