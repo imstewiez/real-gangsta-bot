@@ -7,7 +7,7 @@ async function calculate(memberId) {
       COALESCE((SELECT COUNT(*) FILTER (WHERE status='approved') * 100.0 / NULLIF(COUNT(*),0)
         FROM inventory_delivery_requests WHERE member_id = $1), 0) as delivery_rate,
       COALESCE((SELECT COUNT(*) FILTER (WHERE status='concluida') * 100.0 / NULLIF(COUNT(*),0)
-        FROM saida_participants sp JOIN saidas s ON s.id = sp.saida_id WHERE sp.member_id = $1), 0) as saida_rate,
+        FROM operation_participants sp JOIN saidas s ON s.id = sp.saida_id WHERE sp.member_id = $1), 0) as saida_rate,
       COALESCE((SELECT COUNT(*) FILTER (WHERE status='pending') * 100.0 / NULLIF(COUNT(*),0)
         FROM inventory_delivery_requests WHERE member_id = $1), 0) as pending_ratio,
       COALESCE((SELECT COUNT(*) FILTER (WHERE status='rejected') * 100.0 / NULLIF(COUNT(*),0)

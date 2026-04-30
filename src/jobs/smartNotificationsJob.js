@@ -24,7 +24,7 @@ async function run(guild) {
     // 2. Remind participants of saidas without results
     const pendingResults = await query(
       `SELECT sp.member_id, s.id as saida_id, s.created_at
-       FROM saida_participants sp
+       FROM operation_participants sp
        JOIN saidas s ON s.id = sp.saida_id
        WHERE s.status = 'em_liquidacao' AND sp.result_submitted = false
        AND s.created_at < NOW() - INTERVAL '6 hours'`

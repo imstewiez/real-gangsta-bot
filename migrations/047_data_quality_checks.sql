@@ -9,7 +9,7 @@ WHERE m.status = 'ativo'
     SELECT 1 FROM inventory_movements im WHERE im.member_id = m.id
   )
   AND NOT EXISTS (
-    SELECT 1 FROM saida_participants sp WHERE sp.member_id = m.id
+    SELECT 1 FROM operation_participants sp WHERE sp.member_id = m.id
   );
 
 CREATE OR REPLACE VIEW v_orphan_channels AS

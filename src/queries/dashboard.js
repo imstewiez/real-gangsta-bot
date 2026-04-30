@@ -15,7 +15,7 @@ async function handle(interaction) {
       query(`SELECT COUNT(*)::int as n FROM orders WHERE status IN ('pending','received','under_review')`),
       query(`SELECT COUNT(*)::int as n FROM saidas WHERE status NOT IN ('concluida','cancelada')`),
       query(
-        `SELECT COUNT(*)::int as n FROM saida_participants sp JOIN saidas s ON s.id=sp.saida_id WHERE sp.weapon_returned=false AND s.status='concluida'`
+        `SELECT COUNT(*)::int as n FROM operation_participants sp JOIN saidas s ON s.id=sp.saida_id WHERE sp.weapon_returned=false AND s.status='concluida'`
       ),
       query(
         `SELECT m.display_name, wr.hybrid_score FROM weekly_rankings wr JOIN members m ON m.id=wr.member_id WHERE wr.week_start=(SELECT MAX(week_start) FROM weekly_rankings) ORDER BY wr.position LIMIT 3`
