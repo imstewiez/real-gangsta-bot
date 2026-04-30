@@ -11,9 +11,10 @@ CREATE INDEX IF NOT EXISTS idx_items_name_lower
   ON items(LOWER(name));
 
 -- Índice para queries de movimentos por operação (material summary)
-CREATE INDEX IF NOT EXISTS idx_inventory_movements_operation_id
-  ON inventory_movements(operation_id)
-  WHERE operation_id IS NOT NULL;
+-- Nota: coluna chama-se saida_id (renomeada na migração 011)
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_saida_id
+  ON inventory_movements(saida_id)
+  WHERE saida_id IS NOT NULL;
 
 -- Índice para member_saida_stats lookups rápidos em rankings
 CREATE INDEX IF NOT EXISTS idx_member_saida_stats_kd
