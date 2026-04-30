@@ -275,9 +275,6 @@ const commands = [
             )
         )
         .addStringOption(o =>
-          o.setName('target').setDescription('Alvo (membro/role ou vazio para org)').setRequired(false)
-        )
-        .addStringOption(o =>
           o
             .setName('metric')
             .setDescription('Métrica')
@@ -292,6 +289,9 @@ const commands = [
             )
         )
         .addNumberOption(o => o.setName('valor').setDescription('Valor alvo').setRequired(true))
+        .addStringOption(o =>
+          o.setName('target').setDescription('Alvo (membro/role ou vazio para org)').setRequired(false)
+        )
         .addStringOption(o => o.setName('descricao').setDescription('Descrição').setRequired(false))
     ),
 
