@@ -443,7 +443,7 @@ async function handleRepingPendentes(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 function _canConfirmWeapon(member) {
-  return isChefia(member) || isOficial(member);
+  return isOficial(member);
 }
 
 /**

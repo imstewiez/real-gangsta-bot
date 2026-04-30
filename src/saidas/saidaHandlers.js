@@ -712,7 +712,7 @@ async function handleViewSaidasButton(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleAddParticipantButton(interaction) {
-  if (!(await requirePermission(interaction, m => isChefia(m) || isOficial(m)))) return;
+  if (!(await requirePermission(interaction, isOficial))) return;
   const open = await saidaRepo.findOpen();
   if (!open.length)
     return safeReply(
@@ -975,7 +975,7 @@ async function handleMaterialQtyModal(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleIssueToParticipantButton(interaction) {
-  if (!(await requirePermission(interaction, m => isChefia(m) || isOficial(m)))) return;
+  if (!(await requirePermission(interaction, isOficial))) return;
   const open = await saidaRepo.findOpen();
   if (!open.length)
     return safeReply(

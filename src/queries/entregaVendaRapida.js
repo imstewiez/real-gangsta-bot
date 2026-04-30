@@ -14,6 +14,7 @@
 const { MessageFlags } = require('discord.js');
 const { safeReply } = require('../shared/interactionHelpers');
 const { EMOJI } = require('../content');
+const { SANITY_MAX_QTY, SANITY_MAX_PRICE } = require('../shared/constants');
 const { inventoryRepo, memberRepo } = require('../repositories');
 const { recordDeliveryBatch } = require('../inventory/inventoryEngine');
 const { buildSubmissionFeedback } = require('../inventory/bairristaCart');
@@ -25,6 +26,22 @@ async function _handle(interaction, tipo) {
   const quantity = interaction.options.getInteger('quantidade', true);
   const nota = interaction.options.getString('nota') || '';
   const precoCustom = tipo === 'venda' ? interaction.options.getInteger('preco') : null;
+
+  // Sanity checks
+  if (quantity <= 0 || quantity > SANITY_MAX_QTY) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} Quantidade inválida. Máximo: ${SANITY_MAX_QTY.toLocaleString('pt-PT')}.` },
+      { messageClass: 'ERROR' }
+    );
+  }
+  if (tipo === 'venda' && precoCustom != null && (precoCustom < 0 || precoCustom > SANITY_MAX_PRICE)) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} Preço custom inválido. Máximo: ${SANITY_MAX_PRICE.toLocaleString('pt-PT')}€.` },
+      { messageClass: 'ERROR' }
+    );
+  }
 
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {

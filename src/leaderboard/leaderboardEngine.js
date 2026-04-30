@@ -28,6 +28,7 @@
 
 const { query } = require('../db');
 const { weekBounds } = require('../util');
+const { sqlIn, DELIVERY_TYPES, SALE_TYPES, CONTRIBUTION_TYPES } = require('../shared/movementTypes');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PERIOD BOUNDS
@@ -89,7 +90,7 @@ async function getActivityLeaders(start, end, limit = 5) {
         FROM inventory_movements im
        WHERE im.member_id IS NOT NULL
          AND im.created_at >= $1 AND im.created_at <= $2
-         AND im.movement_type IN ('entrega_bairrista','venda_bairrista','entrega_oficial')
+         AND im.movement_type IN (${sqlIn(CONTRIBUTION_TYPES)})
        GROUP BY im.member_id
     ),
     sai AS (
@@ -205,7 +206,7 @@ async function getMaterialDeliveredLeaders(start, end, limit = 5) {
       FROM inventory_movements im
       JOIN members m ON m.id = im.member_id
       JOIN items i ON i.id = im.item_id
-     WHERE im.movement_type IN ('entrega_bairrista','entrega_oficial')
+     WHERE im.movement_type IN (${sqlIn(DELIVERY_TYPES)})
        AND im.created_at >= $1 AND im.created_at <= $2
      GROUP BY m.id, m.discord_id, m.display_name
     HAVING SUM(im.quantity) > 0
@@ -235,7 +236,7 @@ async function getMaterialSoldLeaders(start, end, limit = 5) {
       FROM inventory_movements im
       JOIN members m ON m.id = im.member_id
       JOIN items i ON i.id = im.item_id
-     WHERE im.movement_type = 'venda_bairrista'
+     WHERE im.movement_type IN (${sqlIn(SALE_TYPES)})
        AND im.created_at >= $1 AND im.created_at <= $2
      GROUP BY m.id, m.discord_id, m.display_name
     HAVING SUM(im.quantity) > 0
