@@ -4,7 +4,7 @@
 CREATE OR REPLACE VIEW v_members_without_record AS
 SELECT m.discord_id, m.display_name, m.role
 FROM members m
-WHERE m.active = true
+WHERE m.status = 'ativo'
   AND NOT EXISTS (
     SELECT 1 FROM inventory_movements im WHERE im.member_id = m.id
   )
@@ -16,7 +16,7 @@ CREATE OR REPLACE VIEW v_orphan_channels AS
 SELECT channel_id, member_id, discord_id
 FROM member_channels mc
 WHERE NOT EXISTS (
-  SELECT 1 FROM members m WHERE m.id = mc.member_id AND m.active = true
+  SELECT 1 FROM members m WHERE m.id = mc.member_id AND m.status = 'ativo'
 );
 
 CREATE OR REPLACE VIEW v_unfinalized_saidas AS
