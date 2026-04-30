@@ -17,6 +17,7 @@ const {
 } = require('./inventoryMenus');
 const { inventoryRepo, memberRepo } = require('../repositories');
 const { isChefia, canOpenSession } = require('../permissions/permissionEngine');
+const { requirePermission } = require('../shared/requirePermission');
 const { EMOJI, ERRORS, MODALS, INVENTORY } = require('../content');
 
 // Context efémero por user para fluxos multi-step de inventário.
@@ -147,13 +148,7 @@ async function handleStockCommand(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleAdjustStockButton(interaction) {
-  if (!isChefia(interaction.member)) {
-    return safeReply(
-      interaction,
-      { content: ERRORS.NO_PERMISSION('ajustar stock'), flags: MessageFlags.Ephemeral },
-      { messageClass: 'BANAL' }
-    );
-  }
+  if (!(await requirePermission(interaction, isChefia))) return;
   const menu = await buildCategorySelectMenu('inv::cat_ajuste', 'Seleciona a categoria');
   await safeReply(interaction, {
     content: 'Que categoria de item queres ajustar?',
@@ -197,13 +192,7 @@ async function handleAdjustModal(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleGerirMateriaisButton(interaction) {
-  if (!isChefia(interaction.member)) {
-    return safeReply(
-      interaction,
-      { content: ERRORS.NO_PERMISSION('gerir materiais'), flags: MessageFlags.Ephemeral },
-      { messageClass: 'BANAL' }
-    );
-  }
+  if (!(await requirePermission(interaction, isChefia))) return;
 
   const options = [
     { label: 'Adicionar Material', description: 'Criar novo item no catálogo', value: 'add', emoji: '➕' },

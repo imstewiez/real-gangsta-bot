@@ -12,6 +12,7 @@ const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = req
 const { successEmbed, brandEmbed } = require('../shared/embedBuilders');
 const { buildCategorySelectMenu, buildItemSelectMenuForCategory } = require('../inventory/inventoryMenus');
 const { isChefia, isOficial, canOpenSession } = require('../permissions/permissionEngine');
+const { requirePermission } = require('../shared/requirePermission');
 const { saidaRepo } = require('../repositories');
 const saidaEngine = require('./saidaEngine');
 const { publishSessionEmbed } = require('./saidaSession');
@@ -289,13 +290,7 @@ async function handleCreateSaidaModal(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleCloseSaidaButton(interaction) {
-  if (!isChefia(interaction.member)) {
-    return safeReply(
-      interaction,
-      { content: ERRORS.NO_PERMISSION('fechar saídas'), flags: MessageFlags.Ephemeral },
-      { messageClass: 'BANAL' }
-    );
-  }
+  if (!(await requirePermission(interaction, isChefia))) return;
   const open = await saidaRepo.findOpen();
   if (!open.length) {
     return safeReply(
@@ -326,13 +321,7 @@ async function handleCloseSaidaButton(interaction) {
  */
 async function handleCloseSessionDirect(interaction) {
   if (isDuplicate(interaction.id)) return;
-  if (!isChefia(interaction.member)) {
-    return safeReply(
-      interaction,
-      { content: ERRORS.NO_PERMISSION('fechar saídas'), flags: MessageFlags.Ephemeral },
-      { messageClass: 'BANAL' }
-    );
-  }
+  if (!(await requirePermission(interaction, isChefia))) return;
 
   const saidaId = parseInt(interaction.customId.split('::')[2], 10);
   const saida = await saidaRepo.findById(saidaId);
@@ -538,13 +527,7 @@ async function handleCloseSaidaModal(interaction) {
 async function handleFinalizeSaidaButton(interaction) {
   if (isDuplicate(interaction.id)) return;
 
-  if (!isChefia(interaction.member)) {
-    return safeReply(
-      interaction,
-      { content: ERRORS.NO_PERMISSION('finalizar saídas'), flags: MessageFlags.Ephemeral },
-      { messageClass: 'BANAL' }
-    );
-  }
+  if (!(await requirePermission(interaction, isChefia))) return;
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -729,13 +712,7 @@ async function handleViewSaidasButton(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleAddParticipantButton(interaction) {
-  if (!isChefia(interaction.member) && !isOficial(interaction.member)) {
-    return safeReply(
-      interaction,
-      { content: ERRORS.NO_PERMISSION('mexer em participantes'), flags: MessageFlags.Ephemeral },
-      { messageClass: 'BANAL' }
-    );
-  }
+  if (!(await requirePermission(interaction, m => isChefia(m) || isOficial(m)))) return;
   const open = await saidaRepo.findOpen();
   if (!open.length)
     return safeReply(
@@ -825,13 +802,7 @@ async function handleParticipantUsersSelect(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleRegisterMaterialButton(interaction) {
-  if (!isChefia(interaction.member)) {
-    return safeReply(
-      interaction,
-      { content: ERRORS.NO_PERMISSION('mexer no material das saídas'), flags: MessageFlags.Ephemeral },
-      { messageClass: 'BANAL' }
-    );
-  }
+  if (!(await requirePermission(interaction, isChefia))) return;
   const open = await saidaRepo.findOpen();
   if (!open.length)
     return safeReply(
@@ -995,7 +966,7 @@ async function handleMaterialQtyModal(interaction) {
     );
     return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'RESULT' });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'ERROR' });
   }
 }
 
@@ -1004,13 +975,7 @@ async function handleMaterialQtyModal(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleIssueToParticipantButton(interaction) {
-  if (!isChefia(interaction.member) && !isOficial(interaction.member)) {
-    return safeReply(
-      interaction,
-      { content: ERRORS.NO_PERMISSION('fornecer material'), flags: MessageFlags.Ephemeral },
-      { messageClass: 'BANAL' }
-    );
-  }
+  if (!(await requirePermission(interaction, m => isChefia(m) || isOficial(m)))) return;
   const open = await saidaRepo.findOpen();
   if (!open.length)
     return safeReply(
@@ -1155,7 +1120,7 @@ async function handleIssueQtyModal(interaction) {
     );
     return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'RESULT' });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'ERROR' });
   }
 }
 

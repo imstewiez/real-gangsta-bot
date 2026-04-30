@@ -21,6 +21,7 @@ const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS } = require('../content');
 const CONFIG = require('../config');
 const { isChefia } = require('../permissions/permissionEngine');
+const { requirePermission } = require('../shared/requirePermission');
 
 const VALID_TABS = new Set(['dashboard', 'resumo', 'membros', 'saidas', 'stock', 'config']);
 
@@ -180,16 +181,7 @@ async function _resyncTabHandler(interaction, tab) {
 }
 
 async function handle(interaction) {
-  if (!isChefia(interaction.member)) {
-    return safeReply(
-      interaction,
-      {
-        content: ERRORS.NO_PERMISSION('diagnóstico de sheets'),
-        flags: MessageFlags.Ephemeral,
-      },
-      { messageClass: 'BANAL' }
-    );
-  }
+  if (!(await requirePermission(interaction, isChefia))) return;
 
   if (!CONFIG.isSheetsEnabled || !CONFIG.isSheetsEnabled()) {
     return safeReply(

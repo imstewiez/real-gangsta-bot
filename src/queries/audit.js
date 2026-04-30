@@ -8,20 +8,12 @@ const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { ERRORS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
+const { requirePermission } = require('../shared/requirePermission');
 const { getRecentLogs } = require('../audit/auditEngine');
 const { formatPtDate } = require('../shared/formatPtDate');
 
 async function handle(interaction) {
-  if (!isChefia(interaction.member)) {
-    return safeReply(
-      interaction,
-      {
-        content: ERRORS.NO_PERMISSION('ver logs'),
-        flags: MessageFlags.Ephemeral,
-      },
-      { messageClass: 'BANAL' }
-    );
-  }
+  if (!(await requirePermission(interaction, isChefia))) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const limit = interaction.options.getInteger('limite') || 20;
   const logs = await getRecentLogs(limit);
