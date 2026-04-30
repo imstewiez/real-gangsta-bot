@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
 
@@ -37,17 +38,15 @@ async function handle(interaction) {
   const topic = interaction.options.getString('topico');
   if (topic && TOPICS[topic]) {
     const t = TOPICS[topic];
-    const embed = brandEmbed({ title: t.title, description: t.body, messageClass: 'INFO' });
-    return safeReply(interaction, { embeds: [embed], flags: 64 });
+    const embed = brandEmbed('SHORT').setTitle(t.title).setDescription(t.body);
+    return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
   const lines = Object.entries(TOPICS).map(([k, v]) => `• **${k}** — ${v.title}`);
-  const embed = brandEmbed({
-    title: '📖 Centro de Ajuda',
-    description: `Escolhe um tópico:\n${lines.join('\n')}\n\nUsa \`/ajuda <tópico>\` para detalhes.`,
-    messageClass: 'INFO',
-  });
-  return safeReply(interaction, { embeds: [embed], flags: 64 });
+  const embed = brandEmbed('SHORT')
+    .setTitle('📖 Centro de Ajuda')
+    .setDescription(`Escolhe um tópico:\n${lines.join('\n')}\n\nUsa \`/ajuda <tópico>\` para detalhes.`);
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 module.exports = { handle };

@@ -69,6 +69,16 @@ function createServer(port = 3000) {
       const db = await _checkDb();
       const sheetsEnabled = Boolean(CONFIG.SPREADSHEET_ID && CONFIG.GOOGLE_SERVICE_ACCOUNT_JSON);
       const status = discordOk && db.ok ? 'healthy' : 'degraded';
+
+      // Metrics snapshot para health dashboard
+      let metricsSnapshot = {};
+      try {
+        const metrics = require('../lib/metrics');
+        metricsSnapshot = metrics.toJson();
+      } catch {
+        /* metrics não disponível */
+      }
+
       res.writeHead(discordOk && db.ok ? 200 : 503, { 'Content-Type': 'application/json' });
       res.end(
         JSON.stringify({
@@ -77,10 +87,11 @@ function createServer(port = 3000) {
           displayName: CONFIG.BOT_DISPLAY_NAME,
           uptimeSec: Math.floor((Date.now() - _bootTime) / 1000),
           checks: {
-            discord: { ok: discordOk, guilds: _client?.guilds?.cache?.size || 0 },
+            discord: { ok: discordOk, guilds: _client?.guilds?.cache?.size || 0, pingMs: _client?.ws?.ping || null },
             db,
             sheets: { ok: sheetsEnabled, enabled: sheetsEnabled },
           },
+          metrics: metricsSnapshot,
           node: process.version,
           memMB: Math.round(process.memoryUsage().rss / 1024 / 1024),
         })

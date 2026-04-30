@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { query } = require('../db');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -26,18 +27,16 @@ async function handle(interaction) {
   if (unfinalized.rows.length) sections.push(`🚗 **${unfinalized.rows.length}** saída(s) não finalizada(s) >48h`);
   if (orphanCh.rows.length) sections.push(`🏠 **${orphanCh.rows.length}** canal(is) órfão(s)`);
 
-  const embed = brandEmbed({
-    title: '⚠️ Painel de Erros Recentes',
-    description: sections.join('\n') || '✅ Nenhum erro recente.',
-    messageClass: sections.length ? 'WARNING' : 'SUCCESS',
-  });
+  const embed = brandEmbed('SHORT')
+    .setTitle('⚠️ Painel de Erros Recentes')
+    .setDescription(sections.join('\n') || '✅ Nenhum erro recente.');
 
   if (incidents.rows.length) {
     const lines = incidents.rows.map(r => `\`#${r.id}\` [${r.severity}] ${r.title} — ${r.status}`);
     embed.addFields({ name: '🚨 Incidentes', value: lines.join('\n') });
   }
 
-  return safeReply(interaction, { embeds: [embed], flags: 64 });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 module.exports = { handle };

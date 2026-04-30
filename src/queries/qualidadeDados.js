@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { dataQualityRepo } = require('../repositories');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -29,12 +30,10 @@ async function handle(interaction) {
     issues.totalIssues + issues.pendingDeliveries.length + issues.pendingOrders.length + issues.pendingPrizes.length;
   const color = total === 0 ? 'SUCCESS' : total < 5 ? 'WARNING' : 'DANGER';
 
-  const embed = brandEmbed({
-    title: `🔍 Qualidade dos Dados — ${total === 0 ? '✅ Tudo OK' : `${total} problema(s)`}`,
-    description: sections.join('\n') || '✅ Nenhum problema detectado.',
-    messageClass: color,
-  });
-  return safeReply(interaction, { embeds: [embed], flags: 64 });
+  const embed = brandEmbed('SHORT')
+    .setTitle(`🔍 Qualidade dos Dados — ${total === 0 ? '✅ Tudo OK' : `${total} problema(s)`}`)
+    .setDescription(sections.join('\n') || '✅ Nenhum problema detectado.');
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 module.exports = { handle };

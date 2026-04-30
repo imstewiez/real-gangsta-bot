@@ -309,19 +309,21 @@ async function finalizeSaida(saidaId, actorId) {
     suppliedTotal: supplied,
   });
 
-  // Persiste scores per-participant
-  for (const p of scoredParticipants) {
-    await saidaRepo.updateParticipant(saidaId, p.member_id, {
-      issued_value: p.issued_value,
-      returned_value: p.returned_value,
-      lost_value: p.lost_value,
-      consumed_value: p.consumed_value,
-      net_material_delta: p.net_material_delta,
-      performance_score: p.performance_score,
-      discipline_score: p.discipline_score,
-      mvp_flag: p.mvp_flag,
-    });
-  }
+  // Persiste scores per-participant (batch paralelo)
+  await Promise.all(
+    scoredParticipants.map(p =>
+      saidaRepo.updateParticipant(saidaId, p.member_id, {
+        issued_value: p.issued_value,
+        returned_value: p.returned_value,
+        lost_value: p.lost_value,
+        consumed_value: p.consumed_value,
+        net_material_delta: p.net_material_delta,
+        performance_score: p.performance_score,
+        discipline_score: p.discipline_score,
+        mvp_flag: p.mvp_flag,
+      })
+    )
+  );
 
   // Contagem de tipos
   const characterized_count = participants.filter(p => p.participant_type === 'caracterizado').length;
@@ -373,22 +375,24 @@ async function finalizeSaida(saidaId, actorId) {
       .catch(e => warn(`[SAIDA] spotStats falhou: ${e.message}`));
   }
 
-  // Actualiza member_saida_stats (incremental, per-participante)
-  for (const p of scoredParticipants) {
-    await memberSaidaStatsRepo
-      .applyIncrement({
-        memberId: p.member_id,
-        result: finalized.result || 'sem_conflito',
-        kills: p.kills,
-        deaths: p.deaths_count,
-        profit: p.net_material_delta,
-        returnedValue: p.returned_value,
-        suppliedValue: p.issued_value,
-        survived: !p.died,
-        mvp: p.mvp_flag,
-      })
-      .catch(e => warn(`[SAIDA] memberStats falhou (${p.member_id}): ${e.message}`));
-  }
+  // Actualiza member_saida_stats (incremental, per-participante — batch paralelo)
+  await Promise.all(
+    scoredParticipants.map(p =>
+      memberSaidaStatsRepo
+        .applyIncrement({
+          memberId: p.member_id,
+          result: finalized.result || 'sem_conflito',
+          kills: p.kills,
+          deaths: p.deaths_count,
+          profit: p.net_material_delta,
+          returnedValue: p.returned_value,
+          suppliedValue: p.issued_value,
+          survived: !p.died,
+          mvp: p.mvp_flag,
+        })
+        .catch(e => warn(`[SAIDA] memberStats falhou (${p.member_id}): ${e.message}`))
+    )
+  );
 
   const recon = {
     fornecido: summary.fornecido?.total || 0,
@@ -850,93 +854,104 @@ async function settleParticipantCustody(saidaId, discordId, outcome, actorId, gu
   let totalReturnedQty = 0,
     totalLostQty = 0;
 
-  for (const r of returned) {
-    if (!r.itemId || !r.qty || r.qty <= 0) continue;
-    totalReturnedQty += r.qty;
-    await saidaRepo.addMaterial(saidaId, r.itemId, 'devolvido', r.qty, member.id, `Devolvido por <@${discordId}>`);
-    await inventoryRepo.recordMovement({
-      movementType: 'devolucao_saida',
-      itemId: r.itemId,
-      quantity: r.qty,
-      memberId: member.id,
-      memberRole: member.role,
-      origin: `participante:${discordId}`,
-      destination: 'org',
-      context: `Saída #${saidaId} — devolução`,
-      operationId: saidaId,
-      createdBy: actorId,
+  // Batch paralelo: devoluções
+  const returnedPromises = returned
+    .filter(r => r.itemId && r.qty && r.qty > 0)
+    .map(r => {
+      totalReturnedQty += r.qty;
+      return Promise.all([
+        saidaRepo.addMaterial(saidaId, r.itemId, 'devolvido', r.qty, member.id, `Devolvido por <@${discordId}>`),
+        inventoryRepo.recordMovement({
+          movementType: 'devolucao_saida',
+          itemId: r.itemId,
+          quantity: r.qty,
+          memberId: member.id,
+          memberRole: member.role,
+          origin: `participante:${discordId}`,
+          destination: 'org',
+          context: `Saída #${saidaId} — devolução`,
+          operationId: saidaId,
+          createdBy: actorId,
+        }),
+      ]).then(() =>
+        _notifyMovement({
+          movementType: 'devolucao_saida',
+          itemId: r.itemId,
+          quantity: r.qty,
+          memberId: member.id,
+          saidaId,
+          actorId,
+          notes: 'devolução',
+        })
+      );
     });
-    _notifyMovement({
-      movementType: 'devolucao_saida',
-      itemId: r.itemId,
-      quantity: r.qty,
-      memberId: member.id,
-      saidaId,
-      actorId,
-      notes: 'devolução',
-    });
-  }
+  if (returnedPromises.length) await Promise.all(returnedPromises);
 
-  for (const r of lost) {
-    if (!r.itemId || !r.qty || r.qty <= 0) continue;
-    totalLostQty += r.qty;
-    await saidaRepo.addMaterial(saidaId, r.itemId, 'perdido', r.qty, member.id, `Perdido por <@${discordId}>`);
-    await inventoryRepo.recordMovement({
-      movementType: 'perda_saida',
-      itemId: r.itemId,
-      quantity: r.qty,
-      memberId: member.id,
-      memberRole: member.role,
-      origin: `participante:${discordId}`,
-      destination: 'perdido',
-      context: `Saída #${saidaId} — perda`,
-      operationId: saidaId,
-      createdBy: actorId,
+  // Batch paralelo: perdas
+  const lostPromises = lost
+    .filter(r => r.itemId && r.qty && r.qty > 0)
+    .map(r => {
+      totalLostQty += r.qty;
+      return Promise.all([
+        saidaRepo.addMaterial(saidaId, r.itemId, 'perdido', r.qty, member.id, `Perdido por <@${discordId}>`),
+        inventoryRepo.recordMovement({
+          movementType: 'perda_saida',
+          itemId: r.itemId,
+          quantity: r.qty,
+          memberId: member.id,
+          memberRole: member.role,
+          origin: `participante:${discordId}`,
+          destination: 'perdido',
+          context: `Saída #${saidaId} — perda`,
+          operationId: saidaId,
+          createdBy: actorId,
+        }),
+      ]).then(() =>
+        _notifyMovement({
+          movementType: 'perda_saida',
+          itemId: r.itemId,
+          quantity: r.qty,
+          memberId: member.id,
+          saidaId,
+          actorId,
+          notes: 'perda',
+        })
+      );
     });
-    _notifyMovement({
-      movementType: 'perda_saida',
-      itemId: r.itemId,
-      quantity: r.qty,
-      memberId: member.id,
-      saidaId,
-      actorId,
-      notes: 'perda',
-    });
-  }
+  if (lostPromises.length) await Promise.all(lostPromises);
 
-  for (const r of diedWith) {
-    if (!r.itemId || !r.qty || r.qty <= 0) continue;
-    totalLostQty += r.qty;
-    await saidaRepo.addMaterial(
-      saidaId,
-      r.itemId,
-      'perdido',
-      r.qty,
-      member.id,
-      `Morreu com material (<@${discordId}>)`
-    );
-    await inventoryRepo.recordMovement({
-      movementType: 'perda_saida',
-      itemId: r.itemId,
-      quantity: r.qty,
-      memberId: member.id,
-      memberRole: member.role,
-      origin: `participante:${discordId}`,
-      destination: 'perdido_morte',
-      context: `Saída #${saidaId} — morto com material`,
-      operationId: saidaId,
-      createdBy: actorId,
+  // Batch paralelo: morto com material
+  const diedPromises = diedWith
+    .filter(r => r.itemId && r.qty && r.qty > 0)
+    .map(r => {
+      totalLostQty += r.qty;
+      return Promise.all([
+        saidaRepo.addMaterial(saidaId, r.itemId, 'perdido', r.qty, member.id, `Morreu com material (<@${discordId}>)`),
+        inventoryRepo.recordMovement({
+          movementType: 'perda_saida',
+          itemId: r.itemId,
+          quantity: r.qty,
+          memberId: member.id,
+          memberRole: member.role,
+          origin: `participante:${discordId}`,
+          destination: 'perdido_morte',
+          context: `Saída #${saidaId} — morto com material`,
+          operationId: saidaId,
+          createdBy: actorId,
+        }),
+      ]).then(() =>
+        _notifyMovement({
+          movementType: 'perda_saida',
+          itemId: r.itemId,
+          quantity: r.qty,
+          memberId: member.id,
+          saidaId,
+          actorId,
+          notes: 'morto com material',
+        })
+      );
     });
-    _notifyMovement({
-      movementType: 'perda_saida',
-      itemId: r.itemId,
-      quantity: r.qty,
-      memberId: member.id,
-      saidaId,
-      actorId,
-      notes: 'morto com material',
-    });
-  }
+  if (diedPromises.length) await Promise.all(diedPromises);
 
   await saidaRepo.updateParticipant(saidaId, member.id, {
     died: outcome.died ?? false,

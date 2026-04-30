@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { query } = require('../db');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -41,11 +42,9 @@ async function handle(interaction) {
     query(`SELECT COUNT(*)::int AS n FROM weekly_prizes WHERE prize_status = 'por_definir'`),
   ]);
 
-  const embed = brandEmbed({
-    title: `📊 Relatório ${period === 'day' ? 'Diário' : period === 'week' ? 'Semanal' : 'Mensal'}`,
-    description: `Período: <t:${Math.floor(start.getTime() / 1000)}:D> a <t:${Math.floor(now.getTime() / 1000)}:D>`,
-    messageClass: 'INFO',
-  });
+  const embed = brandEmbed('SHORT')
+    .setTitle(`📊 Relatório ${period === 'day' ? 'Diário' : period === 'week' ? 'Semanal' : 'Mensal'}`)
+    .setDescription(`Período: <t:${Math.floor(start.getTime() / 1000)}:D> a <t:${Math.floor(now.getTime() / 1000)}:D>`);
 
   embed.addFields(
     { name: '📥 Entregas', value: `${deliveries.rows[0]?.n || 0} un | €${deliveries.rows[0]?.v || 0}`, inline: true },
@@ -60,7 +59,7 @@ async function handle(interaction) {
     embed.addFields({ name: '⭐ Top Contribuidores', value: lines.join('\n') });
   }
 
-  return safeReply(interaction, { embeds: [embed], flags: 64 });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 module.exports = { handle };

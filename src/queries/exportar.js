@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { query } = require('../db');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -18,7 +19,7 @@ async function handle(interaction) {
   } else if (tipo === 'saidas') {
     sql = `SELECT id, status, created_at, created_by FROM operations WHERE created_at BETWEEN $1 AND $2`;
   } else {
-    return safeReply(interaction, { content: '❌ Tipo não suportado.', flags: 64 });
+    return safeReply(interaction, { content: '❌ Tipo não suportado.', flags: MessageFlags.Ephemeral });
   }
 
   const res = await query(sql, [inicio, fim]);
@@ -26,14 +27,12 @@ async function handle(interaction) {
   const content = lines.join('\n');
 
   if (content.length > 1900) {
-    const embed = brandEmbed({
-      title: '📤 Exportação',
-      description: `${res.rows.length} registos. Conteúdo muito longo para Discord.`,
-      messageClass: 'INFO',
-    });
-    return safeReply(interaction, { embeds: [embed], flags: 64 });
+    const embed = brandEmbed('SHORT')
+      .setTitle('📤 Exportação')
+      .setDescription(`${res.rows.length} registos. Conteúdo muito longo para Discord.`);
+    return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
   }
-  return safeReply(interaction, { content: `\`\`\`json\n${content}\n\`\`\``, flags: 64 });
+  return safeReply(interaction, { content: `\`\`\`json\n${content}\n\`\`\``, flags: MessageFlags.Ephemeral });
 }
 
 module.exports = { handle };

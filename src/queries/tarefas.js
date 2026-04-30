@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { taskRepo } = require('../repositories');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -18,12 +19,10 @@ async function handle(interaction) {
     }
     const rows = await taskRepo.list({ memberId: dbMemberId, limit: 20 });
     const lines = rows.map(t => `\`#${t.id}\` **${t.title}** — ${t.status} | ${t.display_name}`);
-    const embed = brandEmbed({
-      title: '📋 Tarefas',
-      description: lines.join('\n') || 'Nenhuma.',
-      messageClass: 'INFO',
-    });
-    return safeReply(interaction, { embeds: [embed], flags: 64 });
+    const embed = brandEmbed('SHORT')
+      .setTitle('📋 Tarefas')
+      .setDescription(lines.join('\n') || 'Nenhuma.');
+    return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'criar') {
@@ -41,7 +40,7 @@ async function handle(interaction) {
     });
     return safeReply(interaction, {
       content: `✅ Tarefa \`#${task.id}\` atribuída a ${member.displayName}.`,
-      flags: 64,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -49,7 +48,7 @@ async function handle(interaction) {
     const id = interaction.options.getInteger('id');
     const status = interaction.options.getString('estado');
     const task = await taskRepo.updateStatus(id, status);
-    return safeReply(interaction, { content: `✅ Tarefa \`#${task.id}\` → ${status}.`, flags: 64 });
+    return safeReply(interaction, { content: `✅ Tarefa \`#${task.id}\` → ${status}.`, flags: MessageFlags.Ephemeral });
   }
 }
 

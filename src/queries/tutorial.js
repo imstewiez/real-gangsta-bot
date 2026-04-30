@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
 
@@ -26,12 +27,10 @@ async function handle(interaction) {
   const step = interaction.options.getInteger('passo') || 1;
   const idx = Math.max(1, Math.min(step, STEPS.length));
   const s = STEPS[idx - 1];
-  const embed = brandEmbed({
-    title: `${s.title} (${idx}/${STEPS.length})`,
-    description: s.body + `\n\nUsa \`/tutorial passo:${idx + 1}\` para o próximo.`,
-    messageClass: 'INFO',
-  });
-  return safeReply(interaction, { embeds: [embed], flags: 64 });
+  const embed = brandEmbed('SHORT')
+    .setTitle(`${s.title} (${idx}/${STEPS.length})`)
+    .setDescription(s.body + `\n\nUsa \`/tutorial passo:${idx + 1}\` para o próximo.`);
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 module.exports = { handle };

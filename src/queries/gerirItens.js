@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { itemAdminService } = require('../services');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -17,12 +18,10 @@ async function handle(interaction) {
       i =>
         `\`#${i.id}\` **${i.name}** | ${i.category} | ${i.active ? '🟢' : '🔴'} ${i.orderable ? '📦' : ''} ${i.counts_for_stock ? '📊' : ''} ${i.counts_for_rankings ? '🏆' : ''} | €${i.estimated_value}`
     );
-    const embed = brandEmbed({
-      title: '📦 Catálogo de Itens',
-      description: lines.join('\n') || 'Nenhum item.',
-      messageClass: 'INFO',
-    });
-    return safeReply(interaction, { embeds: [embed], flags: 64 });
+    const embed = brandEmbed('SHORT')
+      .setTitle('📦 Catálogo de Itens')
+      .setDescription(lines.join('\n') || 'Nenhum item.');
+    return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'criar') {
@@ -40,7 +39,10 @@ async function handle(interaction) {
       },
       userTag
     );
-    return safeReply(interaction, { content: `✅ Item **${item.name}** criado com ID \`#${item.id}\`.`, flags: 64 });
+    return safeReply(interaction, {
+      content: `✅ Item **${item.name}** criado com ID \`#${item.id}\`.`,
+      flags: MessageFlags.Ephemeral,
+    });
   }
 
   if (sub === 'editar') {
@@ -59,7 +61,7 @@ async function handle(interaction) {
     const ts = interaction.options.getNumber('stock_alvo');
     if (ts !== null) fields.target_stock = ts;
     const item = await itemAdminService.updateItem(id, fields, userTag);
-    return safeReply(interaction, { content: `✅ Item **${item.name}** actualizado.`, flags: 64 });
+    return safeReply(interaction, { content: `✅ Item **${item.name}** actualizado.`, flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'historico') {
@@ -69,12 +71,10 @@ async function handle(interaction) {
       h =>
         `• \`${h.changed_at.toISOString().slice(0, 10)}\` **${h.field_changed}**: ${h.old_value} → ${h.new_value} (${h.changed_by})`
     );
-    const embed = brandEmbed({
-      title: `📈 Histórico — Item #${id}`,
-      description: lines.join('\n') || 'Sem histórico.',
-      messageClass: 'INFO',
-    });
-    return safeReply(interaction, { embeds: [embed], flags: 64 });
+    const embed = brandEmbed('SHORT')
+      .setTitle(`📈 Histórico — Item #${id}`)
+      .setDescription(lines.join('\n') || 'Sem histórico.');
+    return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 }
 

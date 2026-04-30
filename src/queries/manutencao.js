@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { maintenanceRepo } = require('../repositories');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -11,25 +12,25 @@ async function handle(interaction) {
 
   if (sub === 'status') {
     const state = await maintenanceRepo.isActive();
-    const embed = brandEmbed({
-      title: state.active ? '🔧 Modo Manutenção ACTIVO' : '✅ Sistema Operacional',
-      description: state.active
-        ? `**Motivo:** ${state.reason}\n**Desde:** <t:${Math.floor(new Date(state.started_at).getTime() / 1000)}:R>`
-        : 'Tudo normal.',
-      messageClass: state.active ? 'DANGER' : 'SUCCESS',
-    });
-    return safeReply(interaction, { embeds: [embed], flags: 64 });
+    const embed = brandEmbed('SHORT')
+      .setTitle(state.active ? '🔧 Modo Manutenção ACTIVO' : '✅ Sistema Operacional')
+      .setDescription(
+        state.active
+          ? `**Motivo:** ${state.reason}\n**Desde:** <t:${Math.floor(new Date(state.started_at).getTime() / 1000)}:R>`
+          : 'Tudo normal.'
+      );
+    return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'ativar') {
     const reason = interaction.options.getString('motivo') || 'Manutenção programada';
     await maintenanceRepo.setActive(true, reason, userTag);
-    return safeReply(interaction, { content: `🔧 Modo manutenção ACTIVO: *${reason}*`, flags: 64 });
+    return safeReply(interaction, { content: `🔧 Modo manutenção ACTIVO: *${reason}*`, flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'desativar') {
     await maintenanceRepo.setActive(false, '', userTag);
-    return safeReply(interaction, { content: `✅ Modo manutenção DESACTIVO.`, flags: 64 });
+    return safeReply(interaction, { content: `✅ Modo manutenção DESACTIVO.`, flags: MessageFlags.Ephemeral });
   }
 }
 

@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { query } = require('../db');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -8,7 +9,8 @@ async function handle(interaction) {
   const mr = await query('SELECT id, display_name, role, lifecycle_state FROM members WHERE discord_id = $1', [
     discordId,
   ]);
-  if (!mr.rows.length) return safeReply(interaction, { content: '❌ Não encontrado na base de dados.', flags: 64 });
+  if (!mr.rows.length)
+    return safeReply(interaction, { content: '❌ Não encontrado na base de dados.', flags: MessageFlags.Ephemeral });
   const member = mr.rows[0];
 
   const [pendingDeliveries, pendingOrders, openSaidas, weeklyRank, prizes] = await Promise.all([
@@ -34,11 +36,9 @@ async function handle(interaction) {
     ),
   ]);
 
-  const embed = brandEmbed({
-    title: `👤 ${member.display_name} — O Meu Painel`,
-    description: `Cargo: **${member.role}** | Estado: **${member.lifecycle_state}**`,
-    messageClass: 'INFO',
-  });
+  const embed = brandEmbed('HOUSE')
+    .setTitle(`👤 ${member.display_name} — O Meu Painel`)
+    .setDescription(`Cargo: **${member.role}** | Estado: **${member.lifecycle_state}**`);
 
   embed.addFields(
     { name: '⏳ Entregas pendentes', value: String(pendingDeliveries.rows[0]?.n || 0), inline: true },
@@ -58,7 +58,7 @@ async function handle(interaction) {
     embed.addFields({ name: '🎁 Prémios recentes', value: lines.join('\n') });
   }
 
-  return safeReply(interaction, { embeds: [embed], flags: 64 });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 module.exports = { handle };

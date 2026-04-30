@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { incidentRepo } = require('../repositories');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -16,12 +17,10 @@ async function handle(interaction) {
       r =>
         `\`#${r.id}\` [${r.severity.toUpperCase()}] **${r.title}** — ${r.status} (<t:${Math.floor(new Date(r.created_at).getTime() / 1000)}:R>)`
     );
-    const embed = brandEmbed({
-      title: '🚨 Incidentes',
-      description: lines.join('\n') || 'Nenhum incidente.',
-      messageClass: 'INFO',
-    });
-    return safeReply(interaction, { embeds: [embed], flags: 64 });
+    const embed = brandEmbed('SHORT')
+      .setTitle('🚨 Incidentes')
+      .setDescription(lines.join('\n') || 'Nenhum incidente.');
+    return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'criar') {
@@ -32,14 +31,20 @@ async function handle(interaction) {
       source: interaction.options.getString('fonte') || '',
       createdBy: userTag,
     });
-    return safeReply(interaction, { content: `🚨 Incidente \`#${incident.id}\` criado.`, flags: 64 });
+    return safeReply(interaction, {
+      content: `🚨 Incidente \`#${incident.id}\` criado.`,
+      flags: MessageFlags.Ephemeral,
+    });
   }
 
   if (sub === 'resolver') {
     const id = interaction.options.getInteger('id');
     const status = interaction.options.getString('estado');
     await incidentRepo.updateStatus(id, status, userTag);
-    return safeReply(interaction, { content: `✅ Incidente \`#${id}\` marcado como **${status}**.`, flags: 64 });
+    return safeReply(interaction, {
+      content: `✅ Incidente \`#${id}\` marcado como **${status}**.`,
+      flags: MessageFlags.Ephemeral,
+    });
   }
 }
 

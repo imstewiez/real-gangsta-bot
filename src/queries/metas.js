@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { weeklyGoalService } = require('../services');
 const { brandEmbed, progressBar } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -12,15 +13,18 @@ async function handle(interaction) {
     const { weekStart } = weeklyGoalService.getWeekBounds();
     const goals = await weeklyGoalService.getGoalsWithProgress(weekStart);
     if (!goals.length) {
-      return safeReply(interaction, { content: 'ℹ️ Nenhuma meta definida para esta semana.', flags: 64 });
+      return safeReply(interaction, {
+        content: 'ℹ️ Nenhuma meta definida para esta semana.',
+        flags: MessageFlags.Ephemeral,
+      });
     }
     const lines = goals.map(g => {
       const pct = Math.round(g.percent_complete || 0);
-      const bar = progressBar({ current: pct, max: 100, size: 10 });
+      const bar = progressBar(pct, 100, { width: 10 });
       return `**${g.description || g.metric}** ${bar} ${pct}% (${g.current_value || 0}/${g.target_value})`;
     });
-    const embed = brandEmbed({ title: '🎯 Metas da Semana', description: lines.join('\n'), messageClass: 'INFO' });
-    return safeReply(interaction, { embeds: [embed], flags: 64 });
+    const embed = brandEmbed('SHORT').setTitle('🎯 Metas da Semana').setDescription(lines.join('\n'));
+    return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'criar') {
@@ -33,7 +37,7 @@ async function handle(interaction) {
       description: interaction.options.getString('descricao') || '',
       createdBy: userTag,
     });
-    return safeReply(interaction, { content: `✅ Meta \`#${goal.id}\` criada.`, flags: 64 });
+    return safeReply(interaction, { content: `✅ Meta \`#${goal.id}\` criada.`, flags: MessageFlags.Ephemeral });
   }
 }
 

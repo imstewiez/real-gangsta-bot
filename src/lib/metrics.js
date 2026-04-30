@@ -148,6 +148,9 @@ const dbPoolTotal = gauge('rg_db_pool_total', 'DB connections currently in pool 
 const dbPoolIdle = gauge('rg_db_pool_idle', 'DB connections currently idle');
 const dbPoolWaiting = gauge('rg_db_pool_waiting', 'Queries waiting for DB connection');
 
+// Boot / lifecycle
+const botRestartsTotal = counter('rg_bot_restarts_total', 'Bot process restarts (detecta crash loops)');
+
 // ── Data lifecycle / health gauges ────────────────────────────────────────────
 const sheetStaleTabs = gauge('rg_sheet_stale_tabs', 'Sheet tabs com last_synced_at > 2× interval');
 const sheetErrorTabs = gauge('rg_sheet_error_tabs', 'Sheet tabs com last_result=error');
@@ -196,4 +199,6 @@ module.exports = {
   orphanChannels,
   staleJobRuns,
   pendingRetentionRows,
+  // Lifecycle
+  botRestartsTotal,
 };

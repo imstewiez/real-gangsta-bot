@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { query } = require('../db');
 const { brandEmbed, progressBar } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -23,11 +24,11 @@ async function handle(interaction) {
     );
     const lines = r.rows.map((row, i) => {
       const total = Number(row.delivered) + Number(row.sold);
-      const bar = progressBar({ current: Math.min(total, 500), max: 500, size: 8 });
+      const bar = progressBar(Math.min(total, 500), 500, { width: 8 });
       return `${i + 1}. **${row.display_name}** ${bar} ${total}`;
     });
-    const embed = brandEmbed({ title: '⬆️ Próximos a Promoção', description: lines.join('\n'), messageClass: 'INFO' });
-    return safeReply(interaction, { embeds: [embed], flags: 64 });
+    const embed = brandEmbed('TOP').setTitle('⬆️ Próximos a Promoção').setDescription(lines.join('\n'));
+    return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'promover') {
@@ -35,12 +36,13 @@ async function handle(interaction) {
     const newRole = interaction.options.getString('cargo');
     const reason = interaction.options.getString('motivo') || '';
     const mr = await query('SELECT id, role FROM members WHERE discord_id = $1', [member.id]);
-    if (!mr.rows.length) return safeReply(interaction, { content: '❌ Membro não encontrado.', flags: 64 });
+    if (!mr.rows.length)
+      return safeReply(interaction, { content: '❌ Membro não encontrado.', flags: MessageFlags.Ephemeral });
     const memberRecord = mr.rows[0];
     await promoteMember(memberRecord.id, newRole, { reason, actorTag: userTag });
     return safeReply(interaction, {
       content: `✅ **${member.displayName}** promovido para **${newRole}**${reason ? ` — ${reason}` : ''}`,
-      flags: 64,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -49,7 +51,8 @@ async function handle(interaction) {
     const newRole = interaction.options.getString('cargo');
     const reason = interaction.options.getString('motivo') || '';
     const mr = await query('SELECT id FROM members WHERE discord_id = $1', [member.id]);
-    if (!mr.rows.length) return safeReply(interaction, { content: '❌ Membro não encontrado.', flags: 64 });
+    if (!mr.rows.length)
+      return safeReply(interaction, { content: '❌ Membro não encontrado.', flags: MessageFlags.Ephemeral });
     const memberId = mr.rows[0].id;
     await query('UPDATE members SET role = $1 WHERE id = $2', [newRole, memberId]);
     const { auditRepo } = require('../repositories');
@@ -63,7 +66,7 @@ async function handle(interaction) {
     });
     return safeReply(interaction, {
       content: `⬇️ **${member.displayName}** rebaixado para **${newRole}**${reason ? ` — ${reason}` : ''}`,
-      flags: 64,
+      flags: MessageFlags.Ephemeral,
     });
   }
 }

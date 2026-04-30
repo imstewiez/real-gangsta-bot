@@ -44,6 +44,14 @@ let _shuttingDown = false;
 async function bootstrap() {
   log(`[BOOT] ${CONFIG.BOT_INTERNAL_NAME} a iniciar...`);
 
+  // Incrementa contador de restarts — útil para detectar crash loops no health endpoint
+  try {
+    const { botRestartsTotal } = require('../lib/metrics');
+    botRestartsTotal?.inc();
+  } catch {
+    /* metrics ainda não carregado */
+  }
+
   // Validação forte de config ANTES de qualquer coisa. Aborta com relatório
   // claro se houver erros; warnings ficam nos logs.
   validateOrExit();
@@ -129,11 +137,18 @@ function installShutdownSignals() {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('unhandledRejection', reason => {
     error('[UNHANDLED REJECTION]', reason);
-    process.exit(1);
+    // NÃO matar o processo — o bot é long-running. Log + metrica.
+    // Um unhandled rejection tipicamente afeta só um request/fluxo.
+    try {
+      const metrics = require('../lib/metrics');
+      metrics.interactionErrorsTotal?.inc();
+    } catch {}
   });
   process.on('uncaughtException', err => {
     error('[UNCAUGHT EXCEPTION]', err);
-    process.exit(1);
+    // Uncaught exceptions são mais graves — tentar graceful shutdown
+    // mas dar tempo ao event loop de flushar logs/metrics.
+    setTimeout(() => shutdown('uncaughtException'), 500);
   });
 }
 

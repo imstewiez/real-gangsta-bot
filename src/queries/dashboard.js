@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { query } = require('../db');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -23,11 +24,9 @@ async function handle(interaction) {
       query(`SELECT COUNT(*)::int as n FROM incidents WHERE status IN ('open','analysing')`),
     ]);
 
-  const embed = brandEmbed({
-    title: '🎯 Dashboard Chefia',
-    description: `Resumo operacional em <t:${Math.floor(Date.now() / 1000)}:R>`,
-    messageClass: 'INFO',
-  });
+  const embed = brandEmbed('MOVEMENT')
+    .setTitle('🎯 Dashboard Chefia')
+    .setDescription(`Resumo operacional em <t:${Math.floor(Date.now() / 1000)}:R>`);
 
   embed.addFields(
     { name: '📊 Stock total', value: String(stockTotal.rows[0]?.n || 0), inline: true },
@@ -44,7 +43,7 @@ async function handle(interaction) {
     embed.addFields({ name: '🏆 Top Semanal', value: lines.join('\n') });
   }
 
-  return safeReply(interaction, { embeds: [embed], flags: 64 });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 module.exports = { handle };

@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
 const { requirePermission } = require('../shared/requirePermission');
@@ -43,7 +44,7 @@ async function handle(interaction) {
   await requirePermission(interaction, { minRole: 'OG' });
   const role = interaction.options.getString('cargo');
   const perms = ROLE_PERMS[role];
-  if (!perms) return safeReply(interaction, { content: '❌ Cargo desconhecido.', flags: 64 });
+  if (!perms) return safeReply(interaction, { content: '❌ Cargo desconhecido.', flags: MessageFlags.Ephemeral });
 
   const lines = [
     `📥 Entregar: ${perms.canDeliver ? '✅' : '❌'}`,
@@ -54,12 +55,8 @@ async function handle(interaction) {
     `⚙️ Painel Admin: ${perms.adminPanel ? '✅' : '❌'}`,
   ];
 
-  const embed = brandEmbed({
-    title: `🔮 Simulação — ${role}`,
-    description: lines.join('\n'),
-    messageClass: 'INFO',
-  });
-  return safeReply(interaction, { embeds: [embed], flags: 64 });
+  const embed = brandEmbed('SHORT').setTitle(`🔮 Simulação — ${role}`).setDescription(lines.join('\n'));
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 module.exports = { handle };

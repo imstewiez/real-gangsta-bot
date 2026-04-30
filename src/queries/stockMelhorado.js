@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { query } = require('../db');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -15,14 +16,15 @@ async function handle(interaction) {
        WHERE i.name ILIKE $1 AND i.active = true LIMIT 1`,
       [`%${itemName}%`]
     );
-    if (!res.rows.length) return safeReply(interaction, { content: '❌ Item não encontrado.', flags: 64 });
+    if (!res.rows.length)
+      return safeReply(interaction, { content: '❌ Item não encontrado.', flags: MessageFlags.Ephemeral });
     const i = res.rows[0];
-    const embed = brandEmbed({
-      title: `📊 ${i.name}`,
-      description: `Categoria: ${i.category}\nStock: **${i.quantity}** unidades\nPreço: €${i.estimated_value}\n${i.purchase_price ? `Preço compra: €${i.purchase_price}\n` : ''}Stock alvo: ${i.target_stock || 'N/A'}`,
-      messageClass: 'INFO',
-    });
-    return safeReply(interaction, { embeds: [embed], flags: 64 });
+    const embed = brandEmbed('SHORT')
+      .setTitle(`📊 ${i.name}`)
+      .setDescription(
+        `Categoria: ${i.category}\nStock: **${i.quantity}** unidades\nPreço: €${i.estimated_value}\n${i.purchase_price ? `Preço compra: €${i.purchase_price}\n` : ''}Stock alvo: ${i.target_stock || 'N/A'}`
+      );
+    return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
   // Stock geral agrupado por categoria
@@ -32,12 +34,8 @@ async function handle(interaction) {
      WHERE i.active = true GROUP BY i.category ORDER BY total_qty DESC`
   );
   const lines = res.rows.map(r => `**${r.category}**: ${r.items} itens | ${r.total_qty} un`);
-  const embed = brandEmbed({
-    title: '📊 Stock Geral por Categoria',
-    description: lines.join('\n'),
-    messageClass: 'INFO',
-  });
-  return safeReply(interaction, { embeds: [embed], flags: 64 });
+  const embed = brandEmbed('SHORT').setTitle('📊 Stock Geral por Categoria').setDescription(lines.join('\n'));
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 module.exports = { handle };

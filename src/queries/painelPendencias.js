@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { query } = require('../db');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -17,11 +18,9 @@ async function handle(interaction) {
     ),
   ]);
 
-  const embed = brandEmbed({
-    title: '📋 Painel de Pendências',
-    description: 'Resumo de tudo que precisa de atenção da chefia:',
-    messageClass: 'INFO',
-  });
+  const embed = brandEmbed('MOVEMENT')
+    .setTitle('📋 Painel de Pendências')
+    .setDescription('Resumo de tudo que precisa de atenção da chefia:');
 
   embed.addFields(
     { name: '📥 Entregas pendentes', value: `**${deliveries.rows[0]?.n || 0}**`, inline: true },
@@ -35,7 +34,7 @@ async function handle(interaction) {
     embed.addFields({ name: '⚠️ Stock abaixo do alvo', value: lines.join('\n') });
   }
 
-  return safeReply(interaction, { embeds: [embed], flags: 64 });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 module.exports = { handle };

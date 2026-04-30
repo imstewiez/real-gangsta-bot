@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { query } = require('../db');
 const { brandEmbed, progressBar } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -6,7 +7,7 @@ const { safeReply } = require('../shared/interactionHelpers');
 async function handle(interaction) {
   const discordId = interaction.user.id;
   const mr = await query('SELECT id, display_name, role FROM members WHERE discord_id = $1', [discordId]);
-  if (!mr.rows.length) return safeReply(interaction, { content: '❌ Não encontrado.', flags: 64 });
+  if (!mr.rows.length) return safeReply(interaction, { content: '❌ Não encontrado.', flags: MessageFlags.Ephemeral });
   const m = mr.rows[0];
 
   const weekStart = new Date();
@@ -44,11 +45,9 @@ async function handle(interaction) {
     ),
   ]);
 
-  const embed = brandEmbed({
-    title: `📊 Resumo de ${m.display_name}`,
-    description: `Cargo: **${m.role}** | Semana de ${weekStart.toISOString().slice(0, 10)}`,
-    messageClass: 'INFO',
-  });
+  const embed = brandEmbed('HOUSE')
+    .setTitle(`📊 Resumo de ${m.display_name}`)
+    .setDescription(`Cargo: **${m.role}** | Semana de ${weekStart.toISOString().slice(0, 10)}`);
 
   embed.addFields(
     { name: '📥 Entregas', value: `${deliveries.rows[0].n} un`, inline: true },
@@ -59,7 +58,7 @@ async function handle(interaction) {
     { name: '🎯 Metas', value: `${Math.round(goals.rows[0]?.pct || 0)}%`, inline: true }
   );
 
-  return safeReply(interaction, { embeds: [embed], flags: 64 });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 module.exports = { handle };

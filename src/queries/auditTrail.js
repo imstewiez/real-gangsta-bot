@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { query } = require('../db');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -34,12 +35,10 @@ async function handle(interaction) {
   }
 
   const lines = rows.map(r => `• \`${r.created_at || r.changed_at}\` — ${JSON.stringify(r).slice(0, 100)}`);
-  const embed = brandEmbed({
-    title: `📜 Audit Trail — ${tipo} #${id}`,
-    description: lines.join('\n') || 'Sem registos.',
-    messageClass: 'INFO',
-  });
-  return safeReply(interaction, { embeds: [embed], flags: 64 });
+  const embed = brandEmbed('SHORT')
+    .setTitle(`📜 Audit Trail — ${tipo} #${id}`)
+    .setDescription(lines.join('\n') || 'Sem registos.');
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 module.exports = { handle };

@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { memberLifecycleRepo } = require('../repositories');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -28,19 +29,20 @@ async function handle(interaction) {
       'SELECT id, lifecycle_state, lifecycle_changed_at, lifecycle_notes FROM members WHERE discord_id = $1',
       [discordId]
     );
-    if (!r.rows.length) return safeReply(interaction, { content: '❌ Membro não encontrado na DB.', flags: 64 });
+    if (!r.rows.length)
+      return safeReply(interaction, { content: '❌ Membro não encontrado na DB.', flags: MessageFlags.Ephemeral });
     const m = r.rows[0];
     const history = await memberLifecycleRepo.getHistory(m.id, { limit: 5 });
     const histLines = history.map(
       h => `• ${STATES[h.old_state] || h.old_state} → ${STATES[h.new_state] || h.new_state} (${h.changed_by})`
     );
-    const embed = brandEmbed({
-      title: `👤 Lifecycle — ${member.displayName}`,
-      description: `**Estado:** ${STATES[m.lifecycle_state] || m.lifecycle_state}\n**Desde:** <t:${Math.floor(new Date(m.lifecycle_changed_at).getTime() / 1000)}:R>\n**Notas:** ${m.lifecycle_notes || '—'}`,
-      messageClass: 'INFO',
-    });
+    const embed = brandEmbed('SHORT')
+      .setTitle(`👤 Lifecycle — ${member.displayName}`)
+      .setDescription(
+        `**Estado:** ${STATES[m.lifecycle_state] || m.lifecycle_state}\n**Desde:** <t:${Math.floor(new Date(m.lifecycle_changed_at).getTime() / 1000)}:R>\n**Notas:** ${m.lifecycle_notes || '—'}`
+      );
     if (histLines.length) embed.addFields({ name: '📜 Histórico recente', value: histLines.join('\n') });
-    return safeReply(interaction, { embeds: [embed], flags: 64 });
+    return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 
   if (sub === 'mudar') {
@@ -49,12 +51,13 @@ async function handle(interaction) {
     const reason = interaction.options.getString('motivo') || '';
     const { query } = require('../db');
     const r = await query('SELECT id, lifecycle_state FROM members WHERE discord_id = $1', [member.id]);
-    if (!r.rows.length) return safeReply(interaction, { content: '❌ Membro não encontrado.', flags: 64 });
+    if (!r.rows.length)
+      return safeReply(interaction, { content: '❌ Membro não encontrado.', flags: MessageFlags.Ephemeral });
     const memberId = r.rows[0].id;
     const result = await memberLifecycleRepo.transition({ memberId, newState, changedBy: userTag, reason });
     return safeReply(interaction, {
       content: `✅ ${member.displayName}: ${STATES[result.oldState]} → ${STATES[result.newState]}${reason ? ` (*${reason}*)` : ''}`,
-      flags: 64,
+      flags: MessageFlags.Ephemeral,
     });
   }
 
@@ -65,12 +68,10 @@ async function handle(interaction) {
       r =>
         `• **${r.display_name}** (${r.role}) — <t:${Math.floor(new Date(r.lifecycle_changed_at).getTime() / 1000)}:R>`
     );
-    const embed = brandEmbed({
-      title: `${STATES[state] || state} — ${rows.length} membro(s)`,
-      description: lines.join('\n') || 'Nenhum.',
-      messageClass: 'INFO',
-    });
-    return safeReply(interaction, { embeds: [embed], flags: 64 });
+    const embed = brandEmbed('SHORT')
+      .setTitle(`${STATES[state] || state} — ${rows.length} membro(s)`)
+      .setDescription(lines.join('\n') || 'Nenhum.');
+    return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
   }
 }
 

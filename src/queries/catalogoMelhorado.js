@@ -1,4 +1,5 @@
 'use strict';
+const { MessageFlags } = require('discord.js');
 const { query } = require('../db');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -21,19 +22,17 @@ async function handle(interaction) {
 
   const res = await query(sql, params);
   if (!res.rows.length) {
-    return safeReply(interaction, { content: 'ℹ️ Nenhum item encontrado.', flags: 64 });
+    return safeReply(interaction, { content: 'ℹ️ Nenhum item encontrado.', flags: MessageFlags.Ephemeral });
   }
 
   const lines = res.rows.map(
     i => `\`#${i.id}\` **${i.name}** (${i.category}) — €${i.estimated_value}/${i.unit} ${i.orderable ? '📦' : ''}`
   );
 
-  const embed = brandEmbed({
-    title: search ? `🔍 Resultados para "${search}"` : '📦 Catálogo de Materiais',
-    description: lines.join('\n'),
-    messageClass: 'INFO',
-  });
-  return safeReply(interaction, { embeds: [embed], flags: 64 });
+  const embed = brandEmbed('SHORT')
+    .setTitle(search ? `🔍 Resultados para "${search}"` : '📦 Catálogo de Materiais')
+    .setDescription(lines.join('\n'));
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 module.exports = { handle };
