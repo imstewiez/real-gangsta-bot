@@ -4,7 +4,7 @@ const { BAIRRISTAS, BUTTONS, EMOJI } = require('../content');
 const { buttonFromDef, button, buttonRow } = require('../shared/ui/buttons');
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Painel Casa — Bairrista (RENOVADO v9)
+// Painel Casa — Bairrista (RENOVADO v9, auto-formatted)
 // ══════════════════════════════════════════════════════════════════════════════
 // Embed rico com secções organizadas + botões agrupados por função.
 // Row 1: Ações principais (entrega, movimento, ranking)
