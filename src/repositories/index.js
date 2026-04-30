@@ -25,4 +25,7 @@ module.exports = {
   dataQualityRepo: require('./dataQuality'),
   maintenanceRepo: require('./maintenance'),
   incidentRepo: require('./incident'),
+  taskRepo: require('./task'),
+  reputationRepo: require('./reputation'),
+  absenceRepo: require('./absence'),
 };
