@@ -23,6 +23,7 @@ const saidaWizard = require('../../../saidas/saidaSettlementWizard');
 const saidaIndividual = require('../../../saidas/saidaIndividualResult');
 const { handleKillModal } = require('../../../kills/killHandlers');
 const { handleSetModal: radioHandleSetModal } = require('../../../radio/radioHandlers');
+const { handleDefineModal: prizeHandleDefineModal } = require('../../../queries/premios');
 
 const exact = (id, handler) => ({ match: x => x === id, handler });
 const prefix = (p, handler) => ({ match: x => x.startsWith(p), handler });
@@ -58,6 +59,9 @@ const MODAL_ROUTES = [
 
   // Radio
   prefix('radio::modal_set::', radioHandleSetModal),
+
+  // Prémios semanais
+  prefix('prize::define::', prizeHandleDefineModal),
 ];
 
 async function handleModal(interaction) {

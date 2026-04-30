@@ -27,6 +27,7 @@ const organizeTopicos = require('../../../queries/organizeTopicos');
 const novaCategoriaTopicos = require('../../../queries/novaCategoriaTopicos');
 const dedupTopicos = require('../../../queries/dedupTopicos');
 const inactivosBairristas = require('../../../queries/inactivosBairristas');
+const premios = require('../../../queries/premios');
 const { commandsByName } = require('../../../lib/metrics');
 
 const SLASH_ROUTES = {
@@ -55,6 +56,7 @@ const SLASH_ROUTES = {
   'nova-categoria-topicos': novaCategoriaTopicos.handle,
   'dedup-topicos': dedupTopicos.handle,
   'inactivos-bairristas': inactivosBairristas.handle,
+  premios: premios.handle,
 };
 
 async function handleSlash(interaction) {

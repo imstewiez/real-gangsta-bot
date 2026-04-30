@@ -11,8 +11,7 @@ const { MessageFlags } = require('discord.js');
 const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
-const { query } = require('../db');
-const { memberRepo } = require('../repositories');
+const { memberRepo, ordersRepo } = require('../repositories');
 const { buttonRow, button } = require('../shared/ui/buttons');
 const { formatPtDate } = require('../shared/formatPtDate');
 
@@ -46,30 +45,18 @@ async function handle(interaction) {
     return safeReply(interaction, { content: 'Não estás registado.' }, { messageClass: 'BANAL' });
   }
 
-  const r = await query(
-    `
-    SELECT o.id, o.quantity, o.status, o.notes,
-           o.created_at, o.resolved_at,
-           i.name AS item_name, i.category, i.estimated_value
-      FROM orders o
-      JOIN items i ON i.id = o.item_id
-     WHERE o.member_id = $1
-     ORDER BY o.created_at DESC
-     LIMIT 20
-  `,
-    [member.id]
-  );
+  const rows = await ordersRepo.findByMember(member.id, { limit: 20 });
 
   const embed = brandEmbed('HOUSE').setTitle('📋 Minhas Encomendas');
 
-  if (!r.rows.length) {
+  if (!rows.length) {
     embed.setDescription(
       'Ainda não fizeste nenhuma encomenda.\n\n' +
         'Usa o botão **Encomendar** no teu painel para pedir material à firma.'
     );
   } else {
     // KPI stripe — contagens por estado
-    const byStatus = r.rows.reduce((a, row) => {
+    const byStatus = rows.reduce((a, row) => {
       a[row.status] = (a[row.status] || 0) + 1;
       return a;
     }, {});
@@ -77,11 +64,11 @@ async function handle(interaction) {
     for (const s of ['pending', 'approved', 'fulfilled', 'denied', 'cancelled']) {
       if (byStatus[s]) kpiParts.push(`${STATUS_EMOJI[s]} ${byStatus[s]}`);
     }
-    embed.setDescription(kpiParts.join(' · ') + `  ·  últimas **${r.rows.length}**`);
+    embed.setDescription(kpiParts.join(' · ') + `  ·  últimas **${rows.length}**`);
 
     // Pendentes primeiro (mais urgente)
-    const pendentes = r.rows.filter(o => o.status === 'pending');
-    const outras = r.rows.filter(o => o.status !== 'pending');
+    const pendentes = rows.filter(o => o.status === 'pending');
+    const outras = rows.filter(o => o.status !== 'pending');
 
     if (pendentes.length) {
       const lines = pendentes.map(o => {
