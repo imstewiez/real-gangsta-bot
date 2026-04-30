@@ -6,6 +6,7 @@ const { query } = require('../db');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
 const { jobRepo } = require('../repositories');
+const { recordWeeklyWinner } = require('../services/prizeService');
 
 async function _countDiscordRoleMembers(guild, roleIds) {
   const ids = (roleIds || []).filter(Boolean);
@@ -58,6 +59,28 @@ async function publishWeeklyTop(client) {
       /* sem delta */
     }
 
+    // Registar vencedor na tabela de prémios
+    if (rankings.length > 0) {
+      const winner = rankings[0];
+      try {
+        await recordWeeklyWinner({
+          weekStart: start.toISOString().split('T')[0],
+          weekEnd: end.toISOString().split('T')[0],
+          winnerMemberId: winner.member_id,
+          hybridScore: winner.hybrid_score,
+          metrics: {
+            deliveries: winner.deliveries,
+            sales: winner.sales,
+            saidas: winner.saidas,
+            kills: winner.kills,
+            performance_score: winner.performance_score,
+          },
+        });
+      } catch (e) {
+        warn(`[RANKINGS] Falha ao registar vencedor: ${e.message}`);
+      }
+    }
+
     const embed = rankingEmbed('Topo da Semana', rankings, weekLabel, { previousMap });
 
     const summary = await getWeekSummary();
@@ -65,7 +88,7 @@ async function publishWeeklyTop(client) {
       embed.addFields(
         { name: 'Entregas', value: `**${summary.total_deliveries || 0}**`, inline: true },
         { name: 'Vendas', value: `**${summary.total_sales || 0}**`, inline: true },
-        { name: 'Saídas', value: `**${summary.total_operations || 0}**`, inline: true }
+        { name: 'Saídas', value: `**${summary.total_saidas || 0}**`, inline: true }
       );
     }
 

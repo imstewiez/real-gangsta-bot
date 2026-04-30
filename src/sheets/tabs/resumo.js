@@ -502,7 +502,7 @@ async function syncResumo(batch, sheetId) {
     numCell(x.deliveries || 0, NUM_FMT.INT),
     numCell(x.sales || 0, NUM_FMT.INT),
     numCell(x.operations_count || x.saidas_total || 0, NUM_FMT.INT),
-    numCell(Math.round(Number(x.hybrid_score || x.weighted_value || 0)), NUM_FMT.INT),
+    numCell(Math.round(Number(x.hybrid_score ?? x.weighted_value ?? 0)), NUM_FMT.INT),
   ];
 
   // Semanal

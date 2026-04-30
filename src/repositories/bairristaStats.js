@@ -11,12 +11,13 @@
  */
 const { query } = require('../db');
 const { weekBounds } = require('../util');
+const { sqlIn, DELIVERY_TYPES, SALE_TYPES, CONTRIBUTION_TYPES } = require('../shared/movementTypes');
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const DELIVERY_TYPES = "'entrega_bairrista','entrega_oficial'";
-const SALE_TYPES = "'venda_bairrista'";
-const ALL_CONTRIB_TYPES = `${DELIVERY_TYPES},${SALE_TYPES}`;
+const DELIVERY_SQL = sqlIn(DELIVERY_TYPES);
+const SALE_SQL = sqlIn(SALE_TYPES);
+const ALL_CONTRIB_SQL = sqlIn(CONTRIBUTION_TYPES);
 
 async function _memberId(discordId) {
   const r = await query('SELECT id FROM members WHERE discord_id = $1', [discordId]);
@@ -32,17 +33,17 @@ async function getMaterialStats(discordId, dateFrom, dateTo) {
   const r = await query(
     `
     SELECT
-      SUM(CASE WHEN movement_type IN (${DELIVERY_TYPES}) THEN quantity ELSE 0 END)::int AS deliveries,
-      SUM(CASE WHEN movement_type IN (${SALE_TYPES}) THEN quantity ELSE 0 END)::int AS sales,
-      SUM(CASE WHEN movement_type IN (${ALL_CONTRIB_TYPES}) THEN quantity ELSE 0 END)::int AS total_qty,
-      SUM(CASE WHEN movement_type IN (${ALL_CONTRIB_TYPES})
+      SUM(CASE WHEN movement_type IN (${DELIVERY_SQL}) THEN quantity ELSE 0 END)::int AS deliveries,
+      SUM(CASE WHEN movement_type IN (${SALE_SQL}) THEN quantity ELSE 0 END)::int AS sales,
+      SUM(CASE WHEN movement_type IN (${ALL_CONTRIB_SQL}) THEN quantity ELSE 0 END)::int AS total_qty,
+      SUM(CASE WHEN movement_type IN (${ALL_CONTRIB_SQL})
           THEN quantity * COALESCE(im.unit_price, i.estimated_value, 0) ELSE 0 END)::numeric AS total_value,
       COUNT(DISTINCT im.created_at::date)::int AS active_days
     FROM inventory_movements im
     JOIN items i ON i.id = im.item_id
     WHERE im.member_id = $1
       AND im.created_at >= $2 AND im.created_at < $3
-      AND im.movement_type IN (${ALL_CONTRIB_TYPES})
+      AND im.movement_type IN (${ALL_CONTRIB_SQL})
   `,
     [memberId, dateFrom, dateTo]
   );

@@ -26,5 +26,5 @@ module.exports = {
   TROPINHAS_DO_GUETTO_ROLE_ID: guildId('TROPINHAS_DO_GUETTO_ROLE_ID'),
   PATRULHA_PATA_ROLE_ID: guildId('PATRULHA_PATA_ROLE_ID'),
   BOT_ROLE_ID: guildId('BOT_ROLE_ID'),
-  CONFIGURADOR_ROLE_ID: guildId('CONFIGURADOR_ROLE_ID'),
+  // Nota: CONFIGURADOR_ROLE_ID foi removido — role órfão, zero referências no código.
 };

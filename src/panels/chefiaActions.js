@@ -20,12 +20,14 @@ const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed, rankingEmbed } = require('../shared/embedBuilders');
 const { ERRORS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
+const { requirePermission } = require('../shared/requirePermission');
 const { stickyRepo } = require('../repositories');
 const { getRecentLogs } = require('../audit/auditEngine');
 const { weekBounds } = require('../util');
 const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
 
 async function listarStickys(interaction) {
+  if (!(await requirePermission(interaction, isChefia))) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const all = await stickyRepo.listActive();
   if (!all.length) {
@@ -36,6 +38,7 @@ async function listarStickys(interaction) {
 }
 
 async function verTops(interaction) {
+  if (!(await requirePermission(interaction, isChefia))) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const { getCurrentWeekRanking } = require('../rankings/rankingEngine');
   const rankings = await getCurrentWeekRanking(10);

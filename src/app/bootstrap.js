@@ -129,6 +129,11 @@ function installShutdownSignals() {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('unhandledRejection', reason => {
     error('[UNHANDLED REJECTION]', reason);
+    process.exit(1);
+  });
+  process.on('uncaughtException', err => {
+    error('[UNCAUGHT EXCEPTION]', err);
+    process.exit(1);
   });
 }
 

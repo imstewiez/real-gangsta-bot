@@ -17,4 +17,6 @@ module.exports = {
   stickyRepo: require('./sticky'),
   bairristaStatsRepo: require('./bairristaStats'),
   deliveryRequestRepo: require('./deliveryRequest'),
+  ordersRepo: require('./orders'),
+  prizeRepo: require('./prizeRepo'),
 };

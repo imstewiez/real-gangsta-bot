@@ -379,7 +379,7 @@ async function getMembersFull() {
     LEFT JOIN LATERAL (
       SELECT
         SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS entregas,
-        SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS weighted_entregas,
+        SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity * COALESCE(sm.unit_price, i.estimated_value, 0) ELSE 0 END)::numeric AS weighted_entregas,
         SUM(CASE WHEN movement_type IN ('venda_bairrista') THEN quantity ELSE 0 END)::int AS vendas
       FROM inventory_movements sm
       WHERE sm.member_id = m.id

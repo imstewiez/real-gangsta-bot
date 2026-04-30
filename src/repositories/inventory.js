@@ -1,5 +1,6 @@
 'use strict';
 const { query } = require('../db');
+const { MOVEMENT_TYPE, STOCK_INFLOW_TYPES, STOCK_OUTFLOW_TYPES } = require('../shared/movementTypes');
 
 async function getItems(activeOnly = true) {
   const sql = activeOnly
@@ -210,15 +211,11 @@ async function getStock() {
     SELECT i.id, i.name, i.category, i.unit, i.estimated_value,
       COALESCE(SUM(
         CASE
-          WHEN im.movement_type IN (
-            'saldo_inicial',
-            'entrega_bairrista', 'venda_bairrista', 'entrega_oficial',
-            'devolucao_saida', 'apreendido', 'craftado'
-          ) THEN im.quantity
-          WHEN im.movement_type IN (
-            'fornecimento_org', 'consumo_saida', 'perda_saida'
-          ) THEN -im.quantity
-          WHEN im.movement_type = 'ajuste_manual'
+          WHEN im.movement_type IN (${STOCK_INFLOW_TYPES.map(t => `'${t}'`).join(',')})
+            THEN im.quantity
+          WHEN im.movement_type IN (${STOCK_OUTFLOW_TYPES.map(t => `'${t}'`).join(',')})
+            THEN -im.quantity
+          WHEN im.movement_type = '${MOVEMENT_TYPE.AJUSTE_MANUAL}'
             THEN im.quantity
           ELSE 0
         END
@@ -237,15 +234,11 @@ async function getStockForItem(itemId) {
     `
     SELECT COALESCE(SUM(
       CASE
-        WHEN movement_type IN (
-          'saldo_inicial',
-          'entrega_bairrista', 'venda_bairrista', 'entrega_oficial',
-          'devolucao_saida', 'apreendido', 'craftado'
-        ) THEN quantity
-        WHEN movement_type IN (
-          'fornecimento_org', 'consumo_saida', 'perda_saida'
-        ) THEN -quantity
-        WHEN movement_type = 'ajuste_manual'
+        WHEN movement_type IN (${STOCK_INFLOW_TYPES.map(t => `'${t}'`).join(',')})
+          THEN quantity
+        WHEN movement_type IN (${STOCK_OUTFLOW_TYPES.map(t => `'${t}'`).join(',')})
+          THEN -quantity
+        WHEN movement_type = '${MOVEMENT_TYPE.AJUSTE_MANUAL}'
           THEN quantity
         ELSE 0
       END

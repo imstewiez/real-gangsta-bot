@@ -9,6 +9,7 @@ const metrics = require('../lib/metrics');
 const { weekBounds } = require('../util');
 const { warn, log } = require('../logger');
 const eventBus = require('../core/eventBus');
+const { MOVEMENT_TYPE } = require('../shared/movementTypes');
 
 // Janela para desfazer uma submission (desde o último insert). 5 min é
 // suficiente para "ups, engano" sem permitir manipulação de stats
@@ -298,7 +299,7 @@ async function recordDeliveryBatch({ discordId, tipo, lines, globalNotes = '', c
   // fazem entrega_bairrista. Vendas: apenas venda_bairrista (oficiais
   // não vendem mecanicamente no fluxo RP).
   const movementType =
-    tipo === 'venda' ? 'venda_bairrista' : member.role === 'oficial' ? 'entrega_oficial' : 'entrega_bairrista';
+    tipo === 'venda' ? MOVEMENT_TYPE.VENDA_BAIRRISTA : member.role === 'oficial' ? MOVEMENT_TYPE.ENTREGA_OFICIAL : MOVEMENT_TYPE.ENTREGA_BAIRRISTA;
 
   // Validação dos lines ANTES da transacção — falhas triviais devolvem
   // erro limpo sem abrir BEGIN/ROLLBACK desnecessário.

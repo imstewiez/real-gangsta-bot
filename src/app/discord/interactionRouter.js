@@ -51,8 +51,8 @@ async function dispatch(interaction) {
 
   // ── Rate limiting global por user ──────────────────────────────────────
   const actionKey = ctx.current()?.action || 'misc';
-  const isAdmin = interaction.memberPermissions?.has?.('Administrator');
-  const rlLimit = isAdmin ? 30 : 10;
+  const { isCommand } = require('../../permissions/permissionEngine');
+  const rlLimit = isCommand(interaction.member) ? 30 : 10;
   if (!rateLimiter.allow(interaction.user.id, actionKey, { limit: rlLimit, windowMs: 10_000 })) {
     const wait = rateLimiter.retryAfter(interaction.user.id, actionKey);
     return safeReply(

@@ -1,6 +1,7 @@
 'use strict';
 const CONFIG = require('../config');
 const { memberRepo, inventoryRepo } = require('../repositories');
+const { sqlIn, CONTRIBUTION_TYPES } = require('../shared/movementTypes');
 const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
 const { queueMemberOp, queueChannelOp } = require('../discordQueue');
 const { log, warn } = require('../logger');
@@ -131,7 +132,7 @@ async function checkAndPromote(discordId, guild, client) {
       `SELECT COALESCE(SUM(im.quantity), 0)::int AS total_qty
          FROM inventory_movements im
         WHERE im.member_id = $1
-          AND im.movement_type IN ('entrega_bairrista', 'venda_bairrista', 'entrega_oficial')`,
+          AND im.movement_type IN (${sqlIn(CONTRIBUTION_TYPES)})`,
       [liveMember.id]
     );
     const totalQty = Number(qtyRes.rows[0].total_qty) || 0;
