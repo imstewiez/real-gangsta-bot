@@ -16,7 +16,7 @@ async function handle(interaction) {
   } else if (tipo === 'vendas') {
     sql = `SELECT m.display_name, i.name, im.quantity, im.created_at FROM inventory_movements im JOIN members m ON m.id = im.member_id JOIN items i ON i.id = im.item_id WHERE im.movement_type = 'venda_bairrista' AND im.created_at BETWEEN $1 AND $2`;
   } else if (tipo === 'saidas') {
-    sql = `SELECT id, status, created_at, created_by FROM saidas WHERE created_at BETWEEN $1 AND $2`;
+    sql = `SELECT id, status, created_at, created_by FROM operations WHERE created_at BETWEEN $1 AND $2`;
   } else {
     return safeReply(interaction, { content: '❌ Tipo não suportado.', flags: 64 });
   }

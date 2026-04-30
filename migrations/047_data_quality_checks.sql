@@ -21,7 +21,7 @@ WHERE NOT EXISTS (
 
 CREATE OR REPLACE VIEW v_unfinalized_saidas AS
 SELECT s.id, s.status, s.created_at, s.created_by
-FROM saidas s
+FROM operations s
 WHERE s.status NOT IN ('concluida', 'cancelada')
   AND s.created_at < NOW() - INTERVAL '48 hours';
 

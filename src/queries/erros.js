@@ -13,7 +13,7 @@ async function handle(interaction) {
     ),
     query(`SELECT last_synced_at FROM sheet_sync_state WHERE last_synced_at < NOW() - INTERVAL '2 hours' LIMIT 1`),
     query(
-      `SELECT id, status, created_at FROM saidas WHERE status NOT IN ('concluida','cancelada') AND created_at < NOW() - INTERVAL '48 hours' LIMIT 5`
+      `SELECT id, status, created_at FROM operations WHERE status NOT IN ('concluida','cancelada') AND created_at < NOW() - INTERVAL '48 hours' LIMIT 5`
     ),
     query(
       `SELECT channel_id FROM resident_channels WHERE NOT EXISTS (SELECT 1 FROM members WHERE members.id = resident_channels.member_id AND status='ativo') LIMIT 5`

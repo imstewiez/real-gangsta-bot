@@ -36,7 +36,7 @@ async function handle(interaction) {
       `SELECT m.display_name, SUM(im.quantity)::int AS total FROM inventory_movements im JOIN members m ON m.id = im.member_id WHERE im.created_at >= $1 AND im.movement_type IN ('entrega_bairrista','venda_bairrista','entrega_oficial') GROUP BY m.display_name ORDER BY total DESC LIMIT 5`,
       [start]
     ),
-    query(`SELECT COUNT(*)::int AS n FROM saidas WHERE status = 'concluida' AND created_at >= $1`, [start]),
+    query(`SELECT COUNT(*)::int AS n FROM operations WHERE status = 'concluida' AND created_at >= $1`, [start]),
     query(`SELECT COUNT(*)::int AS n FROM orders WHERE status IN ('pending','received','under_review')`),
     query(`SELECT COUNT(*)::int AS n FROM weekly_prizes WHERE prize_status = 'por_definir'`),
   ]);

@@ -20,7 +20,7 @@ async function handle(interaction) {
       [member.id]
     ),
     query(
-      `SELECT COUNT(*)::int AS n FROM operation_participants sp JOIN saidas s ON s.id = sp.saida_id WHERE sp.member_id = $1 AND s.status NOT IN ('concluida','cancelada')`,
+      `SELECT COUNT(*)::int AS n FROM operation_participants sp JOIN operations s ON s.id = sp.operation_id WHERE sp.member_id = $1 AND s.status NOT IN ('concluida','cancelada')`,
       [member.id]
     ),
     query(

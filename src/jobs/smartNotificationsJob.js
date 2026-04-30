@@ -25,7 +25,7 @@ async function run(guild) {
     const pendingResults = await query(
       `SELECT sp.member_id, s.id as saida_id, s.created_at
        FROM operation_participants sp
-       JOIN saidas s ON s.id = sp.saida_id
+       JOIN operations s ON s.id = sp.operation_id
        WHERE s.status = 'em_liquidacao' AND sp.result_submitted = false
        AND s.created_at < NOW() - INTERVAL '6 hours'`
     );
