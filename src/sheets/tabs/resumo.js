@@ -38,6 +38,7 @@ const {
   totalRow,
   footerBlock,
   autoResizeAll,
+  gangTitle,
 } = require('./_common');
 const {
   getWeeklySummary,
@@ -50,15 +51,19 @@ const {
 
 const COL_COUNT = 9;
 
-function destaqueBadge(d) {
+function destaqueBadge(d, avgNet, avgKills) {
   const net = Number(d.net || 0);
-  if (d.ops === 0 && Number(d.entradas) === 0 && Number(d.vendas) === 0) return mutedCell('—', { align: 'CENTER' });
-  if (net > 500) return badgeCell('BOM DIA', COLOR.GREEN_DEEP);
-  if (net < -200) return badgeCell('A PERDER', COLOR.RED_DEEP);
-  if ((d.kills || 0) > 5) return badgeCell('PESOU', COLOR.GOLD);
-  if ((d.deaths || 0) > 3) return badgeCell('DIA CARO', COLOR.RED_BLOOD);
-  if (net > 0) return badgeCell('POSITIVO', COLOR.GREEN_DEEP);
-  return mutedCell('—', { align: 'CENTER' });
+  const kills = d.kills || 0;
+  const deaths = d.deaths || 0;
+  const hasActivity = (d.ops || 0) > 0 || Number(d.entradas) > 0 || Number(d.vendas) > 0;
+  if (!hasActivity) return mutedCell('—', { align: 'CENTER' });
+  // Thresholds relativos às médias da janela (mais justos que hardcoded)
+  if (net >= avgNet * 1.5 && net > 0) return badgeCell('💰 BOM DIA', COLOR.GREEN_DEEP);
+  if (net <= avgNet * 0.5 && net < 0) return badgeCell('💸 A PERDER', COLOR.RED_DEEP);
+  if (kills >= Math.max(avgKills * 1.5, 3)) return badgeCell('🔫 PESOU', COLOR.GOLD);
+  if (deaths >= 3 && net < 0) return badgeCell('⚰️ DIA CARO', COLOR.RED_BLOOD);
+  if (net > 0) return badgeCell('📈 POSITIVO', COLOR.GREEN_DEEP);
+  return badgeCell('📉 NEUTRO', COLOR.GRAY_DARK);
 }
 function fmtDate(d) {
   try {
@@ -101,8 +106,8 @@ async function syncResumo(batch, sheetId) {
   ]);
 
   let row = headerBlock(batch, sheetId, {
-    title: 'Resumo & Rankings · Firma RedWood',
-    subtitle: `semana ${bounds.current.start} → ${bounds.current.end}  ·  anterior ${bounds.previous.start} → ${bounds.previous.end}  ·  14 dias`,
+    title: gangTitle('Resumo & Rankings'),
+    subtitle: `semana ${bounds.current.start} → ${bounds.current.end}  ·  anterior ${bounds.previous?.start || '—'} → ${bounds.previous?.end || '—'}  ·  14 dias`,
     columnCount: COL_COUNT,
   });
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
@@ -116,8 +121,8 @@ async function syncResumo(batch, sheetId) {
   });
   const winRate = (current.ops || 0) > 0 ? (current.wins || 0) / current.ops : 0;
   const kd = (current.deaths || 0) > 0 ? (current.kills || 0) / current.deaths : current.kills || 0;
-  const dNet = formatDelta(Number(previous.net) || 0, Number(current.net) || 0, 'pct');
-  const dKills = formatDelta(previous.kills || 0, current.kills || 0, 'pct');
+  const dNet = formatDelta(Number(previous?.net) || 0, Number(current.net) || 0, 'pct');
+  const dKills = formatDelta(Number(previous?.kills) || 0, current.kills || 0, 'pct');
   row = kpiStrip(
     batch,
     sheetId,
@@ -134,7 +139,7 @@ async function syncResumo(batch, sheetId) {
         label: 'K/D',
         value: kd,
         numberFormat: NUM_FMT.KD,
-        delta: `${current.kills || 0}k · ${current.deaths || 0}d`,
+        delta: `${current.kills || 0}k · ${current.deaths || 0}d · ${dKills.arrow} vs anterior`,
         deltaDirection: dKills.direction,
       },
       {
@@ -175,11 +180,11 @@ async function syncResumo(batch, sheetId) {
     '',
   ]);
   const cmpData = [
-    { label: 'Saídas', cur: current.ops || 0, prev: previous.ops || 0, fmt: NUM_FMT.INT },
-    { label: 'Vitórias', cur: current.wins || 0, prev: previous.wins || 0, fmt: NUM_FMT.INT },
-    { label: 'Derrotas', cur: current.losses || 0, prev: previous.losses || 0, fmt: NUM_FMT.INT },
-    { label: 'Kills', cur: current.kills || 0, prev: previous.kills || 0, fmt: NUM_FMT.INT },
-    { label: 'Mortes', cur: current.deaths || 0, prev: previous.deaths || 0, fmt: NUM_FMT.INT },
+    { label: 'Saídas', cur: current.ops || 0, prev: previous?.ops ?? null, fmt: NUM_FMT.INT },
+    { label: 'Vitórias', cur: current.wins || 0, prev: previous?.wins ?? null, fmt: NUM_FMT.INT },
+    { label: 'Derrotas', cur: current.losses || 0, prev: previous?.losses ?? null, fmt: NUM_FMT.INT },
+    { label: 'Kills', cur: current.kills || 0, prev: previous?.kills ?? null, fmt: NUM_FMT.INT },
+    { label: 'Mortes', cur: current.deaths || 0, prev: previous?.deaths ?? null, fmt: NUM_FMT.INT },
     {
       label: 'Material Fornecido (un)',
       cur: trend.supplied_units.current,
@@ -198,8 +203,8 @@ async function syncResumo(batch, sheetId) {
       prev: trend.lost_units.previous,
       fmt: NUM_FMT.INT,
     },
-    { label: 'Lucro Bruto (€)', cur: Number(current.gross) || 0, prev: Number(previous.gross) || 0, fmt: NUM_FMT.EURO },
-    { label: 'Lucro Líquido (€)', cur: Number(current.net) || 0, prev: Number(previous.net) || 0, fmt: NUM_FMT.EURO },
+    { label: 'Lucro Bruto (€)', cur: Number(current.gross) || 0, prev: Number(previous?.gross) || null, fmt: NUM_FMT.EURO },
+    { label: 'Lucro Líquido (€)', cur: Number(current.net) || 0, prev: Number(previous?.net) || null, fmt: NUM_FMT.EURO },
     { label: 'Entregas (itens)', cur: current.entregas || 0, prev: null, fmt: NUM_FMT.INT },
     { label: 'Vendas (itens)', cur: current.vendas || 0, prev: null, fmt: NUM_FMT.INT },
   ].map(m => {
@@ -292,6 +297,10 @@ async function syncResumo(batch, sheetId) {
     'Destaque',
     '',
   ]);
+  // Médias da janela para badges relativos
+  const avgNet14 = daily14.length ? daily14.reduce((a, r) => a + Number(r.net || 0), 0) / daily14.length : 0;
+  const avgKills14 = daily14.length ? daily14.reduce((a, r) => a + (r.kills || 0), 0) / daily14.length : 0;
+
   const firstDailyRow = row;
   const dailyRows = daily14.map(d => [
     bodyBoldCell(fmtDate(d.day)),
@@ -301,7 +310,7 @@ async function syncResumo(batch, sheetId) {
     numCell(Number(d.net), NUM_FMT.EURO),
     numCell(Number(d.entradas), NUM_FMT.INT),
     numCell(Number(d.vendas), NUM_FMT.INT),
-    destaqueBadge(d),
+    destaqueBadge(d, avgNet14, avgKills14),
     cell('', { bg: COLOR.BG_APP }),
   ]);
   row = tableBody(batch, sheetId, row, dailyRows);
@@ -387,14 +396,14 @@ async function syncResumo(batch, sheetId) {
 
   row = rankingBlockTop(batch, sheetId, row, {
     title: '📦 TOP ENTREGAS',
-    hint: 'quantidade de material entregue',
-    columns: ['#', 'Nome', 'Tier', 'Itens', 'Valor (€)', '', '', '', ''],
+    hint: 'quantidade de material entregue · peso ponderado',
+    columns: ['#', 'Nome', 'Tier', 'Itens', 'Peso', '', '', '', ''],
     items: rk.topEntregas.map(x => ({
       render: [
         bodyBoldCell(x.display_name || '—'),
         captionCell(x.tier || '—'),
         numCell(x.qty, NUM_FMT.INT),
-        numCell(Number(x.weighted), NUM_FMT.EURO),
+        numCell(Number(x.weighted), NUM_FMT.INT),
       ],
     })),
   });
@@ -475,55 +484,39 @@ async function syncResumo(batch, sheetId) {
   });
   row = spacer(batch, sheetId, row, COL_COUNT, 'XS');
 
+  // Bairristas — colunas uniformes: Entregas · Vendas · Saídas · Score
+  const bairristaColumns = ['#', 'Nome', 'Tier', 'Entregas', 'Vendas', 'Saídas', 'Score', '', ''];
+  const bairristaRender = x => [
+    bodyBoldCell(x.display_name || '—'),
+    captionCell(x.tier || '—'),
+    numCell(x.deliveries || 0, NUM_FMT.INT),
+    numCell(x.sales || 0, NUM_FMT.INT),
+    numCell(x.operations_count || x.saidas_total || 0, NUM_FMT.INT),
+    numCell(Math.round(Number(x.hybrid_score || x.weighted_value || 0)), NUM_FMT.INT),
+  ];
+
   // Semanal
   row = rankingBlockTop(batch, sheetId, row, {
     title: `📦 TOP BAIRRISTAS SEMANAL · ${bairristaRk.weekBounds.start}`,
-    hint: 'hybrid score',
-    columns: ['#', 'Nome', 'Tier', 'Entregas', 'Vendas', 'Saídas', 'Score', '', ''],
-    items: bairristaRk.weekly.map(x => ({
-      render: [
-        bodyBoldCell(x.display_name || '—'),
-        captionCell(x.tier || '—'),
-        numCell(x.deliveries || 0, NUM_FMT.INT),
-        numCell(x.sales || 0, NUM_FMT.INT),
-        numCell(x.operations_count || 0, NUM_FMT.INT),
-        numCell(Math.round(Number(x.hybrid_score || x.weighted_value || 0)), NUM_FMT.INT),
-      ],
-    })),
+    hint: 'hybrid score · semana em curso',
+    columns: bairristaColumns,
+    items: bairristaRk.weekly.map(x => ({ render: bairristaRender(x) })),
   });
 
   // Mensal
   row = rankingBlockTop(batch, sheetId, row, {
     title: `📊 TOP BAIRRISTAS MENSAL · ${bairristaRk.monthBounds.start}`,
-    hint: 'hybrid score',
-    columns: ['#', 'Nome', 'Tier', 'Entregas', 'Vendas', 'Kills', 'Score', '', ''],
-    items: bairristaRk.monthly.map(x => ({
-      render: [
-        bodyBoldCell(x.display_name || '—'),
-        captionCell(x.tier || '—'),
-        numCell(x.deliveries || 0, NUM_FMT.INT),
-        numCell(x.sales || 0, NUM_FMT.INT),
-        numCell(x.kills_count || 0, NUM_FMT.INT),
-        numCell(Math.round(Number(x.hybrid_score || x.weighted_value || 0)), NUM_FMT.INT),
-      ],
-    })),
+    hint: 'hybrid score · mês em curso',
+    columns: bairristaColumns,
+    items: bairristaRk.monthly.map(x => ({ render: bairristaRender(x) })),
   });
 
   // All-time
   row = rankingBlockTop(batch, sheetId, row, {
     title: '🏆 TOP BAIRRISTAS ALL-TIME',
-    hint: 'acumulado desde sempre',
-    columns: ['#', 'Nome', 'Tier', 'Entregas', 'Vendas', 'Kills', 'Score', '', ''],
-    items: bairristaRk.allTime.map(x => ({
-      render: [
-        bodyBoldCell(x.display_name || '—'),
-        captionCell(x.tier || '—'),
-        numCell(x.deliveries || 0, NUM_FMT.INT),
-        numCell(x.sales || 0, NUM_FMT.INT),
-        numCell(x.kills_total || 0, NUM_FMT.INT),
-        numCell(Math.round(Number(x.hybrid_score || x.weighted_value || 0)), NUM_FMT.INT),
-      ],
-    })),
+    hint: 'acumulado desde sempre · total histórico',
+    columns: bairristaColumns,
+    items: bairristaRk.allTime.map(x => ({ render: bairristaRender(x) })),
   });
 
   // Streaks

@@ -31,6 +31,7 @@ const {
   footerBlock,
   autoResizeColumns,
   autoResizeAll,
+  gangTitle,
 } = require('./_common');
 const { getMembersFull } = require('../queries');
 
@@ -43,7 +44,7 @@ const HEADERS = [
   'Entrada',
   'Última Saída',
   'Entregas',
-  'Itens Totais',
+  'Peso Ent.',
   'Vendas',
   'Saídas',
   'V',
@@ -176,9 +177,8 @@ async function syncMembros(batch, sheetId) {
     young_blood: countTier(bairristas, 'young_blood'),
   };
 
-  // Grow é feito pelo syncEngine via pre-flight (PRE_SYNC_MIN_ROWS).
   let row = headerBlock(batch, sheetId, {
-    title: 'Membros · Ficha da Casa',
+    title: gangTitle('Membros'),
     subtitle: `${rows.length} membros · ${chefia.length} chefia · ${oficial.length} oficiais · ${patroes.length} patrões di zona · ${bairristas.length} bairristas`,
     columnCount: COL_COUNT,
   });

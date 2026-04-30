@@ -16,6 +16,7 @@ const {
   setWidths,
   autoResizeColumns,
   autoResizeAll,
+  gangTitle,
 } = require('./_common');
 
 const COL_COUNT = 5;
@@ -33,8 +34,8 @@ function pairRow(k, v, badge) {
 
 async function syncConfig(batch, sheetId) {
   let row = headerBlock(batch, sheetId, {
-    title: 'Config · Legendas & Referências',
-    subtitle: 'guia visual — legendas, tiers, cores, métricas',
+    title: gangTitle('Config'),
+    subtitle: 'guia visual — legendas, tiers, cores, métricas, comandos',
     columnCount: COL_COUNT,
   });
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
@@ -236,7 +237,7 @@ async function syncConfig(batch, sheetId) {
   // ── Comandos Discord ─────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
     title: '💬 COMANDOS DISCORD',
-    hint: '10 slash commands activos',
+    hint: 'slash commands activos',
     columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, ['Comando', 'Descrição', '', '', '']);
@@ -251,6 +252,8 @@ async function syncConfig(batch, sheetId) {
     ['/kill', 'registar uma kill'],
     ['/audit', 'logs de auditoria (chefia)'],
     ['/transfer', 'mover material entre armazém e grupo (chefia)'],
+    ['/recon', 'reconhecimento de spot — intel antes da saída'],
+    ['/war', 'estado de guerra — métricas de combate em tempo real'],
   ];
   row = tableBody(
     batch,
@@ -269,10 +272,12 @@ async function syncConfig(batch, sheetId) {
   row = tableHeader(batch, sheetId, row, ['Mecanismo', 'Detalhe', '', '', '']);
   const syncInfo = [
     ['Event-driven', 'cada acção (entrega, saída, kill) dispara sync das tabs afectadas'],
-    ['Boot sync', 'ao arrancar, o bot sincroniza todas as 6 tabs automaticamente'],
+    ['Boot sync', 'ao arrancar, o bot sincroniza todas as 7 tabs automaticamente'],
     ['Reconciliação', 'a cada 15 minutos, tabs paradas ou com erro são re-sincronizadas'],
     ['Trim automático', 'cada sync encolhe a tab ao tamanho necessário (sem rows mortas)'],
     ['Debounce 5s', 'eventos rápidos são agrupados — 1 sync por burst, não 1 por evento'],
+    ['Circuit breaker', 'protecção contra falhas — 3 erros consecutivos abrem o circuito por 5 min'],
+    ['Batch writer', 'acumula pedidos à Google API e envia em batch (máx 900 requests)'],
     ['Design system', 'theme.js + _common.js — paleta, tipografia e componentes centralizados'],
   ];
   row = tableBody(

@@ -306,9 +306,33 @@ function pillCell(value, pillColor, textColor) {
 
 function rankCell(position) {
   const pos = Number(position);
-  if (pos === 1) return cell('① 1º', { bg: COLOR.BG_APP, font: FONT.RANK_1, align: 'CENTER', vAlign: 'MIDDLE' });
-  if (pos === 2) return cell('② 2º', { bg: COLOR.BG_APP, font: FONT.RANK_2, align: 'CENTER', vAlign: 'MIDDLE' });
-  if (pos === 3) return cell('③ 3º', { bg: COLOR.BG_APP, font: FONT.RANK_3, align: 'CENTER', vAlign: 'MIDDLE' });
+  if (pos === 1) {
+    return cell('🥇 1º', {
+      bg: COLOR.GOLD_SOFT,
+      font: FONT.RANK_1,
+      align: 'CENTER',
+      vAlign: 'MIDDLE',
+      borders: { top: _border(COLOR.GOLD), bottom: _border(COLOR.GOLD), left: _border(COLOR.GOLD), right: _border(COLOR.GOLD) },
+    });
+  }
+  if (pos === 2) {
+    return cell('🥈 2º', {
+      bg: COLOR.SILVER_SOFT,
+      font: FONT.RANK_2,
+      align: 'CENTER',
+      vAlign: 'MIDDLE',
+      borders: { top: _border(COLOR.SILVER), bottom: _border(COLOR.SILVER), left: _border(COLOR.SILVER), right: _border(COLOR.SILVER) },
+    });
+  }
+  if (pos === 3) {
+    return cell('🥉 3º', {
+      bg: COLOR.BRONZE_SOFT,
+      font: FONT.RANK_3,
+      align: 'CENTER',
+      vAlign: 'MIDDLE',
+      borders: { top: _border(COLOR.BRONZE), bottom: _border(COLOR.BRONZE), left: _border(COLOR.BRONZE), right: _border(COLOR.BRONZE) },
+    });
+  }
   return cell(`${pos}`, { bg: COLOR.BG_APP, font: FONT.MUTED, align: 'CENTER', vAlign: 'MIDDLE' });
 }
 

@@ -33,6 +33,8 @@ const {
   autoResizeColumns,
   autoResizeAll,
   applyRowBanding,
+  alertBox,
+  gangTitle,
 } = require('./_common');
 const { getInventoryFull, getStockByCategory, getMovementsFull } = require('../queries');
 
@@ -182,10 +184,25 @@ async function syncStock(batch, sheetId) {
   // Não chamar growSheet aqui — encolheria a grid pre-flight.
 
   let row = headerBlock(batch, sheetId, {
-    title: 'Stock · Inventário & Movimentos',
+    title: gangTitle('Stock'),
     subtitle: `${inv.length} itens · ${critical} críticos · ${qtyArmazem} un. armazém + ${qtyGrupo} un. grupo`,
     columnCount: COL_COUNT,
   });
+
+  // Alerta crítico no topo se houver itens esgotados
+  if (zeros > 0) {
+    row = alertBox(batch, sheetId, row, {
+      kind: 'danger',
+      message: `${zeros} item(s) esgotado(s) no stock — acção necessária.`,
+      columnCount: COL_COUNT,
+    });
+  } else if (critical > 0) {
+    row = alertBox(batch, sheetId, row, {
+      kind: 'warn',
+      message: `${critical} item(s) com stock crítico — monitorar.`,
+      columnCount: COL_COUNT,
+    });
+  }
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
   // ── Panorama global ──────────────────────────────────────────────────────
@@ -277,21 +294,21 @@ async function syncStock(batch, sheetId) {
     row,
     [
       {
-        label: 'Entradas €',
+        label: 'Entradas (últ. 500)',
         value: totalIn,
         numberFormat: NUM_FMT.EURO,
         delta: 'entregas recentes',
         deltaDirection: 'up',
       },
       {
-        label: 'Vendas €',
+        label: 'Vendas (últ. 500)',
         value: totalSales,
         numberFormat: NUM_FMT.EURO,
         delta: 'vendas recentes',
         deltaDirection: 'up',
       },
       {
-        label: 'Perdido €',
+        label: 'Perdido (últ. 500)',
         value: totalLost,
         numberFormat: NUM_FMT.EURO,
         delta: 'em operações',
@@ -301,7 +318,7 @@ async function syncStock(batch, sheetId) {
         label: 'Movimentos',
         value: movs.length,
         numberFormat: NUM_FMT.INT,
-        delta: 'últimos registos',
+        delta: 'últimos registos na base',
         deltaDirection: 'flat',
       },
     ],

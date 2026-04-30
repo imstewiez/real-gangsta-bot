@@ -26,6 +26,7 @@ const {
   tableBody,
   footerBlock,
   autoResizeAll,
+  gangTitle,
 } = require('./_common');
 const { getBairristaRankings } = require('../queries');
 
@@ -70,7 +71,7 @@ async function syncRankings(batch, sheetId) {
 
   // ── 1. Header ──────────────────────────────────────────────────────────────
   row = headerBlock(batch, sheetId, {
-    title: 'Rankings · Firma RedWood',
+    title: gangTitle('Rankings'),
     subtitle: `semana ${weekBounds.start} → ${weekBounds.end} · mês ${monthBounds.start}`,
     columnCount: COL_COUNT,
   });

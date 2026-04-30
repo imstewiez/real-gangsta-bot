@@ -36,6 +36,7 @@ const {
   totalRow,
   footerBlock,
   autoResizeAll,
+  gangTitle,
 } = require('./_common');
 const { getSaidasFull, getParticipantsFull, getKillsFull, getKillsKPIs, getSpotsFull } = require('../queries');
 
@@ -125,7 +126,7 @@ function statusBadge(s) {
     aberta: { label: 'ABERTA', bg: COLOR.GREEN_DEEP },
     em_preparacao: { label: 'PREP', bg: COLOR.YELLOW_DEEP },
     em_curso: { label: 'CURSO', bg: COLOR.RED_DEEP },
-    em_liquidacao: { label: 'LIQUID.', bg: COLOR.GOLD || COLOR.YELLOW_DEEP },
+    em_liquidacao: { label: 'LIQUID.', bg: COLOR.GOLD },
     concluida: { label: 'FECHADA', bg: COLOR.GRAPHITE },
     cancelada: { label: 'CANCEL', bg: COLOR.GRAY_DARK },
   };
@@ -199,7 +200,7 @@ async function syncSaidas(batch, sheetId) {
   // Grow é feito pelo syncEngine via pre-flight (PRE_SYNC_MIN_ROWS).
 
   let row = headerBlock(batch, sheetId, {
-    title: 'Saídas & Combate · Firma RedWood',
+    title: gangTitle('Saídas & Combate'),
     subtitle: `${rows.length} saídas · ${parts.length} participações · ${kpiK.total} kills · ${activeSpots.length} spots activos`,
     columnCount: COL_COUNT,
   });

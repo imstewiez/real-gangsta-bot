@@ -360,6 +360,26 @@ function autoResizeAll(batch, sheetId, rowCount, columnCount) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Gang title helper — garante consistência de título em todas as tabs.
+// Todas as tabs devem usar este helper para o título principal.
+// ─────────────────────────────────────────────────────────────────────────────
+function gangTitle(baseTitle) {
+  return `${baseTitle} · Firma RedWood`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Standard section layout — sectionHeader + kpiStrip + spacer + divider
+// num cards (4 ideal). Retorna a row seguinte.
+// ─────────────────────────────────────────────────────────────────────────────
+function sectionWithKPIs(batch, sheetId, row, { title, hint, cards, columnCount }) {
+  row = sectionHeader(batch, sheetId, row, { title, hint, columnCount });
+  row = kpiStrip(batch, sheetId, row, cards, columnCount);
+  row = spacer(batch, sheetId, row, columnCount, 'SM');
+  row = divider(batch, sheetId, row, columnCount, 'accent');
+  return row;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Total row — linha de totais/resumo no fundo de uma tabela. Visual distinto
 // com fundo BG_BLOCK_ALT, texto bold branco, borda topo RED_DEEP.
 //
@@ -454,6 +474,8 @@ module.exports = {
   autoResizeRows,
   autoResizeAll,
   applyRowBanding,
+  gangTitle,
+  sectionWithKPIs,
   // API antiga (shims)
   writeHeader,
   writeKpiBar,

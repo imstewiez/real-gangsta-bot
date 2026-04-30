@@ -40,6 +40,7 @@ const {
   setWidths,
   autoResizeColumns,
   autoResizeAll,
+  gangTitle,
 } = require('./_common');
 const { getDashboardKPIs, getTopMovers, getTrending, getAlerts, getStockByCategory } = require('../queries');
 
@@ -65,7 +66,7 @@ async function syncDashboard(batch, sheetId) {
 
   // ── 1. Header ────────────────────────────────────────────────────────────
   row = headerBlock(batch, sheetId, {
-    title: 'Dashboard · Firma RedWood',
+    title: gangTitle('Dashboard'),
     subtitle: `panorama operacional · semana ${k.weekBounds.start} → ${k.weekBounds.end}`,
     columnCount: COL_COUNT,
   });
@@ -201,14 +202,14 @@ async function syncDashboard(batch, sheetId) {
   ];
   for (const h of highlights) {
     const lineCells = [
-      cell(h.icon, { bg: COLOR.BG_APP, font: FONT.SECTION, align: 'CENTER', vAlign: 'MIDDLE' }),
+      cell(h.icon, { bg: COLOR.BG_BLOCK, font: FONT.SECTION, align: 'CENTER', vAlign: 'MIDDLE' }),
       bodyCell(h.label, { font: { ...FONT.BODY_BOLD, foregroundColor: COLOR.GRAY_LIGHT }, align: 'LEFT' }),
     ];
-    for (let i = 2; i < COL_COUNT - 1; i++) lineCells.push(cell('', { bg: COLOR.BG_APP }));
+    for (let i = 2; i < COL_COUNT - 1; i++) lineCells.push(cell('', { bg: COLOR.BG_BLOCK }));
     lineCells.push(bodyBoldCell(h.value, { align: 'RIGHT' }));
     batch.updateCells(sheetId, row, 0, [lineCells]);
     batch.mergeCells(sheetId, row, row + 1, 1, COL_COUNT - 1);
-    batch.setRowHeight(sheetId, row, 22);
+    batch.setRowHeight(sheetId, row, 26);
     row += 1;
   }
 
