@@ -312,7 +312,12 @@ function rankCell(position) {
       font: FONT.RANK_1,
       align: 'CENTER',
       vAlign: 'MIDDLE',
-      borders: { top: _border(COLOR.GOLD), bottom: _border(COLOR.GOLD), left: _border(COLOR.GOLD), right: _border(COLOR.GOLD) },
+      borders: {
+        top: _border(COLOR.GOLD),
+        bottom: _border(COLOR.GOLD),
+        left: _border(COLOR.GOLD),
+        right: _border(COLOR.GOLD),
+      },
     });
   }
   if (pos === 2) {
@@ -321,7 +326,12 @@ function rankCell(position) {
       font: FONT.RANK_2,
       align: 'CENTER',
       vAlign: 'MIDDLE',
-      borders: { top: _border(COLOR.SILVER), bottom: _border(COLOR.SILVER), left: _border(COLOR.SILVER), right: _border(COLOR.SILVER) },
+      borders: {
+        top: _border(COLOR.SILVER),
+        bottom: _border(COLOR.SILVER),
+        left: _border(COLOR.SILVER),
+        right: _border(COLOR.SILVER),
+      },
     });
   }
   if (pos === 3) {
@@ -330,7 +340,12 @@ function rankCell(position) {
       font: FONT.RANK_3,
       align: 'CENTER',
       vAlign: 'MIDDLE',
-      borders: { top: _border(COLOR.BRONZE), bottom: _border(COLOR.BRONZE), left: _border(COLOR.BRONZE), right: _border(COLOR.BRONZE) },
+      borders: {
+        top: _border(COLOR.BRONZE),
+        bottom: _border(COLOR.BRONZE),
+        left: _border(COLOR.BRONZE),
+        right: _border(COLOR.BRONZE),
+      },
     });
   }
   return cell(`${pos}`, { bg: COLOR.BG_APP, font: FONT.MUTED, align: 'CENTER', vAlign: 'MIDDLE' });

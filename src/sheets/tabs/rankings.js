@@ -9,14 +9,7 @@
  *   4. Streaks (semanas consecutivas com material)
  */
 
-const {
-  COLOR,
-  NUM_FMT,
-  cell,
-  bodyCell,
-  bodyBoldCell,
-  numCell,
-} = require('../theme');
+const { COLOR, NUM_FMT, cell, bodyCell, bodyBoldCell, numCell } = require('../theme');
 const {
   headerBlock,
   sectionHeader,

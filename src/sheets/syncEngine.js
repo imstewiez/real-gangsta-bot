@@ -126,7 +126,9 @@ function _circuitRecord(key, success) {
     state.failures += 1;
     if (state.failures >= CIRCUIT_FAILURE_THRESHOLD && !state.openSince) {
       state.openSince = Date.now();
-      warn(`[SHEETS:CIRCUIT] Tab '${key}' abriu circuito após ${state.failures} falhas. Cooldown ${CIRCUIT_COOLDOWN_MS / 1000}s.`);
+      warn(
+        `[SHEETS:CIRCUIT] Tab '${key}' abriu circuito após ${state.failures} falhas. Cooldown ${CIRCUIT_COOLDOWN_MS / 1000}s.`
+      );
     }
   }
   _circuitState.set(key, state);

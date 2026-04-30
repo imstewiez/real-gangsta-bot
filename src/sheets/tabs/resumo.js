@@ -203,8 +203,18 @@ async function syncResumo(batch, sheetId) {
       prev: trend.lost_units.previous,
       fmt: NUM_FMT.INT,
     },
-    { label: 'Lucro Bruto (€)', cur: Number(current.gross) || 0, prev: Number(previous?.gross) || null, fmt: NUM_FMT.EURO },
-    { label: 'Lucro Líquido (€)', cur: Number(current.net) || 0, prev: Number(previous?.net) || null, fmt: NUM_FMT.EURO },
+    {
+      label: 'Lucro Bruto (€)',
+      cur: Number(current.gross) || 0,
+      prev: Number(previous?.gross) || null,
+      fmt: NUM_FMT.EURO,
+    },
+    {
+      label: 'Lucro Líquido (€)',
+      cur: Number(current.net) || 0,
+      prev: Number(previous?.net) || null,
+      fmt: NUM_FMT.EURO,
+    },
     { label: 'Entregas (itens)', cur: current.entregas || 0, prev: null, fmt: NUM_FMT.INT },
     { label: 'Vendas (itens)', cur: current.vendas || 0, prev: null, fmt: NUM_FMT.INT },
   ].map(m => {

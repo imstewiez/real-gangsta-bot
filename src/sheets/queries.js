@@ -218,8 +218,12 @@ async function getDashboardKPIs() {
        ORDER BY kills DESC LIMIT 1`,
       [w.start]
     ),
-    query('SELECT spot, total_net_value, total_saidas FROM spot_stats WHERE total_saidas > 0 ORDER BY total_net_value DESC LIMIT 1'),
-    query('SELECT spot, our_deaths, total_saidas FROM spot_stats WHERE total_saidas > 0 ORDER BY our_deaths DESC LIMIT 1'),
+    query(
+      'SELECT spot, total_net_value, total_saidas FROM spot_stats WHERE total_saidas > 0 ORDER BY total_net_value DESC LIMIT 1'
+    ),
+    query(
+      'SELECT spot, our_deaths, total_saidas FROM spot_stats WHERE total_saidas > 0 ORDER BY our_deaths DESC LIMIT 1'
+    ),
   ]);
 
   return {
@@ -610,8 +614,12 @@ async function getRankings() {
     topKills: rows.filter(r => r.rn_kills <= 25).sort((a, b) => a.rn_kills - b.rn_kills),
     topProfit: rows.filter(r => r.rn_profit <= 25).sort((a, b) => a.rn_profit - b.rn_profit),
     topMVP: rows.filter(r => r.rn_mvp <= 25 && r.mvp_count > 0).sort((a, b) => a.rn_mvp - b.rn_mvp),
-    topSurvival: rows.filter(r => r.rn_survival <= 25 && r.saidas_total >= 3).sort((a, b) => a.rn_survival - b.rn_survival),
-    topDiscipline: rows.filter(r => r.rn_discipline <= 25 && r.material_return_rate > 0).sort((a, b) => a.rn_discipline - b.rn_discipline),
+    topSurvival: rows
+      .filter(r => r.rn_survival <= 25 && r.saidas_total >= 3)
+      .sort((a, b) => a.rn_survival - b.rn_survival),
+    topDiscipline: rows
+      .filter(r => r.rn_discipline <= 25 && r.material_return_rate > 0)
+      .sort((a, b) => a.rn_discipline - b.rn_discipline),
     topKD: rows.filter(r => r.rn_kd <= 25 && r.kills_total + r.deaths_total >= 3).sort((a, b) => a.rn_kd - b.rn_kd),
   };
 }
