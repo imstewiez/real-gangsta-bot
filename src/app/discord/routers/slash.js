@@ -48,6 +48,10 @@ const reputacao = require('../../../queries/reputacao');
 const ausencias = require('../../../queries/ausencias');
 const exportar = require('../../../queries/exportar');
 const auditTrail = require('../../../queries/auditTrail');
+const meuResumo = require('../../../queries/meuResumo');
+const dashboard = require('../../../queries/dashboard');
+const erros = require('../../../queries/erros');
+const primeiraVez = require('../../../queries/primeiraVez');
 const { commandsByName } = require('../../../lib/metrics');
 
 const SLASH_ROUTES = {
@@ -97,6 +101,10 @@ const SLASH_ROUTES = {
   ausencias: ausencias.handle,
   exportar: exportar.handle,
   'audit-trail': auditTrail.handle,
+  'meu-resumo': meuResumo.handle,
+  dashboard: dashboard.handle,
+  erros: erros.handle,
+  'primeira-vez': primeiraVez.handle,
 };
 
 async function handleSlash(interaction) {

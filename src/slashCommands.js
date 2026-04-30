@@ -715,6 +715,24 @@ const commands = [
         )
     )
     .addIntegerOption(o => o.setName('id').setDescription('ID').setRequired(true)),
+
+  // ── Meu resumo ──
+  new SlashCommandBuilder().setName('meu-resumo').setDescription('O teu resumo semanal e pendentes'),
+
+  // ── Dashboard chefia ──
+  new SlashCommandBuilder()
+    .setName('dashboard')
+    .setDescription('Dashboard operacional da chefia (OG+)')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  // ── Painel de erros ──
+  new SlashCommandBuilder()
+    .setName('erros')
+    .setDescription('Erros e incidentes recentes (OG+)')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+  // ── Primeira utilização ──
+  new SlashCommandBuilder().setName('primeira-vez').setDescription('Guia de primeira utilização'),
 ];
 
 module.exports = { commands };
