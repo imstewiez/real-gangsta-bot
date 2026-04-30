@@ -21,12 +21,12 @@ const EVENT_TO_TABS = {
   // ── Saídas ─────────────────────────────────────────────────────────────
   'saida.opened': ['saidas', 'resumo', 'dashboard'],
   'saida.started': ['saidas'],
-  'saida.closed': ['saidas', 'resumo', 'dashboard', 'membros'],
+  'saida.closed': ['saidas', 'resumo', 'dashboard', 'membros', 'rankings'],
   'saida.material_issued': ['saidas', 'stock'],
   'saida.participant_added': ['saidas'],
 
   // ── Inventário ─────────────────────────────────────────────────────────
-  'material.registered': ['stock', 'resumo', 'dashboard', 'membros'],
+  'material.registered': ['stock', 'resumo', 'dashboard', 'membros', 'rankings'],
   'material.adjusted': ['stock', 'resumo', 'dashboard'],
   'material.transferred': ['stock', 'dashboard'],
 
@@ -38,15 +38,19 @@ const EVENT_TO_TABS = {
   'order.cancelled': ['stock'],
 
   // ── Vida da org ────────────────────────────────────────────────────────
-  'member.joined': ['membros', 'dashboard'],
-  'member.onboarded': ['membros', 'dashboard'], // tag aprovada → bairrista na DB
-  'member.left': ['membros', 'resumo', 'dashboard'],
-  'member.promoted': ['membros', 'dashboard'],
-  'member.tier_changed': ['membros', 'resumo', 'dashboard'],
+  'member.joined': ['membros', 'dashboard', 'rankings'],
+  'member.onboarded': ['membros', 'dashboard', 'rankings'],
+  'member.left': ['membros', 'resumo', 'dashboard', 'rankings'],
+  'member.promoted': ['membros', 'dashboard', 'rankings'],
+  'member.tier_changed': ['membros', 'resumo', 'dashboard', 'rankings'],
   'member.nickname_changed': ['membros'],
 
+  // ── Rankings ───────────────────────────────────────────────────────────
+  'ranking.updated': ['rankings'],
+  'ranking.weekly_closed': ['rankings', 'resumo'],
+
   // ── Kills ──────────────────────────────────────────────────────────────
-  'kill.registered': ['saidas', 'dashboard'],
+  'kill.registered': ['saidas', 'dashboard', 'rankings'],
 
   // ── Weapon return confirmation ─────────────────────────────────────────
   'weapon.return_confirmed': ['saidas', 'membros', 'dashboard'],

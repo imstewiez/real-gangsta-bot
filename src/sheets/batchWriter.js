@@ -241,9 +241,33 @@ class BatchWriter {
     return this;
   }
 
+  /** Valida limites de segurança antes do flush. */
+  validate() {
+    const MAX_REQUESTS = 900; // Google Sheets API: limite prático ~1000
+    const MAX_ESTIMATED_BYTES = 9 * 1024 * 1024; // ~9MB (limite é 10MB)
+
+    if (this.requests.length > MAX_REQUESTS) {
+      throw new Error(
+        `[BatchWriter] Limite de requests excedido: ${this.requests.length}/${MAX_REQUESTS}. ` +
+          'Dividir em múltiplos batches ou reduzir dados.'
+      );
+    }
+
+    // Estimativa conservadora: 1KB por request em média
+    const estimatedBytes = this.requests.length * 1024;
+    if (estimatedBytes > MAX_ESTIMATED_BYTES) {
+      throw new Error(
+        `[BatchWriter] Payload estimado (${Math.round(estimatedBytes / 1024 / 1024)}MB) ` +
+          `excede limite seguro (${Math.round(MAX_ESTIMATED_BYTES / 1024 / 1024)}MB). ` +
+          'Dividir em múltiplos batches ou reduzir dados.'
+      );
+    }
+  }
+
   /** Flush — manda tudo em 1 chamada. */
   async flush() {
     if (!this.requests.length) return { replies: [] };
+    this.validate();
     const res = await this.sheets.spreadsheets.batchUpdate({
       spreadsheetId: this.spreadsheetId,
       requestBody: { requests: this.requests },

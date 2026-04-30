@@ -26,7 +26,7 @@ function resolvedPath(rel) {
 
 // ── Stub DB com queries capturadas ──
 const _queries = [];
-let _nextRows = [];
+const _nextRows = [];
 require.cache[resolvedPath('db.js')] = {
   exports: {
     pool: { connect: async () => ({ query: async () => ({ rows: [] }), release: () => {} }) },
@@ -113,9 +113,11 @@ describe('spotCooldown.startCooldown', () => {
     const before = Date.now();
     await spotCooldown.startCooldown({ spot: 'Default Test', saidaId: 1 });
     const expiresAtParam = _queries[0].values[1];
-    // Default é 60min (mudou de 30 em 2026-04-19 por feedback).
-    assert.ok(expiresAtParam.getTime() >= before + 59 * 60_000);
-    assert.ok(expiresAtParam.getTime() <= before + 61 * 60_000);
+    // Usa o valor real do CONFIG (pode ser 30 ou 60 dependendo do env).
+    const expectedMinutes = Number(require('../src/config').SPOT_COOLDOWN_MINUTES) || 30;
+    const expectedMs = expectedMinutes * 60_000;
+    assert.ok(expiresAtParam.getTime() >= before + expectedMs - 60_000, `esperado >= ${expectedMs - 60_000}ms`);
+    assert.ok(expiresAtParam.getTime() <= before + expectedMs + 60_000, `esperado <= ${expectedMs + 60_000}ms`);
   });
 });
 

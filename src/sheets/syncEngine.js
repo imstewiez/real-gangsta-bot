@@ -102,12 +102,50 @@ async function _preFlightGrow(sheets, spreadsheetId, sheetId, key) {
 
 const TAB_SYNCERS = {
   dashboard: () => require('./tabs/dashboard').syncDashboard,
+  rankings: () => require('./tabs/rankings').syncRankings,
   resumo: () => require('./tabs/resumo').syncResumo,
   membros: () => require('./tabs/membros').syncMembros,
   saidas: () => require('./tabs/saidas').syncSaidas,
   stock: () => require('./tabs/stock').syncStock,
   config: () => require('./tabs/config').syncConfig,
 };
+
+// ── Circuit breaker para protecção contra quotas Google esgotadas ───────────
+// Se uma tab falhar 3x seguidas, o circuito abre e salta syncs dessa tab
+// durante 5 minutos. Isto evita gastar quota em erros persistentes.
+const _circuitState = new Map(); // key → { failures: number, openSince: timestamp|null }
+const CIRCUIT_FAILURE_THRESHOLD = 3;
+const CIRCUIT_COOLDOWN_MS = 5 * 60 * 1000;
+
+function _circuitRecord(key, success) {
+  const state = _circuitState.get(key) || { failures: 0, openSince: null };
+  if (success) {
+    state.failures = 0;
+    state.openSince = null;
+  } else {
+    state.failures += 1;
+    if (state.failures >= CIRCUIT_FAILURE_THRESHOLD && !state.openSince) {
+      state.openSince = Date.now();
+      warn(`[SHEETS:CIRCUIT] Tab '${key}' abriu circuito após ${state.failures} falhas. Cooldown ${CIRCUIT_COOLDOWN_MS / 1000}s.`);
+    }
+  }
+  _circuitState.set(key, state);
+  return state;
+}
+
+function _circuitIsOpen(key) {
+  const state = _circuitState.get(key);
+  if (!state || !state.openSince) return false;
+  if (Date.now() - state.openSince >= CIRCUIT_COOLDOWN_MS) {
+    // Auto-reset após cooldown
+    state.failures = 0;
+    state.openSince = null;
+    _circuitState.set(key, state);
+    log(`[SHEETS:CIRCUIT] Tab '${key}' reset após cooldown.`);
+    return false;
+  }
+  return true;
+}
 
 function getSpreadsheetId() {
   return CONFIG.SPREADSHEET_ID || CONFIG.GOOGLE_SHEET_ID || CONFIG.SHEET_ID || null;
@@ -187,6 +225,12 @@ function _maxWrittenCell(requests, sheetId) {
 async function syncOne(key) {
   const syncer = TAB_SYNCERS[key];
   if (!syncer) throw new Error(`Tab desconhecida: ${key}`);
+
+  // Circuit breaker guard
+  if (_circuitIsOpen(key)) {
+    warn(`[SHEETS] sync '${key}' saltado — circuito aberto (quota protection).`);
+    return { skipped: 'circuit_open' };
+  }
 
   const sheets = getSheetsClient();
   if (!sheets) {
@@ -296,6 +340,9 @@ async function syncOne(key) {
   metrics.sheetsSyncByTab.inc({ tab: key, result: syncErr ? 'error' : 'ok' });
   if (syncErr) metrics.sheetsSyncErrorsTotal.inc();
 
+  // Circuit breaker: registar resultado
+  _circuitRecord(key, !syncErr);
+
   if (syncErr) throw syncErr;
   log(`[SHEETS] sync ${key}: ${ops} ops em ${ms}ms`);
   return { tab: key, ops, ms };
@@ -320,4 +367,15 @@ async function syncAll() {
   return results;
 }
 
-module.exports = { syncOne, syncAll, TAB_SYNCERS, isTransientSheetsError };
+module.exports = {
+  syncOne,
+  syncAll,
+  TAB_SYNCERS,
+  isTransientSheetsError,
+  // Circuit breaker internals (para testes)
+  _circuitRecord,
+  _circuitIsOpen,
+  _circuitReset: () => _circuitState.clear(),
+  CIRCUIT_FAILURE_THRESHOLD,
+  CIRCUIT_COOLDOWN_MS,
+};

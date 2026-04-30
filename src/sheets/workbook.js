@@ -18,11 +18,12 @@ const { log } = require('../logger');
 // tabs separadas para reduzir ruído de navegação.
 const TABS = [
   { key: 'dashboard', title: '📊 Dashboard', color: COLOR.RED_DEEP, order: 0 },
-  { key: 'resumo', title: '📈 Resumo & Rankings', color: COLOR.RED_BLOOD, order: 1 },
-  { key: 'membros', title: '👥 Membros', color: COLOR.GREEN_DEEP, order: 2 },
-  { key: 'saidas', title: '🎯 Saídas & Combate', color: COLOR.YELLOW_DEEP, order: 3 },
-  { key: 'stock', title: '📦 Stock', color: COLOR.BLUE_DEEP, order: 4 },
-  { key: 'config', title: '⚙️ Config', color: COLOR.GRAY_DARK, order: 5 },
+  { key: 'rankings', title: '🏆 Rankings', color: COLOR.GOLD, order: 1 },
+  { key: 'resumo', title: '📈 Resumo & Rankings', color: COLOR.RED_BLOOD, order: 2 },
+  { key: 'membros', title: '👥 Membros', color: COLOR.GREEN_DEEP, order: 3 },
+  { key: 'saidas', title: '🎯 Saídas & Combate', color: COLOR.YELLOW_DEEP, order: 4 },
+  { key: 'stock', title: '📦 Stock', color: COLOR.BLUE_DEEP, order: 5 },
+  { key: 'config', title: '⚙️ Config', color: COLOR.GRAY_DARK, order: 6 },
 ];
 
 const TABS_BY_KEY = Object.fromEntries(TABS.map(t => [t.key, t]));

@@ -48,8 +48,14 @@ const COLOR = {
 
   // Destaques pontuais
   GOLD: rgb(184, 134, 11), // #B8860B — 1º lugar, MVP
+  GOLD_SOFT: rgb(40, 32, 12), // bg suave gold em dark
+  GOLD_DEEP: rgb(218, 165, 32), // #DAA520 — gold brilhante
   SILVER: rgb(170, 170, 170), // 2º
+  SILVER_SOFT: rgb(35, 35, 35), // bg suave silver em dark
+  SILVER_DEEP: rgb(200, 200, 200), // silver brilhante
   BRONZE: rgb(139, 90, 43), // 3º
+  BRONZE_SOFT: rgb(35, 28, 20), // bg suave bronze em dark
+  BRONZE_DEEP: rgb(180, 120, 60), // bronze brilhante
 };
 
 // Aliases semânticos — usar estes em código novo

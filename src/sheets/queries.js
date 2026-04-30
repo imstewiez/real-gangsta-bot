@@ -52,15 +52,15 @@ const POSITIVE_MOVES = `(
   'devolucao_saida', 'apreendido', 'craftado'
 )`;
 // Movement types agregados como "entregas" (in-flow para stock, tipicamente
-// bairristas e oficiais).
-const ENTREGA_MOVES = `('entrega_bairrista', 'entrega_oficial')`;
+// bairristas e oficiais). Usado em queries de rankings e entregas.
+const _ENTREGA_MOVES = "('entrega_bairrista', 'entrega_oficial')";
 // Movement types de venda (sobrepõem a entrega_bairrista no sentido oposto).
-const VENDA_MOVES = "('venda_bairrista')";
+const _VENDA_MOVES = "('venda_bairrista')";
 
 const STOCK_BALANCE_CASE = `
   CASE
     WHEN im.movement_type IN ${POSITIVE_MOVES} THEN im.quantity
-    WHEN im.movement_type IN ('fornecimento_org', 'consumo_saida', 'perda_saida')
+    WHEN im.movement_type IN ('fornecimento_org','consumo_saida','perda_saida')
       THEN -im.quantity
     WHEN im.movement_type = 'ajuste_manual'
       THEN im.quantity
@@ -85,173 +85,173 @@ async function getDashboardKPIs() {
   const w = weekBounds();
   const pw = prevWeekBounds();
 
-  // 1) Stock total (qtd + valor estimado) — balance calculado a partir de movimentos
-  const stock = await query(`
-    WITH stock_balances AS (
-      SELECT i.id, i.estimated_value,
-        COALESCE(SUM(${STOCK_BALANCE_CASE}), 0) AS balance
+  // Query 1: Todos os KPIs numéricos consolidados numa única query com CTEs.
+  // Reduz de ~10 queries para 1, eliminando round-trips à DB.
+  const kpiResult = await query(
+    `
+    WITH week_bounds AS (
+      SELECT $1::date AS w_start, $2::date AS pw_start, $3::date AS pw_end
+    ),
+    stock_agg AS (
+      SELECT
+        COALESCE(SUM(COALESCE(im.quantity, 0) * CASE
+          WHEN im.movement_type IN ${POSITIVE_MOVES} THEN 1
+          WHEN im.movement_type IN ('fornecimento_org', 'consumo_saida', 'perda_saida') THEN -1
+          WHEN im.movement_type = 'ajuste_manual' THEN 1
+          ELSE 0
+        END), 0)::int AS total_qty,
+        COALESCE(SUM(COALESCE(im.quantity, 0) * CASE
+          WHEN im.movement_type IN ${POSITIVE_MOVES} THEN 1
+          WHEN im.movement_type IN ('fornecimento_org', 'consumo_saida', 'perda_saida') THEN -1
+          WHEN im.movement_type = 'ajuste_manual' THEN 1
+          ELSE 0
+        END * COALESCE(i.estimated_value, 0)), 0)::numeric AS total_value
       FROM items i
       LEFT JOIN inventory_movements im ON im.item_id = i.id
       WHERE i.active = true
-      GROUP BY i.id, i.estimated_value
+    ),
+    week_mov AS (
+      SELECT
+        SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS entradas,
+        SUM(CASE WHEN movement_type IN ('venda_bairrista') THEN quantity ELSE 0 END)::int AS vendas
+      FROM inventory_movements
+      WHERE created_at >= (SELECT w_start FROM week_bounds)
+    ),
+    prev_mov AS (
+      SELECT
+        SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS entradas
+      FROM inventory_movements
+      WHERE created_at >= (SELECT pw_start FROM week_bounds)
+        AND created_at < (SELECT pw_end FROM week_bounds)
+    ),
+    week_saidas AS (
+      SELECT
+        COUNT(*)::int AS total,
+        SUM(CASE WHEN result = 'vitoria' THEN 1 ELSE 0 END)::int AS wins,
+        SUM(CASE WHEN result = 'derrota' THEN 1 ELSE 0 END)::int AS losses,
+        SUM(COALESCE(our_kills, 0))::int AS kills,
+        SUM(COALESCE(deaths, 0))::int AS deaths,
+        SUM(COALESCE(net_value, 0))::numeric AS net,
+        SUM(COALESCE(gross_value, 0))::numeric AS gross
+      FROM operations
+      WHERE date >= (SELECT w_start FROM week_bounds) AND status = 'concluida'
+    ),
+    prev_saidas AS (
+      SELECT
+        COUNT(*)::int AS total,
+        SUM(COALESCE(net_value, 0))::numeric AS net,
+        SUM(COALESCE(our_kills, 0))::int AS kills
+      FROM operations
+      WHERE date >= (SELECT pw_start FROM week_bounds)
+        AND date < (SELECT pw_end FROM week_bounds)
+        AND status = 'concluida'
+    ),
+    week_mat AS (
+      SELECT
+        SUM(CASE WHEN om.direction='fornecido' THEN om.quantity ELSE 0 END)::int AS supplied_units,
+        SUM(CASE WHEN om.direction='devolvido' THEN om.quantity ELSE 0 END)::int AS returned_units,
+        SUM(CASE WHEN om.direction='perdido'   THEN om.quantity ELSE 0 END)::int AS lost_units,
+        SUM(CASE WHEN om.direction='consumido' THEN om.quantity ELSE 0 END)::int AS consumed_units
+      FROM operation_materials om
+      JOIN operations o ON o.id = om.operation_id
+      WHERE o.date >= (SELECT w_start FROM week_bounds) AND o.status = 'concluida'
+    ),
+    week_part_types AS (
+      SELECT
+        COUNT(*) FILTER (WHERE op.participant_type = 'caracterizado')::int AS characterized,
+        COUNT(*) FILTER (WHERE op.participant_type = 'trabalhador')::int AS workers
+      FROM operation_participants op
+      JOIN operations o ON o.id = op.operation_id
+      WHERE o.date >= (SELECT w_start FROM week_bounds) AND o.status = 'concluida'
+    ),
+    member_counts AS (
+      SELECT
+        SUM(CASE WHEN role = 'bairrista'      AND status='ativo' THEN 1 ELSE 0 END)::int AS bairristas,
+        SUM(CASE WHEN role = 'patrao_di_zona' AND status='ativo' THEN 1 ELSE 0 END)::int AS patroes,
+        SUM(CASE WHEN role = 'oficial'        AND status='ativo' THEN 1 ELSE 0 END)::int AS oficiais,
+        SUM(CASE WHEN role = 'chefia'         AND status='ativo' THEN 1 ELSE 0 END)::int AS chefia
+      FROM members
     )
     SELECT
-      COALESCE(SUM(balance), 0)::int AS total_qty,
-      COALESCE(SUM(balance * COALESCE(estimated_value, 0)), 0)::numeric AS total_value
-    FROM stock_balances`);
-
-  // 2) Movimentos da semana (entradas/vendas em UNIDADES, não €)
-  const weekMov = await query(
-    `
-    SELECT
-      SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS entradas,
-      SUM(CASE WHEN movement_type IN ('venda_bairrista') THEN quantity ELSE 0 END)::int AS vendas
-    FROM inventory_movements sm
-    WHERE sm.created_at >= $1::date`,
-    [w.start]
+      s.total_qty, s.total_value,
+      wm.entradas AS week_entradas, wm.vendas AS week_vendas,
+      pm.entradas AS prev_entradas,
+      ws.total AS saidas_total, ws.wins, ws.losses, ws.kills, ws.deaths, ws.net, ws.gross,
+      ps.total AS prev_saidas_total, ps.net AS prev_net, ps.kills AS prev_kills,
+      m.supplied_units, m.returned_units, m.lost_units, m.consumed_units,
+      pt.characterized, pt.workers,
+      mc.bairristas, mc.patroes, mc.oficiais, mc.chefia
+    FROM stock_agg s
+    CROSS JOIN week_mov wm
+    CROSS JOIN prev_mov pm
+    CROSS JOIN week_saidas ws
+    CROSS JOIN prev_saidas ps
+    CROSS JOIN week_mat m
+    CROSS JOIN week_part_types pt
+    CROSS JOIN member_counts mc`,
+    [w.start, pw.start, pw.end]
   );
 
-  const prevMov = await query(
-    `
-    SELECT
-      SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS entradas
-    FROM inventory_movements sm
-    WHERE sm.created_at >= $1::date AND sm.created_at < $2::date`,
-    [pw.start, pw.end]
-  );
+  const r = kpiResult.rows[0] || {};
+  const totalWins = r.wins || 0;
+  const totalOps = r.saidas_total || 0;
+  const totalKills = r.kills || 0;
+  const totalDeaths = r.deaths || 0;
 
-  // 3) Saídas da semana
-  const saidas = await query(
-    `
-    SELECT
-      COUNT(*)::int AS total,
-      SUM(CASE WHEN result = 'vitoria' THEN 1 ELSE 0 END)::int AS wins,
-      SUM(CASE WHEN result = 'derrota' THEN 1 ELSE 0 END)::int AS losses,
-      SUM(COALESCE(our_kills, 0))::int AS kills,
-      SUM(COALESCE(deaths, 0))::int AS deaths,
-      SUM(COALESCE(net_value, 0))::numeric AS net,
-      SUM(COALESCE(gross_value, 0))::numeric AS gross
-    FROM operations
-    WHERE date >= $1::date AND status = 'concluida'`,
-    [w.start]
-  );
-
-  // Material desta semana em UNIDADES
-  const matWeek = await query(
-    `
-    SELECT
-      SUM(CASE WHEN om.direction='fornecido' THEN om.quantity ELSE 0 END)::int AS supplied_units,
-      SUM(CASE WHEN om.direction='devolvido' THEN om.quantity ELSE 0 END)::int AS returned_units,
-      SUM(CASE WHEN om.direction='perdido'   THEN om.quantity ELSE 0 END)::int AS lost_units,
-      SUM(CASE WHEN om.direction='consumido' THEN om.quantity ELSE 0 END)::int AS consumed_units
-    FROM operation_materials om
-    JOIN operations o ON o.id = om.operation_id
-    WHERE o.date >= $1::date AND o.status = 'concluida'`,
-    [w.start]
-  );
-
-  // Participant type breakdown desta semana
-  const partTypes = await query(
-    `
-    SELECT
-      COUNT(*) FILTER (WHERE op.participant_type = 'caracterizado')::int AS characterized,
-      COUNT(*) FILTER (WHERE op.participant_type = 'trabalhador')::int AS workers
-    FROM operation_participants op
-    JOIN operations o ON o.id = op.operation_id
-    WHERE o.date >= $1::date AND o.status = 'concluida'`,
-    [w.start]
-  );
-
-  const prevSaidas = await query(
-    `
-    SELECT
-      COUNT(*)::int AS total,
-      SUM(COALESCE(net_value, 0))::numeric AS net,
-      SUM(COALESCE(our_kills, 0))::int AS kills
-    FROM operations
-    WHERE date >= $1::date AND date < $2::date AND status = 'concluida'`,
-    [pw.start, pw.end]
-  );
-
-  // 4) Members ativos por role — contagens separadas.
-  const members = await query(`
-    SELECT
-      SUM(CASE WHEN role = 'bairrista'      AND status='ativo' THEN 1 ELSE 0 END)::int AS bairristas,
-      SUM(CASE WHEN role = 'patrao_di_zona' AND status='ativo' THEN 1 ELSE 0 END)::int AS patroes,
-      SUM(CASE WHEN role = 'oficial'        AND status='ativo' THEN 1 ELSE 0 END)::int AS oficiais,
-      SUM(CASE WHEN role = 'chefia'         AND status='ativo' THEN 1 ELSE 0 END)::int AS chefia
-    FROM members`);
-
-  // 5) Top contributor (week) — em UNIDADES de material entregue
-  const topContrib = await query(
-    `
-    SELECT m.discord_id, m.display_name, SUM(sm.quantity)::int AS value
-    FROM inventory_movements sm
-    JOIN members m ON m.id = sm.member_id
-    WHERE sm.created_at >= $1::date AND sm.movement_type IN ('entrega_bairrista','entrega_oficial')
-    GROUP BY m.discord_id, m.display_name
-    ORDER BY value DESC NULLS LAST LIMIT 1`,
-    [w.start]
-  );
-
-  const topKiller = await query(
-    `
-    SELECT m.discord_id, m.display_name, COUNT(*)::int AS kills
-    FROM kill_logs k
-    JOIN members m ON m.id = k.killer_id
-    WHERE k.created_at >= $1::date
-    GROUP BY m.discord_id, m.display_name
-    ORDER BY kills DESC LIMIT 1`,
-    [w.start]
-  );
-
-  // 6) Spot mais rentável / mais perigoso
-  const spotNet = await query(`
-    SELECT spot, total_net_value, total_saidas
-    FROM spot_stats WHERE total_saidas > 0
-    ORDER BY total_net_value DESC LIMIT 1`);
-  const spotDanger = await query(`
-    SELECT spot, our_deaths, total_saidas
-    FROM spot_stats WHERE total_saidas > 0
-    ORDER BY our_deaths DESC LIMIT 1`);
-
-  const totalWins = saidas.rows[0]?.wins || 0;
-  const totalOps = saidas.rows[0]?.total || 0;
-  const totalKills = saidas.rows[0]?.kills || 0;
-  const totalDeaths = saidas.rows[0]?.deaths || 0;
+  // Query 2: Tops (contribuidor, killer, spots) — mantida separada por legibilidade
+  const [topContrib, topKiller, spotNet, spotDanger] = await Promise.all([
+    query(
+      `SELECT m.discord_id, ${DISPLAY_NAME_EXPR('m')} AS display_name, SUM(sm.quantity)::int AS value
+       FROM inventory_movements sm
+       JOIN members m ON m.id = sm.member_id
+       WHERE sm.created_at >= $1::date AND sm.movement_type IN ('entrega_bairrista','entrega_oficial')
+       GROUP BY m.discord_id, m.display_name, m.username
+       ORDER BY value DESC NULLS LAST LIMIT 1`,
+      [w.start]
+    ),
+    query(
+      `SELECT m.discord_id, ${DISPLAY_NAME_EXPR('m')} AS display_name, COUNT(*)::int AS kills
+       FROM kill_logs k
+       JOIN members m ON m.id = k.killer_id
+       WHERE k.created_at >= $1::date
+       GROUP BY m.discord_id, m.display_name, m.username
+       ORDER BY kills DESC LIMIT 1`,
+      [w.start]
+    ),
+    query('SELECT spot, total_net_value, total_saidas FROM spot_stats WHERE total_saidas > 0 ORDER BY total_net_value DESC LIMIT 1'),
+    query('SELECT spot, our_deaths, total_saidas FROM spot_stats WHERE total_saidas > 0 ORDER BY our_deaths DESC LIMIT 1'),
+  ]);
 
   return {
-    stockQty: Number(stock.rows[0]?.total_qty) || 0,
-    stockValue: Number(stock.rows[0]?.total_value) || 0,
-    weekEntradas: Number(weekMov.rows[0]?.entradas) || 0,
-    weekVendas: Number(weekMov.rows[0]?.vendas) || 0,
-    prevEntradas: Number(prevMov.rows[0]?.entradas) || 0,
+    stockQty: Number(r.total_qty) || 0,
+    stockValue: Number(r.total_value) || 0,
+    weekEntradas: Number(r.week_entradas) || 0,
+    weekVendas: Number(r.week_vendas) || 0,
+    prevEntradas: Number(r.prev_entradas) || 0,
     saidasTotal: totalOps,
     saidasWins: totalWins,
-    saidasLosses: saidas.rows[0]?.losses || 0,
+    saidasLosses: r.losses || 0,
     winRate: totalOps > 0 ? totalWins / totalOps : 0,
-    netWeek: Number(saidas.rows[0]?.net) || 0,
-    netPrevWeek: Number(prevSaidas.rows[0]?.net) || 0,
+    netWeek: Number(r.net) || 0,
+    netPrevWeek: Number(r.prev_net) || 0,
     killsWeek: totalKills,
-    killsPrevWeek: prevSaidas.rows[0]?.kills || 0,
+    killsPrevWeek: r.prev_kills || 0,
     deathsWeek: totalDeaths,
     kdOrg: totalDeaths > 0 ? totalKills / totalDeaths : totalKills,
-    // Material em UNIDADES (fonte de verdade: operation_materials)
-    lostUnitsWeek: Number(matWeek.rows[0]?.lost_units) || 0,
-    returnedUnitsWeek: Number(matWeek.rows[0]?.returned_units) || 0,
-    suppliedUnitsWeek: Number(matWeek.rows[0]?.supplied_units) || 0,
-    consumedUnitsWeek: Number(matWeek.rows[0]?.consumed_units) || 0,
-    bairristasAtivos: members.rows[0]?.bairristas || 0,
-    patroesAtivos: members.rows[0]?.patroes || 0,
-    oficiaisAtivos: members.rows[0]?.oficiais || 0,
-    chefiaAtivos: members.rows[0]?.chefia || 0,
+    lostUnitsWeek: Number(r.lost_units) || 0,
+    returnedUnitsWeek: Number(r.returned_units) || 0,
+    suppliedUnitsWeek: Number(r.supplied_units) || 0,
+    consumedUnitsWeek: Number(r.consumed_units) || 0,
+    bairristasAtivos: r.bairristas || 0,
+    patroesAtivos: r.patroes || 0,
+    oficiaisAtivos: r.oficiais || 0,
+    chefiaAtivos: r.chefia || 0,
     topContributor: topContrib.rows[0] || null,
     topKiller: topKiller.rows[0] || null,
     topSpotProfit: spotNet.rows[0] || null,
     topSpotDanger: spotDanger.rows[0] || null,
-    // Participant type breakdown (week)
-    weekCharacterized: Number(partTypes.rows[0]?.characterized) || 0,
-    weekWorkers: Number(partTypes.rows[0]?.workers) || 0,
+    weekCharacterized: Number(r.characterized) || 0,
+    weekWorkers: Number(r.workers) || 0,
     weekBounds: w,
     prevWeekBounds: pw,
   };
@@ -337,11 +337,19 @@ async function getDailyBreakdown(days = 14) {
 
 // ─── Membros (1 query com todos os agregados) ────────────────────────────────
 async function getMembersFull() {
+  // Otimizado: elimina subquery correlacionada (N+1) para last_saida.
+  // Substitui por LEFT JOIN com CTE pré-agregada por member_id.
   const r = await query(`
+    WITH member_last_saida AS (
+      SELECT op.member_id, MAX(o.date) AS last_saida_date
+      FROM operation_participants op
+      JOIN operations o ON o.id = op.operation_id
+      GROUP BY op.member_id
+    )
     SELECT
       m.id,
       m.discord_id,
-      m.display_name,
+      ${DISPLAY_NAME_EXPR('m')} AS display_name,
       m.username,
       m.role,
       m.tier,
@@ -362,21 +370,18 @@ async function getMembersFull() {
       COALESCE(mss.material_return_rate, 0)::numeric AS return_rate,
       COALESCE(mss.profit_generated, 0)::numeric AS profit,
       COALESCE(mss.mvp_count, 0)::int AS mvps,
-      (SELECT MAX(date) FROM operations o
-        JOIN operation_participants op ON op.operation_id = o.id
-        WHERE op.member_id = m.id) AS last_saida
+      mls.last_saida_date AS last_saida
     FROM members m
     LEFT JOIN LATERAL (
       SELECT
         SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS entregas,
-        -- Material total em UNIDADES (não valor €). O preço estimado do item
-        -- é usado só em cálculos económicos de saídas, não aqui.
         SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS weighted_entregas,
         SUM(CASE WHEN movement_type IN ('venda_bairrista') THEN quantity ELSE 0 END)::int AS vendas
       FROM inventory_movements sm
       WHERE sm.member_id = m.id
     ) mv ON true
     LEFT JOIN member_saida_stats mss ON mss.member_id = m.id
+    LEFT JOIN member_last_saida mls ON mls.member_id = m.id
     WHERE m.status = 'ativo' OR m.status IS NULL
     ORDER BY m.display_name`);
   return r.rows;
@@ -387,17 +392,28 @@ async function getMembersFull() {
 // consumed_units) e também disponibilizado em € (gross/net para bottom-line
 // económico). A contabilização de material deve usar sempre unidades.
 async function getSaidasFull(limit = 500) {
+  // Otimizado: elimina 3 subqueries correlacionadas de contagem de
+  // participantes. Usa LEFT JOIN com agregação prévia por operation_id.
   const r = await query(
     `
+    WITH participant_counts AS (
+      SELECT
+        operation_id,
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE participant_type = 'caracterizado')::int AS caracterizados,
+        COUNT(*) FILTER (WHERE participant_type = 'trabalhador')::int AS trabalhadores
+      FROM operation_participants
+      GROUP BY operation_id
+    )
     SELECT
       o.id, o.date, o.scheduled_time AS hora,
       o.spot, o.operation_type AS tipo,
       m.display_name AS leader_name,
       o.group_number, o.status, o.result,
       o.enemy_name, o.enemy_faction,
-      (SELECT COUNT(*) FROM operation_participants op WHERE op.operation_id = o.id)::int AS participantes,
-      COALESCE(o.characterized_count, (SELECT COUNT(*) FROM operation_participants op WHERE op.operation_id = o.id AND op.participant_type = 'caracterizado'))::int AS caracterizados,
-      COALESCE(o.workers_count, (SELECT COUNT(*) FROM operation_participants op WHERE op.operation_id = o.id AND op.participant_type = 'trabalhador'))::int AS trabalhadores,
+      COALESCE(pc.total, 0) AS participantes,
+      COALESCE(o.characterized_count, pc.caracterizados, 0) AS caracterizados,
+      COALESCE(o.workers_count, pc.trabalhadores, 0) AS trabalhadores,
       COALESCE(o.our_kills, 0)::int AS kills,
       COALESCE(o.deaths, 0)::int AS deaths,
       COALESCE(o.survivors, 0)::int AS survivors,
@@ -411,6 +427,7 @@ async function getSaidasFull(limit = 500) {
       o.was_profitable, o.result_notes
     FROM operations o
     LEFT JOIN members m ON m.id = o.leader_id
+    LEFT JOIN participant_counts pc ON pc.operation_id = o.id
     LEFT JOIN LATERAL (
       SELECT
         SUM(CASE WHEN direction='fornecido' THEN quantity ELSE 0 END)::int AS supplied_units,
@@ -519,21 +536,30 @@ async function getKillsKPIs() {
 
 // ─── Spots ───────────────────────────────────────────────────────────────────
 async function getSpotsFull() {
+  // Otimizado: elimina subquery correlacionada N+1 para last_saida_date.
   const r = await query(`
+    WITH last_saida_per_spot AS (
+      SELECT spot, MAX(date) AS last_saida_date
+      FROM operations
+      WHERE spot IS NOT NULL AND spot <> ''
+      GROUP BY spot
+    )
     SELECT
       s.*,
       m.display_name AS best_member_name,
       CASE WHEN s.total_saidas > 0 THEN s.wins::numeric / s.total_saidas ELSE 0 END AS win_rate,
       CASE WHEN s.our_deaths > 0 THEN s.our_kills::numeric / s.our_deaths ELSE s.our_kills END AS kd,
-      (SELECT MAX(date) FROM operations WHERE spot = s.spot) AS last_saida_date
+      lsp.last_saida_date
     FROM spot_stats s
     LEFT JOIN members m ON m.id = s.best_member_id
+    LEFT JOIN last_saida_per_spot lsp ON lsp.spot = s.spot
     ORDER BY s.total_net_value DESC NULLS LAST`);
   return r.rows;
 }
 
 // ─── Rankings (multi-eixos) ──────────────────────────────────────────────────
 async function getRankings() {
+  // Query 1: entregas (única fonte diferente: inventory_movements)
   const topEntregas = await query(`
     SELECT m.discord_id, m.display_name, m.tier,
            SUM(sm.quantity)::int AS qty,
@@ -545,59 +571,56 @@ async function getRankings() {
     GROUP BY m.discord_id, m.display_name, m.tier
     ORDER BY weighted DESC NULLS LAST LIMIT 25`);
 
-  const topKills = await query(`
-    SELECT m.discord_id, m.display_name, kills_total, kd_ratio
-    FROM member_saida_stats mss
-    JOIN members m ON m.id = mss.member_id
-    ORDER BY kills_total DESC LIMIT 25`);
+  // Query 2: todos os tops de member_saida_stats numa só query com CTEs.
+  // Reduz de 6 queries para 1, eliminando 5 round-trips à DB.
+  const mssRankings = await query(`
+    WITH ranked AS (
+      SELECT
+        m.discord_id, m.display_name,
+        mss.kills_total, mss.kd_ratio, mss.profit_generated,
+        mss.mvp_count, mss.saidas_total, mss.survival_rate,
+        mss.material_return_rate, mss.deaths_total,
+        ROW_NUMBER() OVER (ORDER BY mss.kills_total DESC) AS rn_kills,
+        ROW_NUMBER() OVER (ORDER BY mss.profit_generated DESC) AS rn_profit,
+        ROW_NUMBER() OVER (ORDER BY mss.mvp_count DESC) AS rn_mvp,
+        ROW_NUMBER() OVER (ORDER BY mss.survival_rate DESC) AS rn_survival,
+        ROW_NUMBER() OVER (ORDER BY mss.material_return_rate DESC) AS rn_discipline,
+        ROW_NUMBER() OVER (ORDER BY mss.kd_ratio DESC) AS rn_kd
+      FROM member_saida_stats mss
+      JOIN members m ON m.id = mss.member_id
+    )
+    SELECT
+      discord_id, display_name,
+      kills_total, kd_ratio, profit_generated,
+      mvp_count, saidas_total, survival_rate,
+      material_return_rate, deaths_total,
+      rn_kills, rn_profit, rn_mvp, rn_survival, rn_discipline, rn_kd
+    FROM ranked
+    WHERE rn_kills <= 25
+       OR rn_profit <= 25
+       OR (rn_mvp <= 25 AND mvp_count > 0)
+       OR (rn_survival <= 25 AND saidas_total >= 3)
+       OR (rn_discipline <= 25 AND material_return_rate > 0)
+       OR (rn_kd <= 25 AND kills_total + deaths_total >= 3)`);
 
-  const topProfit = await query(`
-    SELECT m.discord_id, m.display_name, profit_generated
-    FROM member_saida_stats mss
-    JOIN members m ON m.id = mss.member_id
-    ORDER BY profit_generated DESC LIMIT 25`);
-
-  const topMVP = await query(`
-    SELECT m.discord_id, m.display_name, mvp_count, saidas_total
-    FROM member_saida_stats mss
-    JOIN members m ON m.id = mss.member_id
-    WHERE mvp_count > 0
-    ORDER BY mvp_count DESC LIMIT 25`);
-
-  const topSurvival = await query(`
-    SELECT m.discord_id, m.display_name, survival_rate, saidas_total
-    FROM member_saida_stats mss
-    JOIN members m ON m.id = mss.member_id
-    WHERE saidas_total >= 3
-    ORDER BY survival_rate DESC LIMIT 25`);
-
-  const topDiscipline = await query(`
-    SELECT m.discord_id, m.display_name, material_return_rate
-    FROM member_saida_stats mss
-    JOIN members m ON m.id = mss.member_id
-    WHERE material_return_rate > 0
-    ORDER BY material_return_rate DESC LIMIT 25`);
-
-  const topKD = await query(`
-    SELECT m.discord_id, m.display_name, kd_ratio, kills_total, deaths_total
-    FROM member_saida_stats mss
-    JOIN members m ON m.id = mss.member_id
-    WHERE kills_total + deaths_total >= 3
-    ORDER BY kd_ratio DESC LIMIT 25`);
-
+  // Particionar no JS — mais eficiente que 6 queries separadas.
+  const rows = mssRankings.rows;
   return {
     topEntregas: topEntregas.rows,
-    topKills: topKills.rows,
-    topProfit: topProfit.rows,
-    topMVP: topMVP.rows,
-    topSurvival: topSurvival.rows,
-    topDiscipline: topDiscipline.rows,
-    topKD: topKD.rows,
+    topKills: rows.filter(r => r.rn_kills <= 25).sort((a, b) => a.rn_kills - b.rn_kills),
+    topProfit: rows.filter(r => r.rn_profit <= 25).sort((a, b) => a.rn_profit - b.rn_profit),
+    topMVP: rows.filter(r => r.rn_mvp <= 25 && r.mvp_count > 0).sort((a, b) => a.rn_mvp - b.rn_mvp),
+    topSurvival: rows.filter(r => r.rn_survival <= 25 && r.saidas_total >= 3).sort((a, b) => a.rn_survival - b.rn_survival),
+    topDiscipline: rows.filter(r => r.rn_discipline <= 25 && r.material_return_rate > 0).sort((a, b) => a.rn_discipline - b.rn_discipline),
+    topKD: rows.filter(r => r.rn_kd <= 25 && r.kills_total + r.deaths_total >= 3).sort((a, b) => a.rn_kd - b.rn_kd),
   };
 }
 
 // ─── Inventário / movimentos ─────────────────────────────────────────────────
 async function getInventoryFull() {
+  // Otimizado: elimina 3 subqueries correlacionadas (N+1) substituindo por
+  // LEFT JOINs com agregações pré-computadas. Escalabilidade: O(n) em vez
+  // de O(n²) para N items.
   const r = await query(`
     WITH stock_balances AS (
       SELECT i.id,
@@ -608,6 +631,15 @@ async function getInventoryFull() {
       LEFT JOIN inventory_movements im ON im.item_id = i.id
       WHERE i.active = true
       GROUP BY i.id
+    ),
+    movement_stats AS (
+      SELECT
+        item_id,
+        MAX(created_at) AS last_movement,
+        SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS total_in,
+        SUM(CASE WHEN movement_type NOT IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS total_out
+      FROM inventory_movements
+      GROUP BY item_id
     )
     SELECT
       i.id, i.name, i.category, i.unit,
@@ -616,11 +648,12 @@ async function getInventoryFull() {
       (COALESCE(sb.balance,0) * COALESCE(i.estimated_value,0))::numeric AS value_total,
       (COALESCE(sb.balance_armazem,0) * COALESCE(i.estimated_value,0))::numeric AS value_armazem,
       (COALESCE(sb.balance_grupo,0)   * COALESCE(i.estimated_value,0))::numeric AS value_grupo,
-      (SELECT MAX(created_at) FROM inventory_movements WHERE item_id = i.id) AS last_movement,
-      (SELECT SUM(quantity)::int FROM inventory_movements WHERE item_id = i.id AND movement_type IN ('entrega_bairrista','entrega_oficial')) AS total_in,
-      (SELECT SUM(quantity)::int FROM inventory_movements WHERE item_id = i.id AND movement_type NOT IN ('entrega_bairrista','entrega_oficial')) AS total_out
+      ms.last_movement,
+      ms.total_in,
+      ms.total_out
     FROM items i
     JOIN stock_balances sb ON sb.id = i.id
+    LEFT JOIN movement_stats ms ON ms.item_id = i.id
     WHERE i.active = true
     ORDER BY value_total DESC NULLS LAST, i.name`);
   return r.rows;
