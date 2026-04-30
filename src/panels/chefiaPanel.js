@@ -16,12 +16,12 @@ function buildChefiaPanel() {
       .setTitle(`${EMOJI.LIDER} O Comando | Firma RedWood`)
       .setDescription(
         '**Aqui não se pergunta — decide-se.**\n' +
-        'Daqui abre-se a rua, fecha-se a rua, aperta-se a casa. Chefia vê tudo. Chefia cobra tudo.\n\n' +
-        `${EMOJI.SAIDA} **Sessões** — abrir, acompanhar, fechar.\n` +
-        `${EMOJI.STOCK} **Stock** — ver, ajustar, governar o material.\n` +
-        `${EMOJI.RADIO} **Gestão** — rádio, stickys, canais da firma.\n` +
-        `${EMOJI.TOPO} **Dados** — topos, logs, auditoria.\n\n` +
-        '_Tudo fica registado. Nada se esquece._'
+          'Daqui abre-se a rua, fecha-se a rua, aperta-se a casa. Chefia vê tudo. Chefia cobra tudo.\n\n' +
+          `${EMOJI.SAIDA} **Sessões** — abrir, acompanhar, fechar.\n` +
+          `${EMOJI.STOCK} **Stock** — ver, ajustar, governar o material.\n` +
+          `${EMOJI.RADIO} **Gestão** — rádio, stickys, canais da firma.\n` +
+          `${EMOJI.TOPO} **Dados** — topos, logs, auditoria.\n\n` +
+          '_Tudo fica registado. Nada se esquece._'
       )
   );
 
@@ -29,10 +29,7 @@ function buildChefiaPanel() {
   const btn = buttonFromDef;
 
   // Row 1 — Saídas
-  const row1 = buttonRow(
-    btn('chefia::criar_saida', B.CRIAR_SAIDA),
-    btn('chefia::ver_saidas', B.VER_SAIDAS)
-  );
+  const row1 = buttonRow(btn('chefia::criar_saida', B.CRIAR_SAIDA), btn('chefia::ver_saidas', B.VER_SAIDAS));
 
   // Row 2 — Stock
   const row2 = buttonRow(
@@ -45,7 +42,12 @@ function buildChefiaPanel() {
   const row3 = buttonRow(
     btn('chefia::listar_stickys', B.STICKYS),
     button({ customId: 'chefia::stats_open', label: 'Estatísticas', style: 'Secondary', emoji: EMOJI.GRAFICO }),
-    button({ customId: 'bairrista::registar_material', label: 'Registar Material', style: 'Secondary', emoji: EMOJI.ENTREGA })
+    button({
+      customId: 'bairrista::registar_material',
+      label: 'Registar Material',
+      style: 'Secondary',
+      emoji: EMOJI.ENTREGA,
+    })
   );
 
   // Row 4 — Dados

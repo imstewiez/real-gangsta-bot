@@ -33,9 +33,12 @@ function buildEntradaPanel() {
       .setColor(COLOR.SUCCESS)
       .setTitle(PANELS.ENTRADA.TITLE)
       .setDescription(PANELS.ENTRADA.DESCRIPTION)
-      .addFields(
-        { name: `${EMOJI.OK} Como funciona?`, value: '1. Clica em **Dar a Cara** e preenche o modal\n2. Aguarda aprovação da chefia\n3. Recebe a tua tag e canal individual', inline: false }
-      )
+      .addFields({
+        name: `${EMOJI.OK} Como funciona?`,
+        value:
+          '1. Clica em **Dar a Cara** e preenche o modal\n2. Aguarda aprovação da chefia\n3. Recebe a tua tag e canal individual',
+        inline: false,
+      })
   );
 
   const bPrimary = BUTTONS.ENTRADA.PEDIR_TAG;

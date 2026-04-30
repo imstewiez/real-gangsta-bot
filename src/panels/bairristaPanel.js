@@ -17,16 +17,19 @@ function buildBairristaPanel() {
       .setTitle(`${EMOJI.CASA} Painel do Bairro | Firma RedWood`)
       .setDescription(
         '**A Firma não paga conversa. Paga peso.**\n' +
-        'Aqui mede-se o que trazes, o que vendes, o que entregas — e quem mete respeito à volta.\n\n' +
-        `${EMOJI.ENTREGA} **Registar Material** — cada quilo conta. Sem registo, não existe.\n` +
-        `${EMOJI.FIRMA} **Movimento no Bairro** — o teu peso ao vivo. Sem máscaras.\n` +
-        `${EMOJI.MEDAL_1} **Ranking** — quem rende mais, sobe mais.\n` +
-        `${EMOJI.ENCOMENDA} **Encomendar** — o que pedes à firma.\n\n` +
-        '_Trás pedra ao bairro. O bairro devolve-te nome._'
+          'Aqui mede-se o que trazes, o que vendes, o que entregas — e quem mete respeito à volta.\n\n' +
+          `${EMOJI.ENTREGA} **Registar Material** — cada quilo conta. Sem registo, não existe.\n` +
+          `${EMOJI.FIRMA} **Movimento no Bairro** — o teu peso ao vivo. Sem máscaras.\n` +
+          `${EMOJI.MEDAL_1} **Ranking** — quem rende mais, sobe mais.\n` +
+          `${EMOJI.ENCOMENDA} **Encomendar** — o que pedes à firma.\n\n` +
+          '_Trás pedra ao bairro. O bairro devolve-te nome._'
       )
-      .addFields(
-        { name: `${EMOJI.OK} Dica`, value: 'Usa os botões abaixo para navegar. Tens também os comandos `/ajuda` e `/tutorial` se precisares de orientação.', inline: false }
-      )
+      .addFields({
+        name: `${EMOJI.OK} Dica`,
+        value:
+          'Usa os botões abaixo para navegar. Tens também os comandos `/ajuda` e `/tutorial` se precisares de orientação.',
+        inline: false,
+      })
   );
 
   const B = BUTTONS.BAIRRISTA;

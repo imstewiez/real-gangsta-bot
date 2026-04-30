@@ -16,12 +16,12 @@ function buildPatraoDiZonaPanel() {
       .setTitle(`${EMOJI.LIDER} Painel do Patrão di Zona | Firma RedWood`)
       .setDescription(
         '**A zona é tua.**\n' +
-        'Vês quem puxa, vês quem some, vês quem pede puxão. Patrão conhece o bairro pelo cheiro — sabe quando dar colher, quando dar tapa.\n\n' +
-        `${EMOJI.PARTICIPANTE} **Listar Bairristas** — quem anda activo.\n` +
-        `${EMOJI.ENTREGA} **Entregas** — quem trás mais pedra.\n` +
-        `${EMOJI.VENDA} **Vendas** — quem roda mais na rua.\n` +
-        `${EMOJI.TOPO} **Topo da Zona** — os que fazem nome contigo.\n\n` +
-        '_O bairro é teu. Fá-lo pesar._'
+          'Vês quem puxa, vês quem some, vês quem pede puxão. Patrão conhece o bairro pelo cheiro — sabe quando dar colher, quando dar tapa.\n\n' +
+          `${EMOJI.PARTICIPANTE} **Listar Bairristas** — quem anda activo.\n` +
+          `${EMOJI.ENTREGA} **Entregas** — quem trás mais pedra.\n` +
+          `${EMOJI.VENDA} **Vendas** — quem roda mais na rua.\n` +
+          `${EMOJI.TOPO} **Topo da Zona** — os que fazem nome contigo.\n\n` +
+          '_O bairro é teu. Fá-lo pesar._'
       )
   );
 
@@ -37,7 +37,12 @@ function buildPatraoDiZonaPanel() {
 
   // Row 2 — Material e utilitários
   const row2 = buttonRow(
-    button({ customId: 'bairrista::registar_material', label: 'Registar Material', style: 'Secondary', emoji: EMOJI.ENTREGA }),
+    button({
+      customId: 'bairrista::registar_material',
+      label: 'Registar Material',
+      style: 'Secondary',
+      emoji: EMOJI.ENTREGA,
+    }),
     button({ customId: 'bairrista::movimento', label: 'Movimento', style: 'Secondary', emoji: EMOJI.FIRMA }),
     button({ customId: 'bairrista::ranking', label: 'Ranking', style: 'Secondary', emoji: EMOJI.MEDAL_1 })
   );

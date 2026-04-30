@@ -17,12 +17,12 @@ function buildOficialPanel() {
       .setTitle(`${EMOJI.VITORIA} A Secretaria | Firma RedWood`)
       .setDescription(
         '**Aqui abre-se a rua, aqui fecha-se a conta.**\n' +
-        'Oficial é quem põe o nome em cima — saídas, registos, linha do bairro. Se decides, responsabilizas-te.\n\n' +
-        `${EMOJI.SAIDA} **Sessões** — abrir, consultar, fechar saídas.\n` +
-        `${EMOJI.TOPO} **Estatísticas** — kills, spots, rankings da firma.\n` +
-        `${EMOJI.ENTREGA} **Material** — registar entregas ou vendas.\n` +
-        `${EMOJI.FIRMA} **O teu Movimento** — o teu peso no bairro.\n\n` +
-        '_Puxar a rua é peso. Leva-o com mão firme._'
+          'Oficial é quem põe o nome em cima — saídas, registos, linha do bairro. Se decides, responsabilizas-te.\n\n' +
+          `${EMOJI.SAIDA} **Sessões** — abrir, consultar, fechar saídas.\n` +
+          `${EMOJI.TOPO} **Estatísticas** — kills, spots, rankings da firma.\n` +
+          `${EMOJI.ENTREGA} **Material** — registar entregas ou vendas.\n` +
+          `${EMOJI.FIRMA} **O teu Movimento** — o teu peso no bairro.\n\n` +
+          '_Puxar a rua é peso. Leva-o com mão firme._'
       )
   );
 
