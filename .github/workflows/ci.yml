@@ -82,6 +82,13 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
       - name: Deploy
-        run: railway up --service ${{ secrets.RAILWAY_SERVICE_NAME }}
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ] || [ -z "$RAILWAY_SERVICE_NAME" ]; then
+            echo "⚠️ Railway secrets não configurados. Deploy skipado."
+            echo "   Adiciona RAILWAY_TOKEN e RAILWAY_SERVICE_NAME em Settings > Secrets."
+            exit 0
+          fi
+          railway up --service "$RAILWAY_SERVICE_NAME"
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE_NAME: ${{ secrets.RAILWAY_SERVICE_NAME }}
