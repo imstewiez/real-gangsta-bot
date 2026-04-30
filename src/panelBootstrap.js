@@ -195,7 +195,7 @@ async function upsertPanelSticky(panelDef, channelId, actorId = 'system:panel-bo
 //   - botões são renomeados/reorganizados
 // O estado anterior (panelMessages) é limpo e todos os painéis voltam
 // a seguir o caminho "sem mensagem existente" → delete old + create new.
-const PANELS_SCHEMA_VERSION = 8;
+const PANELS_SCHEMA_VERSION = 9;
 
 async function _maybeForceRebuild() {
   const stored = await getStateKey('panelsSchemaVersion', 0);
