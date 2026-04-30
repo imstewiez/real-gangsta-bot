@@ -14,7 +14,7 @@ WHERE m.status = 'ativo'
 
 CREATE OR REPLACE VIEW v_orphan_channels AS
 SELECT channel_id, member_id, discord_id
-FROM member_channels mc
+FROM resident_channels mc
 WHERE NOT EXISTS (
   SELECT 1 FROM members m WHERE m.id = mc.member_id AND m.status = 'ativo'
 );

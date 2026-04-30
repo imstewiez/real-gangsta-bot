@@ -16,7 +16,7 @@ async function handle(interaction) {
       `SELECT id, status, created_at FROM saidas WHERE status NOT IN ('concluida','cancelada') AND created_at < NOW() - INTERVAL '48 hours' LIMIT 5`
     ),
     query(
-      `SELECT channel_id FROM member_channels WHERE NOT EXISTS (SELECT 1 FROM members WHERE members.id = member_channels.member_id AND active=true) LIMIT 5`
+      `SELECT channel_id FROM resident_channels WHERE NOT EXISTS (SELECT 1 FROM members WHERE members.id = resident_channels.member_id AND status='ativo') LIMIT 5`
     ),
   ]);
 
