@@ -29,10 +29,10 @@ async function listarStickys(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const all = await stickyRepo.listActive();
   if (!all.length) {
-    return safeReply(interaction, { content: 'Sem stickys activas.' }, { dismissible: true });
+    return safeReply(interaction, { content: 'Sem stickys activas.' }, { messageClass: 'BANAL' });
   }
   const lines = all.map(s => `• <#${s.channel_id}> — \`${s.source_key}\` (${s.mode})`);
-  return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
+  return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { messageClass: 'BANAL' });
 }
 
 async function verTops(interaction) {
@@ -42,7 +42,7 @@ async function verTops(interaction) {
   const { start, end } = weekBounds();
   const weekLabel = `${formatPtDateOnly(start)} a ${formatPtDateOnly(end)}`;
   const embed = rankingEmbed('Top Semanal', rankings, weekLabel);
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 async function verLogs(interaction) {
@@ -53,17 +53,17 @@ async function verLogs(interaction) {
         content: ERRORS.NO_PERMISSION('ver logs'),
         flags: MessageFlags.Ephemeral,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const logs = await getRecentLogs(15);
   if (!logs.length) {
-    return safeReply(interaction, { content: 'Sem logs.' }, { dismissible: true });
+    return safeReply(interaction, { content: 'Sem logs.' }, { messageClass: 'BANAL' });
   }
   const lines = logs.map(l => `\`${formatPtDate(l.created_at)}\` **${l.action}** — ${l.entity_type}`);
   const embed = brandEmbed().setTitle('Logs Recentes').setDescription(lines.join('\n'));
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 module.exports = {

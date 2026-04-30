@@ -43,7 +43,7 @@ async function _denyIfNotOG(interaction) {
       content: `${EMOJI.BLOQUEADO} Apenas OG+ pode alterar a rádio.`,
       flags: MessageFlags.Ephemeral,
     },
-    { dismissible: true }
+    { messageClass: 'BANAL' }
   );
   return true;
 }
@@ -78,9 +78,9 @@ async function handleRandom(interaction) {
       RADIO.RANDOM_TITLE,
       `**${meta.label}**\n${RADIO.LABELS.ANTES}: \`${result.previous || '—'}\`\n${RADIO.LABELS.AGORA}: \`${result.value}\``
     );
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'RESULT' });
   }
 }
 
@@ -131,9 +131,9 @@ async function handleSetModal(interaction) {
       RADIO.SET_TITLE,
       `**${meta.label}**\n${RADIO.LABELS.ANTES}: \`${result.previous || '—'}\`\n${RADIO.LABELS.AGORA}: \`${result.value}\``
     );
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'RESULT' });
   }
 }
 
@@ -148,22 +148,22 @@ async function handleSwap(interaction) {
       RADIO.SWAP_TITLE,
       `${RADIO.LABELS.PRINCIPAL}: \`${swapped.principal}\`\n${RADIO.LABELS.PARCERIA}: \`${swapped.parceria}\``
     );
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'RESULT' });
   }
 }
 
 async function handleHistory(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const text = await historyText(15);
-  return safeReply(interaction, { content: text.slice(0, 1900) }, { dismissible: true });
+  return safeReply(interaction, { content: text.slice(0, 1900) }, { messageClass: 'ERROR' });
 }
 
 async function handleRefresh(interaction) {
   await refreshMessage(interaction);
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  return safeReply(interaction, { content: `${EMOJI.REFRESH} Actualizado.` }, { dismissible: true });
+  return safeReply(interaction, { content: `${EMOJI.REFRESH} Actualizado.` }, { messageClass: 'BANAL' });
 }
 
 module.exports = {

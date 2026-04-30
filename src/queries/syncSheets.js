@@ -17,7 +17,7 @@
 
 const { MessageFlags } = require('discord.js');
 const { safeReply } = require('../shared/interactionHelpers');
-const { brandEmbed } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS } = require('../content');
 const CONFIG = require('../config');
 const { isChefia } = require('../permissions/permissionEngine');
@@ -57,7 +57,7 @@ async function _statusHandler(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.WITH_DETAIL(`Leitura de estado falhou: ${e.message}`) },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
   }
 
@@ -85,7 +85,7 @@ async function _statusHandler(interaction) {
     lines.push(`${emoji} **${tab}** · ${age} · ${ops} · ${ms}${tail}`);
   }
 
-  const color = degradedCount > 0 ? 0xe74c3c : 0x2ecc71;
+  const color = degradedCount > 0 ? COLOR.DANGER : COLOR.SUCCESS;
   const title =
     degradedCount > 0
       ? `${EMOJI.WARN} Sync Sheets — ${degradedCount} tab(s) degradada(s)`
@@ -97,7 +97,7 @@ async function _statusHandler(interaction) {
     .setDescription(lines.join('\n').slice(0, 3900))
     .setFooter({ text: 'status é read-only · usa "acao: all" ou "acao: tab" para forçar resync' });
 
-  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { messageClass: 'RESULT' });
 }
 
 async function _resyncAllHandler(interaction) {
@@ -108,7 +108,7 @@ async function _resyncAllHandler(interaction) {
   try {
     results = await syncAll();
   } catch (e) {
-    return safeReply(interaction, { content: ERRORS.WITH_DETAIL(`Sync falhou: ${e.message}`) }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.WITH_DETAIL(`Sync falhou: ${e.message}`) }, { messageClass: 'ERROR' });
   }
   const elapsed = ((Date.now() - started) / 1000).toFixed(1);
 
@@ -127,13 +127,13 @@ async function _resyncAllHandler(interaction) {
     lines.push(`${EMOJI.ERRO} **${r.tab}** · ${String(r.error).slice(0, 200)}`);
   }
 
-  const color = errored.length ? 0xe74c3c : ok.length ? 0x2ecc71 : 0xf39c12;
+  const color = errored.length ? COLOR.DANGER : ok.length ? COLOR.SUCCESS : COLOR.WARNING_SOFT;
   const embed = brandEmbed('MOVEMENT')
     .setColor(color)
     .setTitle(`${EMOJI.REFRESH} Sync de Sheets — ${ok.length}/${results.length} ok · ${elapsed}s`)
     .setDescription(lines.join('\n').slice(0, 3900));
 
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'ERROR' });
 }
 
 async function _resyncTabHandler(interaction, tab) {
@@ -144,7 +144,7 @@ async function _resyncTabHandler(interaction, tab) {
         content: `${EMOJI.WARN} Preenche a opção \`tab\` (uma de: ${[...VALID_TABS].join(', ')}).`,
         flags: MessageFlags.Ephemeral,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -157,7 +157,7 @@ async function _resyncTabHandler(interaction, tab) {
     return safeReply(
       interaction,
       { content: `${EMOJI.ERRO} **${tab}** · falhou: ${String(e.message).slice(0, 200)}` },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
   }
   const elapsed = ((Date.now() - started) / 1000).toFixed(1);
@@ -166,7 +166,7 @@ async function _resyncTabHandler(interaction, tab) {
     return safeReply(
       interaction,
       { content: `${EMOJI.INFO} **${tab}** · skip _(${result.skipped})_` },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -175,7 +175,7 @@ async function _resyncTabHandler(interaction, tab) {
     {
       content: `${EMOJI.OK} **${tab}** · ${result.ops || 0} ops · ${result.ms || 0}ms · ${elapsed}s total`,
     },
-    { dismissible: true }
+    { messageClass: 'BANAL' }
   );
 }
 
@@ -187,7 +187,7 @@ async function handle(interaction) {
         content: ERRORS.NO_PERMISSION('diagnóstico de sheets'),
         flags: MessageFlags.Ephemeral,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -198,7 +198,7 @@ async function handle(interaction) {
         content: `${EMOJI.WARN} Google Sheets desactivado — define \`GOOGLE_SERVICE_ACCOUNT_JSON\` e \`SPREADSHEET_ID\` no Railway.`,
         flags: MessageFlags.Ephemeral,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -212,7 +212,7 @@ async function handle(interaction) {
   return safeReply(
     interaction,
     { content: `${EMOJI.WARN} Acção inválida: \`${acao}\`.`, flags: MessageFlags.Ephemeral },
-    { dismissible: true }
+    { messageClass: 'BANAL' }
   );
 }
 

@@ -14,7 +14,7 @@
 
 const { MessageFlags } = require('discord.js');
 const { safeReply } = require('../shared/interactionHelpers');
-const { brandEmbed } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { ONBOARDING, EMOJI } = require('../content');
 const { formatPtDate } = require('../shared/formatPtDate');
 const { query } = require('../db');
@@ -34,14 +34,14 @@ async function handleMeuPedido(interaction) {
   );
 
   if (r.rows.length === 0) {
-    return safeReply(interaction, { content: ONBOARDING.MY_REQUEST_NONE }, { dismissible: true });
+    return safeReply(interaction, { content: ONBOARDING.MY_REQUEST_NONE }, { messageClass: 'BANAL' });
   }
 
   const req = r.rows[0];
 
   if (req.status === 'pending') {
     const embed = brandEmbed('SHORT')
-      .setColor(0xf39c12)
+      .setColor(COLOR.WARNING_SOFT)
       .setTitle(ONBOARDING.MY_REQUEST_PENDING_TITLE)
       .setDescription(
         `Pediste em **${formatPtDate(req.created_at)}**.\n` +
@@ -50,7 +50,7 @@ async function handleMeuPedido(interaction) {
           `${EMOJI.PENDENTE} Estado: **a aguardar chefia**.\n` +
           'Vais receber DM assim que houver decisão — se tiveres DMs fechados, passamos no canal de entrada com menção.'
       );
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
   }
 
   if (req.status === 'approved') {
@@ -59,7 +59,7 @@ async function handleMeuPedido(interaction) {
       ? `\n${EMOJI.WARN} _Canal individual ainda não existe — fala com a chefia._`
       : '';
     const embed = brandEmbed('SHORT')
-      .setColor(0x2ecc71)
+      .setColor(COLOR.SUCCESS)
       .setTitle(ONBOARDING.MY_REQUEST_APPROVED_TITLE)
       .setDescription(
         `Aprovado em **${formatPtDate(req.resolved_at)}**.` +
@@ -67,13 +67,13 @@ async function handleMeuPedido(interaction) {
           channelLine +
           warnLine
       );
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
   }
 
   if (req.status === 'denied') {
     const reasonLine = req.denial_reason ? `\n\n**Razão:** ${req.denial_reason}` : '';
     const embed = brandEmbed('SHORT')
-      .setColor(0xe74c3c)
+      .setColor(COLOR.DANGER)
       .setTitle(ONBOARDING.MY_REQUEST_DENIED_TITLE)
       .setDescription(
         `Negado em **${formatPtDate(req.resolved_at)}**.\n` +
@@ -81,14 +81,14 @@ async function handleMeuPedido(interaction) {
           '\n' +
           '_Para reapelar, fala directo com a chefia._'
       );
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
   }
 
   // Estados desconhecidos ou cancelled — fallback genérico.
   return safeReply(
     interaction,
     { content: `${EMOJI.WARN} Estado desconhecido: **${req.status}**. Fala com a chefia.` },
-    { dismissible: true }
+    { messageClass: 'BANAL' }
   );
 }
 

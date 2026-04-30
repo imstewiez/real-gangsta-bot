@@ -14,7 +14,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { EMOJI, SAIDA_TYPE } = require('../content');
 const { formatPtDate } = require('../shared/formatPtDate');
-const { brandEmbed } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 
 const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
 const fmtVal = n => `${(Number(n) || 0).toLocaleString('pt-PT', { maximumFractionDigits: 0 })}€`;
@@ -23,20 +23,20 @@ const mention = discordId => (discordId ? `<@${discordId}>` : '—');
 // ── Inventário ─────────────────────────────────────────────────────────────
 
 const MOVEMENT_LABELS = {
-  entrega_bairrista: { label: 'Entrega (Bairrista)', color: 0x27ae60, emoji: EMOJI.ENTREGA },
-  entrega_oficial: { label: 'Entrega (Oficial)', color: 0x27ae60, emoji: EMOJI.ENTREGA },
-  venda_bairrista: { label: 'Venda', color: 0xf39c12, emoji: EMOJI.VENDA },
-  fornecimento_org: { label: 'Fornecimento (saída)', color: 0x3498db, emoji: EMOJI.FORNECER },
-  devolucao_saida: { label: 'Devolução de saída', color: 0x3498db, emoji: EMOJI.DEVOLVER },
-  perda_saida: { label: 'Perda em saída', color: 0xe74c3c, emoji: EMOJI.PERDIDO },
-  consumo_saida: { label: 'Consumo em saída', color: 0x9b59b6, emoji: '🔥' },
-  ajuste_manual: { label: 'Ajuste manual', color: 0x95a5a6, emoji: EMOJI.AJUSTAR },
-  apreendido: { label: 'Apreendido', color: 0xe67e22, emoji: '🚔' },
-  craftado: { label: 'Craftado', color: 0x1abc9c, emoji: EMOJI.CRAFT },
+  entrega_bairrista: { label: 'Entrega (Bairrista)', color: COLOR.GREEN_ALT, emoji: EMOJI.ENTREGA },
+  entrega_oficial: { label: 'Entrega (Oficial)', color: COLOR.GREEN_ALT, emoji: EMOJI.ENTREGA },
+  venda_bairrista: { label: 'Venda', color: COLOR.WARNING_SOFT, emoji: EMOJI.VENDA },
+  fornecimento_org: { label: 'Fornecimento (saída)', color: COLOR.INFO, emoji: EMOJI.FORNECER },
+  devolucao_saida: { label: 'Devolução de saída', color: COLOR.INFO, emoji: EMOJI.DEVOLVER },
+  perda_saida: { label: 'Perda em saída', color: COLOR.DANGER, emoji: EMOJI.PERDIDO },
+  consumo_saida: { label: 'Consumo em saída', color: COLOR.PURPLE, emoji: '🔥' },
+  ajuste_manual: { label: 'Ajuste manual', color: COLOR.MUTED, emoji: EMOJI.AJUSTAR },
+  apreendido: { label: 'Apreendido', color: COLOR.WARNING, emoji: '🚔' },
+  craftado: { label: 'Craftado', color: COLOR.TEAL, emoji: EMOJI.CRAFT },
 };
 
 function inventoryMovementEmbed(p) {
-  const info = MOVEMENT_LABELS[p.movementType] || { label: p.movementType, color: 0x95a5a6, emoji: EMOJI.MATERIAL };
+  const info = MOVEMENT_LABELS[p.movementType] || { label: p.movementType, color: COLOR.MUTED, emoji: EMOJI.MATERIAL };
   const embed = brandEmbed('MOVEMENT')
     .setColor(info.color)
     .setTitle(`${info.emoji} ${info.label}`)
@@ -73,7 +73,7 @@ function inventoryTransferEmbed(p) {
   if (p.notes) fields.push({ name: 'Notas', value: String(p.notes).slice(0, 500), inline: false });
   fields.push({ name: 'Data/hora', value: formatPtDate(p.at || new Date()), inline: false });
   return brandEmbed('MOVEMENT')
-    .setColor(0x3498db)
+    .setColor(COLOR.INFO)
     .setTitle(`${EMOJI.REFRESH} Transferência — ${p.from} → ${p.to}`)
     .setDescription(`**${fmt(p.quantity)}× ${p.itemName}**`)
     .addFields(fields);
@@ -82,11 +82,11 @@ function inventoryTransferEmbed(p) {
 // ── Encomendas (orders) ────────────────────────────────────────────────────
 
 const ORDER_EVENT_META = {
-  created: { label: 'Nova Encomenda', color: 0xf39c12, emoji: EMOJI.NOVO },
-  approved: { label: 'Encomenda Aprovada', color: 0x27ae60, emoji: EMOJI.OK },
-  fulfilled: { label: 'Encomenda Entregue', color: 0x2ecc71, emoji: EMOJI.MATERIAL },
-  denied: { label: 'Encomenda Recusada', color: 0xe74c3c, emoji: EMOJI.ERRO },
-  cancelled: { label: 'Encomenda Cancelada', color: 0x95a5a6, emoji: '🚫' },
+  created: { label: 'Nova Encomenda', color: COLOR.WARNING_SOFT, emoji: EMOJI.NOVO },
+  approved: { label: 'Encomenda Aprovada', color: COLOR.GREEN_ALT, emoji: EMOJI.OK },
+  fulfilled: { label: 'Encomenda Entregue', color: COLOR.SUCCESS, emoji: EMOJI.MATERIAL },
+  denied: { label: 'Encomenda Recusada', color: COLOR.DANGER, emoji: EMOJI.ERRO },
+  cancelled: { label: 'Encomenda Cancelada', color: COLOR.MUTED, emoji: '🚫' },
 };
 
 function orderLifecycleEmbed(p) {
@@ -118,17 +118,17 @@ function orderLifecycleEmbed(p) {
 // ── Vida da Org ────────────────────────────────────────────────────────────
 
 const ORG_EVENT_META = {
-  joined: { label: 'Entrada no servidor', color: 0x3498db, emoji: EMOJI.ENTRADA },
-  left: { label: 'Saiu do servidor', color: 0x95a5a6, emoji: '👋' },
-  promoted: { label: 'Subida de Cargo', color: 0xf39c12, emoji: EMOJI.LIDER },
-  tier_changed: { label: 'Mudança de Tier', color: 0xf39c12, emoji: EMOJI.TOPO },
-  nickname_changed: { label: 'Mudança de Nome', color: 0x95a5a6, emoji: EMOJI.EDITAR },
-  tag_approved: { label: 'Tag Aprovada', color: 0x27ae60, emoji: EMOJI.TAG },
-  tag_denied: { label: 'Tag Recusada', color: 0xe74c3c, emoji: EMOJI.ERRO },
+  joined: { label: 'Entrada no servidor', color: COLOR.INFO, emoji: EMOJI.ENTRADA },
+  left: { label: 'Saiu do servidor', color: COLOR.MUTED, emoji: '👋' },
+  promoted: { label: 'Subida de Cargo', color: COLOR.WARNING_SOFT, emoji: EMOJI.LIDER },
+  tier_changed: { label: 'Mudança de Tier', color: COLOR.WARNING_SOFT, emoji: EMOJI.TOPO },
+  nickname_changed: { label: 'Mudança de Nome', color: COLOR.MUTED, emoji: EMOJI.EDITAR },
+  tag_approved: { label: 'Tag Aprovada', color: COLOR.GREEN_ALT, emoji: EMOJI.TAG },
+  tag_denied: { label: 'Tag Recusada', color: COLOR.DANGER, emoji: EMOJI.ERRO },
 };
 
 function orgLifecycleEmbed(p) {
-  const meta = ORG_EVENT_META[p.event] || { label: p.event, color: 0x95a5a6, emoji: EMOJI.INFO };
+  const meta = ORG_EVENT_META[p.event] || { label: p.event, color: COLOR.MUTED, emoji: EMOJI.INFO };
   const embed = brandEmbed('HOUSE').setColor(meta.color).setTitle(`${meta.emoji} ${meta.label}`);
 
   const lines = [];
@@ -169,17 +169,17 @@ function orgLifecycleEmbed(p) {
 // ── Saídas ─────────────────────────────────────────────────────────────────
 
 const SAIDA_EVENT_META = {
-  opened: { label: 'Saída Criada', color: 0x3498db, emoji: EMOJI.SAIDA },
-  started: { label: 'Saída Iniciada', color: 0xf39c12, emoji: EMOJI.SAIDA },
-  closed: { label: 'Saída Fechada', color: 0x2ecc71, emoji: EMOJI.VITORIA },
-  material_issued: { label: 'Material Fornecido', color: 0x9b59b6, emoji: EMOJI.FORNECER },
-  participant_added: { label: 'Participante Adicionado', color: 0x3498db, emoji: EMOJI.PARTICIPANTE },
-  cancelled: { label: 'Saída Cancelada', color: 0x95a5a6, emoji: '🚫' },
-  weapon_return: { label: 'Devolução de Arma — Decisão', color: 0xf39c12, emoji: '🔫' },
+  opened: { label: 'Saída Criada', color: COLOR.INFO, emoji: EMOJI.SAIDA },
+  started: { label: 'Saída Iniciada', color: COLOR.WARNING_SOFT, emoji: EMOJI.SAIDA },
+  closed: { label: 'Saída Fechada', color: COLOR.SUCCESS, emoji: EMOJI.VITORIA },
+  material_issued: { label: 'Material Fornecido', color: COLOR.PURPLE, emoji: EMOJI.FORNECER },
+  participant_added: { label: 'Participante Adicionado', color: COLOR.INFO, emoji: EMOJI.PARTICIPANTE },
+  cancelled: { label: 'Saída Cancelada', color: COLOR.MUTED, emoji: '🚫' },
+  weapon_return: { label: 'Devolução de Arma — Decisão', color: COLOR.WARNING_SOFT, emoji: '🔫' },
 };
 
 function saidaLifecycleEmbed(p) {
-  const meta = SAIDA_EVENT_META[p.event] || { label: p.event, color: 0x95a5a6, emoji: EMOJI.SAIDA };
+  const meta = SAIDA_EVENT_META[p.event] || { label: p.event, color: COLOR.MUTED, emoji: EMOJI.SAIDA };
   const embed = brandEmbed('MOVEMENT')
     .setColor(meta.color)
     .setTitle(`${meta.emoji} Saída #${p.saidaId} — ${meta.label}`);

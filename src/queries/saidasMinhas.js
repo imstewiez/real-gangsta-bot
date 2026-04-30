@@ -16,7 +16,7 @@ async function handle(interaction) {
   const specificId = interaction.options.getInteger('id');
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {
-    return safeReply(interaction, { content: 'Não estás registado.' }, { dismissible: true });
+    return safeReply(interaction, { content: 'Não estás registado.' }, { messageClass: 'BANAL' });
   }
 
   if (specificId) {
@@ -33,7 +33,7 @@ async function handle(interaction) {
         {
           content: `Não participaste na saída #${specificId}.`,
         },
-        { dismissible: true }
+        { messageClass: 'BANAL' }
       );
     }
     const p = part.rows[0];
@@ -50,7 +50,7 @@ async function handle(interaction) {
         { name: 'Disciplina', value: `**${Math.round(p.discipline_score || 0)}%**`, inline: true },
         { name: p.mvp_flag ? `${EMOJI.MVP} MVP` : 'MVP', value: p.mvp_flag ? '**Sim**' : 'Não', inline: true }
       );
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
   }
 
   // Últimas 10 saídas
@@ -65,7 +65,7 @@ async function handle(interaction) {
     [member.id]
   );
   if (!recent.rows.length) {
-    return safeReply(interaction, { content: 'Ainda não tens saídas fechadas.' }, { dismissible: true });
+    return safeReply(interaction, { content: 'Ainda não tens saídas fechadas.' }, { messageClass: 'BANAL' });
   }
 
   const lines = recent.rows.map(r => {
@@ -83,7 +83,7 @@ async function handle(interaction) {
   const embed = brandEmbed('MOVEMENT')
     .setTitle(`${EMOJI.SAIDA} As tuas últimas saídas`)
     .setDescription(lines.join('\n'));
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 module.exports = { handle };

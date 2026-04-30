@@ -21,12 +21,13 @@
 const { EmbedBuilder } = require('discord.js');
 const { warn } = require('../logger');
 const { disableComponentRows } = require('./interactionHelpers');
+const { COLOR } = require('./embedBuilders');
 
 const DEFAULT_EXPIRE_MS = 10 * 60 * 1000; // 10min — mais que suficiente para um fluxo
 
 function _expireEmbed(reason) {
   return new EmbedBuilder()
-    .setColor(0x7f8c8d)
+    .setColor(COLOR.MUTED)
     .setDescription(`⏱️ ${reason || 'Interacção expirada. Abre novamente pelo painel.'}`);
 }
 

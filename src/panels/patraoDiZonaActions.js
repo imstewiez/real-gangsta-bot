@@ -25,18 +25,18 @@ async function listarBairristas(interaction) {
         content: ERRORS.NO_PERMISSION('listar bairristas'),
         flags: MessageFlags.Ephemeral,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const res = await query("SELECT * FROM members WHERE role = 'bairrista' AND status = 'ativo' ORDER BY display_name");
   const bairristas = res.rows;
   if (!bairristas.length) {
-    return safeReply(interaction, { content: 'Sem bairristas registados.' }, { dismissible: true });
+    return safeReply(interaction, { content: 'Sem bairristas registados.' }, { messageClass: 'BANAL' });
   }
   const lines = bairristas.map(m => `<@${m.discord_id}> — ${m.display_name} (desde ${formatPtDateOnly(m.joined_at)})`);
   const embed = brandEmbed().setTitle('Bairristas').setDescription(lines.join('\n'));
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 async function verEntregasOuVendas(interaction) {
@@ -47,7 +47,7 @@ async function verEntregasOuVendas(interaction) {
         content: ERRORS.NO_PERMISSION('ver dados'),
         flags: MessageFlags.Ephemeral,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -71,12 +71,12 @@ async function verEntregasOuVendas(interaction) {
       {
         content: `Sem ${label.toLowerCase()} registadas.`,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   const lines = res.rows.map((r, i) => `**${i + 1}.** <@${r.discord_id}> — ${r.total} unidades`);
   const embed = brandEmbed().setTitle(`${label} por Bairrista`).setDescription(lines.join('\n'));
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 async function verTopsBairristas(interaction) {
@@ -87,7 +87,7 @@ async function verTopsBairristas(interaction) {
         content: ERRORS.NO_PERMISSION('ver tops'),
         flags: MessageFlags.Ephemeral,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -97,7 +97,7 @@ async function verTopsBairristas(interaction) {
   const rankings = await rankingRepo.getWeekRankingByRole(weekStart, 'bairrista', 10);
   const weekLabel = `${formatPtDateOnly(start)} a ${formatPtDateOnly(end)}`;
   const embed = rankingEmbed('Top Bairristas', rankings, weekLabel);
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 module.exports = {

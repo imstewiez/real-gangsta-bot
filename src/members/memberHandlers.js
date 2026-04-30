@@ -43,7 +43,7 @@ async function handleMemberCommand(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.MEMBER_NOT_FOUND(), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -67,7 +67,7 @@ async function handleMemberCommand(interaction) {
     });
   }
 
-  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
 }
 
 async function handleMemberHistoryButton(interaction) {
@@ -76,7 +76,7 @@ async function handleMemberHistoryButton(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.MEMBER_NOT_FOUND(), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -85,7 +85,7 @@ async function handleMemberHistoryButton(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.AUDIT} Sem histórico ainda — mete mão à rua.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -100,7 +100,7 @@ async function handleMemberHistoryButton(interaction) {
     .setTitle(`${EMOJI.AUDIT} O teu histórico`)
     .setDescription(lines.join('\n').slice(0, 3900));
 
-  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
 }
 
 async function handleMemberTotalsButton(interaction) {
@@ -109,7 +109,7 @@ async function handleMemberTotalsButton(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.MEMBER_NOT_FOUND(), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -152,19 +152,19 @@ async function handleMemberTotalsButton(interaction) {
     }
   }
 
-  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
 }
 
 async function handleProgressButton(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const member = await memberRepo.findByDiscordId(interaction.user.id);
-  if (!member) return safeReply(interaction, { content: ERRORS.MEMBER_NOT_FOUND() }, { dismissible: true });
+  if (!member) return safeReply(interaction, { content: ERRORS.MEMBER_NOT_FOUND() }, { messageClass: 'BANAL' });
 
   const { getPromotionProgress } = require('./autoPromotionEngine');
   const progress = await getPromotionProgress(interaction.user.id);
   if (!progress)
-    return safeReply(interaction, { content: `${EMOJI.INFO} Ainda sem dados de progresso.` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.INFO} Ainda sem dados de progresso.` }, { messageClass: 'BANAL' });
 
   const embed = brandEmbed('MOVEMENT')
     .setTitle(`${EMOJI.TOPO} Progresso — ${member.display_name || member.full_name}`)
@@ -205,7 +205,7 @@ async function handleProgressButton(interaction) {
     });
   }
 
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 async function handleTopSemanalButton(interaction) {
@@ -221,7 +221,7 @@ async function handleTopSemanalButton(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.INFO} Sem dados de ranking esta semana.` },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
 
   const lines = rankings.map((r, i) => {
@@ -248,7 +248,7 @@ async function handleTopSemanalButton(interaction) {
     .setTitle(RANKINGS.TITLE('Topo da Semana', weekLabel))
     .setDescription(lines.join('\n'));
 
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 module.exports = {

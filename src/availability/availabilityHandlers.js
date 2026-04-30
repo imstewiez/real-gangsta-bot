@@ -29,7 +29,7 @@ async function handleVoteSelect(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.WARN} Sem opção escolhida.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   const [slotIdStr, state] = value.split(':');
   const slotId = parseInt(slotIdStr, 10);
@@ -49,7 +49,7 @@ async function handleVoteSelect(interaction) {
         content: AVAILABILITY.REASON[result.reason] || `${EMOJI.WARN} Não foi possível registar.`,
         flags: MessageFlags.Ephemeral,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -62,7 +62,7 @@ async function handleVoteSelect(interaction) {
       content: AVAILABILITY.VOTE_RECORDED(slot?.slot_label || slotId, m.label, m.emoji),
       flags: MessageFlags.Ephemeral,
     },
-    { dismissible: true }
+    { messageClass: 'BANAL' }
   );
 }
 
@@ -81,7 +81,7 @@ async function handleVoteAll(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.WARN} Não foi possível registar.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   const m = stateMeta(state);
@@ -91,7 +91,7 @@ async function handleVoteAll(interaction) {
       content: AVAILABILITY.VOTE_BULK_RECORDED(result.count, m.label, m.emoji),
       flags: MessageFlags.Ephemeral,
     },
-    { dismissible: true }
+    { messageClass: 'BANAL' }
   );
 }
 
@@ -103,9 +103,9 @@ async function handleSummary(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.SESSION_NOT_FOUND(), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
-  return safeReply(interaction, { content: text.slice(0, 1900), flags: MessageFlags.Ephemeral }, { dismissible: true });
+  return safeReply(interaction, { content: text.slice(0, 1900), flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
 }
 
 async function handleRefresh(interaction) {
@@ -116,14 +116,14 @@ async function handleRefresh(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.REFRESH} Actualizado.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   } catch (e) {
     warn(`[AVAIL] refresh falhou: ${e.message}`);
     return safeReply(
       interaction,
       { content: `${EMOJI.WARN} Não foi possível actualizar.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 }

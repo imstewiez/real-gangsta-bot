@@ -32,7 +32,7 @@ async function handle(interaction) {
   }
 
   if (!rankings.length) {
-    return safeReply(interaction, { content: 'Sem dados para este período.' }, { dismissible: true });
+    return safeReply(interaction, { content: 'Sem dados para este período.' }, { messageClass: 'BANAL' });
   }
 
   const medal = ['🥇', '🥈', '🥉'];
@@ -45,7 +45,7 @@ async function handle(interaction) {
   });
 
   const embed = brandEmbed('TOP').setTitle(title).setDescription(lines.join('\n'));
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 module.exports = { handle };

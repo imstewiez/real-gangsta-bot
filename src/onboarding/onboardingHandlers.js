@@ -11,7 +11,7 @@ const {
 } = require('discord.js');
 const CONFIG = require('../config');
 const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
-const { brandEmbed, successEmbed, errorEmbed, applyLogo } = require('../shared/embedBuilders');
+const { brandEmbed, successEmbed, errorEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
 const { EMOJI, PANELS, BUTTONS, MODALS, ONBOARDING, ERRORS } = require('../content');
 const { isPatraoDiZona } = require('../permissions/permissionEngine');
 const { query } = require('../db');
@@ -63,7 +63,7 @@ async function handlePedirTagButton(interaction) {
     return safeReply(
       interaction,
       { content: ONBOARDING.COOLDOWN, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -73,7 +73,7 @@ async function handlePedirTagButton(interaction) {
     return safeReply(
       interaction,
       { content: ONBOARDING.HAS_PENDING, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -87,7 +87,7 @@ async function handlePedirTagButton(interaction) {
     return safeReply(
       interaction,
       { content: ONBOARDING.ALREADY_IN_HOUSE, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -100,7 +100,7 @@ async function handlePedirTagButton(interaction) {
     return safeReply(
       interaction,
       { content: ONBOARDING.HAS_ACTIVE_RECORD(memberRecord.rows[0].role), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -115,7 +115,7 @@ async function handlePedirTagButton(interaction) {
     return safeReply(
       interaction,
       { content: ONBOARDING.HAS_PRIOR_APPROVED, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -161,7 +161,7 @@ async function handleTagModal(interaction) {
   const nickname = getModalField(interaction, 'nickname').trim();
 
   if (!fullName || !nickname) {
-    return safeReply(interaction, { content: `${EMOJI.WARN} Nome e alcunha são obrigatórios.` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.WARN} Nome e alcunha são obrigatórios.` }, { messageClass: 'BANAL' });
   }
 
   // Save to DB. Dedup por UNIQUE INDEX `uq_tag_requests_pending_per_user`.
@@ -175,7 +175,7 @@ async function handleTagModal(interaction) {
     requestId = res.rows[0].id;
   } catch (e) {
     if (e.code === '23505') {
-      return safeReply(interaction, { content: ONBOARDING.HAS_PENDING }, { dismissible: true });
+      return safeReply(interaction, { content: ONBOARDING.HAS_PENDING }, { messageClass: 'BANAL' });
     }
     throw e;
   }
@@ -188,12 +188,12 @@ async function handleTagModal(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.GENERIC() + ' Canal de aprovação em falta.' },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
   }
 
   const approvalEmbed = brandEmbed('SHORT')
-    .setColor(0xf39c12)
+    .setColor(COLOR.WARNING_SOFT)
     .setTitle(ONBOARDING.TAG_PENDING_TITLE)
     .setThumbnail(interaction.user.displayAvatarURL({ size: 64 }))
     .addFields(
@@ -227,11 +227,11 @@ async function handleTagModal(interaction) {
 
   // ── Confirmação visual ao user com o ticker de próximos passos ──
   const confirmEmbed = brandEmbed('SHORT')
-    .setColor(0xf39c12)
+    .setColor(COLOR.WARNING_SOFT)
     .setTitle(ONBOARDING.REQUEST_RECEIVED_TITLE)
     .setDescription(ONBOARDING.REQUEST_RECEIVED_BODY(fullName, nickname));
 
-  return safeReply(interaction, { embeds: [confirmEmbed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [confirmEmbed] }, { messageClass: 'BANAL' });
 }
 
 /**
@@ -318,7 +318,7 @@ async function handleApproveButton(interaction, requestId) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('aprovar tags'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -336,12 +336,12 @@ async function handleApproveButton(interaction, requestId) {
   if (!tagReq) {
     const check = await query('SELECT status FROM tag_requests WHERE id = $1', [requestId]);
     if (check.rows.length === 0) {
-      return safeReply(interaction, { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.` }, { dismissible: true });
+      return safeReply(interaction, { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.` }, { messageClass: 'ERROR' });
     }
     return safeReply(
       interaction,
       { content: `${EMOJI.BLOQUEADO} Este pedido já foi tratado por outro oficial.` },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -361,7 +361,7 @@ async function handleApproveButton(interaction, requestId) {
   if (tagReq.message_id && interaction.message?.embeds?.[0]) {
     try {
       const approvedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-        .setColor(0x2ecc71)
+        .setColor(COLOR.SUCCESS)
         .setTitle(ONBOARDING.TAG_APPROVED_TITLE)
         .addFields({ name: 'Aprovado por', value: `<@${interaction.user.id}>`, inline: true });
       await interaction.message.edit({ embeds: [approvedEmbed], components: [] });
@@ -372,7 +372,7 @@ async function handleApproveButton(interaction, requestId) {
 
   // Reply rico ao staff com surface explícito de falhas + entrega DM.
   const body = _buildStaffApprovalReply(tagReq, result);
-  return safeReply(interaction, { embeds: [body] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [body] }, { messageClass: 'BANAL' });
 }
 
 function _buildStaffApprovalReply(tagReq, result) {
@@ -416,7 +416,7 @@ async function handleDenyButton(interaction, requestId) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('negar tags'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -426,14 +426,14 @@ async function handleDenyButton(interaction, requestId) {
     return safeReply(
       interaction,
       { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
   }
   if (r.rows[0].status !== 'pending') {
     return safeReply(
       interaction,
       { content: `${EMOJI.BLOQUEADO} Este pedido já foi tratado.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -460,7 +460,7 @@ async function handleDenyModalSubmit(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   if (!isPatraoDiZona(interaction.member)) {
-    return safeReply(interaction, { content: ERRORS.NO_PERMISSION('negar tags') }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.NO_PERMISSION('negar tags') }, { messageClass: 'BANAL' });
   }
 
   const requestId = parseInt(interaction.customId.split('::')[2], 10);
@@ -483,7 +483,7 @@ async function handleDenyModalSubmit(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.BLOQUEADO} Pedido já foi tratado ou não existe.` },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -502,7 +502,7 @@ async function handleDenyModalSubmit(interaction) {
       const msg = await interaction.channel?.messages.fetch(tagReq.message_id).catch(() => null);
       if (msg?.embeds?.[0]) {
         const deniedEmbed = EmbedBuilder.from(msg.embeds[0])
-          .setColor(0xe74c3c)
+          .setColor(COLOR.DANGER)
           .setTitle(ONBOARDING.TAG_DENIED_TITLE)
           .addFields({ name: 'Negado por', value: `<@${interaction.user.id}>`, inline: true });
         if (reason) deniedEmbed.addFields({ name: 'Razão', value: reason, inline: false });
@@ -522,7 +522,7 @@ async function handleDenyModalSubmit(interaction) {
     if (user) {
       const dmEmbed = applyLogo(
         brandEmbed('SHORT')
-          .setColor(0xe74c3c)
+          .setColor(COLOR.DANGER)
           .setTitle(ONBOARDING.DM_DENIED_TITLE)
           .setDescription(ONBOARDING.DM_DENIED_BODY(guildName, reason))
       );
@@ -546,7 +546,7 @@ async function handleDenyModalSubmit(interaction) {
     lines.push(`\n${EMOJI.WARN} DMs fechados — fallback no canal de entrada.`);
   else lines.push(`\n${EMOJI.ERRO} Não foi possível notificar o user.`);
 
-  return safeReply(interaction, { embeds: [errorEmbed('Pedido negado', lines.join('\n'))] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [errorEmbed('Pedido negado', lines.join('\n'))] }, { messageClass: 'ERROR' });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

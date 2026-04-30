@@ -25,6 +25,7 @@
 const { PermissionFlagsBits, ChannelType } = require('discord.js');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
+const { COLOR } = require('../shared/embedBuilders');
 const {
   CATEGORIES,
   CATEGORY_BY_KEY,
@@ -134,7 +135,7 @@ async function runPermsOnly(guild, opts = {}) {
         try {
           pendente = await guild.roles.create({
             name: 'Pendente',
-            color: 0x95a5a6,
+            color: COLOR.MUTED,
             hoist: true,
             mentionable: false,
             permissions: [],

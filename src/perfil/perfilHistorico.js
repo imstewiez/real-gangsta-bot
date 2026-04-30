@@ -60,7 +60,7 @@ async function handleFilterSelect(interaction) {
 async function render(interaction, filter) {
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {
-    return safeReply(interaction, { content: 'Não estás registado.' }, { dismissible: true });
+    return safeReply(interaction, { content: 'Não estás registado.' }, { messageClass: 'BANAL' });
   }
 
   const movements = await inventoryRepo.getMemberMovements(member.id, 50);

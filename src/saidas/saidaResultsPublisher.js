@@ -12,17 +12,17 @@
 const { EmbedBuilder } = require('discord.js');
 const CONFIG = require('../config');
 const { saidaRepo, killRepo, spotStatsRepo, memberSaidaStatsRepo, memberRepo } = require('../repositories');
-const { brandEmbed } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { SAIDAS, EMOJI, SAIDA_TYPE } = require('../content');
 const { formatPtDateOnly } = require('../shared/formatPtDate');
 const { log, warn } = require('../logger');
 
 const RESULT_META = {
-  vitoria: { emoji: EMOJI.VITORIA, label: 'Vitória', color: 0x2ecc71 },
-  derrota: { emoji: EMOJI.DERROTA, label: 'Derrota', color: 0xe74c3c },
-  empate: { emoji: EMOJI.EMPATE, label: 'Empate', color: 0xf1c40f },
-  sem_conflito: { emoji: EMOJI.INFO, label: 'Sem conflito', color: 0x3498db },
-  abortada: { emoji: EMOJI.WARN, label: 'Abortada', color: 0x95a5a6 },
+  vitoria: { emoji: EMOJI.VITORIA, label: 'Vitória', color: COLOR.SUCCESS },
+  derrota: { emoji: EMOJI.DERROTA, label: 'Derrota', color: COLOR.DANGER },
+  empate: { emoji: EMOJI.EMPATE, label: 'Empate', color: COLOR.GOLD },
+  sem_conflito: { emoji: EMOJI.INFO, label: 'Sem conflito', color: COLOR.INFO },
+  abortada: { emoji: EMOJI.WARN, label: 'Abortada', color: COLOR.MUTED },
 };
 
 function formatMoney(v) {
@@ -276,7 +276,7 @@ function buildDestaquesEmbed(saida, participants) {
   }
 
   return brandEmbed('MOVEMENT')
-    .setColor(0xe67e22)
+    .setColor(COLOR.WARNING)
     .setTitle(`${EMOJI.MVP} ${SAIDAS.DESTAQUES_TITLE} — Saída #${saida.id}`)
     .addFields(fields.length ? fields : [{ name: '—', value: 'Sem destaques.' }]);
 }
@@ -326,7 +326,7 @@ async function buildImpactoEmbed(saida) {
   }
 
   return brandEmbed('TOP')
-    .setColor(0x9b59b6)
+    .setColor(COLOR.PURPLE)
     .setTitle(SAIDAS.IMPACTO_TITLE)
     .addFields(fields.length ? fields : [{ name: '—', value: 'Sem histórico suficiente.' }]);
 }

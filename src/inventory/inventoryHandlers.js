@@ -47,7 +47,7 @@ async function handleRegistarMaterialButton(interaction) {
         content: `${EMOJI.ERRO} Não estás registado na firma. Pede a tag primeiro.`,
         flags: MessageFlags.Ephemeral,
       },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
   }
 
@@ -139,7 +139,7 @@ async function handleStockCommand(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const stock = await getCurrentStock();
   const embed = stockEmbed(stock);
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -151,7 +151,7 @@ async function handleAdjustStockButton(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('ajustar stock'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   const menu = await buildCategorySelectMenu('inv::cat_ajuste', 'Seleciona a categoria');
@@ -175,20 +175,20 @@ async function handleAdjustModal(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const pending = pendingItemSelections.get(interaction.user.id);
-  if (!pending) return safeReply(interaction, { content: 'Sessão expirada.' }, { dismissible: true });
+  if (!pending) return safeReply(interaction, { content: 'Sessão expirada.' }, { messageClass: 'BANAL' });
 
   const quantityStr = getModalField(interaction, 'quantity');
   const notes = getModalField(interaction, 'notes');
   const quantity = parseInt(quantityStr);
-  if (isNaN(quantity)) return safeReply(interaction, { content: 'Quantidade inválida.' }, { dismissible: true });
+  if (isNaN(quantity)) return safeReply(interaction, { content: 'Quantidade inválida.' }, { messageClass: 'BANAL' });
 
   try {
     await adjustStock({ itemId: pending.itemId, quantity, notes, createdBy: interaction.user.id });
     pendingItemSelections.delete(interaction.user.id);
     const embed = successEmbed('Stock Ajustado', `Ajuste de **${quantity}** aplicado.\nRazão: ${notes}`);
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
-    return safeReply(interaction, { content: ERRORS.WITH_DETAIL(e.message) }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.WITH_DETAIL(e.message) }, { messageClass: 'ERROR' });
   }
 }
 
@@ -201,7 +201,7 @@ async function handleGerirMateriaisButton(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('gerir materiais'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -240,7 +240,7 @@ async function handleGerirActionSelect(interaction) {
       return safeReply(
         interaction,
         { content: 'Catálogo vazio.', flags: MessageFlags.Ephemeral },
-        { dismissible: true }
+        { messageClass: 'BANAL' }
       );
     }
 
@@ -263,7 +263,7 @@ async function handleGerirActionSelect(interaction) {
     }
 
     const embed = brandEmbed().setTitle('Catálogo de Materiais').setDescription(lines.join('\n'));
-    return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
   }
 
   if (action === 'add') {
@@ -317,7 +317,7 @@ async function handleGerirActionSelect(interaction) {
     const items = await inventoryRepo.getItems(false);
     const inactive = items.filter(i => !i.active);
     if (!inactive.length) {
-      return safeUpdate(interaction, { content: 'Sem materiais desativados.', components: [] }, { dismissible: true });
+      return safeUpdate(interaction, { content: 'Sem materiais desativados.', components: [] }, { messageClass: 'BANAL' });
     }
 
     const options = inactive.slice(0, 25).map(i => ({
@@ -348,11 +348,11 @@ async function handleAddItemModal(interaction) {
   const priceStr = getModalField(interaction, 'price');
   const price = parseFloat(priceStr.replace(',', '.'));
 
-  if (!name) return safeReply(interaction, { content: 'Nome obrigatório.' }, { dismissible: true });
-  if (isNaN(price) || price < 0) return safeReply(interaction, { content: 'Preço inválido.' }, { dismissible: true });
+  if (!name) return safeReply(interaction, { content: 'Nome obrigatório.' }, { messageClass: 'BANAL' });
+  if (isNaN(price) || price < 0) return safeReply(interaction, { content: 'Preço inválido.' }, { messageClass: 'BANAL' });
 
   const existing = await inventoryRepo.getItemByName(name);
-  if (existing) return safeReply(interaction, { content: ERRORS.ALREADY_EXISTS(name) }, { dismissible: true });
+  if (existing) return safeReply(interaction, { content: ERRORS.ALREADY_EXISTS(name) }, { messageClass: 'BANAL' });
 
   await inventoryRepo.createItem({ name, category, unit: 'unidade', estimatedValue: price });
 
@@ -366,7 +366,7 @@ async function handleAddItemModal(interaction) {
   });
 
   const embed = successEmbed('Material Adicionado', `**${name}**\nCategoria: ${category}\nPreço: **${price}\u20AC**`);
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
 }
 
 async function handleEditItemSelect(interaction) {
@@ -377,7 +377,7 @@ async function handleEditItemSelect(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
 
   _setItemCtx(interaction.user.id, { action: 'edit_price', itemId, itemName: item.name });
@@ -406,11 +406,11 @@ async function handleEditPriceModal(interaction) {
 
   const pending = pendingItemSelections.get(interaction.user.id);
   if (!pending || pending.action !== 'edit_price')
-    return safeReply(interaction, { content: 'Sessão expirada.' }, { dismissible: true });
+    return safeReply(interaction, { content: 'Sessão expirada.' }, { messageClass: 'BANAL' });
 
   const priceStr = getModalField(interaction, 'price');
   const price = parseFloat(priceStr.replace(',', '.'));
-  if (isNaN(price) || price < 0) return safeReply(interaction, { content: 'Preço inválido.' }, { dismissible: true });
+  if (isNaN(price) || price < 0) return safeReply(interaction, { content: 'Preço inválido.' }, { messageClass: 'BANAL' });
 
   const oldItem = await inventoryRepo.getItemById(pending.itemId);
   await inventoryRepo.updateItem(pending.itemId, { estimated_value: price });
@@ -430,7 +430,7 @@ async function handleEditPriceModal(interaction) {
     'Preço Atualizado',
     `**${pending.itemName}**\nPreço anterior: ${oldItem?.estimated_value || 0}\u20AC\nNovo preço: **${price}\u20AC**`
   );
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
 }
 
 async function handleDeactivateItemSelect(interaction) {
@@ -443,7 +443,7 @@ async function handleDeactivateItemSelect(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
 
   await inventoryRepo.updateItem(itemId, { active: false });
@@ -460,7 +460,7 @@ async function handleDeactivateItemSelect(interaction) {
     'Material Desativado',
     `**${item.name}** foi removido do catálogo.\nPodes reativá-lo a qualquer momento.`
   );
-  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { messageClass: 'RESULT' });
 }
 
 async function handleReactivateItemSelect(interaction) {
@@ -473,13 +473,13 @@ async function handleReactivateItemSelect(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'RESULT' }
     );
 
   await inventoryRepo.updateItem(itemId, { active: true });
 
   const embed = successEmbed('Material Reativado', `**${item.name}** está novamente disponível no catálogo.`);
-  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { messageClass: 'RESULT' });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -505,7 +505,7 @@ async function handleEncomendaSelect(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
 
   _setItemCtx(interaction.user.id, { itemId, itemName: item.name, action: 'order' });
@@ -542,17 +542,17 @@ async function handleEncomendaModal(interaction) {
 
   const pending = pendingItemSelections.get(interaction.user.id);
   if (!pending || pending.action !== 'order')
-    return safeReply(interaction, { content: 'Sessão expirada.' }, { dismissible: true });
+    return safeReply(interaction, { content: 'Sessão expirada.' }, { messageClass: 'BANAL' });
 
   const quantityStr = getModalField(interaction, 'quantity');
   const notes = getModalField(interaction, 'notes');
   const quantity = parseInt(quantityStr);
 
   if (isNaN(quantity) || quantity <= 0)
-    return safeReply(interaction, { content: ERRORS.INVALID_QUANTITY() }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.INVALID_QUANTITY() }, { messageClass: 'BANAL' });
 
   const member = await memberRepo.findByDiscordId(interaction.user.id);
-  if (!member) return safeReply(interaction, { content: 'Não estás registado no sistema.' }, { dismissible: true });
+  if (!member) return safeReply(interaction, { content: 'Não estás registado no sistema.' }, { messageClass: 'BANAL' });
 
   const { query } = require('../db');
   const insertRes = await query(
@@ -636,7 +636,7 @@ async function handleCartAdd(interaction) {
         content: `${EMOJI.PENDENTE} Carrinho expirado. Volta a clicar em "Registar Material".`,
         flags: MessageFlags.Ephemeral,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   const menu = await buildCategorySelectMenu(`invcart::cat::${tipo}`, 'Escolhe a categoria');
@@ -715,7 +715,7 @@ async function handleCartItemPick(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
   }
   return _openCartQtyModal(interaction, tipo, item, { category });
@@ -747,17 +747,17 @@ async function handleCartQtyModal(interaction) {
   const bairristaCart = require('./bairristaCart');
   const cart = bairristaCart.getCart(interaction.user.id);
   if (!cart || cart.tipo !== tipo) {
-    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Carrinho expirado. Recomeça.` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Carrinho expirado. Recomeça.` }, { messageClass: 'BANAL' });
   }
 
   const qty = parseInt(getModalField(interaction, 'quantity'));
   if (isNaN(qty) || qty <= 0) {
-    return safeReply(interaction, { content: ERRORS.INVALID_QUANTITY() }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.INVALID_QUANTITY() }, { messageClass: 'BANAL' });
   }
 
   const item = await inventoryRepo.getItemById(itemId);
   if (!item) {
-    return safeReply(interaction, { content: ERRORS.ITEM_NOT_FOUND() }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.ITEM_NOT_FOUND() }, { messageClass: 'ERROR' });
   }
   const basePrice = parseFloat(item.estimated_value) || 0;
 
@@ -767,7 +767,7 @@ async function handleCartQtyModal(interaction) {
     if (raw && raw.trim()) {
       const parsed = parseFloat(raw.replace(',', '.'));
       if (!Number.isFinite(parsed) || parsed < 0) {
-        return safeReply(interaction, { content: `${EMOJI.ERRO} Preço inválido.` }, { dismissible: true });
+        return safeReply(interaction, { content: `${EMOJI.ERRO} Preço inválido.` }, { messageClass: 'BANAL' });
       }
       // Só guarda custom se diferente do base.
       if (parsed !== basePrice) unitPrice = parsed;
@@ -800,7 +800,7 @@ async function handleCartLineAction(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.PENDENTE} Carrinho expirado.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -821,7 +821,7 @@ async function handleCartNotesButton(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.PENDENTE} Carrinho expirado.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   const modal = new ModalBuilder()
@@ -851,7 +851,7 @@ async function handleCartNotesModal(interaction) {
   const bairristaCart = require('./bairristaCart');
   const cart = bairristaCart.getCart(interaction.user.id);
   if (!cart || cart.tipo !== tipo) {
-    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Carrinho expirado.` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Carrinho expirado.` }, { messageClass: 'BANAL' });
   }
   const notes = getModalField(interaction, 'notes') || '';
   bairristaCart.setNotes(cart, notes);
@@ -871,7 +871,7 @@ async function handleCartCancel(interaction) {
       embeds: [],
       components: [],
     },
-    { dismissible: true }
+    { messageClass: 'BANAL' }
   );
 }
 
@@ -885,7 +885,7 @@ async function handleCartRepeat(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.PENDENTE} Carrinho expirado.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
   }
   const member = await memberRepo.findByDiscordId(interaction.user.id);
@@ -893,7 +893,7 @@ async function handleCartRepeat(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.ERRO} Não estás registado.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
   }
   const movementType =
@@ -903,7 +903,7 @@ async function handleCartRepeat(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.INFO} Não tens submissão anterior deste tipo.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   // Re-resolve preços: usa base actual do catálogo (evita time-travel).
@@ -935,14 +935,14 @@ async function handleCartPreview(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.PENDENTE} Carrinho expirado.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   if (!cart.lines.length) {
     return safeReply(
       interaction,
       { content: `${EMOJI.WARN} Nada para rever — carrinho vazio.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -981,7 +981,7 @@ async function handleCartPreviewBack(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.PENDENTE} Carrinho expirado.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   return _refreshCartPanel(interaction, cart);
@@ -998,14 +998,14 @@ async function handleCartSubmit(interaction) {
     return safeUpdate(
       interaction,
       { content: `${EMOJI.PENDENTE} Carrinho expirado.`, embeds: [], components: [] },
-      { dismissible: false }
+      { messageClass: 'FLOW' }
     );
   }
   if (!cart.lines.length) {
     return safeUpdate(
       interaction,
       { content: `${EMOJI.WARN} Carrinho vazio.`, embeds: [], components: [] },
-      { dismissible: false }
+      { messageClass: 'FLOW' }
     );
   }
 
@@ -1025,7 +1025,7 @@ async function handleCartSubmit(interaction) {
           embeds: [approverEmbed],
           components: bairristaCart.buildDeliveryApproverComponents(),
         },
-        { dismissible: false }
+        { messageClass: 'FLOW' }
       );
     } catch (e) {
       return safeReply(
@@ -1034,7 +1034,7 @@ async function handleCartSubmit(interaction) {
           content: `${EMOJI.ERRO} Falha ao abrir confirma\u00e7\u00e3o da entrega: ${e.message}`,
           flags: MessageFlags.Ephemeral,
         },
-        { dismissible: false }
+        { messageClass: 'FLOW' }
       );
     }
   }

@@ -235,7 +235,7 @@ async function handleCreateSaidaModal(interaction) {
   const spot = spotEntry ? spotEntry.label : '';
   pendingSaidaContext.delete(interaction.user.id);
   if (!SAIDA_TYPES.includes(type)) {
-    return safeReply(interaction, { content: `${EMOJI.WARN} Tipo inválido.` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.WARN} Tipo inválido.` }, { messageClass: 'BANAL' });
   }
   try {
     const s = await saidaEngine.createSaida({
@@ -278,9 +278,9 @@ async function handleCreateSaidaModal(interaction) {
         inline: false,
       });
     }
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'ERROR' });
   }
 }
 
@@ -293,7 +293,7 @@ async function handleCloseSaidaButton(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('fechar saídas'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   const open = await saidaRepo.findOpen();
@@ -301,7 +301,7 @@ async function handleCloseSaidaButton(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.INFO} Sem saídas abertas.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   const options = buildSaidaSelectOptions(open);
@@ -330,7 +330,7 @@ async function handleCloseSessionDirect(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('fechar saídas'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -343,7 +343,7 @@ async function handleCloseSessionDirect(interaction) {
         content: `${EMOJI.WARN} Saída #${saidaId} já não está aberta (estado: ${saida?.status || 'não encontrada'}).`,
         flags: MessageFlags.Ephemeral,
       },
-      { dismissible: true }
+      { messageClass: 'WARN' }
     );
   }
 
@@ -472,7 +472,7 @@ async function handleCloseSaidaModal(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.PENDENTE} Sessão expirada — começa de novo.` },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
 
   // Resultado vem do select (step 2). Inimigo é texto livre (step 3 modal).
@@ -503,7 +503,7 @@ async function handleCloseSaidaModal(interaction) {
       interaction.user.id
     );
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'ERROR' });
   }
 
   pendingSaidaContext.delete(interaction.user.id);
@@ -527,7 +527,7 @@ async function handleCloseSaidaModal(interaction) {
     {
       content: `${EMOJI.OK} **Saída #${ctx.saidaId}** em liquidação — resultado: **${resultLabel}**${enemy_name ? ` contra **${enemy_name}**` : ''}.\n\n${EMOJI.PENDENTE} Os participantes foram notificados para preencherem o resultado individual.\nQuando todos preencherem (ou quando quiseres forçar), usa **"Finalizar e Publicar"** no painel da sessão.`,
     },
-    { dismissible: true }
+    { messageClass: 'BANAL' }
   );
 }
 
@@ -542,7 +542,7 @@ async function handleFinalizeSaidaButton(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('finalizar saídas'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -558,7 +558,7 @@ async function handleFinalizeSaidaButton(interaction) {
       {
         content: `${EMOJI.WARN} Saída #${saidaId} não está em liquidação (estado: ${saida?.status || 'não encontrada'}).`,
       },
-      { dismissible: true }
+      { messageClass: 'WARN' }
     );
   }
 
@@ -620,10 +620,10 @@ async function handleFinalizeSaidaButton(interaction) {
           `\n${profitLabel}: **${(v.net || 0).toLocaleString('pt-PT')} €**` +
           pendingNote,
       },
-      { dismissible: true }
+      { messageClass: 'RESULT' }
     );
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'ERROR' });
   }
 }
 
@@ -642,7 +642,7 @@ async function handleMarkDeadSelect(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.INFO} Saída #${saidaId} — nenhum morto marcado.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   const report = [];
@@ -681,7 +681,7 @@ async function handleMarkDeadSelect(interaction) {
   return safeReply(
     interaction,
     { content: lines.join('\n').slice(0, 1900), flags: MessageFlags.Ephemeral },
-    { dismissible: true }
+    { messageClass: 'ERROR' }
   );
 }
 
@@ -693,7 +693,7 @@ async function handleViewSaidasButton(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const list = await saidaRepo.findRecent(10);
   if (!list.length)
-    return safeReply(interaction, { content: `${EMOJI.INFO} Sem saídas registadas.` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.INFO} Sem saídas registadas.` }, { messageClass: 'BANAL' });
   const statusEmoji = {
     aberta: '🟢',
     em_preparacao: '🟡',
@@ -721,7 +721,7 @@ async function handleViewSaidasButton(interaction) {
     return `${em}${re} **#${s.id}** — ${s.operation_type} · ${when} · ${s.spot || '—'} · Líder: ${s.leader_name || '—'}`;
   });
   const embed = brandEmbed('MOVEMENT').setTitle(`${EMOJI.SAIDA} Saídas recentes`).setDescription(lines.join('\n'));
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -733,7 +733,7 @@ async function handleAddParticipantButton(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('mexer em participantes'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   const open = await saidaRepo.findOpen();
@@ -741,7 +741,7 @@ async function handleAddParticipantButton(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.INFO} Sem saídas abertas.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   const options = buildSaidaSelectOptions(open);
   const row = new ActionRowBuilder().addComponents(
@@ -785,14 +785,14 @@ async function handleParticipantUsersSelect(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.WARN} Saída inválida.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   const userIds = interaction.values || [];
   if (!userIds.length)
     return safeReply(
       interaction,
       { content: `${EMOJI.WARN} Nenhum nome escolhido.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
 
   const added = [],
@@ -816,7 +816,7 @@ async function handleParticipantUsersSelect(interaction) {
   return safeReply(
     interaction,
     { embeds: [successEmbed('Nomes no movimento', lines.join('\n'))], flags: MessageFlags.Ephemeral },
-    { dismissible: true }
+    { messageClass: 'RESULT' }
   );
 }
 
@@ -829,7 +829,7 @@ async function handleRegisterMaterialButton(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('mexer no material das saídas'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   const open = await saidaRepo.findOpen();
@@ -837,7 +837,7 @@ async function handleRegisterMaterialButton(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.INFO} Sem saídas abertas.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   const options = buildSaidaSelectOptions(open);
   const row = new ActionRowBuilder().addComponents(
@@ -887,7 +887,7 @@ async function handleMaterialDirectionSelect(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.PENDENTE} Sessão expirada — começa de novo.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   ctx.direction = direction;
@@ -931,7 +931,7 @@ async function handleMaterialItemSelect(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.PENDENTE} Sessão expirada.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   ctx.itemId = itemId;
@@ -969,12 +969,12 @@ async function handleMaterialQtyModal(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const ctx = pendingSaidaContext.get(interaction.user.id);
   if (!ctx || ctx.action !== 'material_op') {
-    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Sessão expirada.` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Sessão expirada.` }, { messageClass: 'BANAL' });
   }
   const quantity = parseInt(getModalField(interaction, 'quantity'));
   const notes = getModalField(interaction, 'notes');
   if (isNaN(quantity) || quantity <= 0)
-    return safeReply(interaction, { content: ERRORS.INVALID_QUANTITY() }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.INVALID_QUANTITY() }, { messageClass: 'BANAL' });
   try {
     await saidaEngine.registerSaidaMaterial(
       ctx.saidaId,
@@ -993,9 +993,9 @@ async function handleMaterialQtyModal(interaction) {
       'Material registado',
       `**${quantity}×** ${item?.name || 'Item'} — ${dirLabels[ctx.direction]}\nSaída **#${ctx.saidaId}**${notes ? `\nNotas: ${notes}` : ''}`
     );
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'RESULT' });
   }
 }
 
@@ -1008,7 +1008,7 @@ async function handleIssueToParticipantButton(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('fornecer material'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   const open = await saidaRepo.findOpen();
@@ -1016,7 +1016,7 @@ async function handleIssueToParticipantButton(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.INFO} Sem saídas abertas.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   const options = buildSaidaSelectOptions(open);
   const row = new ActionRowBuilder().addComponents(
@@ -1075,7 +1075,7 @@ async function handleIssueParticipantSelect(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.PENDENTE} Sessão expirada.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   ctx.participantDiscordId = discordId;
   _setContext(interaction.user.id, ctx);
@@ -1094,7 +1094,7 @@ async function handleIssueItemSelect(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.PENDENTE} Sessão expirada.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   ctx.itemId = itemId;
   _setContext(interaction.user.id, ctx);
@@ -1131,11 +1131,11 @@ async function handleIssueQtyModal(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const ctx = pendingSaidaContext.get(interaction.user.id);
   if (!ctx || ctx.action !== 'issue_to_participant')
-    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Sessão expirada.` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Sessão expirada.` }, { messageClass: 'BANAL' });
   const qty = parseInt(getModalField(interaction, 'quantity'));
   const notes = getModalField(interaction, 'notes');
   if (isNaN(qty) || qty <= 0)
-    return safeReply(interaction, { content: ERRORS.INVALID_QUANTITY() }, { dismissible: true });
+    return safeReply(interaction, { content: ERRORS.INVALID_QUANTITY() }, { messageClass: 'BANAL' });
   try {
     await saidaEngine.issueMaterialToParticipant(
       ctx.saidaId,
@@ -1153,9 +1153,9 @@ async function handleIssueQtyModal(interaction) {
       'Material fornecido',
       `${EMOJI.FORNECER} **${qty}×** ${item?.name || 'Item'} → <@${ctx.participantDiscordId}>\nSaída **#${ctx.saidaId}**${notes ? `\nNotas: ${notes}` : ''}`
     );
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'RESULT' });
   }
 }
 
@@ -1172,7 +1172,7 @@ async function handleIssueQtyModal(interaction) {
       return safeReply(
         interaction,
         { content: `${EMOJI.PENDENTE} Sessão expirada. Recomeça o fluxo.`, flags: MessageFlags.Ephemeral },
-        { dismissible: true }
+        { messageClass: 'BANAL' }
       );
     }
     ctx.itemId = item.id;
@@ -1210,7 +1210,7 @@ async function handleIssueQtyModal(interaction) {
       return safeReply(
         interaction,
         { content: `${EMOJI.PENDENTE} Sessão expirada. Recomeça o fluxo.`, flags: MessageFlags.Ephemeral },
-        { dismissible: true }
+        { messageClass: 'BANAL' }
       );
     }
     ctx.itemId = item.id;

@@ -19,7 +19,7 @@ const { query } = require('../db');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
 const { safeReply } = require('../shared/interactionHelpers');
-const { brandEmbed } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
 const { queueChannelOp } = require('../discordQueue');
@@ -92,7 +92,7 @@ async function _handleInner(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('cleanup de tópicos'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -103,10 +103,10 @@ async function _handleInner(interaction) {
 
   if (!zombies.length) {
     const embed = brandEmbed('MOVEMENT')
-      .setColor(0x2ecc71)
+      .setColor(COLOR.SUCCESS)
       .setTitle(`${EMOJI.OK} Zero zombies`)
       .setDescription('Todos os tópicos activos têm um bairrista activo. Nada a limpar.');
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   }
 
   if (!executar) {
@@ -125,11 +125,11 @@ async function _handleInner(interaction) {
       : '⚠ sem `BAIRRISTA_ARQUIVO_CATEGORY_ID` configurado — só marca em DB';
 
     const embed = brandEmbed('MOVEMENT')
-      .setColor(0xf39c12)
+      .setColor(COLOR.WARNING_SOFT)
       .setTitle(`${EMOJI.WARN} ${zombies.length} tópico(s) zombie — ${archiveHint}`)
       .setDescription(lines.join('\n').slice(0, 3900))
       .setFooter({ text: 'preview — corre com `executar:true` para arquivar' });
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'WARN' });
   }
 
   const guild = interaction.guild;
@@ -157,7 +157,7 @@ async function _handleInner(interaction) {
     lines.push(`${EMOJI.ERRO} **${f.zombie.display_name}** · ${String(f.error).slice(0, 120)}`);
   }
 
-  const color = failed.length ? 0xe74c3c : 0x2ecc71;
+  const color = failed.length ? COLOR.DANGER : COLOR.SUCCESS;
   const embed = brandEmbed('MOVEMENT')
     .setColor(color)
     .setTitle(
@@ -166,7 +166,7 @@ async function _handleInner(interaction) {
     .setDescription(lines.join('\n').slice(0, 3900))
     .setFooter({ text: 'Slots libertados — podes agora correr `/backfill-topicos executar:true`' });
 
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 module.exports = { handle };

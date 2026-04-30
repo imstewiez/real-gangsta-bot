@@ -31,7 +31,7 @@ async function _handle(interaction, tipo) {
     return safeReply(
       interaction,
       { content: `${EMOJI.ERRO} Não estás registado na firma. Pede a tag primeiro.` },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
   }
 
@@ -46,7 +46,7 @@ async function _handle(interaction, tipo) {
     return safeReply(
       interaction,
       { content: `${EMOJI.ERRO} Item não encontrado: \`${itemName}\`. Escreve no campo para pesquisar.` },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
   }
 
@@ -66,7 +66,7 @@ async function _handle(interaction, tipo) {
       createdBy: interaction.user.id,
     });
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'ERROR' });
   }
 
   // Auto-promoção (mesmo padrão do cart)

@@ -22,7 +22,7 @@ const { query } = require('../db');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
 const { safeReply } = require('../shared/interactionHelpers');
-const { brandEmbed, welcomeChannelEmbed } = require('../shared/embedBuilders');
+const { brandEmbed, welcomeChannelEmbed, COLOR } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
 const { formatResidentChannelName } = require('../discord/structureTemplate');
@@ -98,7 +98,7 @@ async function _handleInner(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('backfill de tópicos'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -109,7 +109,7 @@ async function _handleInner(interaction) {
         content: `${EMOJI.WARN} \`BAIRRISTA_TOPICOS_CATEGORY_ID\` não está configurado.`,
         flags: MessageFlags.Ephemeral,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -120,10 +120,10 @@ async function _handleInner(interaction) {
 
   if (!missing.length) {
     const embed = brandEmbed('MOVEMENT')
-      .setColor(0x2ecc71)
+      .setColor(COLOR.SUCCESS)
       .setTitle(`${EMOJI.OK} Todos os bairristas têm tópico`)
       .setDescription('Zero drift — nada a fazer.');
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   }
 
   if (!executar) {
@@ -133,18 +133,18 @@ async function _handleInner(interaction) {
       .map(m => `• **${m.display_name}** (${m.nickname || '—'}) · tier \`${m.tier || '—'}\``);
     if (missing.length > 40) lines.push(`_… e mais ${missing.length - 40}_`);
     const embed = brandEmbed('MOVEMENT')
-      .setColor(0xf39c12)
+      .setColor(COLOR.WARNING_SOFT)
       .setTitle(`${EMOJI.WARN} ${missing.length} bairrista(s) sem tópico`)
       .setDescription(lines.join('\n').slice(0, 3900))
       .setFooter({ text: 'preview — corre com `executar:true` para criar os canais' });
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'WARN' });
   }
 
   // Execução real.
   const guild = interaction.guild;
   const botId = guild.members.me?.id;
   if (!botId) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} Bot não está registado na guild.` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} Bot não está registado na guild.` }, { messageClass: 'ERROR' });
   }
 
   const started = Date.now();
@@ -171,7 +171,7 @@ async function _handleInner(interaction) {
     lines.push(`${EMOJI.ERRO} **${f.member.display_name}** · ${String(f.error).slice(0, 120)}`);
   }
 
-  const color = failed.length ? 0xe74c3c : 0x2ecc71;
+  const color = failed.length ? COLOR.DANGER : COLOR.SUCCESS;
   const embed = brandEmbed('MOVEMENT')
     .setColor(color)
     .setTitle(
@@ -179,7 +179,7 @@ async function _handleInner(interaction) {
     )
     .setDescription(lines.join('\n').slice(0, 3900));
 
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'ERROR' });
 }
 
 module.exports = { handle };

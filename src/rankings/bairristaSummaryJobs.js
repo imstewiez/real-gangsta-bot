@@ -11,7 +11,7 @@
 
 const { bairristaStatsRepo } = require('../repositories');
 const { publishSummary } = require('../inventory/bairristaNotifier');
-const { brandEmbed, rankBadge, streakBadge } = require('../shared/embedBuilders');
+const { brandEmbed, rankBadge, streakBadge, COLOR } = require('../shared/embedBuilders');
 const { BAIRRISTAS, EMOJI } = require('../content');
 const { weekBounds } = require('../util');
 const { log, warn } = require('../logger');
@@ -27,7 +27,7 @@ async function publishBairristaDailySummary() {
     if (!summary || summary.totalQty === 0) return { skipped: 'no_activity' };
 
     const S = BAIRRISTAS.SUMMARY;
-    const embed = brandEmbed('MOVEMENT').setColor(0x2ecc71).setTitle(S.DAILY_TITLE(summary.date));
+    const embed = brandEmbed('MOVEMENT').setColor(COLOR.SUCCESS).setTitle(S.DAILY_TITLE(summary.date));
 
     embed.addFields({
       name: S.DAILY_TOTAL,
@@ -76,7 +76,7 @@ async function publishBairristaWeeklySummary() {
     if (!top.length) return { skipped: 'no_data' };
 
     const S = BAIRRISTAS.SUMMARY;
-    const embed = brandEmbed('TOP').setColor(0xf1c40f).setTitle(S.WEEKLY_TITLE(weekLabel));
+    const embed = brandEmbed('TOP').setColor(COLOR.GOLD).setTitle(S.WEEKLY_TITLE(weekLabel));
 
     const lines = top.map((r, i) => {
       const pos = Number(r.pos || i + 1);
@@ -120,7 +120,7 @@ async function publishBairristaMonthlySummary() {
     if (!top.length) return { skipped: 'no_data' };
 
     const S = BAIRRISTAS.SUMMARY;
-    const embed = brandEmbed('TOP').setColor(0xe67e22).setTitle(S.MONTHLY_TITLE(monthLabel));
+    const embed = brandEmbed('TOP').setColor(COLOR.WARNING).setTitle(S.MONTHLY_TITLE(monthLabel));
 
     const lines = top.map((r, i) => {
       const pos = Number(r.pos || i + 1);

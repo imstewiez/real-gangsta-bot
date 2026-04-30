@@ -22,7 +22,7 @@ async function handle(interaction) {
       {
         content: `${EMOJI.ERRO} Item não encontrado: \`${itemName}\``,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   const ar = await sm.getCurrentStock(item.id, 'armazem');
@@ -37,7 +37,7 @@ async function handle(interaction) {
         `${EMOJI.CASA} Armazém: \`${ar}\` · Grupo: \`${gr}\`\n` +
         `▸ Total: **${total}** un. (≈ ${value.toLocaleString('pt-PT')} €)`,
     },
-    { dismissible: true }
+    { messageClass: 'BANAL' }
   );
 }
 

@@ -25,7 +25,7 @@ const {
   UserSelectMenuBuilder,
 } = require('discord.js');
 const { createSessionStore } = require('../shared/sessionStore');
-const { brandEmbed } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 
 const cartStore = createSessionStore('bairristaCart', { ttlMs: 15 * 60 * 1000 });
@@ -107,7 +107,7 @@ function buildCartEmbed(cart, { extraNote } = {}) {
   const title = isVenda
     ? `${EMOJI.LUCRO} Carrinho — Venda de Material`
     : `${EMOJI.MATERIAL} Carrinho — Entrega de Material`;
-  const color = isVenda ? 0xf1c40f : 0x2ecc71;
+  const color = isVenda ? COLOR.GOLD : COLOR.SUCCESS;
 
   const { totalQty, totalValue } = totals(cart);
 
@@ -214,7 +214,7 @@ function buildCartComponents(cart, { canRepeat = false } = {}) {
     const options = cart.lines.slice(0, 25).map((l, idx) =>
       new StringSelectMenuOptionBuilder()
         .setLabel(`${idx + 1}. ${l.itemName} · ${l.quantity}×`.slice(0, 100))
-        .setDescription(`Remover esta linha`.slice(0, 100))
+        .setDescription('Remover esta linha'.slice(0, 100))
         .setValue(`remove:${idx}`)
         .setEmoji('🗑️')
     );
@@ -281,7 +281,7 @@ function buildCartPreview(cart, context = {}) {
   }
 
   const embed = brandEmbed('MOVEMENT')
-    .setColor(isVenda ? 0xf1c40f : 0x2ecc71)
+    .setColor(isVenda ? COLOR.GOLD : COLOR.SUCCESS)
     .setTitle(isVenda ? `${EMOJI.LUCRO} Preview — Venda` : `${EMOJI.MATERIAL} Preview — Entrega`)
     .setDescription(lines.join('\n'));
   return embed;
@@ -316,10 +316,10 @@ function buildSubmissionFeedback({ submissionId, tipo, totalQty, totalValue, lin
   const lines = [`**${lineCount}** linha(s) · **${totalQty.toLocaleString('pt-PT')}** unidades`];
   if (totalValue > 0) lines.push(`Valor: **${totalValue.toLocaleString('pt-PT')}€**`);
   if (promotionLine) lines.push('', promotionLine);
-  lines.push('', `_Podes desfazer esta submissão nos próximos 5 min._`);
+  lines.push('', '_Podes desfazer esta submissão nos próximos 5 min._');
 
   const embed = brandEmbed('MOVEMENT')
-    .setColor(isVenda ? 0xf1c40f : 0x2ecc71)
+    .setColor(isVenda ? COLOR.GOLD : COLOR.SUCCESS)
     .setTitle(title)
     .setDescription(lines.join('\n'))
     .setFooter({ text: `submission ${submissionId.slice(0, 8)}` });
@@ -357,7 +357,7 @@ function buildDeliveryRequestEmbed({ requestId, memberName, memberDiscordId, lin
   if (notes) summaryLines.push('', `Notas: _${notes}_`);
 
   return brandEmbed('MOVEMENT')
-    .setColor(0xf39c12)
+    .setColor(COLOR.WARNING_SOFT)
     .setTitle(`${EMOJI.MATERIAL} Entrega pendente de confirmação`)
     .setDescription(
       [`Bairrista: <@${memberDiscordId}>${memberName ? ` (${memberName})` : ''}`, '', body, '', ...summaryLines].join(

@@ -33,7 +33,7 @@ const {
 const { saidaRepo, killRepo, memberRepo } = require('../repositories');
 const { query } = require('../db');
 const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
-const { brandEmbed } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { SAIDAS, EMOJI } = require('../content');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
@@ -63,7 +63,7 @@ async function _renderWizardMessage(saidaId) {
     if (settled.length > 10) lines.push(`_… e mais ${settled.length - 10}._`);
   }
 
-  const embed = brandEmbed().setColor(0x9b59b6).setTitle(SAIDAS.WIZARD_TITLE).setDescription(lines.join('\n'));
+  const embed = brandEmbed().setColor(COLOR.PURPLE).setTitle(SAIDAS.WIZARD_TITLE).setDescription(lines.join('\n'));
 
   const components = [];
 
@@ -104,7 +104,7 @@ async function _renderWizardMessage(saidaId) {
 
 async function handleStart(interaction, saidaId) {
   const { embed, components } = await _renderWizardMessage(saidaId);
-  return safeReply(interaction, { embeds: [embed], components, flags: MessageFlags.Ephemeral }, { dismissible: false });
+  return safeReply(interaction, { embeds: [embed], components, flags: MessageFlags.Ephemeral }, { messageClass: 'FLOW' });
 }
 
 // STEP 1: staff escolheu participante → ephemeral com "Vivo / Morto" botões.
@@ -345,7 +345,7 @@ async function handleFinish(interaction) {
           channelId
         ),
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -409,7 +409,7 @@ async function handleFinish(interaction) {
         channelId
       ),
     },
-    { dismissible: true }
+    { messageClass: 'BANAL' }
   );
 }
 

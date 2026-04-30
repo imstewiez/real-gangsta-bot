@@ -20,6 +20,11 @@ const COLOR = Object.freeze({
   DANGER: 0xe74c3c, // vermelho — combate, spot queimado
   ERROR: 0xc0392b, // vermelho escuro — erro
   MUTED: 0x95a5a6, // cinzento — cancelada, concluída, fechada
+  PURPLE: 0x9b59b6, // roxo — wizard, destaques especiais
+  PROMOTION_GOLD: 0xffd700, // ouro brilhante — promoções
+  DARK: 0x2c2f33, // quase preto — kill log, embeds pesados
+  TEAL: 0x1abc9c, // teal — notificações de eventos
+  GREEN_ALT: 0x27ae60, // verde alternativo — notificações positivas
 });
 
 // ── Brand embeds ────────────────────────────────────────────────────────────

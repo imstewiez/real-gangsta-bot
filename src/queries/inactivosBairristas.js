@@ -24,7 +24,7 @@ const { MessageFlags } = require('discord.js');
 const { query } = require('../db');
 const { log, warn } = require('../logger');
 const { safeReply } = require('../shared/interactionHelpers');
-const { brandEmbed } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
 
@@ -110,7 +110,7 @@ async function _handleInner(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('ver lista de inactivos'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -170,10 +170,10 @@ async function _handleInner(interaction) {
       }
     }
     const embed = brandEmbed('MOVEMENT')
-      .setColor(newcomersZero.length > 0 ? 0xf39c12 : 0x2ecc71)
+      .setColor(newcomersZero.length > 0 ? COLOR.WARNING_SOFT : COLOR.SUCCESS)
       .setTitle(`${newcomersZero.length > 0 ? EMOJI.WARN : EMOJI.OK} Nenhum candidato nos thresholds`)
       .setDescription(lines.join('\n').slice(0, 3900));
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'WARN' });
   }
 
   const lines = candidates.slice(0, 30).map(c => {
@@ -189,7 +189,7 @@ async function _handleInner(interaction) {
   const zeroActivity = candidates.filter(c => c.totalActivity === 0).length;
 
   const embed = brandEmbed('MOVEMENT')
-    .setColor(zeroActivity > 0 ? 0xe74c3c : 0xf39c12)
+    .setColor(zeroActivity > 0 ? COLOR.DANGER : COLOR.WARNING_SOFT)
     .setTitle(`${EMOJI.WARN} ${candidates.length} candidato(s) a kick`)
     .setDescription(
       `**${zeroActivity}** com zero actividade · ordenados do pior para o menos mau.\n` +
@@ -201,7 +201,7 @@ async function _handleInner(interaction) {
     });
 
   log(`[INACTIVOS] ${interaction.user.tag} scan: ${candidates.length} candidatos (${zeroActivity} zero).`);
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 module.exports = { handle };

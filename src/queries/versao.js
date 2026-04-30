@@ -13,7 +13,7 @@ async function handle(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const inst = getCurrentInstance();
   if (!inst) {
-    return safeReply(interaction, { content: 'Instância ainda não registada.' }, { dismissible: true });
+    return safeReply(interaction, { content: 'Instância ainda não registada.' }, { messageClass: 'BANAL' });
   }
   const lines = [
     `**Firma RedWood** · ${inst.version || '?'}${inst.gitSha ? ` · \`${inst.gitSha.slice(0, 7)}\`` : ''}`,
@@ -31,7 +31,7 @@ async function handle(interaction) {
     }
   }
 
-  return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { dismissible: true });
+  return safeReply(interaction, { content: lines.join('\n').slice(0, 1900) }, { messageClass: 'BANAL' });
 }
 
 module.exports = { handle };

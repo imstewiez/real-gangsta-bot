@@ -33,16 +33,17 @@ async function logAudit({
   }
 }
 
-async function sendAuditToChannel(client, { title, description, fields = [], color = 0x2f3136 }) {
+async function sendAuditToChannel(client, { title, description, fields = [], color = null }) {
   if (!CONFIG.AUDIT_LOG_CHANNEL_ID) return;
   try {
     const channel = await client.channels.fetch(CONFIG.AUDIT_LOG_CHANNEL_ID);
     if (!channel) return;
-    const { brandEmbed } = require('../shared/embedBuilders');
+    const { brandEmbed, COLOR } = require('../shared/embedBuilders');
+    const finalColor = color || COLOR.DARK;
     const embed = brandEmbed('SHORT')
       .setTitle(title)
       .setDescription(description || null)
-      .setColor(color);
+      .setColor(finalColor);
     if (fields.length) embed.addFields(fields);
     await channel.send({ embeds: [embed] });
   } catch (e) {

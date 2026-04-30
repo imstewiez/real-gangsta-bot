@@ -19,14 +19,14 @@ async function handle(interaction) {
         content: ERRORS.NO_PERMISSION('ver logs'),
         flags: MessageFlags.Ephemeral,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const limit = interaction.options.getInteger('limite') || 20;
   const logs = await getRecentLogs(limit);
   if (!logs.length) {
-    return safeReply(interaction, { content: 'Sem logs recentes.' }, { dismissible: true });
+    return safeReply(interaction, { content: 'Sem logs recentes.' }, { messageClass: 'BANAL' });
   }
   const lines = logs.map(
     l => `\`${formatPtDate(l.created_at)}\` **${l.action}** — ${l.entity_type} — por <@${l.actor_id}>`

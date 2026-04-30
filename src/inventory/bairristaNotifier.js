@@ -13,7 +13,7 @@
 const { ChannelType } = require('discord.js');
 const CONFIG = require('../config');
 const { bold } = require('../discord/structureTemplate');
-const { brandEmbed, rankBadge } = require('../shared/embedBuilders');
+const { brandEmbed, rankBadge, COLOR } = require('../shared/embedBuilders');
 const { BAIRRISTAS, EMOJI } = require('../content');
 const { weekBounds } = require('../util');
 const { log, warn } = require('../logger');
@@ -98,7 +98,7 @@ async function notifyBairristaMovement(opts) {
     const isVenda = opts.movementType === 'venda_bairrista';
     const L = BAIRRISTAS.LOG;
     const title = isVenda ? L.VENDA_TITLE : L.ENTREGA_TITLE;
-    const color = isVenda ? 0xf1c40f : 0x2ecc71;
+    const color = isVenda ? COLOR.GOLD : COLOR.SUCCESS;
     const movValue = opts.quantity * (opts.itemPrice || 0);
 
     const fields = [
@@ -165,7 +165,7 @@ async function notifyBairristaBatch(opts) {
     const L = BAIRRISTAS.LOG;
     const baseTitle = isVenda ? L.VENDA_TITLE : L.ENTREGA_TITLE;
     const title = opts.lines.length > 1 ? `${baseTitle} · ${opts.lines.length} itens` : baseTitle;
-    const color = isVenda ? 0xf1c40f : 0x2ecc71;
+    const color = isVenda ? COLOR.GOLD : COLOR.SUCCESS;
 
     const fields = [
       { name: L.MEMBER, value: `<@${opts.memberDiscordId}>`, inline: true },
@@ -245,7 +245,7 @@ async function editBairristaBatchAsCancelled(client, channelId, messageId) {
     if (!original) return false;
 
     const updated = brandEmbed('MOVEMENT')
-      .setColor(0x95a5a6)
+      .setColor(COLOR.MUTED)
       .setTitle(`❌ Cancelada — ${original.title || 'submission'}`)
       .setDescription('_Esta submission foi desfeita pelo autor dentro da janela de 5 min._')
       .addFields(original.fields || []);

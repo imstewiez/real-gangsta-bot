@@ -19,7 +19,7 @@
 const { ChannelType, EmbedBuilder } = require('discord.js');
 const CONFIG = require('../config');
 const { CATEGORY_BY_KEY, bold } = require('../discord/structureTemplate');
-const { brandEmbed } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { log, warn } = require('../logger');
 
 let _client = null;
@@ -83,9 +83,9 @@ const MOVEMENT_LABEL = {
 };
 
 const MOVEMENT_COLOR = {
-  entradas: 0x2ecc71, // verde
-  saidas: 0xe67e22, // laranja
-  ajustes: 0x9b59b6, // roxo
+  entradas: COLOR.SUCCESS, // verde
+  saidas: COLOR.WARNING, // laranja
+  ajustes: COLOR.PURPLE, // roxo
 };
 
 function expectedChannelName(key) {
@@ -186,7 +186,7 @@ async function notifyMovement(movement) {
 
     const label = MOVEMENT_LABEL[movement.movementType] || movement.movementType;
     const kind = MOVEMENT_KIND[movement.movementType] || 'ajustes';
-    const color = MOVEMENT_COLOR[kind] || 0x95a5a6;
+    const color = MOVEMENT_COLOR[kind] || COLOR.MUTED;
 
     const fields = [
       { name: 'Item', value: `**${movement.itemName || '—'}**`, inline: true },
@@ -244,7 +244,7 @@ async function publishStockSummary() {
     }
 
     const embed = brandEmbed()
-      .setColor(0x3498db)
+      .setColor(COLOR.INFO)
       .setTitle(`📊 Resumo de Stock — ${new Date().toLocaleString('pt-PT')}`)
       .setDescription(`Total estimado: **${totalValue.toLocaleString('pt-PT')} €**`);
 

@@ -43,7 +43,7 @@ async function handle(interaction) {
   const discordId = interaction.user.id;
   const member = await memberRepo.findByDiscordId(discordId);
   if (!member) {
-    return safeReply(interaction, { content: 'Não estás registado.' }, { dismissible: true });
+    return safeReply(interaction, { content: 'Não estás registado.' }, { messageClass: 'BANAL' });
   }
 
   const r = await query(

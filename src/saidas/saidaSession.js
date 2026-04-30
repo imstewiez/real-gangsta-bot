@@ -673,13 +673,13 @@ async function handleSessionCancel(interaction) {
   const saidaId = parseInt(interaction.customId.split('::')[2]);
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} Não estás registado no sistema.` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} Não estás registado no sistema.` }, { messageClass: 'ERROR' });
   }
 
   const participants = await saidaRepo.getParticipants(saidaId);
   const existing = participants.find(p => p.discord_id === interaction.user.id);
   if (!existing) {
-    return safeReply(interaction, { content: `${EMOJI.INFO} Não estás inscrito nesta saída.` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.INFO} Não estás inscrito nesta saída.` }, { messageClass: 'ERROR' });
   }
 
   // Não permite cancelar se já liquidado/settled
@@ -687,7 +687,7 @@ async function handleSessionCancel(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.BLOQUEADO} Já foste liquidado — não podes cancelar.` },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -709,7 +709,7 @@ async function handleSessionCancel(interaction) {
     {
       content: `${EMOJI.OK} Registo cancelado na saída **#${saidaId}**.`,
     },
-    { dismissible: true }
+    { messageClass: 'BANAL' }
   );
 
   refreshSessionEmbed(interaction.client, saidaId).catch(() => {});

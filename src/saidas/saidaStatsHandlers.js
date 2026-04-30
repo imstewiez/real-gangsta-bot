@@ -35,7 +35,7 @@ async function handleStatsOpen(interaction) {
       components: [row],
       flags: MessageFlags.Ephemeral,
     },
-    { dismissible: true }
+    { messageClass: 'BANAL' }
   );
 }
 
@@ -153,12 +153,12 @@ async function handleStatsPick(interaction) {
             : STATS.EMPTY)
       );
     } else {
-      return safeReply(interaction, { content: STATS.UNKNOWN_PICK }, { dismissible: true });
+      return safeReply(interaction, { content: STATS.UNKNOWN_PICK }, { messageClass: 'ERROR' });
     }
 
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'ERROR' });
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'ERROR' });
   }
 }
 

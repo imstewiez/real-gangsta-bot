@@ -4,7 +4,7 @@ const CONFIG = require('../config');
 const { memberRepo } = require('../repositories');
 const { query } = require('../db');
 const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
-const { welcomeChannelEmbed } = require('../shared/embedBuilders');
+const { welcomeChannelEmbed, COLOR } = require('../shared/embedBuilders');
 const { queueChannelOp, queueMemberOp } = require('../discordQueue');
 const { log, warn } = require('../logger');
 const metrics = require('../lib/metrics');
@@ -211,7 +211,7 @@ async function processApproval(tagRequest, approverMember, client) {
   await sendAuditToChannel(client, {
     title: ONBOARDING.TAG_APPROVED_TITLE,
     description: `<@${discordId}> entra como **${TIER_LABEL[entryTier] || entryTier}** *(tier 1)*\nNome: **${fullName}** *(${nickname})*${result.channelCreated ? `\nCanal: <#${result.channelId}>` : ''}`,
-    color: 0x2ecc71,
+    color: COLOR.SUCCESS,
   });
 
   // ── 7b. DM ao user (ou fallback) — notificação pessoal celebratória ──
@@ -222,7 +222,7 @@ async function processApproval(tagRequest, approverMember, client) {
     const channelMention = result.channelId ? `<#${result.channelId}>` : null;
     const dmEmbed = applyLogo(
       brandEmbed('HOUSE')
-        .setColor(0x2ecc71)
+        .setColor(COLOR.SUCCESS)
         .setTitle(ONBOARDING.DM_APPROVED_TITLE(fullName))
         .setDescription(ONBOARDING.DM_APPROVED_BODY(nickname, guildName, channelMention))
     );
@@ -329,7 +329,7 @@ async function handlePromotionToOficial(member, client) {
   await sendAuditToChannel(client, {
     title: `${EMOJI.LIDER} Subida — Bairrista → Oficial`,
     description: `<@${discordId}> sobe a **Oficial**.`,
-    color: 0xf39c12,
+    color: COLOR.WARNING_SOFT,
   });
 
   // Event bus — subscribers projectam para Sheets (Membros) + ORG_LIFECYCLE.

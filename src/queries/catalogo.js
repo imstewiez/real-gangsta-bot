@@ -12,7 +12,7 @@ async function handle(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const items = await inventoryRepo.getItems(true);
   if (!items.length) {
-    return safeReply(interaction, { content: 'Catálogo vazio.' }, { dismissible: true });
+    return safeReply(interaction, { content: 'Catálogo vazio.' }, { messageClass: 'BANAL' });
   }
   const grouped = {};
   for (const item of items) {
@@ -27,7 +27,7 @@ async function handle(interaction) {
     }
   }
   const embed = brandEmbed().setTitle('Catálogo de Materiais').setDescription(lines.join('\n').slice(0, 4000));
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 module.exports = { handle };

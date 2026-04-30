@@ -13,6 +13,7 @@
  */
 
 const CONFIG = require('../config');
+const { COLOR } = require('../shared/embedBuilders');
 const { memberRepo } = require('../repositories');
 const { query } = require('../db');
 const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
@@ -91,7 +92,7 @@ async function handleMemberLeave(guildMember, client) {
         : channelAction === 'archived'
           ? '📦 Canal individual arquivado.'
           : '_(sem canal associado)_'),
-    color: 0x95a5a6,
+    color: COLOR.MUTED,
   }).catch(() => {});
 
   return { action: 'offboarded', channelAction, wasBairrista, wasMorador: wasBairrista };

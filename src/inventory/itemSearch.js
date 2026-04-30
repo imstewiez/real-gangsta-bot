@@ -174,7 +174,7 @@ async function handleSubmitModal(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.WARN} Escreve algo para pesquisar.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -228,7 +228,7 @@ async function handlePick(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.ERRO} Item não encontrado.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
   }
   const handler = _handlers.get(purpose);
@@ -236,7 +236,7 @@ async function handlePick(interaction) {
     return safeReply(
       interaction,
       { content: `${EMOJI.ERRO} Handler não registado para purpose '${purpose}'.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
   }
   return handler({ interaction, itemId, item });

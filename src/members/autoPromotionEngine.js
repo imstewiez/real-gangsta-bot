@@ -5,6 +5,7 @@ const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
 const { queueMemberOp, queueChannelOp } = require('../discordQueue');
 const { log, warn } = require('../logger');
 const eventBus = require('../core/eventBus');
+const { COLOR } = require('../shared/embedBuilders');
 
 // ── Thresholds (entrega/venda acumulada — UNIDADES de material) ─────────────
 // Young Blood (entry) → O Gunão:        25.000 itens
@@ -211,7 +212,7 @@ async function checkAndPromote(discordId, guild, client) {
     await sendAuditToChannel(client, {
       title: 'Promoção Automática!',
       description: `<@${discordId}> subiu de **${formatTierName(promotion.from)}** para **${formatTierName(promotion.to)}**!\n\nMaterial acumulado: **${decision.totalQty.toLocaleString('pt-PT')} itens** (meta: ${threshold.toLocaleString('pt-PT')} itens)`,
-      color: 0xffd700,
+      color: COLOR.PROMOTION_GOLD,
     });
 
     log(`[AUTO-PROMO] ${decision.displayName}: ${promotion.from} → ${promotion.to} (${decision.totalQty} itens)`);

@@ -20,7 +20,7 @@ const { query } = require('../db');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
 const { safeReply } = require('../shared/interactionHelpers');
-const { brandEmbed } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
 const { queueChannelOp } = require('../discordQueue');
@@ -126,12 +126,12 @@ async function _moveAllTopicsInto(guild, targetCatId) {
         continue;
       }
       await queueChannelOp(() => ch.setParent(targetCatId, { lockPermissions: false }));
-      await query(`UPDATE resident_channels SET category_id = $1 WHERE channel_id = $2`, [targetCatId, r.channel_id]);
+      await query('UPDATE resident_channels SET category_id = $1 WHERE channel_id = $2', [targetCatId, r.channel_id]);
       moved.push({ name: r.display_name, channelId: r.channel_id });
     } catch (e) {
       failed.push({ name: r.display_name, channelId: r.channel_id, error: e.message });
       if (isFullErr(e)) {
-        warn(`[NOVA-CATEGORIA] Target cheia em pass 1 — a parar.`);
+        warn('[NOVA-CATEGORIA] Target cheia em pass 1 — a parar.');
         stop = true;
       }
     }
@@ -156,7 +156,7 @@ async function _moveAllTopicsInto(guild, targetCatId) {
       } catch (e) {
         failed.push({ name: ch.name, channelId: ch.id, error: e.message });
         if (isFullErr(e)) {
-          warn(`[NOVA-CATEGORIA] Target cheia em pass 2 — a parar.`);
+          warn('[NOVA-CATEGORIA] Target cheia em pass 2 — a parar.');
           stop = true;
         }
       }
@@ -184,14 +184,14 @@ async function _handleInner(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('criar categoria de tópicos'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   if (!CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID) {
     return safeReply(
       interaction,
       { content: `${EMOJI.WARN} \`BAIRRISTA_TOPICOS_CATEGORY_ID\` não configurado.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -227,13 +227,13 @@ async function _handleInner(interaction) {
     if (failed.length > 10) lines.push(`_… e mais ${failed.length - 10}_`);
   }
 
-  const color = failed.length ? 0xe74c3c : 0x2ecc71;
+  const color = failed.length ? COLOR.DANGER : COLOR.SUCCESS;
   const embed = brandEmbed('MOVEMENT')
     .setColor(color)
     .setTitle(`${EMOJI.REFRESH} Categoria **${category.name}** — ${moved.length} movidos`)
     .setDescription(lines.join('\n').slice(0, 3900));
 
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'ERROR' });
 }
 
 module.exports = { handle };

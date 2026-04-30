@@ -27,7 +27,7 @@ const { query } = require('../db');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
 const { safeReply } = require('../shared/interactionHelpers');
-const { brandEmbed } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
 const { queueChannelOp } = require('../discordQueue');
@@ -157,7 +157,7 @@ async function _resolveOne(guild, issue) {
     const ch = await guild.channels.fetch(issue.keep.id).catch(() => null);
     if (ch) {
       const { categoryId } = await moveChannelToManagedCategory(guild, ch);
-      await query(`UPDATE resident_channels SET category_id = $1 WHERE channel_id = $2`, [categoryId, issue.keep.id]);
+      await query('UPDATE resident_channels SET category_id = $1 WHERE channel_id = $2', [categoryId, issue.keep.id]);
       actions.movedTo = categoryId;
     }
   } catch (e) {
@@ -197,14 +197,14 @@ async function _handleInner(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('dedup de tópicos'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   if (!CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID) {
     return safeReply(
       interaction,
       { content: `${EMOJI.WARN} \`BAIRRISTA_TOPICOS_CATEGORY_ID\` não configurado.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -216,10 +216,10 @@ async function _handleInner(interaction) {
 
   if (!issues.length) {
     const embed = brandEmbed('MOVEMENT')
-      .setColor(0x2ecc71)
+      .setColor(COLOR.SUCCESS)
       .setTitle(`${EMOJI.OK} Zero problemas`)
       .setDescription('Cada bairrista activo tem tracking correcto e sem duplicados.');
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   }
 
   const recoverCount = issues.filter(i => i.type === 'recover').length;
@@ -241,7 +241,7 @@ async function _handleInner(interaction) {
     if (issues.length > 20) lines.push(`_… e mais ${issues.length - 20}_`);
 
     const embed = brandEmbed('MOVEMENT')
-      .setColor(0xf39c12)
+      .setColor(COLOR.WARNING_SOFT)
       .setTitle(`${EMOJI.WARN} ${issues.length} issue(s) — ${recoverCount} recover · ${dedupCount} dedup`)
       .setDescription(
         '🩹 **RECOVER**: tracking aponta a canal apagado — re-linka ao orfão mais antigo.\n' +
@@ -249,7 +249,7 @@ async function _handleInner(interaction) {
           lines.join('\n').slice(0, 3500)
       )
       .setFooter({ text: 'preview — corre com `executar:true` para aplicar' });
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'WARN' });
   }
 
   const started = Date.now();
@@ -283,14 +283,14 @@ async function _handleInner(interaction) {
   });
   if (results.length > 25) lines.push(`_… e mais ${results.length - 25}_`);
 
-  const color = totalDeleteFails ? 0xe74c3c : 0x2ecc71;
+  const color = totalDeleteFails ? COLOR.DANGER : COLOR.SUCCESS;
   const embed = brandEmbed('MOVEMENT')
     .setColor(color)
     .setTitle(
       `${EMOJI.REFRESH} Dedup — ${totalRecovered} recovered · ${totalDeleted} apagados · ${totalMoved} movidos · ${elapsed}s`
     )
     .setDescription(lines.join('\n').slice(0, 3900));
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'ERROR' });
 }
 
 module.exports = { handle };

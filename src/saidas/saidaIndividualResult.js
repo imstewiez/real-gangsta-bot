@@ -44,7 +44,7 @@ const {
 const { query } = require('../db');
 const { saidaRepo, memberRepo } = require('../repositories');
 const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
-const { brandEmbed, errorEmbed } = require('../shared/embedBuilders');
+const { brandEmbed, errorEmbed, COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { formatPtDate } = require('../shared/formatPtDate');
 const { isChefia, isOficial } = require('../permissions/permissionEngine');
@@ -362,7 +362,7 @@ async function handleRepingPendentes(interaction) {
       {
         content: `${EMOJI.WARN} Saída não está em liquidação.`,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -375,7 +375,7 @@ async function handleRepingPendentes(interaction) {
       {
         content: `${EMOJI.OK} Todos os participantes já preencheram!`,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -387,7 +387,7 @@ async function handleRepingPendentes(interaction) {
       {
         content: `${EMOJI.WARN} Canal de sessão não configurado.`,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -398,7 +398,7 @@ async function handleRepingPendentes(interaction) {
       {
         content: `${EMOJI.WARN} Canal de sessão não acessível.`,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -413,7 +413,7 @@ async function handleRepingPendentes(interaction) {
 
   const { brandEmbed: bEmbed } = require('../shared/embedBuilders');
   const embed = bEmbed('MOVEMENT')
-    .setColor(0xe74c3c)
+    .setColor(COLOR.DANGER)
     .setTitle(`${EMOJI.WARN} Saída #${saidaId} — Faltam ${pending.length} resultado(s)!`)
     .setDescription(
       `**Preencham o vosso resultado!** Cliquem no botão **"${EMOJI.OK} Preencher o meu Resultado"** acima ↑\n\n` +
@@ -434,7 +434,7 @@ async function handleRepingPendentes(interaction) {
     {
       content: `${EMOJI.OK} Lembrete enviado para **${pending.length}** participante(s) pendente(s).`,
     },
-    { dismissible: true }
+    { messageClass: 'BANAL' }
   );
 }
 
@@ -469,7 +469,7 @@ async function handleOpenWeaponQueue(interaction) {
   const participants = await saidaRepo.getParticipants(saidaId);
   const pending = participants.filter(p => p.weapon_return_status === 'declared_returned');
 
-  const embed = brandEmbed('MOVEMENT').setColor(0xf39c12).setTitle(`🔫 Devoluções pendentes — Saída #${saidaId}`);
+  const embed = brandEmbed('MOVEMENT').setColor(COLOR.WARNING_SOFT).setTitle(`🔫 Devoluções pendentes — Saída #${saidaId}`);
 
   if (!pending.length) {
     embed.setDescription(
@@ -529,7 +529,7 @@ async function handleWeaponConfirmPick(interaction) {
   }
 
   const embed = brandEmbed('MOVEMENT')
-    .setColor(0x3498db)
+    .setColor(COLOR.INFO)
     .setTitle(`🔫 Decisão — <@${p.discord_id}>`)
     .setDescription(
       `**${p.display_name || 'Participante'}** declarou devolução em ` +
@@ -778,14 +778,14 @@ async function dmParticipantsForResults(client, saidaId, resultLabel) {
       const user = await client.users.fetch(p.discord_id).catch(() => null);
       if (!user) continue;
       const embed = brandEmbed('MOVEMENT')
-        .setColor(0xe67e22)
+        .setColor(COLOR.WARNING)
         .setTitle(`${EMOJI.SAIDA} Saída #${saidaId} — ${resultLabel}`)
         .setDescription(
           `A sessão **#${saidaId}** (spot: **${saida.spot || '—'}**) foi fechada pela chefia.\n\n` +
-            `Preenche o teu resultado individual aqui — o modal pergunta:\n` +
-            `• **Sobreviveste?**\n• **Quantas kills fizeste?**\n` +
+            'Preenche o teu resultado individual aqui — o modal pergunta:\n' +
+            '• **Sobreviveste?**\n• **Quantas kills fizeste?**\n' +
             (p.received_org_material && !p.own_weapon ? '• **Arma devolvida?** (tinhas arma da org)\n' : '') +
-            `\nQuando todos submetem, a saída fecha-se automaticamente.`
+            '\nQuando todos submetem, a saída fecha-se automaticamente.'
         );
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()

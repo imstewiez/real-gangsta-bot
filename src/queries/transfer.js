@@ -18,7 +18,7 @@ async function handle(interaction) {
       {
         content: `${EMOJI.ERRO} Item não encontrado: \`${itemName}\``,
       },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
   }
   try {
@@ -35,10 +35,10 @@ async function handle(interaction) {
       {
         content: `${EMOJI.REFRESH} Transferido **${qty}× ${item.name}**: ${de} → ${para}\nArmazém: \`${ar}\` · Grupo: \`${gr}\``,
       },
-      { dismissible: true }
+      { messageClass: 'ERROR' }
     );
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'ERROR' });
   }
 }
 

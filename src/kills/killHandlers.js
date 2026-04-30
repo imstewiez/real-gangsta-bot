@@ -11,7 +11,7 @@ async function handleRegisterKillButton(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('registar kill'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -80,7 +80,7 @@ async function handleKillModal(interaction) {
   const notes = getModalField(interaction, 'notes').trim();
 
   if (!victimRaw)
-    return safeReply(interaction, { content: `${EMOJI.WARN} Falta o nome da vítima.` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.WARN} Falta o nome da vítima.` }, { messageClass: 'BANAL' });
 
   // "Nome · facção" / "Nome - facção" / só nome
   let victimName = victimRaw,
@@ -136,9 +136,9 @@ async function handleKillModal(interaction) {
       if (fields.length) embed.addFields(fields);
     }
 
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { dismissible: true });
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'BANAL' });
   }
 }
 
@@ -146,7 +146,7 @@ async function handleLeaderboardButton(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const top = await engine.getLeaderboard(10);
   if (!top.length) {
-    return safeReply(interaction, { content: KILLS.LEADERBOARD_EMPTY }, { dismissible: true });
+    return safeReply(interaction, { content: KILLS.LEADERBOARD_EMPTY }, { messageClass: 'BANAL' });
   }
 
   const lines = top.map((r, i) => {
@@ -158,7 +158,7 @@ async function handleLeaderboardButton(interaction) {
   });
 
   const embed = brandEmbed('TOP').setTitle(KILLS.LEADERBOARD_TITLE).setDescription(lines.join('\n'));
-  return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 module.exports = { handleRegisterKillButton, handleKillModal, handleLeaderboardButton };

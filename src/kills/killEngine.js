@@ -108,7 +108,7 @@ async function publishKillToChannel(client, kill) {
   const ch = await client.channels.fetch(channelId).catch(() => null);
   if (!ch) return false;
 
-  const { brandEmbed } = require('../shared/embedBuilders');
+  const { brandEmbed, COLOR } = require('../shared/embedBuilders');
   const { EMOJI, KILLS } = require('../content');
 
   const killerMention = kill.killer?.discord_id
@@ -124,7 +124,7 @@ async function publishKillToChannel(client, kill) {
   fields.push({ name: KILLS.LABELS.QUANDO, value: String(kill.date).split('T')[0], inline: true });
 
   const embed = brandEmbed('STREET')
-    .setColor(0x2c2f33)
+    .setColor(COLOR.DARK)
     .setTitle(`${EMOJI.MORTE} Nova entrada no cemitério`)
     .setDescription(`${killerMention} abateu ${victimStr}`)
     .addFields(fields);

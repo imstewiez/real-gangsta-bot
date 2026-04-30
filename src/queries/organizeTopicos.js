@@ -29,7 +29,7 @@ const { query } = require('../db');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
 const { safeReply } = require('../shared/interactionHelpers');
-const { brandEmbed } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
 const { queueChannelOp } = require('../discordQueue');
@@ -110,7 +110,7 @@ async function _moveOrphan(guild, orphan) {
   // moveChannelToManagedCategory tenta todas as categorias conhecidas com
   // fallback por "cheia", e AUTO-CRIA nova overflow se necessário.
   const { categoryId } = await moveChannelToManagedCategory(guild, ch);
-  await query(`UPDATE resident_channels SET category_id = $1 WHERE channel_id = $2`, [categoryId, orphan.channelId]);
+  await query('UPDATE resident_channels SET category_id = $1 WHERE channel_id = $2', [categoryId, orphan.channelId]);
   return { toCategoryId: categoryId };
 }
 
@@ -145,14 +145,14 @@ async function _handleInner(interaction) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('organize de tópicos'), flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
   if (!CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID) {
     return safeReply(
       interaction,
       { content: `${EMOJI.WARN} \`BAIRRISTA_TOPICOS_CATEGORY_ID\` não configurado.`, flags: MessageFlags.Ephemeral },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
@@ -166,16 +166,16 @@ async function _handleInner(interaction) {
 
   if (!orphans.length && !logDups.length && !separators.length) {
     const embed = brandEmbed('MOVEMENT')
-      .setColor(0x2ecc71)
+      .setColor(COLOR.SUCCESS)
       .setTitle(`${EMOJI.OK} Tudo organizado`)
       .setDescription(
         `Zero órfãos · Zero log-bairristas · Zero separadores.\n\n${_formatCategoriesStatus(countsByCategory)}`
       );
-    return safeReply(interaction, { embeds: [embed] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   }
 
   if (!executar) {
-    return safeReply(interaction, { embeds: [_previewEmbed(state)] }, { dismissible: true });
+    return safeReply(interaction, { embeds: [_previewEmbed(state)] }, { messageClass: 'BANAL' });
   }
 
   // Execução real.
@@ -214,7 +214,7 @@ async function _handleInner(interaction) {
   }
 
   const elapsed = ((Date.now() - started) / 1000).toFixed(1);
-  return safeReply(interaction, { embeds: [_executeEmbed(moved, deleted, failed, elapsed)] }, { dismissible: true });
+  return safeReply(interaction, { embeds: [_executeEmbed(moved, deleted, failed, elapsed)] }, { messageClass: 'BANAL' });
 }
 
 function _formatCategoriesStatus(counts) {
@@ -250,7 +250,7 @@ function _previewEmbed(state) {
   }
 
   return brandEmbed('MOVEMENT')
-    .setColor(0xf39c12)
+    .setColor(COLOR.WARNING_SOFT)
     .setTitle(`${EMOJI.WARN} Organização de tópicos — preview`)
     .setDescription(sections.join('\n').slice(0, 3900))
     .setFooter({ text: 'preview — corre com `executar:true` para aplicar' });
@@ -269,7 +269,7 @@ function _executeEmbed(moved, deleted, failed, elapsed) {
       `${EMOJI.ERRO} **${f.memberName || f.name}** _(${f.kind || 'unknown'})_ · ${String(f.error).slice(0, 100)}`
     );
   }
-  const color = failed.length ? 0xe74c3c : 0x2ecc71;
+  const color = failed.length ? COLOR.DANGER : COLOR.SUCCESS;
   return brandEmbed('MOVEMENT')
     .setColor(color)
     .setTitle(

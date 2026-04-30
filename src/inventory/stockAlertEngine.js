@@ -98,12 +98,12 @@ async function checkAndAlert({ dryRun = false, throttleHours = 24 } = {}) {
   const byCat = {};
   for (const b of breaches) (byCat[b.category] = byCat[b.category] || []).push(b);
 
-  const { brandEmbed } = require('../shared/embedBuilders');
+  const { brandEmbed, COLOR } = require('../shared/embedBuilders');
   const { EMOJI } = require('../content');
   const embed = brandEmbed('MOVEMENT')
     .setTitle(`${EMOJI.WARN} Alerta de Stock Crítico`)
     .setDescription(`${breaches.length} item${breaches.length !== 1 ? 's' : ''} abaixo do threshold. Repor quando der.`)
-    .setColor(0xe67e22);
+    .setColor(COLOR.WARNING);
 
   for (const [cat, items] of Object.entries(byCat)) {
     const lines = items

@@ -61,7 +61,7 @@ async function dispatch(interaction) {
         content: rateLimiter.denyMessage(wait),
         flags: MessageFlags.Ephemeral,
       },
-      { dismissible: true }
+      { messageClass: 'BANAL' }
     );
   }
 
