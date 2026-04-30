@@ -52,7 +52,7 @@ async function getPendingDeliveries() {
   const res = await query(
     `SELECT dr.id, dr.status, dr.created_at, m.display_name
      FROM inventory_delivery_requests dr
-     JOIN members m ON m.id = dr.member_id
+     JOIN members m ON m.id = dr.requester_member_id
      WHERE dr.status = 'pending' ORDER BY dr.created_at`
   );
   return res.rows;

@@ -34,7 +34,7 @@ CREATE OR REPLACE VIEW v_delivery_requests_without_member AS
 SELECT dr.id, dr.status, dr.created_at
 FROM inventory_delivery_requests dr
 WHERE NOT EXISTS (
-  SELECT 1 FROM members m WHERE m.id = dr.member_id
+  SELECT 1 FROM members m WHERE m.id = dr.requester_member_id
 );
 
 CREATE OR REPLACE VIEW v_stale_sheet_sync AS

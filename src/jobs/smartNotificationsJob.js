@@ -13,7 +13,7 @@ async function run(guild) {
     const oldDeliveries = await query(
       `SELECT dr.id, m.display_name, dr.created_at
        FROM inventory_delivery_requests dr
-       JOIN members m ON m.id = dr.member_id
+       JOIN members m ON m.id = dr.requester_member_id
        WHERE dr.status = 'pending' AND dr.created_at < NOW() - INTERVAL '24 hours'`
     );
     if (oldDeliveries.rows.length > 0) {

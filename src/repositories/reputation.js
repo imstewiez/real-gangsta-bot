@@ -5,13 +5,13 @@ async function calculate(memberId) {
   const r = await query(
     `SELECT
       COALESCE((SELECT COUNT(*) FILTER (WHERE status='approved') * 100.0 / NULLIF(COUNT(*),0)
-        FROM inventory_delivery_requests WHERE member_id = $1), 0) as delivery_rate,
+        FROM inventory_delivery_requests WHERE requester_member_id = $1), 0) as delivery_rate,
       COALESCE((SELECT COUNT(*) FILTER (WHERE status='concluida') * 100.0 / NULLIF(COUNT(*),0)
         FROM operation_participants sp JOIN operations s ON s.id = sp.operation_id WHERE sp.member_id = $1), 0) as saida_rate,
       COALESCE((SELECT COUNT(*) FILTER (WHERE status='pending') * 100.0 / NULLIF(COUNT(*),0)
-        FROM inventory_delivery_requests WHERE member_id = $1), 0) as pending_ratio,
+        FROM inventory_delivery_requests WHERE requester_member_id = $1), 0) as pending_ratio,
       COALESCE((SELECT COUNT(*) FILTER (WHERE status='rejected') * 100.0 / NULLIF(COUNT(*),0)
-        FROM inventory_delivery_requests WHERE member_id = $1), 0) as rejection_rate`,
+        FROM inventory_delivery_requests WHERE requester_member_id = $1), 0) as rejection_rate`,
     [memberId]
   );
   const stats = r.rows[0];

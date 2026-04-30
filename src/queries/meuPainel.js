@@ -12,7 +12,7 @@ async function handle(interaction) {
   const member = mr.rows[0];
 
   const [pendingDeliveries, pendingOrders, openSaidas, weeklyRank, prizes] = await Promise.all([
-    query(`SELECT COUNT(*)::int AS n FROM inventory_delivery_requests WHERE member_id = $1 AND status = 'pending'`, [
+    query(`SELECT COUNT(*)::int AS n FROM inventory_delivery_requests WHERE requester_member_id = $1 AND status = 'pending'`, [
       member.id,
     ]),
     query(
