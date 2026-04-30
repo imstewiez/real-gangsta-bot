@@ -161,7 +161,11 @@ async function handleTagModal(interaction) {
   const nickname = getModalField(interaction, 'nickname').trim();
 
   if (!fullName || !nickname) {
-    return safeReply(interaction, { content: `${EMOJI.WARN} Nome e alcunha são obrigatórios.` }, { messageClass: 'BANAL' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.WARN} Nome e alcunha são obrigatórios.` },
+      { messageClass: 'BANAL' }
+    );
   }
 
   // Save to DB. Dedup por UNIQUE INDEX `uq_tag_requests_pending_per_user`.
@@ -336,7 +340,11 @@ async function handleApproveButton(interaction, requestId) {
   if (!tagReq) {
     const check = await query('SELECT status FROM tag_requests WHERE id = $1', [requestId]);
     if (check.rows.length === 0) {
-      return safeReply(interaction, { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.` }, { messageClass: 'ERROR' });
+      return safeReply(
+        interaction,
+        { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.` },
+        { messageClass: 'ERROR' }
+      );
     }
     return safeReply(
       interaction,

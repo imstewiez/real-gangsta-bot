@@ -109,7 +109,11 @@ async function _resyncAllHandler(interaction) {
   try {
     results = await syncAll();
   } catch (e) {
-    return safeReply(interaction, { content: ERRORS.WITH_DETAIL(`Sync falhou: ${e.message}`) }, { messageClass: 'ERROR' });
+    return safeReply(
+      interaction,
+      { content: ERRORS.WITH_DETAIL(`Sync falhou: ${e.message}`) },
+      { messageClass: 'ERROR' }
+    );
   }
   const elapsed = ((Date.now() - started) / 1000).toFixed(1);
 

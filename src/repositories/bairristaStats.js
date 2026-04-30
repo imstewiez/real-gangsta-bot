@@ -346,7 +346,7 @@ async function getDailySummary(date = new Date()) {
     JOIN members m ON m.id = im.member_id
     JOIN items i ON i.id = im.item_id
     WHERE im.created_at >= $1 AND im.created_at <= $2
-      AND im.movement_type IN (${ALL_CONTRIB_TYPES})
+      AND im.movement_type IN (${ALL_CONTRIB_SQL})
     GROUP BY m.discord_id, m.display_name
     ORDER BY total_qty DESC
   `,
@@ -369,7 +369,7 @@ async function getDailySummary(date = new Date()) {
     FROM inventory_movements im
     JOIN items i ON i.id = im.item_id
     WHERE im.created_at >= $1 AND im.created_at <= $2
-      AND im.movement_type IN (${ALL_CONTRIB_TYPES})
+      AND im.movement_type IN (${ALL_CONTRIB_SQL})
     GROUP BY i.name
     ORDER BY qty DESC LIMIT 1
   `,

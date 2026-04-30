@@ -28,11 +28,7 @@ async function requirePermission(interaction, predicate, opts = {}) {
   if (predicate(interaction.member)) return true;
 
   const message = opts.message ?? ERRORS.NO_PERMISSION?.() ?? '⛔ Não tens permissão para isto.';
-  await safeReply(
-    interaction,
-    { content: message },
-    { messageClass: opts.messageClass ?? 'BANAL' }
-  );
+  await safeReply(interaction, { content: message }, { messageClass: opts.messageClass ?? 'BANAL' });
   return false;
 }
 

@@ -144,7 +144,11 @@ async function _handleInner(interaction) {
   const guild = interaction.guild;
   const botId = guild.members.me?.id;
   if (!botId) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} Bot não está registado na guild.` }, { messageClass: 'ERROR' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} Bot não está registado na guild.` },
+      { messageClass: 'ERROR' }
+    );
   }
 
   const started = Date.now();

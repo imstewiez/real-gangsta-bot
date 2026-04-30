@@ -214,7 +214,11 @@ async function _handleInner(interaction) {
   }
 
   const elapsed = ((Date.now() - started) / 1000).toFixed(1);
-  return safeReply(interaction, { embeds: [_executeEmbed(moved, deleted, failed, elapsed)] }, { messageClass: 'BANAL' });
+  return safeReply(
+    interaction,
+    { embeds: [_executeEmbed(moved, deleted, failed, elapsed)] },
+    { messageClass: 'BANAL' }
+  );
 }
 
 function _formatCategoriesStatus(counts) {

@@ -104,7 +104,11 @@ async function _renderWizardMessage(saidaId) {
 
 async function handleStart(interaction, saidaId) {
   const { embed, components } = await _renderWizardMessage(saidaId);
-  return safeReply(interaction, { embeds: [embed], components, flags: MessageFlags.Ephemeral }, { messageClass: 'FLOW' });
+  return safeReply(
+    interaction,
+    { embeds: [embed], components, flags: MessageFlags.Ephemeral },
+    { messageClass: 'FLOW' }
+  );
 }
 
 // STEP 1: staff escolheu participante → ephemeral com "Vivo / Morto" botões.

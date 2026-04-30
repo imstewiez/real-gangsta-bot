@@ -62,15 +62,10 @@ const CONTRIBUTION_TYPES = Object.freeze([
 ]);
 
 // Movimentos de entrega (não vendas)
-const DELIVERY_TYPES = Object.freeze([
-  MOVEMENT_TYPE.ENTREGA_BAIRRISTA,
-  MOVEMENT_TYPE.ENTREGA_OFICIAL,
-]);
+const DELIVERY_TYPES = Object.freeze([MOVEMENT_TYPE.ENTREGA_BAIRRISTA, MOVEMENT_TYPE.ENTREGA_OFICIAL]);
 
 // Movimentos de venda
-const SALE_TYPES = Object.freeze([
-  MOVEMENT_TYPE.VENDA_BAIRRISTA,
-]);
+const SALE_TYPES = Object.freeze([MOVEMENT_TYPE.VENDA_BAIRRISTA]);
 
 // Helper: converte array de tipos para string SQL IN (...)
 function sqlIn(types) {

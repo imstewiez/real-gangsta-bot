@@ -8,7 +8,15 @@
  *   entregar    → marca prémio como entregue
  */
 
-const { MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const {
+  MessageFlags,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+} = require('discord.js');
 const { safeReply, safeShowModal, getModalField } = require('../shared/interactionHelpers');
 const { requirePermission } = require('../shared/requirePermission');
 const { isChefia } = require('../permissions/permissionEngine');
@@ -35,16 +43,18 @@ async function handleListar(interaction) {
 
   const lines = recent.map(p => {
     const statusEmoji =
-      p.prize_status === 'entregue' ? '✅' :
-      p.prize_status === 'definido' ? '📝' :
-      p.prize_status === 'por_definir' ? '⏳' : '❌';
+      p.prize_status === 'entregue'
+        ? '✅'
+        : p.prize_status === 'definido'
+          ? '📝'
+          : p.prize_status === 'por_definir'
+            ? '⏳'
+            : '❌';
     const prizeText = p.prize_description ? ` — ${p.prize_description}` : '';
     return `${statusEmoji} **${p.week_start}** · <@${p.winner_discord_id}> · ${p.hybrid_score} pts${prizeText}`;
   });
 
-  const embed = brandEmbed('MOVEMENT')
-    .setTitle(`${EMOJI.TOPO} Prémios Semanais`)
-    .setDescription(lines.join('\n'));
+  const embed = brandEmbed('MOVEMENT').setTitle(`${EMOJI.TOPO} Prémios Semanais`).setDescription(lines.join('\n'));
 
   return safeReply(interaction, { embeds: [embed] }, { messageClass: 'COCKPIT' });
 }
@@ -53,9 +63,7 @@ async function handleDefinir(interaction) {
   if (!(await requirePermission(interaction, isChefia))) return;
 
   const weekStart = interaction.options.getString('semana', true);
-  const modal = new ModalBuilder()
-    .setCustomId(`prize::define::${weekStart}`)
-    .setTitle('Definir Prémio Semanal');
+  const modal = new ModalBuilder().setCustomId(`prize::define::${weekStart}`).setTitle('Definir Prémio Semanal');
 
   modal.addComponents(
     new ActionRowBuilder().addComponents(

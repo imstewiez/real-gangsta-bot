@@ -105,7 +105,11 @@ async function handleSummary(interaction) {
       { content: ERRORS.SESSION_NOT_FOUND(), flags: MessageFlags.Ephemeral },
       { messageClass: 'BANAL' }
     );
-  return safeReply(interaction, { content: text.slice(0, 1900), flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
+  return safeReply(
+    interaction,
+    { content: text.slice(0, 1900), flags: MessageFlags.Ephemeral },
+    { messageClass: 'BANAL' }
+  );
 }
 
 async function handleRefresh(interaction) {

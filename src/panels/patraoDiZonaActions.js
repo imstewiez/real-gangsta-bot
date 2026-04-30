@@ -13,6 +13,7 @@ const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed, rankingEmbed } = require('../shared/embedBuilders');
 const { ERRORS } = require('../content');
 const { isPatraoDiZona } = require('../permissions/permissionEngine');
+const { DELIVERY_TYPES, SALE_TYPES } = require('../shared/movementTypes');
 const { query } = require('../db');
 const { weekBounds } = require('../util');
 const { formatPtDateOnly } = require('../shared/formatPtDate');
@@ -52,7 +53,7 @@ async function verEntregasOuVendas(interaction) {
   }
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const id = interaction.customId;
-  const types = id.includes('entregas') ? ['entrega_bairrista'] : ['venda_bairrista'];
+  const types = id.includes('entregas') ? DELIVERY_TYPES : SALE_TYPES;
   const label = id.includes('entregas') ? 'Entregas' : 'Vendas';
   const res = await query(
     `

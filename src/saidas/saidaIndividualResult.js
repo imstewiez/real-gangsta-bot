@@ -469,7 +469,9 @@ async function handleOpenWeaponQueue(interaction) {
   const participants = await saidaRepo.getParticipants(saidaId);
   const pending = participants.filter(p => p.weapon_return_status === 'declared_returned');
 
-  const embed = brandEmbed('MOVEMENT').setColor(COLOR.WARNING_SOFT).setTitle(`🔫 Devoluções pendentes — Saída #${saidaId}`);
+  const embed = brandEmbed('MOVEMENT')
+    .setColor(COLOR.WARNING_SOFT)
+    .setTitle(`🔫 Devoluções pendentes — Saída #${saidaId}`);
 
   if (!pending.length) {
     embed.setDescription(

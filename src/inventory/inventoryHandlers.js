@@ -306,7 +306,11 @@ async function handleGerirActionSelect(interaction) {
     const items = await inventoryRepo.getItems(false);
     const inactive = items.filter(i => !i.active);
     if (!inactive.length) {
-      return safeUpdate(interaction, { content: 'Sem materiais desativados.', components: [] }, { messageClass: 'BANAL' });
+      return safeUpdate(
+        interaction,
+        { content: 'Sem materiais desativados.', components: [] },
+        { messageClass: 'BANAL' }
+      );
     }
 
     const options = inactive.slice(0, 25).map(i => ({
@@ -338,7 +342,8 @@ async function handleAddItemModal(interaction) {
   const price = parseFloat(priceStr.replace(',', '.'));
 
   if (!name) return safeReply(interaction, { content: 'Nome obrigatório.' }, { messageClass: 'BANAL' });
-  if (isNaN(price) || price < 0) return safeReply(interaction, { content: 'Preço inválido.' }, { messageClass: 'BANAL' });
+  if (isNaN(price) || price < 0)
+    return safeReply(interaction, { content: 'Preço inválido.' }, { messageClass: 'BANAL' });
 
   const existing = await inventoryRepo.getItemByName(name);
   if (existing) return safeReply(interaction, { content: ERRORS.ALREADY_EXISTS(name) }, { messageClass: 'BANAL' });
@@ -399,7 +404,8 @@ async function handleEditPriceModal(interaction) {
 
   const priceStr = getModalField(interaction, 'price');
   const price = parseFloat(priceStr.replace(',', '.'));
-  if (isNaN(price) || price < 0) return safeReply(interaction, { content: 'Preço inválido.' }, { messageClass: 'BANAL' });
+  if (isNaN(price) || price < 0)
+    return safeReply(interaction, { content: 'Preço inválido.' }, { messageClass: 'BANAL' });
 
   const oldItem = await inventoryRepo.getItemById(pending.itemId);
   await inventoryRepo.updateItem(pending.itemId, { estimated_value: price });
@@ -736,7 +742,11 @@ async function handleCartQtyModal(interaction) {
   const bairristaCart = require('./bairristaCart');
   const cart = bairristaCart.getCart(interaction.user.id);
   if (!cart || cart.tipo !== tipo) {
-    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Carrinho expirado. Recomeça.` }, { messageClass: 'BANAL' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.PENDENTE} Carrinho expirado. Recomeça.` },
+      { messageClass: 'BANAL' }
+    );
   }
 
   const qty = parseInt(getModalField(interaction, 'quantity'));

@@ -65,10 +65,7 @@ async function findByStatus(status, { limit = 50 } = {}) {
 async function updateStatus(id, { status, actorDiscordId, notes = null }) {
   return queryWithTransaction(async client => {
     // Lock row
-    const current = await client.query(
-      'SELECT status FROM orders WHERE id = $1 FOR UPDATE',
-      [id]
-    );
+    const current = await client.query('SELECT status FROM orders WHERE id = $1 FOR UPDATE', [id]);
     if (!current.rows[0]) throw new Error('Encomenda não encontrada.');
     const oldStatus = current.rows[0].status;
 
@@ -104,10 +101,7 @@ async function addNote(id, note, actorDiscordId) {
 }
 
 async function getStatusHistory(orderId) {
-  const res = await query(
-    `SELECT * FROM order_status_history WHERE order_id = $1 ORDER BY created_at DESC`,
-    [orderId]
-  );
+  const res = await query(`SELECT * FROM order_status_history WHERE order_id = $1 ORDER BY created_at DESC`, [orderId]);
   return res.rows;
 }
 

@@ -164,7 +164,11 @@ async function handleProgressButton(interaction) {
   const { getPromotionProgress } = require('./autoPromotionEngine');
   const progress = await getPromotionProgress(interaction.user.id);
   if (!progress)
-    return safeReply(interaction, { content: `${EMOJI.INFO} Ainda sem dados de progresso.` }, { messageClass: 'BANAL' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.INFO} Ainda sem dados de progresso.` },
+      { messageClass: 'BANAL' }
+    );
 
   const embed = brandEmbed('MOVEMENT')
     .setTitle(`${EMOJI.TOPO} Progresso — ${member.display_name || member.full_name}`)
