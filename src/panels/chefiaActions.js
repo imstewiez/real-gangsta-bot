@@ -18,13 +18,14 @@
 const { MessageFlags } = require('discord.js');
 const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed, rankingEmbed } = require('../shared/embedBuilders');
-const { ERRORS } = require('../content');
+const { ERRORS, EMOJI } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
 const { requirePermission } = require('../shared/requirePermission');
 const { stickyRepo } = require('../repositories');
 const { getRecentLogs } = require('../audit/auditEngine');
 const { weekBounds } = require('../util');
 const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
+const CONFIG = require('../config');
 
 async function listarStickys(interaction) {
   if (!(await requirePermission(interaction, isChefia))) return;
@@ -69,8 +70,67 @@ async function verLogs(interaction) {
   return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
+async function republicarDisponibilidade(interaction) {
+  if (!(await requirePermission(interaction, isChefia))) return;
+
+  const { createSession, closeSession } = require('../availability/availabilityEngine');
+  const { availabilityRepo } = require('../repositories');
+
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const channelId = CONFIG.AVAILABILITY_CHANNEL_ID;
+  if (!channelId) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} Canal de disponibilidade não configurado.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
+  }
+
+  // Fechar sessão aberta actual (se existir)
+  const date = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Lisbon' }).format(new Date());
+  const existing = await availabilityRepo.getOpenSession(channelId, date);
+  let closedId = null;
+  if (existing) {
+    await closeSession({ client: interaction.client, sessionId: existing.id, actorId: interaction.user.id });
+    closedId = existing.id;
+  }
+
+  // Criar nova sessão
+  const { session, alreadyOpen } = await createSession({
+    client: interaction.client,
+    channelId,
+    createdBy: interaction.user.id,
+  });
+
+  if (alreadyOpen) {
+    return safeReply(
+      interaction,
+      {
+        content: `${EMOJI.WARN} Já existe uma sessão aberta para hoje (#${session.id}).`,
+        flags: MessageFlags.Ephemeral,
+      },
+      { messageClass: 'BANAL' }
+    );
+  }
+
+  const lines = [
+    `${EMOJI.OK} **Nova sessão de disponibilidade publicada.**`,
+    `• Sessão: **#${session.id}**`,
+    `• Canal: <#${channelId}>`,
+  ];
+  if (closedId) lines.push(`• Sessão anterior (#${closedId}) fechada.`);
+
+  return safeReply(
+    interaction,
+    { content: lines.join('\n'), flags: MessageFlags.Ephemeral },
+    { messageClass: 'BANAL' }
+  );
+}
+
 module.exports = {
   listarStickys,
   verTops,
   verLogs,
+  republicarDisponibilidade,
 };
