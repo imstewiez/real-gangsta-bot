@@ -19,6 +19,8 @@ const EMOJI = {
   BAIRRO: '🌃',
   RUA: '🛣️',
   ZONA: '📍',
+  CALENDARIO: '📅',
+  ALVO: '🎯',
 
   // ── Saídas / movimento ─────────────────────────────────────────────────
   SAIDA: '🏴',
@@ -36,6 +38,11 @@ const EMOJI = {
   DOWN: '🤕',
   MVP: '🏅',
   COMBATE: '⚔️',
+  ARMA: '🔫',
+  TRABALHADOR: '🔧',
+  LIQUIDACAO: '🔶',
+  CHEIO: '🔴',
+  ABERTO: '🟢',
   SPOT: '🗺️',
 
   // ── Material / inventário ──────────────────────────────────────────────
@@ -81,6 +88,7 @@ const EMOJI = {
   PENDENTE: '⏳',
   BLOQUEADO: '🔒',
   DUPLICADO: '⏱️',
+  TEMPO: '⏱️',
 
   // ── Acções ─────────────────────────────────────────────────────────────
   NOVO: '➕',
@@ -92,6 +100,8 @@ const EMOJI = {
   AJUSTAR: '🔧',
   SUBMETER: '📤',
   GRAFICO: '📊',
+  INSCREVER: '✍️',
+  INICIAR: '🚀',
 
   // ── Stickys / pins ─────────────────────────────────────────────────────
   STICKY: '📌',

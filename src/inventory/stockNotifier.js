@@ -19,7 +19,7 @@
 const { ChannelType, EmbedBuilder } = require('discord.js');
 const CONFIG = require('../config');
 const { CATEGORY_BY_KEY, bold } = require('../discord/structureTemplate');
-const { brandEmbed, COLOR } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR, setFooterText } = require('../shared/embedBuilders');
 const { log, warn } = require('../logger');
 
 let _client = null;
@@ -209,7 +209,7 @@ async function notifyMovement(movement) {
 
     const embed = brandEmbed().setColor(color).setTitle(label).addFields(fields);
     if (movement.actorId) {
-      embed.setFooter({ text: `Por ${movement.actorId}` });
+      setFooterText(embed, `Por ${movement.actorId}`);
     }
 
     await channel.send({ embeds: [embed], allowedMentions: { parse: [] } });

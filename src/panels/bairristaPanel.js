@@ -38,7 +38,7 @@ async function buildBairristaPanel() {
       : top3
           .map(
             (r, i) =>
-              `${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'} **${r.display_name}** — ${Number(r.total_qty).toLocaleString('pt-PT')} qty`
+              `${i === 0 ? EMOJI.MEDAL_1 : i === 1 ? EMOJI.MEDAL_2 : EMOJI.MEDAL_3} **${r.display_name}** — ${Number(r.total_qty).toLocaleString('pt-PT')} qty`
           )
           .join('\n');
 

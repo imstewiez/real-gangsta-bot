@@ -89,7 +89,15 @@ async function buildSessionEmbed(saidaId) {
   const isInLiquidacao = saida.status === 'em_liquidacao';
   const isOpen = !isClosed && !isConcluded && !isInLiquidacao;
 
-  const statusEmoji = isClosed ? '⛔' : isConcluded ? '🏁' : isInLiquidacao ? '🔶' : slotsLeft === 0 ? '🔴' : '🟢';
+  const statusEmoji = isClosed
+    ? EMOJI.ERRO
+    : isConcluded
+      ? EMOJI.FECHAR
+      : isInLiquidacao
+        ? EMOJI.LIQUIDACAO
+        : slotsLeft === 0
+          ? EMOJI.CHEIO
+          : EMOJI.ABERTO;
   const statusLabel = isClosed
     ? 'Cancelada'
     : isConcluded
@@ -105,19 +113,23 @@ async function buildSessionEmbed(saidaId) {
     '',
     `> ${statusEmoji} **${statusLabel}**`,
     '',
-    `📍 **${saida.spot || '—'}** · 📅 ${dateLine} · 👑 ${leader}`,
+    `${EMOJI.ZONA} **${saida.spot || '—'}** · ${EMOJI.CALENDARIO} ${dateLine} · ${EMOJI.LIDER} ${leader}`,
   ];
 
   if (isPreStart) {
     // Phase 1: inscritos entram directos como caracts; Iniciar depois demite
     // para trab se > maxChar via auto-pick.
-    const overflow = characterized.length > maxChar ? ` · ⚠ ${characterized.length - maxChar} serão demitidos` : '';
-    lines.push('', `📝 **Inscritos** ${characterized.length}${maxChar ? `/${maxChar}` : ''}${overflow}`);
+    const overflow =
+      characterized.length > maxChar ? ` · ${EMOJI.WARN} ${characterized.length - maxChar} serão demitidos` : '';
+    lines.push('', `${EMOJI.AUDIT} **Inscritos** ${characterized.length}${maxChar ? `/${maxChar}` : ''}${overflow}`);
   } else {
-    lines.push('', `🔫 **Caracterizados** ${characterized.length}/${maxChar} · 🔧 **Trabalhadores** ${workers.length}`);
+    lines.push(
+      '',
+      `${EMOJI.ARMA} **Caracterizados** ${characterized.length}/${maxChar} · ${EMOJI.TRABALHADOR} **Trabalhadores** ${workers.length}`
+    );
   }
 
-  if (saida.notes) lines.push(`> 📝 _${saida.notes}_`);
+  if (saida.notes) lines.push(`> ${EMOJI.AUDIT} _${saida.notes}_`);
 
   // Lista de inscritos com status da arma + nome específico se escolheu
   const weaponIds = characterized.map(p => p.weapon_item_id).filter(Boolean);
@@ -139,16 +151,16 @@ async function buildSessionEmbed(saidaId) {
     if (!showResultStatus) return '';
     if (!p.individual_result_submitted) return ' ⏳';
     const kills = p.kills || 0;
-    const killsTag = kills > 0 ? ` · ${kills}k${kills >= KILLS_SANITY_THRESHOLD ? '⚠' : ''}` : '';
+    const killsTag = kills > 0 ? ` · ${kills}k${kills >= KILLS_SANITY_THRESHOLD ? EMOJI.WARN : ''}` : '';
     const diedTag = p.died ? ` · ${EMOJI.MORTE}` : '';
-    return ` ✅${killsTag}${diedTag}`;
+    return ` ${EMOJI.OK}${killsTag}${diedTag}`;
   };
 
   if (characterized.length) {
     lines.push('', '**── Caracterizados ──**');
     for (const p of characterized) {
       const weaponName = p.weapon_item_id ? weaponMap.get(p.weapon_item_id) : null;
-      const srcIcon = p.own_weapon ? '🔫' : p.received_org_material ? '📦' : '⏳';
+      const srcIcon = p.own_weapon ? EMOJI.ARMA : p.received_org_material ? EMOJI.MATERIAL : EMOJI.PENDENTE;
       const srcLabel = p.own_weapon ? 'própria' : p.received_org_material ? 'org' : 'sem arma';
       const weaponFull = weaponName ? `${srcIcon} ${weaponName} (${srcLabel})` : `${srcIcon} ${srcLabel}`;
       lines.push(`• <@${p.discord_id}> · ${weaponFull}${formatResultMark(p)}`);
@@ -181,7 +193,7 @@ async function buildSessionEmbed(saidaId) {
       ] || saida.result;
 
     lines.push('');
-    lines.push(`🔶 **Em liquidação** — resultado: **${resultLabel}**`);
+    lines.push(`${EMOJI.LIQUIDACAO} **Em liquidação** — resultado: **${resultLabel}**`);
     if (saida.enemy_name) lines.push(`${EMOJI.COMBATE} Contra: **${saida.enemy_name}**`);
     lines.push(`${EMOJI.PENDENTE} **${submittedCount}/${totalCount}** resultado(s) preenchido(s)`);
 
@@ -254,7 +266,7 @@ async function buildSessionEmbed(saidaId) {
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`saida::session_caracterizado::${saidaId}`)
-          .setLabel(`✍️ Inscrever-me (${pending.length})`)
+          .setLabel(`${EMOJI.INSCREVER} Inscrever-me (${pending.length})`)
           .setStyle(ButtonStyle.Success),
         new ButtonBuilder()
           .setCustomId(`saida::session_cancel::${saidaId}`)
@@ -269,7 +281,7 @@ async function buildSessionEmbed(saidaId) {
       new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId(`saida::session_iniciar::${saidaId}`)
-          .setLabel(`🚀 Iniciar Sessão (${characterized.length})`)
+          .setLabel(`${EMOJI.INICIAR} Iniciar Sessão (${characterized.length})`)
           .setStyle(ButtonStyle.Primary)
           .setDisabled(characterized.length === 0),
         new ButtonBuilder()
@@ -289,7 +301,7 @@ async function buildSessionEmbed(saidaId) {
           .setCustomId(`saida::session_pedir_juntar::${saidaId}`)
           .setLabel('Pedir para Juntar')
           .setStyle(ButtonStyle.Secondary)
-          .setEmoji('🙋'),
+          .setEmoji(EMOJI.PRESENCA),
         new ButtonBuilder()
           .setCustomId(`saida::session_cancel::${saidaId}`)
           .setLabel('Sair')
@@ -304,7 +316,7 @@ async function buildSessionEmbed(saidaId) {
         .setCustomId(`saida::session_swap_open::${saidaId}`)
         .setLabel('Trocar Caract ↔ Trab')
         .setStyle(ButtonStyle.Secondary)
-        .setEmoji('🔄')
+        .setEmoji(EMOJI.REFRESH)
         .setDisabled(characterized.length + workers.length === 0)
     );
     if (requested.length > 0) {
@@ -313,7 +325,7 @@ async function buildSessionEmbed(saidaId) {
           .setCustomId(`saida::session_approve_open::${saidaId}`)
           .setLabel(`Aprovar Pedidos (${requested.length})`)
           .setStyle(ButtonStyle.Primary)
-          .setEmoji('✅')
+          .setEmoji(EMOJI.OK)
       );
     }
     components.push(adminMgmtRow);
@@ -355,7 +367,7 @@ async function buildSessionEmbed(saidaId) {
         .setCustomId(`saida::weapon_queue::${saidaId}`)
         .setLabel('Confirmar Armas')
         .setStyle(ButtonStyle.Primary)
-        .setEmoji('🔫')
+        .setEmoji(EMOJI.ARMA)
     );
     components.push(finalizeRow);
 
@@ -381,7 +393,7 @@ async function buildSessionEmbed(saidaId) {
             .setCustomId(`saida::weapon_queue::${saidaId}`)
             .setLabel(`Confirmar Armas (${pendingWeapon} pendentes)`)
             .setStyle(ButtonStyle.Primary)
-            .setEmoji('🔫')
+            .setEmoji(EMOJI.ARMA)
         )
       );
     }
@@ -479,7 +491,7 @@ async function handleSessionCaracterizado(interaction) {
       .setCustomId(`saida::source::${saidaId}::own`)
       .setLabel('Arma Própria')
       .setStyle(ButtonStyle.Primary)
-      .setEmoji('🔫'),
+      .setEmoji(EMOJI.ARMA),
     new ButtonBuilder()
       .setCustomId(`saida::source::${saidaId}::org`)
       .setLabel('Pedir à Org')
@@ -490,7 +502,7 @@ async function handleSessionCaracterizado(interaction) {
   return safeReply(
     interaction,
     {
-      content: `**Saída #${saidaId}** — como te armas?\n\n🔫 **Arma Própria** — já tens arma contigo\n${EMOJI.FORNECER} **Pedir à Org** — a firma cede a arma do stock`,
+      content: `**Saída #${saidaId}** — como te armas?\n\n${EMOJI.ARMA} **Arma Própria** — já tens arma contigo\n${EMOJI.FORNECER} **Pedir à Org** — a firma cede a arma do stock`,
       components: [row],
       flags: MessageFlags.Ephemeral,
     },
@@ -539,7 +551,10 @@ async function handleCaracterizadoSource(interaction) {
     if (source === 'org') {
       label = w._balance > 0 ? `${w.name} · stock ${w._balance}` : `${w.name} · sem stock`;
     }
-    return new StringSelectMenuOptionBuilder().setLabel(label.slice(0, 100)).setValue(String(w.id)).setEmoji('🔫');
+    return new StringSelectMenuOptionBuilder()
+      .setLabel(label.slice(0, 100))
+      .setValue(String(w.id))
+      .setEmoji(EMOJI.ARMA);
   });
 
   const select = new StringSelectMenuBuilder()
@@ -868,7 +883,7 @@ async function handleSessionIniciar(interaction) {
   const summary =
     trabalhadores.length > 0
       ? `${EMOJI.OK} **Sessão #${saidaId} iniciada.** ${inscritos.length} inscritos, ${maxChar} slots para caract:\n` +
-        `🔫 **${caracterizados.length}** caracterizados (chefia + patrão têm lugar reservado) · 🔧 **${trabalhadores.length}** trabalhadores (auto-pick por KDA).\n` +
+        `${EMOJI.ARMA} **${caracterizados.length}** caracterizados (chefia + patrão têm lugar reservado) · ${EMOJI.TRABALHADOR} **${trabalhadores.length}** trabalhadores (auto-pick por KDA).\n` +
         `_Trabalhadores receberam DM. Podes trocar manualmente no painel._`
       : `${EMOJI.OK} **Sessão #${saidaId} iniciada.** ${caracterizados.length} caracterizados (todos cabem).`;
 
@@ -1002,8 +1017,8 @@ async function handleSessionSwapOpen(interaction) {
   }
 
   const options = swappable.slice(0, 25).map(p => {
-    const from = p.participant_type === 'caracterizado' ? '🔫 Caract' : '🔧 Trab';
-    const to = p.participant_type === 'caracterizado' ? '🔧 Trab' : '🔫 Caract';
+    const from = p.participant_type === 'caracterizado' ? `${EMOJI.ARMA} Caract` : `${EMOJI.TRABALHADOR} Trab`;
+    const to = p.participant_type === 'caracterizado' ? `${EMOJI.TRABALHADOR} Trab` : `${EMOJI.ARMA} Caract`;
     return new StringSelectMenuOptionBuilder()
       .setLabel(`${p.display_name || 'Participante'} · ${from} → ${to}`.slice(0, 100))
       .setValue(String(p.member_id));
@@ -1143,12 +1158,12 @@ async function handleSessionApprovePick(interaction) {
       .setCustomId(`saida::session_approve_decide::${saidaId}::${memberId}::approve`)
       .setLabel('Aprovar (→ trabalhador)')
       .setStyle(ButtonStyle.Success)
-      .setEmoji('✅'),
+      .setEmoji(EMOJI.OK),
     new ButtonBuilder()
       .setCustomId(`saida::session_approve_decide::${saidaId}::${memberId}::reject`)
       .setLabel('Rejeitar (remover)')
       .setStyle(ButtonStyle.Danger)
-      .setEmoji('⛔')
+      .setEmoji(EMOJI.ERRO)
   );
   return safeUpdate(
     interaction,

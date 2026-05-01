@@ -94,8 +94,8 @@ async function buildResumoEmbed(saida, participants) {
     const totalDeaths = participants.filter(p => p.died).length;
     const vivos = participants.length - totalDeaths;
     fields.push({
-      name: `${EMOJI.COMBATE || '⚔️'} Combate`,
-      value: `${EMOJI.KILL} **${totalKills}** kills · ${EMOJI.MORTE} **${totalDeaths}** mortes · ✅ **${vivos}** vivos`,
+      name: `${EMOJI.COMBATE} Combate`,
+      value: `${EMOJI.KILL} **${totalKills}** kills · ${EMOJI.MORTE} **${totalDeaths}** mortes · ${EMOJI.OK} **${vivos}** vivos`,
       inline: false,
     });
   }
@@ -113,16 +113,23 @@ async function buildResumoEmbed(saida, participants) {
   });
   if (sortedParts.length) {
     const lines = sortedParts.map((p, i) => {
-      const tag = p.participant_type === 'trabalhador' ? '🔧' : '🔫';
+      const tag = p.participant_type === 'trabalhador' ? EMOJI.TRABALHADOR : EMOJI.ARMA;
       const kills = Number(p.kills || 0);
       const killsStr = kills > 0 ? ` · **${kills}** kill${kills === 1 ? '' : 's'}` : '';
-      const status = p.died ? ' · 💀' : ' · ✅';
+      const status = p.died ? ` · ${EMOJI.PERDIDO}` : ` · ${EMOJI.OK}`;
       const mvpBadge = p.mvp_flag ? ` ${EMOJI.MVP}` : '';
-      const medal = i === 0 && kills > 0 ? '🥇 ' : i === 1 && kills > 0 ? '🥈 ' : i === 2 && kills > 0 ? '🥉 ' : '• ';
+      const medal =
+        i === 0 && kills > 0
+          ? `${EMOJI.MEDAL_1} `
+          : i === 1 && kills > 0
+            ? `${EMOJI.MEDAL_2} `
+            : i === 2 && kills > 0
+              ? `${EMOJI.MEDAL_3} `
+              : '• ';
       return `${medal}${tag} <@${p.discord_id}>${mvpBadge}${killsStr}${status}`;
     });
     fields.push({
-      name: `👥 Participantes (${participants.length}: ${characterized.length} caract. · ${workers.length} trab.)`,
+      name: `${EMOJI.PARTICIPANTE} Participantes (${participants.length}: ${characterized.length} caract. · ${workers.length} trab.)`,
       value: lines.join('\n').slice(0, 1020),
       inline: false,
     });
@@ -143,7 +150,7 @@ async function buildResumoEmbed(saida, participants) {
     materialLines.push(`${EMOJI.CRAFT} Craftado: **${saida.craft_amount}** un.`);
   }
   if (materialLines.length) {
-    fields.push({ name: '📦 Material', value: materialLines.join('\n'), inline: false });
+    fields.push({ name: `${EMOJI.MATERIAL} Material`, value: materialLines.join('\n'), inline: false });
   }
 
   // Lucro líquido — destaque visual único. Bruto e Consumido REMOVIDOS do
@@ -170,7 +177,7 @@ async function buildResumoEmbed(saida, participants) {
     if (ss && ss.total_saidas > 0) {
       const winRate = Math.round((ss.wins / ss.total_saidas) * 100);
       impactLines.push(
-        `📍 Spot **${saida.spot}**: ${ss.total_saidas} saídas · ${ss.wins}W/${ss.losses}L/${ss.draws}D · **${winRate}%** WR · net ${formatMoney(ss.total_net_value)}`
+        `${EMOJI.ZONA} Spot **${saida.spot}**: ${ss.total_saidas} saídas · ${ss.wins}W/${ss.losses}L/${ss.draws}D · **${winRate}%** WR · net ${formatMoney(ss.total_net_value)}`
       );
     }
   }
@@ -182,12 +189,16 @@ async function buildResumoEmbed(saida, participants) {
     );
   }
   if (impactLines.length) {
-    fields.push({ name: '📊 Impacto histórico', value: impactLines.join('\n').slice(0, 1020), inline: false });
+    fields.push({
+      name: `${EMOJI.GRAFICO} Impacto histórico`,
+      value: impactLines.join('\n').slice(0, 1020),
+      inline: false,
+    });
   }
 
   // Notas — opcional, último.
   if (saida.result_notes) {
-    fields.push({ name: '📝 Notas', value: saida.result_notes.slice(0, 500), inline: false });
+    fields.push({ name: `${EMOJI.AUDIT} Notas`, value: saida.result_notes.slice(0, 500), inline: false });
   }
 
   return brandEmbed('MOVEMENT')
@@ -211,7 +222,7 @@ function buildDestaquesEmbed(saida, participants) {
   const totalKills = participants.reduce((a, p) => a + (p.kills || 0), 0);
 
   const fmt = p => {
-    const typeTag = p.participant_type === 'trabalhador' ? ' 🛠️' : '';
+    const typeTag = p.participant_type === 'trabalhador' ? ` ${EMOJI.CRAFT}` : '';
     return `<@${p.discord_id}>${typeTag}`;
   };
   const L = SAIDAS.LABELS;
@@ -240,7 +251,7 @@ function buildDestaquesEmbed(saida, participants) {
       value: killers
         .slice(0, 10)
         .map((k, i) => {
-          const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '•';
+          const medal = i === 0 ? EMOJI.MEDAL_1 : i === 1 ? EMOJI.MEDAL_2 : i === 2 ? EMOJI.MEDAL_3 : '•';
           return `${medal} ${fmt(k)} — **${k.kills}** kill${k.kills === 1 ? '' : 's'}`;
         })
         .join('\n'),

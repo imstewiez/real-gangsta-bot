@@ -65,7 +65,7 @@ async function buildPatraoDiZonaPanel() {
         },
         {
           name: `${EMOJI.ERRO} Incidentes`,
-          value: inc > 0 ? `**${inc}** abertos ⚠️` : '**0** abertos ✅',
+          value: inc > 0 ? `**${inc}** abertos ${EMOJI.WARN}` : `**0** abertos ${EMOJI.OK}`,
           inline: true,
         },
         { name: `${EMOJI.INFO} Cores`, value: '🟢 Registar · 🔵 Ver · 🟠 Gerir', inline: true }
