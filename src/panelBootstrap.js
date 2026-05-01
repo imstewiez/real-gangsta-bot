@@ -127,21 +127,26 @@ async function bootstrapPanel(client, panelDef) {
     // Nunca editamos — sempre criamos mensagens novas. Assim cada deploy
     // mostra os painéis actualizados sem depender de state ou schema version.
     let deletedCount = 0;
+    let failedCount = 0;
     let lastId = null;
-    for (let i = 0; i < 10; i++) {
+    while (true) {
       const opts = lastId ? { limit: 100, before: lastId } : { limit: 100 };
       const batch = await channel.messages.fetch(opts).catch(() => null);
       if (!batch || batch.size === 0) break;
       const botMsgs = [...batch.values()].filter(m => m.author.id === client.user.id);
       for (const msg of botMsgs) {
-        await msg.delete().catch(() => {});
-        deletedCount++;
+        try {
+          await msg.delete();
+          deletedCount++;
+        } catch {
+          failedCount++;
+        }
       }
       lastId = batch.last()?.id;
       if (batch.size < 100) break;
     }
-    if (deletedCount > 0) {
-      log(`[PANELS] ${deletedCount} mensagem(ns) antiga(s) do bot apagada(s) em #${channel.name}.`);
+    if (deletedCount > 0 || failedCount > 0) {
+      log(`[PANELS] ${deletedCount} mensagem(ns) apagada(s), ${failedCount} falha(s) em #${channel.name}.`);
     }
 
     const newMsg = await channel.send(payload);
@@ -197,7 +202,7 @@ async function upsertPanelSticky(panelDef, channelId, actorId = 'system:panel-bo
 //   - botões são renomeados/reorganizados
 // O estado anterior (panelMessages) é limpo e todos os painéis voltam
 // a seguir o caminho "sem mensagem existente" → delete old + create new.
-const PANELS_SCHEMA_VERSION = 13;
+const PANELS_SCHEMA_VERSION = 14;
 
 async function _maybeForceRebuild() {
   const stored = await getStateKey('panelsSchemaVersion', 0);

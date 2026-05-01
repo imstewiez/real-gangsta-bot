@@ -30,6 +30,7 @@ async function upsert({ channelId, sourceKey, mode, payload, thresholdMsgs, thre
         threshold_msgs = EXCLUDED.threshold_msgs,
         threshold_minutes = EXCLUDED.threshold_minutes,
         active = TRUE,
+        last_message_id = NULL,
         updated_at = NOW()
       RETURNING *`,
     [channelId, sourceKey, mode, JSON.stringify(payload || {}), thresholdMsgs || 0, thresholdMinutes || 0, createdBy]

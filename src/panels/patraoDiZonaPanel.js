@@ -2,6 +2,7 @@
 const { brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { button, buttonRow } = require('../shared/ui/buttons');
+const { selectMenu, selectRow } = require('../shared/ui/selects');
 const { query } = require('../db');
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -9,6 +10,10 @@ const { query } = require('../db');
 // ══════════════════════════════════════════════════════════════════════════════
 // Herança: TUDO da Chefia + funções de Patrão
 // Cores globais: 🟢 Criar/Registar | 🔵 Ver/Consultar | 🟠 Pessoal/Gerir
+//
+// NOTA: Discord limita a 5 action rows por mensagem. O painel original tinha 10
+// rows e falhava sempre no bootstrap. Agora comprimido para 5 rows via select
+// menu na categoria GERIR.
 
 async function buildPatraoDiZonaPanel() {
   const [activeMembers, weekDeliveries, weekSales, weekKills, topZone, openOps, openIncidents, activeGoals] =
@@ -85,7 +90,7 @@ async function buildPatraoDiZonaPanel() {
     button({ customId: 'bairrista::encomendar', label: 'Encomendar', style: 'Success', emoji: EMOJI.ENCOMENDA })
   );
 
-  // Row 2 — 🟢 OFICIAL (operações de saída)
+  // Row 2 — 🟢 SAÍDAS + OFICIAL (operações)
   const row2 = buttonRow(
     button({ customId: 'chefia::criar_saida', label: 'Abrir Saída', style: 'Success', emoji: EMOJI.NOVO }),
     button({ customId: 'chefia::fechar_saida', label: 'Fechar Saída', style: 'Success', emoji: EMOJI.FECHAR }),
@@ -98,29 +103,16 @@ async function buildPatraoDiZonaPanel() {
     })
   );
 
-  // Row 3 — 🟢 CHEFIA (gestão)
+  // Row 3 — 🔵 VER (consultas base)
   const row3 = buttonRow(
-    button({ customId: 'chefia::criar_meta', label: 'Criar Meta', style: 'Success', emoji: EMOJI.OK }),
-    button({ customId: 'chefia::criar_incidente', label: 'Criar Incidente', style: 'Success', emoji: EMOJI.ERRO }),
-    button({
-      customId: 'chefia::transferir_stock',
-      label: 'Transferir Stock',
-      style: 'Success',
-      emoji: EMOJI.MOVIMENTO,
-    }),
-    button({ customId: 'chefia::ausencias', label: 'Ausências', style: 'Success', emoji: EMOJI.PENDENTE })
-  );
-
-  // Row 4 — 🔵 VER (consultas base)
-  const row4 = buttonRow(
     button({ customId: 'chefia::ver_stock', label: 'Ver Stock', style: 'Primary', emoji: EMOJI.STOCK }),
     button({ customId: 'chefia::ver_saidas', label: 'Ver Saídas', style: 'Primary', emoji: EMOJI.SAIDA }),
     button({ customId: 'chefia::stats_open', label: 'Estatísticas', style: 'Primary', emoji: EMOJI.GRAFICO }),
     button({ customId: 'bairrista::ranking', label: 'Ver Ranking', style: 'Primary', emoji: EMOJI.MEDAL_1 })
   );
 
-  // Row 5 — 🔵 PATRÃO (visão zona)
-  const row5 = buttonRow(
+  // Row 4 — 🔵 PATRÃO (visão zona)
+  const row4 = buttonRow(
     button({
       customId: 'patrao::listar_bairristas',
       label: 'Listar Bairristas',
@@ -133,62 +125,37 @@ async function buildPatraoDiZonaPanel() {
     button({ customId: 'patrao::reputacao', label: 'Reputação', style: 'Primary', emoji: EMOJI.LIDER })
   );
 
-  // Row 6 — 🔵 CHEFIA (dashboards)
-  const row6 = buttonRow(
-    button({
-      customId: 'chefia::painel_pendencias',
-      label: 'Painel Pendências',
-      style: 'Primary',
-      emoji: EMOJI.PENDENTE,
-    }),
-    button({ customId: 'chefia::relatorio', label: 'Relatório', style: 'Primary', emoji: EMOJI.AUDIT }),
-    button({ customId: 'chefia::dashboard', label: 'Dashboard', style: 'Primary', emoji: EMOJI.GRAFICO }),
-    button({ customId: 'chefia::inactivos', label: 'Inactivos', style: 'Primary', emoji: EMOJI.WARN })
-  );
-
-  // Row 7 — 🔵 VER + LOGS
-  const row7 = buttonRow(
-    button({ customId: 'bairrista::catalogo', label: 'Ver Catálogo', style: 'Primary', emoji: EMOJI.MATERIAL }),
-    button({ customId: 'bairrista::metas', label: 'Ver Metas', style: 'Primary', emoji: EMOJI.OK }),
-    button({ customId: 'chefia::ver_logs', label: 'Logs', style: 'Primary', emoji: EMOJI.AUDIT }),
-    button({ customId: 'chefia::listar_stickys', label: 'Stickys', style: 'Primary', emoji: EMOJI.STICKY })
-  );
-
-  // Row 8 — 🟠 GERIR (chefia)
-  const row8 = buttonRow(
-    button({ customId: 'chefia::ajustar_stock', label: 'Ajustar Stock', style: 'Secondary', emoji: EMOJI.AJUSTAR }),
-    button({ customId: 'chefia::gerir_materiais', label: 'Gerir Materiais', style: 'Secondary', emoji: EMOJI.EDITAR }),
-    button({ customId: 'chefia::promover', label: 'Promover', style: 'Secondary', emoji: EMOJI.PROGRESSO }),
-    button({ customId: 'chefia::lifecycle', label: 'Lifecycle', style: 'Secondary', emoji: EMOJI.PARTICIPANTE })
-  );
-
-  // Row 9 — 🟠 PATRÃO (admin zona)
-  const row9 = buttonRow(
-    button({ customId: 'patrao::tarefas', label: 'Tarefas', style: 'Secondary', emoji: EMOJI.ENCOMENDA }),
-    button({ customId: 'patrao::manutencao', label: 'Manutenção', style: 'Secondary', emoji: EMOJI.AJUSTAR }),
-    button({
-      customId: 'patrao::simular_permissoes',
-      label: 'Simular Permissões',
-      style: 'Secondary',
-      emoji: EMOJI.VER,
-    }),
-    button({ customId: 'patrao::audit_trail', label: 'Audit Trail', style: 'Secondary', emoji: EMOJI.AUDIT })
-  );
-
-  // Row 10 — 🟠 GERIR (mais admin)
-  const row10 = buttonRow(
-    button({ customId: 'chefia::exportar', label: 'Exportar', style: 'Secondary', emoji: EMOJI.DINHEIRO }),
-    button({ customId: 'chefia::sync_sheets', label: 'Sync Sheets', style: 'Secondary', emoji: EMOJI.REFRESH }),
-    button({ customId: 'chefia::qualidade_dados', label: 'Qualidade Dados', style: 'Secondary', emoji: EMOJI.INFO }),
-    button({
-      customId: 'chefia::republicar_paineis',
-      label: 'Republicar Painéis',
-      style: 'Secondary',
-      emoji: '🔄',
+  // Row 5 — 🟠 GERIR (compressão via select menu)
+  const row5 = selectRow(
+    selectMenu({
+      customId: 'panel::patrao_gerir',
+      placeholder: '🟠 Gerir — escolhe uma acção',
+      options: [
+        { label: 'Criar Meta', value: 'chefia::criar_meta', emoji: EMOJI.OK, description: 'Definir nova meta semanal' },
+        { label: 'Criar Incidente', value: 'chefia::criar_incidente', emoji: EMOJI.ERRO, description: 'Registar novo incidente' },
+        { label: 'Transferir Stock', value: 'chefia::transferir_stock', emoji: EMOJI.MOVIMENTO, description: 'Mover stock entre locais' },
+        { label: 'Ausências', value: 'chefia::ausencias', emoji: EMOJI.PENDENTE, description: 'Gerir ausências da firma' },
+        { label: 'Painel Pendências', value: 'chefia::painel_pendencias', emoji: EMOJI.PENDENTE, description: 'Ver todas as pendências' },
+        { label: 'Relatório', value: 'chefia::relatorio', emoji: EMOJI.AUDIT, description: 'Gerar relatório semanal' },
+        { label: 'Dashboard', value: 'chefia::dashboard', emoji: EMOJI.GRAFICO, description: 'Ver dashboard da firma' },
+        { label: 'Inactivos', value: 'chefia::inactivos', emoji: EMOJI.WARN, description: 'Listar bairristas inactivos' },
+        { label: 'Ajustar Stock', value: 'chefia::ajustar_stock', emoji: EMOJI.AJUSTAR, description: 'Corrigir quantidades de stock' },
+        { label: 'Gerir Materiais', value: 'chefia::gerir_materiais', emoji: EMOJI.EDITAR, description: 'Adicionar/remover itens do catálogo' },
+        { label: 'Promover', value: 'chefia::promover', emoji: EMOJI.PROGRESSO, description: 'Promover bairristas' },
+        { label: 'Lifecycle', value: 'chefia::lifecycle', emoji: EMOJI.PARTICIPANTE, description: 'Gerir ciclo de vida de membros' },
+        { label: 'Exportar', value: 'chefia::exportar', emoji: EMOJI.DINHEIRO, description: 'Exportar dados para ficheiro' },
+        { label: 'Sync Sheets', value: 'chefia::sync_sheets', emoji: EMOJI.REFRESH, description: 'Sincronizar com Google Sheets' },
+        { label: 'Qualidade Dados', value: 'chefia::qualidade_dados', emoji: EMOJI.INFO, description: 'Ver relatório de qualidade' },
+        { label: 'Republicar Painéis', value: 'chefia::republicar_paineis', emoji: '🔄', description: 'Republicar todos os painéis' },
+        { label: 'Tarefas', value: 'patrao::tarefas', emoji: EMOJI.ENCOMENDA, description: 'Gerir tarefas da zona' },
+        { label: 'Manutenção', value: 'patrao::manutencao', emoji: EMOJI.AJUSTAR, description: 'Modo de manutenção' },
+        { label: 'Simular Permissões', value: 'patrao::simular_permissoes', emoji: EMOJI.VER, description: 'Testar permissões de roles' },
+        { label: 'Audit Trail', value: 'patrao::audit_trail', emoji: EMOJI.AUDIT, description: 'Ver audit trail completo' },
+      ],
     })
   );
 
-  return { embeds: [embed], components: [row1, row2, row3, row4, row5, row6, row7, row8, row9, row10] };
+  return { embeds: [embed], components: [row1, row2, row3, row4, row5] };
 }
 
 module.exports = { buildPatraoDiZonaPanel };
