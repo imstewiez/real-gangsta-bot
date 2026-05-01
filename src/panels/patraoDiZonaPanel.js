@@ -179,7 +179,13 @@ async function buildPatraoDiZonaPanel() {
   const row10 = buttonRow(
     button({ customId: 'chefia::exportar', label: 'Exportar', style: 'Secondary', emoji: EMOJI.DINHEIRO }),
     button({ customId: 'chefia::sync_sheets', label: 'Sync Sheets', style: 'Secondary', emoji: EMOJI.REFRESH }),
-    button({ customId: 'chefia::qualidade_dados', label: 'Qualidade Dados', style: 'Secondary', emoji: EMOJI.INFO })
+    button({ customId: 'chefia::qualidade_dados', label: 'Qualidade Dados', style: 'Secondary', emoji: EMOJI.INFO }),
+    button({
+      customId: 'chefia::republicar_disponibilidade',
+      label: 'Republicar Disp.',
+      style: 'Secondary',
+      emoji: EMOJI.PRESENCA,
+    })
   );
 
   return { embeds: [embed], components: [row1, row2, row3, row4, row5, row6, row7, row8, row9, row10] };
