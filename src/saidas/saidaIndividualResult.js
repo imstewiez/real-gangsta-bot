@@ -325,9 +325,9 @@ async function handleSubmitResultModal(interaction) {
     `• ${EMOJI.KILL} **${kills}** kill(s)`,
   ];
   if (weaponReturnStatus === 'declared_returned') {
-    lines.push('• 🔫 Declaraste que devolveste a arma — **pendente de confirmação staff**');
+    lines.push(`• ${EMOJI.ARMA} Declaraste que devolveste a arma — **pendente de confirmação staff**`);
   } else if (weaponReturnStatus === 'confirmed_not_returned') {
-    lines.push(`• 🔫 Arma não devolvida (${died ? 'morreste com ela' : 'declaraste'})`);
+    lines.push(`• ${EMOJI.ARMA} Arma não devolvida (${died ? 'morreste com ela' : 'declaraste'})`);
   }
 
   // Auto-check: se todos preencheram, notificar staff
@@ -406,9 +406,10 @@ async function handleRepingPendentes(interaction) {
   const mentions = discordIds.map(id => `<@${id}>`).join(' ');
 
   const pendingLines = pending.map(p => {
-    const typeTag = p.participant_type === 'trabalhador' ? '🔧 trabalhador' : '🔫 caracterizado';
-    const weaponTag = !p.own_weapon && p.received_org_material ? ' · 📦 arma da org' : '';
-    return `• ⏳ <@${p.discord_id}> — ${typeTag}${weaponTag}`;
+    const typeTag =
+      p.participant_type === 'trabalhador' ? `${EMOJI.TRABALHADOR} trabalhador` : `${EMOJI.ARMA} caracterizado`;
+    const weaponTag = !p.own_weapon && p.received_org_material ? ` · ${EMOJI.MATERIAL} arma da org` : '';
+    return `• ${EMOJI.PENDENTE} <@${p.discord_id}> — ${typeTag}${weaponTag}`;
   });
 
   const { brandEmbed: bEmbed } = require('../shared/embedBuilders');
@@ -471,7 +472,7 @@ async function handleOpenWeaponQueue(interaction) {
 
   const embed = brandEmbed('MOVEMENT')
     .setColor(COLOR.WARNING_SOFT)
-    .setTitle(`🔫 Devoluções pendentes — Saída #${saidaId}`);
+    .setTitle(`${EMOJI.ARMA} Devoluções pendentes — Saída #${saidaId}`);
 
   if (!pending.length) {
     embed.setDescription(
@@ -532,7 +533,7 @@ async function handleWeaponConfirmPick(interaction) {
 
   const embed = brandEmbed('MOVEMENT')
     .setColor(COLOR.INFO)
-    .setTitle(`🔫 Decisão — <@${p.discord_id}>`)
+    .setTitle(`${EMOJI.ARMA} Decisão — <@${p.discord_id}>`)
     .setDescription(
       `**${p.display_name || 'Participante'}** declarou devolução em ` +
         `\`${formatPtDate(p.individual_result_at)}\`.\n` +
@@ -544,17 +545,17 @@ async function handleWeaponConfirmPick(interaction) {
       .setCustomId(`saida::weapon_decide::${saidaId}::${memberId}::confirmed`)
       .setLabel('Confirmar devolução')
       .setStyle(ButtonStyle.Success)
-      .setEmoji('✅'),
+      .setEmoji(EMOJI.OK),
     new ButtonBuilder()
       .setCustomId(`saida::weapon_decide::${saidaId}::${memberId}::rejected`)
       .setLabel('Não devolveu')
       .setStyle(ButtonStyle.Danger)
-      .setEmoji('⛔'),
+      .setEmoji(EMOJI.ERRO),
     new ButtonBuilder()
       .setCustomId(`saida::weapon_decide::${saidaId}::${memberId}::inconclusive`)
       .setLabel('Inconclusivo')
       .setStyle(ButtonStyle.Secondary)
-      .setEmoji('⏱️')
+      .setEmoji(EMOJI.TEMPO)
   );
 
   return safeReply(interaction, { embeds: [embed], components: [row] }, { messageClass: 'COCKPIT' });
@@ -687,9 +688,9 @@ async function handleWeaponDecide(interaction) {
   _checkAllResultsSubmitted(interaction.client, saidaId).catch(() => {});
 
   const decisionLabel = {
-    confirmed: '✅ **Confirmada** — arma devolvida',
-    rejected: '⛔ **Rejeitada** — não devolveu',
-    inconclusive: '⏱️ **Inconclusivo** — precisa rever',
+    confirmed: `${EMOJI.OK} **Confirmada** — arma devolvida`,
+    rejected: `${EMOJI.ERRO} **Rejeitada** — não devolveu`,
+    inconclusive: `${EMOJI.TEMPO} **Inconclusivo** — precisa rever`,
   }[decision];
 
   log(`[WEAPON-RETURN] saida #${saidaId} member=${memberId} decision=${decision} by=${interaction.user.id}`);
@@ -794,7 +795,7 @@ async function dmParticipantsForResults(client, saidaId, resultLabel) {
           .setCustomId(`saida::submit_result::${saidaId}`)
           .setLabel('Preencher o meu Resultado')
           .setStyle(ButtonStyle.Primary)
-          .setEmoji('✅')
+          .setEmoji(EMOJI.OK)
       );
       await user.send({ embeds: [embed], components: [row] }).catch(() => {});
     } catch (e) {

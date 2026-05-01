@@ -24,6 +24,10 @@ const EMOJI = {
 
   // ── Saídas / movimento ─────────────────────────────────────────────────
   SAIDA: '🏴',
+  DEFESA: '🛡️',
+  PREPARACAO: '🟡',
+  EM_CURSO: '🟠',
+  NEUTRO: '⬜',
   MOVIMENTO: '🚶',
   LIDER: '👑',
   PARTICIPANTE: '👥',
@@ -99,6 +103,8 @@ const EMOJI = {
   REFRESH: '🔄',
   AJUSTAR: '🔧',
   SUBMETER: '📤',
+  ENVIAR: '📤',
+  CONSUMIDO: '🔥',
   GRAFICO: '📊',
   INSCREVER: '✍️',
   INICIAR: '🚀',

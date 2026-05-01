@@ -44,7 +44,14 @@ function _setContext(userId, ctx) {
 const SAIDA_TYPES = ['craft', 'dominio', 'ataque', 'defesa', 'recolha', 'outra'];
 // VALID_RESULTS, RESULT_NAME, RESULT_EMOJI, RESULT_DESCRIPTION vêm do content.
 
-const SAIDA_TYPE_EMOJI = { craft: '🛠️', dominio: '🏴', ataque: '⚔️', defesa: '🛡️', recolha: '📦', outra: '📋' };
+const SAIDA_TYPE_EMOJI = {
+  craft: EMOJI.CRAFT,
+  dominio: EMOJI.SAIDA,
+  ataque: EMOJI.COMBATE,
+  defesa: EMOJI.DEFESA,
+  recolha: EMOJI.MATERIAL,
+  outra: EMOJI.ENCOMENDA,
+};
 const SAIDA_TYPE_LABEL = {
   craft: 'Craft',
   dominio: 'Domínio',
@@ -60,7 +67,7 @@ const SAIDA_TYPE_LABEL = {
  */
 function buildSaidaSelectOptions(saidas) {
   return saidas.slice(0, 25).map(s => {
-    const emoji = SAIDA_TYPE_EMOJI[s.operation_type] || '📋';
+    const emoji = SAIDA_TYPE_EMOJI[s.operation_type] || EMOJI.ENCOMENDA;
     const typeLabel = SAIDA_TYPE_LABEL[s.operation_type] || s.operation_type;
     const date = formatPtDateOnly(s.date);
     const spot = s.spot ? ` · ${s.spot}` : '';
@@ -102,13 +109,13 @@ async function handleCreateSaidaButton(interaction) {
       label: 'Farm',
       description: 'Recolha de material no spot',
       value: 'recolha',
-      emoji: '📦',
+      emoji: EMOJI.MATERIAL,
     },
     {
       label: 'Craft / Venda',
       description: 'Produção ou venda no spot',
       value: 'craft',
-      emoji: '🛠️',
+      emoji: EMOJI.CRAFT,
     },
   ];
   const row = new ActionRowBuilder().addComponents(
@@ -678,10 +685,10 @@ async function handleViewSaidasButton(interaction) {
   if (!list.length)
     return safeReply(interaction, { content: `${EMOJI.INFO} Sem saídas registadas.` }, { messageClass: 'BANAL' });
   const statusEmoji = {
-    aberta: '🟢',
-    em_preparacao: '🟡',
-    em_curso: '🟠',
-    em_liquidacao: '🔶',
+    aberta: EMOJI.ABERTO,
+    em_preparacao: EMOJI.PREPARACAO,
+    em_curso: EMOJI.EM_CURSO,
+    em_liquidacao: EMOJI.LIQUIDACAO,
     concluida: EMOJI.OK,
     cancelada: EMOJI.ERRO,
   };
@@ -693,7 +700,7 @@ async function handleViewSaidasButton(interaction) {
     abortada: EMOJI.WARN,
   };
   const lines = list.map(s => {
-    const em = statusEmoji[s.status] || '⬜';
+    const em = statusEmoji[s.status] || EMOJI.NEUTRO;
     const re = ['concluida', 'em_liquidacao'].includes(s.status) && s.result ? ` ${resultEmoji[s.result] || ''}` : '';
     // Data no formato dd/mm/yyyy. Se houver hora marcada, inclui.
     let when = formatPtDateOnly(s.date);
@@ -831,10 +838,15 @@ async function handleMaterialOpSelect(interaction) {
   const saidaId = parseInt(interaction.values[0]);
   _setContext(interaction.user.id, { saidaId, action: 'material_op' });
   const directionOptions = [
-    { label: 'Fornecido', description: 'Material que saiu da firma → participante', value: 'fornecido', emoji: '📤' },
-    { label: 'Devolvido', description: 'Material que voltou à casa', value: 'devolvido', emoji: '↩️' },
-    { label: 'Perdido', description: 'Material perdido na rua', value: 'perdido', emoji: '💀' },
-    { label: 'Consumido', description: 'Material gasto durante a saída', value: 'consumido', emoji: '🔥' },
+    {
+      label: 'Fornecido',
+      description: 'Material que saiu da firma → participante',
+      value: 'fornecido',
+      emoji: EMOJI.ENVIAR,
+    },
+    { label: 'Devolvido', description: 'Material que voltou à casa', value: 'devolvido', emoji: EMOJI.DEVOLVER },
+    { label: 'Perdido', description: 'Material perdido na rua', value: 'perdido', emoji: EMOJI.PERDIDO },
+    { label: 'Consumido', description: 'Material gasto durante a saída', value: 'consumido', emoji: EMOJI.CONSUMIDO },
   ];
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
@@ -1012,13 +1024,14 @@ async function handleIssueSaidaSelect(interaction) {
     });
   }
   const options = participants.slice(0, 25).map(p => {
-    const typeTag = p.participant_type === 'trabalhador' ? '🛠️ Trabalhador' : '🏴 Caracterizado';
+    const typeTag =
+      p.participant_type === 'trabalhador' ? `${EMOJI.CRAFT} Trabalhador` : `${EMOJI.SAIDA} Caracterizado`;
     const weapon = p.own_weapon ? ' · arma própria' : '';
     return {
       label: `${p.display_name || p.discord_id}`.slice(0, 100),
       description: `${typeTag}${weapon}`.slice(0, 100),
       value: p.discord_id,
-      emoji: p.participant_type === 'trabalhador' ? '🛠️' : '🏴',
+      emoji: p.participant_type === 'trabalhador' ? EMOJI.CRAFT : EMOJI.SAIDA,
     };
   });
   const row = new ActionRowBuilder().addComponents(

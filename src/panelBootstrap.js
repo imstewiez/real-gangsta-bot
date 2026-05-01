@@ -3,6 +3,7 @@ const { ChannelType } = require('discord.js');
 const CONFIG = require('./config');
 const { getStateKey, setStateKey } = require('./state');
 const { log, warn } = require('./logger');
+const { EMOJI } = require('./content');
 const { buildBairristaPanel } = require('./panels/bairristaPanel');
 const { buildOficialPanel } = require('./panels/oficialPanel');
 const { buildChefiaPanel } = require('./panels/chefiaPanel');
@@ -15,7 +16,7 @@ const { CATEGORY_BY_KEY, bold } = require('./discord/structureTemplate');
 // dedicado pelo nome canónico na categoria esperada. A função acepta uma lista
 // de nomes (para incluir o antigo `painel-entrada` enquanto não é renomeado
 // para `boas-vindas`).
-function autoName(slug, emoji = '📋') {
+function autoName(slug, emoji = EMOJI.ENCOMENDA) {
   return `${emoji}・${bold(slug)}`;
 }
 
@@ -23,7 +24,7 @@ const PANELS = [
   {
     key: 'panel_entrada',
     channelKey: 'PANEL_ENTRADA_CHANNEL_ID',
-    autoName: autoName('boas-vindas', '👋'),
+    autoName: autoName('boas-vindas', EMOJI.BEMVINDO),
     autoAltNames: [autoName('painel-entrada')],
     autoCategoryKey: 'ENTRADA',
     build: buildEntradaPanel,

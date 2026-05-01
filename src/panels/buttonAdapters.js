@@ -7,6 +7,7 @@
 const { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, MessageFlags } = require('discord.js');
 const { safeReply, safeShowModal } = require('../shared/interactionHelpers');
 const { requirePermission } = require('../shared/requirePermission');
+const { EMOJI } = require('../content');
 
 // ── Consultas simples (reutilizam handlers de /queries) ─────────────────────
 
@@ -353,7 +354,11 @@ async function handleVenderModalSubmit(interaction) {
   const nota = interaction.fields.getTextInputValue('nota') || null;
 
   if (!item || !qty || qty < 1) {
-    return safeReply(interaction, { content: '❌ Item e quantidade são obrigatórios.' }, { messageClass: 'BANAL' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.INDISPONIVEL} Item e quantidade são obrigatórios.` },
+      { messageClass: 'BANAL' }
+    );
   }
 
   // Reutiliza a lógica de /venda via inventoryEngine
@@ -367,11 +372,15 @@ async function handleVenderModalSubmit(interaction) {
   });
 
   if (result.success) {
-    return safeReply(interaction, { content: `✅ Venda registada: **${qty}x ${item}**` }, { messageClass: 'BANAL' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.OK} Venda registada: **${qty}x ${item}**` },
+      { messageClass: 'BANAL' }
+    );
   }
   return safeReply(
     interaction,
-    { content: `❌ ${result.error || 'Erro ao registar venda.'}` },
+    { content: `${EMOJI.INDISPONIVEL} ${result.error || 'Erro ao registar venda.'}` },
     { messageClass: 'BANAL' }
   );
 }
@@ -393,7 +402,7 @@ async function handleAusenciaModalSubmit(interaction) {
 
   return safeReply(
     interaction,
-    { content: `✅ Ausência submetida: **${inicio}** a **${fim}**. Aguarda aprovação.` },
+    { content: `${EMOJI.OK} Ausência submetida: **${inicio}** a **${fim}**. Aguarda aprovação.` },
     { messageClass: 'BANAL' }
   );
 }
@@ -417,7 +426,7 @@ async function handleCriarMetaModalSubmit(interaction) {
 
   return safeReply(
     interaction,
-    { content: `✅ Meta \`#${goal.id}\` criada: **${descricao}**` },
+    { content: `${EMOJI.OK} Meta \`#${goal.id}\` criada: **${descricao}**` },
     { messageClass: 'BANAL' }
   );
 }
@@ -439,7 +448,7 @@ async function handleCriarIncidenteModalSubmit(interaction) {
 
   return safeReply(
     interaction,
-    { content: `✅ Incidente \`#${inc.id}\` criado: **${titulo}**` },
+    { content: `${EMOJI.OK} Incidente \`#${inc.id}\` criado: **${titulo}**` },
     { messageClass: 'BANAL' }
   );
 }
@@ -463,13 +472,13 @@ async function handleTransferirModalSubmit(interaction) {
   if (result.success) {
     return safeReply(
       interaction,
-      { content: `✅ Transferido **${qty}x ${item}** de **${origem}** → **${destino}**.` },
+      { content: `${EMOJI.OK} Transferido **${qty}x ${item}** de **${origem}** → **${destino}**.` },
       { messageClass: 'BANAL' }
     );
   }
   return safeReply(
     interaction,
-    { content: `❌ ${result.error || 'Erro na transferência.'}` },
+    { content: `${EMOJI.INDISPONIVEL} ${result.error || 'Erro na transferência.'}` },
     { messageClass: 'BANAL' }
   );
 }
