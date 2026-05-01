@@ -61,10 +61,6 @@ const {
 } = require('../../../availability/availabilityHandlers');
 const {
   handleRandom: radioHandleRandom,
-  handleSet: radioHandleSet,
-  handleSwap: radioHandleSwap,
-  handleHistory: radioHandleHistory,
-  handleRefresh: radioHandleRefresh,
 } = require('../../../radio/radioHandlers');
 const chefiaActions = require('../../../panels/chefiaActions');
 const patraoDiZonaActions = require('../../../panels/patraoDiZonaActions');
@@ -136,10 +132,6 @@ const BUTTON_ROUTES = [
 
   // Radio
   prefix('radio::random::', radioHandleRandom),
-  prefix('radio::set::', radioHandleSet),
-  exact('radio::swap', radioHandleSwap),
-  exact('radio::history', radioHandleHistory),
-  exact('radio::refresh', radioHandleRefresh),
 
   // Onboarding
   exact('onboard::pedir_tag', handlePedirTagButton),

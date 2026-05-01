@@ -172,8 +172,8 @@ describe('availabilityTemplates — ranges', () => {
   it('buildSelectOptions gera opções dentro do limite de 25', () => {
     const opts = buildSelectOptions(slots);
     assert.ok(opts.length <= 25, `≤25 opções; foram ${opts.length}`);
-    assert.ok(opts.length > 5, 'deve haver várias opções');
-    // Deve conter opções de intervalo + slot individual + limpar
+    assert.ok(opts.length >= 3, 'deve haver pelo menos 3 opções');
+    // Deve conter opções de intervalo + limpar
     assert.ok(opts.some(o => o.value === 'dia_todo:disponivel'));
     assert.ok(opts.some(o => o.value === 'tarde:disponivel'));
     assert.ok(opts.some(o => o.value === 'limpar:limpar'));

@@ -22,7 +22,7 @@ const {
 const saidaWizard = require('../../../saidas/saidaSettlementWizard');
 const saidaIndividual = require('../../../saidas/saidaIndividualResult');
 const { handleKillModal } = require('../../../kills/killHandlers');
-const { handleSetModal: radioHandleSetModal } = require('../../../radio/radioHandlers');
+
 const { handleDefineModal: prizeHandleDefineModal } = require('../../../queries/premios');
 const buttonAdapters = require('../../../panels/buttonAdapters');
 
@@ -58,8 +58,7 @@ const MODAL_ROUTES = [
   // Kill
   exact('kill::modal', handleKillModal),
 
-  // Radio
-  prefix('radio::modal_set::', radioHandleSetModal),
+  // Radio (sem modais — apenas botão de random)
 
   // Prémios semanais
   prefix('prize::define::', prizeHandleDefineModal),
