@@ -22,6 +22,7 @@ const {
 const saidaWizard = require('../../../saidas/saidaSettlementWizard');
 const saidaIndividual = require('../../../saidas/saidaIndividualResult');
 const { handleKillModal } = require('../../../kills/killHandlers');
+const { handleLeaderboardCustomModal } = require('../../../leaderboard/leaderboardHandlers');
 
 const { handleDefineModal: prizeHandleDefineModal } = require('../../../queries/premios');
 const buttonAdapters = require('../../../panels/buttonAdapters');
@@ -59,6 +60,9 @@ const MODAL_ROUTES = [
   exact('kill::modal', handleKillModal),
 
   // Radio (sem modais — apenas botão de random)
+
+  // Leaderboard — datas custom
+  exact('lb::custom::modal', handleLeaderboardCustomModal),
 
   // Prémios semanais
   prefix('prize::define::', prizeHandleDefineModal),

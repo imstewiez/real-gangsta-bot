@@ -67,7 +67,12 @@ const patraoDiZonaActions = require('../../../panels/patraoDiZonaActions');
 const buttonAdapters = require('../../../panels/buttonAdapters');
 
 // ── Leaderboard live panel ─────────────────────────────────────────────────
-const { handleLeaderboardDetails, handleLeaderboardRefresh } = require('../../../leaderboard/leaderboardHandlers');
+const {
+  handleLeaderboardDetails,
+  handleLeaderboardNav,
+  handleLeaderboardCustomOpen,
+  handleLeaderboardRefresh,
+} = require('../../../leaderboard/leaderboardHandlers');
 
 // ── Searchable item picker (itemsearch::open::<purpose>) ───────────────────
 const itemSearch = require('../../../inventory/itemSearch');
@@ -95,8 +100,10 @@ const BUTTON_ROUTES = [
   prefix('avail::summary::', availHandleSummary),
   prefix('avail::refresh::', availHandleRefresh),
 
-  // Leaderboard live panel — details ephemeral + refresh manual
+  // Leaderboard live panel — details ephemeral + refresh manual + nav
   prefix('lb::details::', handleLeaderboardDetails),
+  prefix('lb::nav::', handleLeaderboardNav),
+  exact('lb::custom::open', handleLeaderboardCustomOpen),
   exact('lb::refresh', handleLeaderboardRefresh),
 
   // Searchable item picker — botão abre modal com text input

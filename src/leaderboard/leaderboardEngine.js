@@ -265,8 +265,8 @@ async function getMaterialSoldLeaders(start, end, limit = 5) {
  * Para um período, devolve { category: { top, leader } } para todas as
  * 5 categorias. Queries correm em paralelo.
  */
-async function getPeriodLeaders(period) {
-  const { start, end, label } = periodBounds(period);
+async function getPeriodLeaders(period, refDate = new Date()) {
+  const { start, end, label } = periodBounds(period, refDate);
   const [activity, mvp, kda, delivered, sold] = await Promise.all([
     getActivityLeaders(start, end, 5),
     getMvpLeaders(start, end, 5),
@@ -295,11 +295,30 @@ async function getAllPeriodsLeaders() {
   return { daily, weekly, monthly };
 }
 
+/**
+ * Calcula refDate para navegação: avança/recua N unidades do período.
+ * @param {'daily'|'weekly'|'monthly'} period
+ * @param {number} offset  (-1 = anterior, +1 = seguinte)
+ * @param {Date} baseDate
+ */
+function navigatePeriod(period, offset, baseDate = new Date()) {
+  const d = new Date(baseDate);
+  if (period === 'daily') {
+    d.setDate(d.getDate() + offset);
+  } else if (period === 'weekly') {
+    d.setDate(d.getDate() + offset * 7);
+  } else if (period === 'monthly') {
+    d.setMonth(d.getMonth() + offset);
+  }
+  return d;
+}
+
 module.exports = {
   // period helpers
   dayBounds,
   monthBounds,
   periodBounds,
+  navigatePeriod,
   // individual categories (exposed for testing/debug)
   getActivityLeaders,
   getMvpLeaders,

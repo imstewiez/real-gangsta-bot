@@ -3,14 +3,18 @@
  * Leaderboard handlers — botões da live message.
  *
  *   lb::details::daily|weekly|monthly  → ephemeral embed com top 5 / categoria
+ *   lb::nav::period::offset             → navegação temporal (anterior/seguinte)
+ *   lb::custom::open                    → modal para escolher datas
+ *   lb::custom::submit                  → resultado do modal
  *   lb::refresh                         → força refresh (rate-limit 30s / user)
  */
 
-const { MessageFlags } = require('discord.js');
+const { MessageFlags, ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
 const { EMOJI } = require('../content');
 const {
   buildDetailsForPeriod,
+  buildDetailsForCustomRange,
   publishOrRefresh,
   canUserRefresh,
   markUserRefresh,
@@ -28,12 +32,77 @@ async function handleLeaderboardDetails(interaction) {
   }
 
   try {
-    const embed = await buildDetailsForPeriod(period);
-    return interaction.editReply({ embeds: [embed] }).catch(() => {});
+    const { embed, components } = await buildDetailsForPeriod(period, 0);
+    return interaction.editReply({ embeds: [embed], components }).catch(() => {});
   } catch (e) {
     warn(`[LEADERBOARD] details (${period}) falhou: ${e.message}`);
     return interaction
       .editReply({ content: `${EMOJI.ERRO} Falha a carregar detalhes — tenta daqui a pouco.` })
+      .catch(() => {});
+  }
+}
+
+async function handleLeaderboardNav(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
+
+  const [, , period, offsetStr] = interaction.customId.split('::');
+  const offset = parseInt(offsetStr, 10) || 0;
+  if (!['daily', 'weekly', 'monthly'].includes(period)) {
+    return interaction.editReply({ content: `${EMOJI.ERRO} Período inválido.` }).catch(() => {});
+  }
+
+  try {
+    const { embed, components } = await buildDetailsForPeriod(period, offset);
+    return interaction.editReply({ embeds: [embed], components }).catch(() => {});
+  } catch (e) {
+    warn(`[LEADERBOARD] nav (${period}, ${offset}) falhou: ${e.message}`);
+    return interaction
+      .editReply({ content: `${EMOJI.ERRO} Falha a carregar detalhes.` })
+      .catch(() => {});
+  }
+}
+
+async function handleLeaderboardCustomOpen(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const modal = new ModalBuilder()
+    .setCustomId('lb::custom::modal')
+    .setTitle('📅 Leaderboard — datas custom')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('start')
+          .setLabel('Data de início (YYYY-MM-DD)')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('2026-04-01')
+          .setRequired(true)
+          .setMaxLength(10)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('end')
+          .setLabel('Data de fim (YYYY-MM-DD)')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('2026-04-30')
+          .setRequired(true)
+          .setMaxLength(10)
+      )
+    );
+  return interaction.showModal(modal).catch(() => {});
+}
+
+async function handleLeaderboardCustomModal(interaction) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
+  const start = interaction.fields.getTextInputValue('start');
+  const end = interaction.fields.getTextInputValue('end');
+
+  try {
+    const { embed } = await buildDetailsForCustomRange(start, end);
+    return interaction.editReply({ embeds: [embed] }).catch(() => {});
+  } catch (e) {
+    warn(`[LEADERBOARD] custom range (${start} → ${end}) falhou: ${e.message}`);
+    return interaction
+      .editReply({ content: `${EMOJI.ERRO} ${e.message || 'Falha a carregar leaderboard custom.'}` })
       .catch(() => {});
   }
 }
@@ -71,5 +140,8 @@ async function handleLeaderboardRefresh(interaction) {
 
 module.exports = {
   handleLeaderboardDetails,
+  handleLeaderboardNav,
+  handleLeaderboardCustomOpen,
+  handleLeaderboardCustomModal,
   handleLeaderboardRefresh,
 };
