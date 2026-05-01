@@ -24,7 +24,7 @@ async function buildPatraoDiZonaPanel() {
       ),
       query("SELECT COUNT(*)::int AS c FROM kill_logs WHERE created_at >= date_trunc('week', NOW())"),
       query(`
-      SELECT m.display_name, SUM(im.qty) AS total_qty
+      SELECT m.display_name, SUM(im.quantity) AS total_qty
       FROM inventory_movements im
       JOIN members m ON m.id = im.member_id
       WHERE im.movement_type IN ('entrega_bairrista','entrega_oficial')
@@ -35,7 +35,9 @@ async function buildPatraoDiZonaPanel() {
     `),
       query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
       query("SELECT COUNT(*)::int AS c FROM incidents WHERE estado = 'open'"),
-      query("SELECT COUNT(*)::int AS c FROM weekly_goals WHERE status = 'active'"),
+      query(
+        'SELECT COUNT(*)::int AS c FROM weekly_goals WHERE week_start <= CURRENT_DATE AND week_end >= CURRENT_DATE'
+      ),
     ]);
 
   const members = activeMembers.rows[0]?.c ?? 0;

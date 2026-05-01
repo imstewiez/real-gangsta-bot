@@ -13,7 +13,7 @@ const { query } = require('../db');
 async function buildBairristaPanel() {
   const [weeklyTop, activeGoals, memberCount, openOps] = await Promise.all([
     query(`
-      SELECT m.display_name, SUM(im.qty) AS total_qty
+      SELECT m.display_name, SUM(im.quantity) AS total_qty
       FROM inventory_movements im
       JOIN members m ON m.id = im.member_id
       WHERE im.movement_type IN ('entrega_bairrista','entrega_oficial')
@@ -22,7 +22,7 @@ async function buildBairristaPanel() {
       ORDER BY total_qty DESC
       LIMIT 3
     `),
-    query("SELECT COUNT(*)::int AS c FROM weekly_goals WHERE status = 'active'"),
+    query('SELECT COUNT(*)::int AS c FROM weekly_goals WHERE week_start <= CURRENT_DATE AND week_end >= CURRENT_DATE'),
     query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
     query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
   ]);

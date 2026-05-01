@@ -18,7 +18,7 @@ async function buildOficialPanel() {
     query(
       "SELECT COUNT(*)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_bairrista','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
     ),
-    query("SELECT COUNT(*)::int AS c FROM weekly_goals WHERE status = 'active'"),
+    query('SELECT COUNT(*)::int AS c FROM weekly_goals WHERE week_start <= CURRENT_DATE AND week_end >= CURRENT_DATE'),
     query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
   ]);
 
