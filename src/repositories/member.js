@@ -51,7 +51,7 @@ async function update(id, fields) {
   return res.rows[0] || null;
 }
 
-async function promote(id, newRole, changedBy, reason = '') {
+async function _recordRoleChange(id, newRole, changedBy, reason = '', timestampColumn = 'promoted_at') {
   return queryWithTransaction(async client => {
     const current = await client.query('SELECT * FROM members WHERE id = $1', [id]);
     const member = current.rows[0];
@@ -64,11 +64,19 @@ async function promote(id, newRole, changedBy, reason = '') {
     );
 
     const result = await client.query(
-      'UPDATE members SET role = $1, promoted_at = NOW(), updated_at = NOW() WHERE id = $2 RETURNING *',
+      `UPDATE members SET role = $1, ${timestampColumn} = NOW(), updated_at = NOW() WHERE id = $2 RETURNING *`,
       [newRole, id]
     );
     return result.rows[0];
   });
+}
+
+async function promote(id, newRole, changedBy, reason = '') {
+  return _recordRoleChange(id, newRole, changedBy, reason, 'promoted_at');
+}
+
+async function demote(id, newRole, changedBy, reason = '') {
+  return _recordRoleChange(id, newRole, changedBy, reason, 'demoted_at');
 }
 
 async function countByRole() {
@@ -97,6 +105,7 @@ module.exports = {
   create,
   update,
   promote,
+  demote,
   countByRole,
   search,
 };

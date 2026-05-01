@@ -44,6 +44,7 @@ const {
 const { query } = require('../db');
 const { saidaRepo, memberRepo } = require('../repositories');
 const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { buildSearchableSelect } = require('../shared/selectSearch');
 const { brandEmbed, errorEmbed, successEmbed, COLOR, headerLine } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { formatPtDate } = require('../shared/formatPtDate');
@@ -499,16 +500,16 @@ async function handleOpenWeaponQueue(interaction) {
     value: String(p.member_id),
   }));
 
-  const row = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId(`saida::weapon_confirm_pick::${saidaId}`)
-      .setPlaceholder('Escolhe participante para decidir')
-      .setMinValues(1)
-      .setMaxValues(1)
-      .addOptions(options)
-  );
+  const rows = buildSearchableSelect({
+    customId: `saida::weapon_confirm_pick::${saidaId}`,
+    placeholder: 'Escolhe participante para decidir',
+    options,
+    searchKey: `weaponConfirm::${saidaId}`,
+    modalTitle: 'Pesquisar participante',
+    messageClass: 'COCKPIT',
+  });
 
-  return safeReply(interaction, { embeds: [embed], components: [row] }, { messageClass: 'COCKPIT' });
+  return safeReply(interaction, { embeds: [embed], components: rows }, { messageClass: 'COCKPIT' });
 }
 
 /**

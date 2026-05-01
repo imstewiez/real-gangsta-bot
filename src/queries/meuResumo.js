@@ -14,7 +14,7 @@ async function handle(interaction) {
   weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
   weekStart.setHours(0, 0, 0, 0);
 
-  const [deliveries, sales, rank, pendingDel, pendingOrd, openSaidas, goals] = await Promise.all([
+  const [deliveries, sales, rank, pendingDel, pendingOrd, openSaidas] = await Promise.all([
     query(
       `SELECT COALESCE(SUM(quantity),0)::int as n FROM inventory_movements WHERE member_id=$1 AND movement_type IN ('entrega_bairrista','entrega_oficial') AND created_at>=$2`,
       [m.id, weekStart]
@@ -39,10 +39,6 @@ async function handle(interaction) {
       `SELECT COUNT(*)::int as n FROM operation_participants sp JOIN operations s ON s.id=sp.operation_id WHERE sp.member_id=$1 AND s.status NOT IN ('concluida','cancelada')`,
       [m.id]
     ),
-    query(
-      `SELECT COALESCE(SUM(percent_complete),0)::numeric as pct FROM weekly_goal_progress p JOIN weekly_goals g ON g.id=p.goal_id WHERE g.week_start=$1 AND (g.scope='org' OR g.target_id=$2::text)`,
-      [weekStart, m.id]
-    ),
   ]);
 
   const embed = brandEmbed('HOUSE')
@@ -54,8 +50,7 @@ async function handle(interaction) {
     { name: '💰 Vendas', value: `${sales.rows[0].n} un`, inline: true },
     { name: '🏆 Ranking', value: rank.rows.length ? `#${rank.rows[0].position}` : 'N/A', inline: true },
     { name: '⏳ Pendentes', value: `${pendingDel.rows[0].n} ent | ${pendingOrd.rows[0].n} enc`, inline: true },
-    { name: '🚗 Saídas', value: `${openSaidas.rows[0].n} activas`, inline: true },
-    { name: '🎯 Metas', value: `${Math.round(goals.rows[0]?.pct || 0)}%`, inline: true }
+    { name: '🚗 Saídas', value: `${openSaidas.rows[0].n} activas`, inline: true }
   );
 
   return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });

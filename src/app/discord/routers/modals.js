@@ -26,6 +26,7 @@ const { handleLeaderboardCustomModal } = require('../../../leaderboard/leaderboa
 
 const { handleDefineModal: prizeHandleDefineModal } = require('../../../queries/premios');
 const buttonAdapters = require('../../../panels/buttonAdapters');
+const { handleSearchModal } = require('../../../shared/selectSearch');
 
 const exact = (id, handler) => ({ match: x => x === id, handler });
 const prefix = (p, handler) => ({ match: x => x.startsWith(p), handler });
@@ -44,6 +45,9 @@ const MODAL_ROUTES = [
   // Bairrista cart modals (migration 038)
   prefix('invcart::qty_modal::', handleCartQtyModal),
   prefix('invcart::notes_modal::', handleCartNotesModal),
+
+  // Global searchable select — modal de pesquisa em dropdowns
+  prefix('search::modal::', handleSearchModal),
 
   // Searchable item picker — modal submit devolve filtered select
   prefix('itemsearch::modal::', require('../../../inventory/itemSearch').handleSubmitModal),
@@ -70,9 +74,9 @@ const MODAL_ROUTES = [
   // Button adapters — modais de painel (v12)
   exact('adapter::modal_vender', buttonAdapters.handleVenderModalSubmit),
   exact('adapter::modal_ausencia', buttonAdapters.handleAusenciaModalSubmit),
-  exact('adapter::modal_criar_meta', buttonAdapters.handleCriarMetaModalSubmit),
   exact('adapter::modal_criar_incidente', buttonAdapters.handleCriarIncidenteModalSubmit),
   exact('adapter::modal_transferir', buttonAdapters.handleTransferirModalSubmit),
+  exact('adapter::modal_promover', buttonAdapters.handlePromoverModalSubmit),
 ];
 
 async function handleModal(interaction) {

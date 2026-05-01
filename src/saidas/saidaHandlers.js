@@ -9,6 +9,7 @@ const {
   UserSelectMenuBuilder,
 } = require('discord.js');
 const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { buildSearchableSelect } = require('../shared/selectSearch');
 const { successEmbed, brandEmbed } = require('../shared/embedBuilders');
 const { buildCategorySelectMenu, buildItemSelectMenuForCategory } = require('../inventory/inventoryMenus');
 const { isChefia, isOficial, canOpenSession } = require('../permissions/permissionEngine');
@@ -307,17 +308,17 @@ async function handleCloseSaidaButton(interaction) {
     );
   }
   const options = buildSaidaSelectOptions(open);
-  const row = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId('saida::select_close')
-      .setPlaceholder(SAIDAS.SELECTS.QUAL_SAIDA_FECHAR)
-      .setMinValues(1)
-      .setMaxValues(1)
-      .addOptions(options)
-  );
+  const rows = buildSearchableSelect({
+    customId: 'saida::select_close',
+    placeholder: SAIDAS.SELECTS.QUAL_SAIDA_FECHAR,
+    options,
+    searchKey: `closeSaida::${interaction.user.id}`,
+    modalTitle: 'Pesquisar saída',
+    messageClass: 'BANAL',
+  });
   await safeReply(interaction, {
     content: `${EMOJI.FECHAR} Escolhe a saída a fechar:`,
-    components: [row],
+    components: rows,
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -728,17 +729,17 @@ async function handleAddParticipantButton(interaction) {
       { messageClass: 'BANAL' }
     );
   const options = buildSaidaSelectOptions(open);
-  const row = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId('saida::select_add_participant')
-      .setPlaceholder(SAIDAS.SELECTS.QUAL_SAIDA_PARTICIPANTE)
-      .setMinValues(1)
-      .setMaxValues(1)
-      .addOptions(options)
-  );
+  const rows = buildSearchableSelect({
+    customId: 'saida::select_add_participant',
+    placeholder: SAIDAS.SELECTS.QUAL_SAIDA_PARTICIPANTE,
+    options,
+    searchKey: `addPart::${interaction.user.id}`,
+    modalTitle: 'Pesquisar saída',
+    messageClass: 'BANAL',
+  });
   await safeReply(interaction, {
     content: `${EMOJI.PARTICIPANTE} Em que saída entram os nomes?`,
-    components: [row],
+    components: rows,
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -818,17 +819,17 @@ async function handleRegisterMaterialButton(interaction) {
       { messageClass: 'BANAL' }
     );
   const options = buildSaidaSelectOptions(open);
-  const row = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId('saida::select_material_op')
-      .setPlaceholder(SAIDAS.SELECTS.QUAL_SAIDA_MATERIAL)
-      .setMinValues(1)
-      .setMaxValues(1)
-      .addOptions(options)
-  );
+  const rows = buildSearchableSelect({
+    customId: 'saida::select_material_op',
+    placeholder: SAIDAS.SELECTS.QUAL_SAIDA_MATERIAL,
+    options,
+    searchKey: `regMat::${interaction.user.id}`,
+    modalTitle: 'Pesquisar saída',
+    messageClass: 'BANAL',
+  });
   await safeReply(interaction, {
     content: `${EMOJI.MATERIAL} Material em que saída?`,
-    components: [row],
+    components: rows,
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -875,10 +876,13 @@ async function handleMaterialDirectionSelect(interaction) {
   }
   ctx.direction = direction;
   _setContext(interaction.user.id, ctx);
-  const menu = await buildCategorySelectMenu('saida::cat_material', 'Seleciona a categoria');
+  const rows = await buildCategorySelectMenu('saida::cat_material', 'Seleciona a categoria', {
+    searchKey: `saidaMat::${interaction.user.id}`,
+    modalTitle: 'Pesquisar categoria',
+  });
   await safeUpdate(interaction, {
     content: SAIDAS.PROMPTS.DIRECCAO_MATERIAL(direction),
-    components: [menu],
+    components: rows,
   });
 }
 
@@ -892,7 +896,10 @@ async function handleMaterialCategorySelect(interaction) {
   const customId = interaction.customId;
   const isIssue = customId.includes('cat_issue');
   const itemPrefix = isIssue ? 'saida::issue_select_item' : 'saida::select_material_item';
-  const menu = await buildItemSelectMenuForCategory(itemPrefix, 'Seleciona o item', category);
+  const rows = await buildItemSelectMenuForCategory(itemPrefix, 'Seleciona o item', category, {
+    searchKey: `saidaItem::${interaction.user.id}::${category}`,
+    modalTitle: 'Pesquisar item',
+  });
   const itemSearch = require('../inventory/itemSearch');
   const searchRow = new ActionRowBuilder().addComponents(
     itemSearch.buildSearchButton(isIssue ? 'saida_issue' : 'saida_material', {
@@ -902,7 +909,7 @@ async function handleMaterialCategorySelect(interaction) {
   );
   await safeUpdate(interaction, {
     content: SAIDAS.PROMPTS.ESCOLHE_CATEGORIA_MATERIAL.replace('{category}', category),
-    components: [menu, searchRow],
+    components: [...rows, searchRow],
   });
 }
 
@@ -996,17 +1003,17 @@ async function handleIssueToParticipantButton(interaction) {
       { messageClass: 'BANAL' }
     );
   const options = buildSaidaSelectOptions(open);
-  const row = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId('saida::issue_select_saida')
-      .setPlaceholder(SAIDAS.SELECTS.QUAL_SAIDA_MATERIAL)
-      .setMinValues(1)
-      .setMaxValues(1)
-      .addOptions(options)
-  );
+  const rows = buildSearchableSelect({
+    customId: 'saida::issue_select_saida',
+    placeholder: SAIDAS.SELECTS.QUAL_SAIDA_MATERIAL,
+    options,
+    searchKey: `issueSaida::${interaction.user.id}`,
+    modalTitle: 'Pesquisar saída',
+    messageClass: 'BANAL',
+  });
   await safeReply(interaction, {
     content: `${EMOJI.FORNECER} Fornecer material nominal — qual saída?`,
-    components: [row],
+    components: rows,
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -1057,10 +1064,13 @@ async function handleIssueParticipantSelect(interaction) {
     );
   ctx.participantDiscordId = discordId;
   _setContext(interaction.user.id, ctx);
-  const menu = await buildCategorySelectMenu('saida::cat_issue', 'Seleciona a categoria');
+  const rows = await buildCategorySelectMenu('saida::cat_issue', 'Seleciona a categoria', {
+    searchKey: `saidaIssue::${interaction.user.id}`,
+    modalTitle: 'Pesquisar categoria',
+  });
   await safeUpdate(interaction, {
     content: SAIDAS.PROMPTS.PARTICIPANT_CATEGORY(ctx.saidaId, discordId),
-    components: [menu],
+    components: rows,
   });
 }
 

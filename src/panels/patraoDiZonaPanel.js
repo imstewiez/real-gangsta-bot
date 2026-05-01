@@ -67,12 +67,7 @@ async function buildPatraoDiZonaPanel() {
     button({ customId: 'patrao::ver_tops', label: 'Topo da Zona', style: 'Success', emoji: EMOJI.TOPO })
   );
 
-  // Row 2 — Reputação
-  const row2 = buttonRow(
-    button({ customId: 'patrao::reputacao', label: 'Reputação', style: 'Primary', emoji: EMOJI.LIDER })
-  );
-
-  return { embeds: [embed], components: [row1, row2] };
+  return { embeds: [embed], components: [row1] };
 }
 
 module.exports = { buildPatraoDiZonaPanel };

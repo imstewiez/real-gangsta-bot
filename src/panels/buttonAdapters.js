@@ -16,13 +16,6 @@ async function handleCatalogoButton(interaction) {
   return handle(interaction);
 }
 
-async function handleMetasButton(interaction) {
-  const { handle } = require('../queries/metas');
-  // Simula subcommand 'listar'
-  interaction.options = { getSubcommand: () => 'listar' };
-  return handle(interaction);
-}
-
 async function handleMinhasSaidasButton(interaction) {
   const { handle } = require('../queries/saidasMinhas');
   interaction.options = { getInteger: () => null, getSubcommand: () => null };
@@ -62,66 +55,10 @@ async function handleInactivosButton(interaction) {
   return handle(interaction);
 }
 
-async function handleQualidadeDadosButton(interaction) {
-  const { handle } = require('../queries/qualidadeDados');
-  return handle(interaction);
-}
-
-async function handleExportarButton(interaction) {
-  const { handle } = require('../queries/exportar');
-  interaction.options = {
-    getString: name => (name === 'tipo' ? 'entregas' : '2024-01-01'),
-    getSubcommand: () => null,
-  };
-  return handle(interaction);
-}
-
 async function handleSyncSheetsButton(interaction) {
   const { handle } = require('../queries/syncSheets');
   interaction.options = {
     getString: name => (name === 'acao' ? 'status' : null),
-    getSubcommand: () => null,
-  };
-  return handle(interaction);
-}
-
-async function handleReputacaoButton(interaction) {
-  const { handle } = require('../queries/reputacao');
-  return handle(interaction);
-}
-
-async function handleTarefasButton(interaction) {
-  const { handle } = require('../queries/tarefas');
-  interaction.options = {
-    getSubcommand: () => 'listar',
-    getUser: () => null,
-  };
-  return handle(interaction);
-}
-
-async function handleManutencaoButton(interaction) {
-  const { handle } = require('../queries/manutencao');
-  interaction.options = {
-    getSubcommand: () => 'status',
-    getString: () => null,
-  };
-  return handle(interaction);
-}
-
-async function handleSimularPermissoesButton(interaction) {
-  const { handle } = require('../queries/simularPermissoes');
-  interaction.options = {
-    getString: () => 'bairrista',
-    getSubcommand: () => null,
-  };
-  return handle(interaction);
-}
-
-async function handleAuditTrailButton(interaction) {
-  const { handle } = require('../queries/auditTrail');
-  interaction.options = {
-    getString: () => 'membro',
-    getInteger: () => 1,
     getSubcommand: () => null,
   };
   return handle(interaction);
@@ -223,32 +160,6 @@ async function handleAusenciaButton(interaction) {
           .setStyle(TextInputStyle.Paragraph)
           .setPlaceholder('Motivo da ausência...')
           .setRequired(false)
-      )
-    );
-  return safeShowModal(interaction, modal);
-}
-
-async function handleCriarMetaButton(interaction) {
-  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
-  const modal = new ModalBuilder()
-    .setCustomId('adapter::modal_criar_meta')
-    .setTitle('Criar Meta')
-    .addComponents(
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('descricao')
-          .setLabel('Descrição da meta')
-          .setStyle(TextInputStyle.Short)
-          .setPlaceholder('Ex: 100 entregas esta semana')
-          .setRequired(true)
-      ),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('valor')
-          .setLabel('Valor alvo (número)')
-          .setStyle(TextInputStyle.Short)
-          .setPlaceholder('100')
-          .setRequired(true)
       )
     );
   return safeShowModal(interaction, modal);
@@ -407,30 +318,6 @@ async function handleAusenciaModalSubmit(interaction) {
   );
 }
 
-async function handleCriarMetaModalSubmit(interaction) {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  const descricao = interaction.fields.getTextInputValue('descricao');
-  const valor = parseFloat(interaction.fields.getTextInputValue('valor'));
-
-  const { weeklyGoalService } = require('../services');
-  const { weekStart } = weeklyGoalService.getWeekBounds();
-  const goal = await weeklyGoalService.createGoal({
-    scope: 'org',
-    targetId: null,
-    metric: 'deliveries_qty',
-    targetValue: valor,
-    description: descricao,
-    createdBy: interaction.user.tag,
-    weekStart,
-  });
-
-  return safeReply(
-    interaction,
-    { content: `${EMOJI.OK} Meta \`#${goal.id}\` criada: **${descricao}**` },
-    { messageClass: 'BANAL' }
-  );
-}
-
 async function handleCriarIncidenteModalSubmit(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const titulo = interaction.fields.getTextInputValue('titulo');
@@ -483,29 +370,103 @@ async function handleTransferirModalSubmit(interaction) {
   );
 }
 
+async function handlePromoverButton(interaction) {
+  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
+  const modal = new ModalBuilder()
+    .setCustomId('adapter::modal_promover')
+    .setTitle('Promover Membro')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('member_id')
+          .setLabel('ID do Discord do membro')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('123456789012345678')
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('cargo')
+          .setLabel('Novo cargo')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('bairrista, oficial, patrao_di_zona, chefia')
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('motivo')
+          .setLabel('Motivo — opcional')
+          .setStyle(TextInputStyle.Paragraph)
+          .setPlaceholder('Motivo da promoção...')
+          .setRequired(false)
+      )
+    );
+  return safeShowModal(interaction, modal);
+}
+
+async function handlePromoverModalSubmit(interaction) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const memberIdInput = interaction.fields.getTextInputValue('member_id');
+  const cargo = interaction.fields.getTextInputValue('cargo');
+  const motivo = interaction.fields.getTextInputValue('motivo') || '';
+
+  const guildMember = await interaction.guild.members.fetch(memberIdInput).catch(() => null);
+  if (!guildMember) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.INDISPONIVEL} Membro não encontrado no servidor.` },
+      { messageClass: 'BANAL' }
+    );
+  }
+
+  const { memberRepo } = require('../repositories');
+  const dbMember = await memberRepo.findByDiscordId(guildMember.id);
+  if (!dbMember) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.INDISPONIVEL} Membro não encontrado na base de dados.` },
+      { messageClass: 'BANAL' }
+    );
+  }
+
+  try {
+    const { promoteMember } = require('../members/promotionEngine');
+    await promoteMember(dbMember.id, cargo, {
+      guildMember,
+      client: interaction.client,
+      reason: motivo,
+      actorTag: interaction.user.tag,
+      actorId: interaction.user.id,
+      changedBy: interaction.user.id,
+    });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.OK} **${guildMember.displayName}** promovido para **${cargo}**${motivo ? ` — ${motivo}` : ''}` },
+      { messageClass: 'BANAL' }
+    );
+  } catch (e) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.INDISPONIVEL} Erro: ${e.message}` },
+      { messageClass: 'BANAL' }
+    );
+  }
+}
+
 module.exports = {
   // Consultas
   handleCatalogoButton,
-  handleMetasButton,
   handleMinhasSaidasButton,
   handleMeuResumoButton,
   handlePainelPendenciasButton,
   handleRelatorioButton,
   handleDashboardButton,
   handleInactivosButton,
-  handleQualidadeDadosButton,
-  handleExportarButton,
   handleSyncSheetsButton,
-  handleReputacaoButton,
-  handleTarefasButton,
-  handleManutencaoButton,
-  handleSimularPermissoesButton,
-  handleAuditTrailButton,
   // Modais (abrir)
   handleVenderButton,
   handleKillButton,
   handleAusenciaButton,
-  handleCriarMetaButton,
   handleCriarIncidenteButton,
   handleTransferirStockButton,
   // Delegação
@@ -516,7 +477,8 @@ module.exports = {
   // Modal submits
   handleVenderModalSubmit,
   handleAusenciaModalSubmit,
-  handleCriarMetaModalSubmit,
   handleCriarIncidenteModalSubmit,
   handleTransferirModalSubmit,
+  handlePromoverButton,
+  handlePromoverModalSubmit,
 };

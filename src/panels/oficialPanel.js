@@ -10,21 +10,19 @@ const { query } = require('../db');
 // Abrir/fechar saídas, emitir material, gerir participantes, ver operações.
 
 async function buildOficialPanel() {
-  const [openOps, weekKills, weekDeliveries, activeGoals, memberCount] = await Promise.all([
+  const [openOps, weekKills, weekDeliveries, memberCount] = await Promise.all([
     query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
     query("SELECT COUNT(*)::int AS c FROM kill_logs WHERE created_at >= date_trunc('week', NOW())"),
     query(
       "SELECT COUNT(*)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_bairrista','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
     ),
-    query('SELECT COUNT(*)::int AS c FROM weekly_goals WHERE week_start <= CURRENT_DATE AND week_end >= CURRENT_DATE'),
     query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
   ]);
 
   const ops = openOps.rows[0]?.c ?? 0;
   const kills = weekKills.rows[0]?.c ?? 0;
   const deliv = weekDeliveries.rows[0]?.c ?? 0;
-  const goals = activeGoals.rows[0]?.c ?? 0;
-  const members = memberCount.rows[0]?.c ?? 0;
+const members = memberCount.rows[0]?.c ?? 0;
 
   const embed = applyLogo(
     brandEmbed('SHORT')
@@ -36,7 +34,6 @@ async function buildOficialPanel() {
         { name: `${EMOJI.KILL} Kills (Semana)`, value: `**${kills}** registadas`, inline: true },
         { name: `${EMOJI.ENTREGA} Entregas (Semana)`, value: `**${deliv}** registadas`, inline: true },
         { name: `${EMOJI.PARTICIPANTE} Firma`, value: `**${members}** activos`, inline: true },
-        { name: `${EMOJI.OK} Metas`, value: `**${goals}** activas`, inline: true }
       )
   );
 

@@ -273,16 +273,22 @@ async function backfillResidentPanels(client) {
   // apanha apenas as mais recentes e falha. Aqui combina:
   //   (a) últimas 30 mensagens (caso o painel tenha sido reposted)
   //   (b) 100 mais antigas via after:'0' (canto oposto — habitual de painel)
-  async function _hasBairristaPanel(ch, botId) {
+  async function _findBairristaPanel(ch, botId) {
     const matches = m =>
       m.author?.id === botId &&
       m.components?.length &&
       m.components.some(row => row.components?.some(c => c.customId?.startsWith('bairrista::')));
     const recent = await ch.messages.fetch({ limit: 30 }).catch(() => null);
-    if (recent && [...recent.values()].some(matches)) return true;
+    if (recent) {
+      const found = [...recent.values()].find(matches);
+      if (found) return found;
+    }
     const oldest = await ch.messages.fetch({ limit: 100, after: '0' }).catch(() => null);
-    if (oldest && [...oldest.values()].some(matches)) return true;
-    return false;
+    if (oldest) {
+      const found = [...oldest.values()].find(matches);
+      if (found) return found;
+    }
+    return null;
   }
 
   let posted = 0,
@@ -296,16 +302,22 @@ async function backfillResidentPanels(client) {
         continue;
       }
 
-      if (await _hasBairristaPanel(ch, client.user.id)) {
+      const existingPanel = await _findBairristaPanel(ch, client.user.id);
+      if (existingPanel) {
+        // Garante que painéis existentes (mesmo antigos) ficam pinned.
+        if (!existingPanel.pinned) {
+          await existingPanel.pin().catch(() => {});
+        }
         skipped++;
         continue;
       }
 
       const name = row.full_name || row.display_name || row.nickname || 'bairrista';
-      await ch.send({
+      const panelMsg = await ch.send({
         embeds: [welcomeChannelEmbed(name)],
         components: buildBairristaChannelPanel(),
       });
+      await panelMsg.pin().catch(() => {});
       posted++;
       await new Promise(r => setTimeout(r, 300));
     } catch (e) {

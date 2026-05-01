@@ -39,6 +39,7 @@ const {
 const { saidaRepo, memberRepo, inventoryRepo } = require('../repositories');
 const saidaEngine = require('./saidaEngine');
 const { safeReply, safeUpdate, isDuplicate, scheduleDeleteInteractionReply } = require('../shared/interactionHelpers');
+const { buildSearchableSelect } = require('../shared/selectSearch');
 const { brandEmbed, applyLogo, rankBadge, COLOR, headerLine, progressBar } = require('../shared/embedBuilders');
 const { EMOJI, SAIDA_TYPE } = require('../content');
 const CONFIG = require('../config');
@@ -556,12 +557,14 @@ async function handleCaracterizadoSource(interaction) {
       .setEmoji(EMOJI.ARMA);
   });
 
-  const select = new StringSelectMenuBuilder()
-    .setCustomId(`saida::weapon_pick::${saidaId}::${source}`)
-    .setPlaceholder(source === 'org' ? 'Escolhe a arma da org' : 'Escolhe a tua arma')
-    .addOptions(options);
-
-  const row = new ActionRowBuilder().addComponents(select);
+  const rows = buildSearchableSelect({
+    customId: `saida::weapon_pick::${saidaId}::${source}`,
+    placeholder: source === 'org' ? 'Escolhe a arma da org' : 'Escolhe a tua arma',
+    options,
+    searchKey: `weapon::${interaction.user.id}::${saidaId}`,
+    modalTitle: 'Pesquisar arma',
+    messageClass: 'FLOW',
+  });
   // safeUpdate substitui o ephemeral "como te armas?" (step 1) pelo select.
   // Antes era safeReply que criava um 2º ephemeral → stacking visível.
   return safeUpdate(
@@ -571,7 +574,7 @@ async function handleCaracterizadoSource(interaction) {
         source === 'org'
           ? `**Saída #${saidaId}** — escolhe a arma que queres da org.`
           : `**Saída #${saidaId}** — diz qual é a tua arma.`,
-      components: [row],
+      components: rows,
     },
     { messageClass: 'FLOW' }
   );
@@ -1023,16 +1026,20 @@ async function handleSessionSwapOpen(interaction) {
       .setValue(String(p.member_id));
   });
 
-  const select = new StringSelectMenuBuilder()
-    .setCustomId(`saida::session_swap_pick::${saidaId}`)
-    .setPlaceholder('Escolhe quem trocar')
-    .addOptions(options);
+  const rows = buildSearchableSelect({
+    customId: `saida::session_swap_pick::${saidaId}`,
+    placeholder: 'Escolhe quem trocar',
+    options,
+    searchKey: `swap::${interaction.user.id}::${saidaId}`,
+    modalTitle: 'Pesquisar participante',
+    messageClass: 'FLOW',
+  });
 
   return safeReply(
     interaction,
     {
       content: `**Saída #${saidaId}** — trocar caract ↔ trab.\nO tipo vai inverter para quem escolheres.`,
-      components: [new ActionRowBuilder().addComponents(select)],
+      components: rows,
       flags: MessageFlags.Ephemeral,
     },
     { messageClass: 'FLOW' }
@@ -1051,7 +1058,11 @@ async function handleSessionSwapPick(interaction) {
   const participants = await saidaRepo.getParticipants(saidaId);
   const p = participants.find(x => x.member_id === memberId);
   if (!p) {
-    return interaction.editReply({ content: `${EMOJI.ERRO} Participante não encontrado.`, components: [] });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} Participante não encontrado.`, components: [] },
+      { messageClass: 'WARN' }
+    );
   }
 
   const previousType = p.participant_type;
@@ -1118,16 +1129,20 @@ async function handleSessionApproveOpen(interaction) {
         .setValue(String(p.member_id))
     );
 
-  const select = new StringSelectMenuBuilder()
-    .setCustomId(`saida::session_approve_pick::${saidaId}`)
-    .setPlaceholder('Escolhe quem aprovar / rejeitar')
-    .addOptions(options);
+  const rows = buildSearchableSelect({
+    customId: `saida::session_approve_pick::${saidaId}`,
+    placeholder: 'Escolhe quem aprovar / rejeitar',
+    options,
+    searchKey: `approve::${interaction.user.id}::${saidaId}`,
+    modalTitle: 'Pesquisar pedido',
+    messageClass: 'FLOW',
+  });
 
   return safeReply(
     interaction,
     {
       content: `**Saída #${saidaId}** — ${requested.length} pedido(s) pendente(s). Escolhe um para decidir.`,
-      components: [new ActionRowBuilder().addComponents(select)],
+      components: rows,
       flags: MessageFlags.Ephemeral,
     },
     { messageClass: 'FLOW' }
@@ -1188,10 +1203,11 @@ async function handleSessionApproveDecide(interaction) {
   const participants = await saidaRepo.getParticipants(saidaId);
   const p = participants.find(x => x.member_id === memberId && x.participant_type === 'requested');
   if (!p) {
-    return interaction.editReply({
-      content: `${EMOJI.INFO} Pedido já tratado.`,
-      components: [],
-    });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.INFO} Pedido já tratado.`, components: [] },
+      { messageClass: 'BANAL' }
+    );
   }
 
   if (decision === 'approve') {

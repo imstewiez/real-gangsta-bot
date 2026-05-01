@@ -312,6 +312,11 @@ async function updateSessionMessage(saidaId, messageId, channelId) {
   ]);
 }
 
+async function deleteById(id) {
+  const res = await query('DELETE FROM operations WHERE id = $1 RETURNING *', [id]);
+  return res.rows[0] || null;
+}
+
 module.exports = {
   create,
   findById,
@@ -332,4 +337,5 @@ module.exports = {
   getMaterialSummary,
   getParticipantMaterialTotals,
   countParticipationsByMember,
+  deleteById,
 };

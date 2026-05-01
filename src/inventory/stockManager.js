@@ -12,6 +12,7 @@
 
 const { query } = require('../db');
 const { logAudit } = require('../audit/auditEngine');
+const eventBus = require('../core/eventBus');
 
 const VALID_LOCATIONS = ['armazem', 'grupo'];
 
@@ -156,6 +157,21 @@ async function transferStock({ itemId, quantity, fromLocation, toLocation, actor
     afterState: { quantity, fromLocation, toLocation },
     context: notes,
   }).catch(() => {});
+
+  eventBus
+    .emitAsync('material.transferred', {
+      itemId,
+      quantity,
+      fromLocation,
+      toLocation,
+      actorId: actor,
+      notes,
+      outMovementId: out.rows[0].id,
+      inMovementId: inv.rows[0].id,
+      at: new Date(),
+    })
+    .catch(() => {});
+
   return { outId: out.rows[0].id, inId: inv.rows[0].id };
 }
 

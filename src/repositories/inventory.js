@@ -161,6 +161,44 @@ async function getSubmissionMovements(submissionId) {
  * Só itemId + quantity — preço é re-resolvido na altura (evita time-travel
  * de preços antigos).
  */
+async function getRecentSubmissions({ limit = 20, memberId = null, dateFrom = null, dateTo = null } = {}) {
+  let sql = `
+    SELECT DISTINCT ON (im.submission_id)
+      im.submission_id,
+      im.movement_type,
+      im.member_id,
+      m.display_name AS member_name,
+      im.created_at,
+      im.created_by,
+      COUNT(*) OVER (PARTITION BY im.submission_id) AS line_count,
+      SUM(im.quantity) OVER (PARTITION BY im.submission_id) AS total_qty
+    FROM inventory_movements im
+    JOIN members m ON m.id = im.member_id
+    WHERE im.submission_id IS NOT NULL
+  `;
+  const params = [];
+  let p = 1;
+  if (memberId) {
+    sql += ` AND im.member_id = $${p}`;
+    params.push(memberId);
+    p++;
+  }
+  if (dateFrom) {
+    sql += ` AND im.created_at >= $${p}`;
+    params.push(dateFrom);
+    p++;
+  }
+  if (dateTo) {
+    sql += ` AND im.created_at <= $${p}`;
+    params.push(dateTo);
+    p++;
+  }
+  sql += ` ORDER BY im.submission_id DESC, im.created_at DESC LIMIT $${p}`;
+  params.push(limit);
+  const res = await query(sql, params);
+  return res.rows;
+}
+
 async function getLastSubmissionForMember(memberId, movementType) {
   if (!memberId) return null;
   const sub = await query(
@@ -335,6 +373,7 @@ module.exports = {
   getWeeklyMovements,
   attachSubmissionLogMessage,
   getSubmissionMovements,
+  getRecentSubmissions,
   getLastSubmissionForMember,
   deleteSubmission,
 };

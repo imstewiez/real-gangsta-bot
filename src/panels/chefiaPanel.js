@@ -11,7 +11,7 @@ const { query } = require('../db');
 // Gestão da firma: metas, incidentes, stock, membros, relatórios.
 
 async function buildChefiaPanel() {
-  const [openOps, topWeek, openIncidents, activeMembers, weekKills, weekDeliveries, activeGoals] =
+  const [openOps, topWeek, openIncidents, activeMembers, weekKills, weekDeliveries] =
     await Promise.all([
       query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
       query(`
@@ -30,9 +30,6 @@ async function buildChefiaPanel() {
       query(
         "SELECT COUNT(*)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_bairrista','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
       ),
-      query(
-        'SELECT COUNT(*)::int AS c FROM weekly_goals WHERE week_start <= CURRENT_DATE AND week_end >= CURRENT_DATE'
-      ),
     ]);
 
   const ops = openOps.rows[0]?.c ?? 0;
@@ -42,7 +39,6 @@ async function buildChefiaPanel() {
   const members = activeMembers.rows[0]?.c ?? 0;
   const kills = weekKills.rows[0]?.c ?? 0;
   const deliv = weekDeliveries.rows[0]?.c ?? 0;
-  const goals = activeGoals.rows[0]?.c ?? 0;
 
   const embed = applyLogo(
     brandEmbed('MOVEMENT')
@@ -59,7 +55,6 @@ async function buildChefiaPanel() {
         },
         { name: `${EMOJI.KILL} Kills (Semana)`, value: `**${kills}** registadas`, inline: true },
         { name: `${EMOJI.ENTREGA} Entregas (Semana)`, value: `**${deliv}** registadas`, inline: true },
-        { name: `${EMOJI.OK} Metas`, value: `**${goals}** activas`, inline: true },
         {
           name: `${EMOJI.ERRO} Incidentes`,
           value: inc > 0 ? `**${inc}** abertos ${EMOJI.WARN}` : `**0** abertos ${EMOJI.OK}`,
@@ -70,8 +65,7 @@ async function buildChefiaPanel() {
 
   // Row 1 — Criar
   const row1 = buttonRow(
-    button({ customId: 'chefia::criar_meta', label: 'Criar Meta', style: 'Success', emoji: EMOJI.OK }),
-    button({ customId: 'chefia::criar_incidente', label: 'Criar Incidente', style: 'Success', emoji: EMOJI.ERRO }),
+button({ customId: 'chefia::criar_incidente', label: 'Criar Incidente', style: 'Success', emoji: EMOJI.ERRO }),
     button({
       customId: 'chefia::transferir_stock',
       label: 'Transferir Stock',
@@ -114,16 +108,16 @@ async function buildChefiaPanel() {
         },
         { label: 'Promover', value: 'chefia::promover', emoji: EMOJI.PROGRESSO, description: 'Promover bairristas' },
         {
-          label: 'Lifecycle',
-          value: 'chefia::lifecycle',
-          emoji: EMOJI.PARTICIPANTE,
-          description: 'Gerir ciclo de vida de membros',
+          label: 'Gerir Entregas',
+          value: 'chefia::gerir_entregas',
+          emoji: EMOJI.ENTREGA,
+          description: 'Listar/apagar/corrigir entregas e vendas',
         },
         {
-          label: 'Exportar',
-          value: 'chefia::exportar',
-          emoji: EMOJI.DINHEIRO,
-          description: 'Exportar dados para ficheiro',
+          label: 'Eliminar Saída',
+          value: 'chefia::eliminar_saida',
+          emoji: EMOJI.ERRO,
+          description: 'Apagar saída do histórico',
         },
         {
           label: 'Sync Sheets',
@@ -131,12 +125,7 @@ async function buildChefiaPanel() {
           emoji: EMOJI.REFRESH,
           description: 'Sincronizar com Google Sheets',
         },
-        {
-          label: 'Qualidade Dados',
-          value: 'chefia::qualidade_dados',
-          emoji: EMOJI.INFO,
-          description: 'Ver relatório de qualidade',
-        },
+
         {
           label: 'Republicar Painéis',
           value: 'chefia::republicar_paineis',

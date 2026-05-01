@@ -55,6 +55,39 @@ const commands = [
 
   new SlashCommandBuilder().setName('meu-pedido').setDescription('Ver o estado do teu pedido de tag'),
 
+  // ── Admin: eliminar saída ──
+  new SlashCommandBuilder()
+    .setName('admin-saida')
+    .setDescription('Administrar saídas (OG+)')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addSubcommand(sc =>
+      sc
+        .setName('delete')
+        .setDescription('Eliminar uma saída do histórico (irreversível)')
+        .addIntegerOption(o => o.setName('id').setDescription('ID da saída').setRequired(true))
+    ),
+
+  // ── Gerir entregas/vendas ──
+  new SlashCommandBuilder()
+    .setName('gerir-entregas')
+    .setDescription('Gerir entregas e vendas de bairristas (OG+)')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addSubcommand(sc =>
+      sc
+        .setName('listar')
+        .setDescription('Listar entregas/vendas recentes')
+        .addUserOption(o => o.setName('membro').setDescription('Filtrar por membro').setRequired(false))
+        .addIntegerOption(o =>
+          o.setName('dias').setDescription('Dias para trás (default 7)').setRequired(false).setMinValue(1).setMaxValue(90)
+        )
+    )
+    .addSubcommand(sc =>
+      sc
+        .setName('apagar')
+        .setDescription('Eliminar uma submission (compensando stock)')
+        .addStringOption(o => o.setName('submission_id').setDescription('ID da submission').setRequired(true))
+    ),
+
   // ── Staff diagnóstico ──────────────────────────────────────────────────────
   new SlashCommandBuilder()
     .setName('backfill-topicos')
@@ -110,6 +143,10 @@ const commands = [
         .setMinValue(0)
         .setMaxValue(365)
     ),
+
+  new SlashCommandBuilder()
+    .setName('republicar-precos')
+    .setDescription('Republica o embed de preços e fórmulas no canal (chefia)'),
 
   new SlashCommandBuilder()
     .setName('sync-sheets')
@@ -254,109 +291,6 @@ const commands = [
         .addIntegerOption(o => o.setName('id').setDescription('ID do item').setRequired(true))
     ),
 
-  // ── Metas semanais ──
-  new SlashCommandBuilder()
-    .setName('metas')
-    .setDescription('Metas da semana')
-    .addSubcommand(sc => sc.setName('listar').setDescription('Ver metas actuais'))
-    .addSubcommand(sc =>
-      sc
-        .setName('criar')
-        .setDescription('Criar meta (OG+)')
-        .addStringOption(o =>
-          o
-            .setName('scope')
-            .setDescription('Âmbito')
-            .setRequired(true)
-            .addChoices(
-              { name: 'Org', value: 'org' },
-              { name: 'Membro', value: 'member' },
-              { name: 'Role', value: 'role' }
-            )
-        )
-        .addStringOption(o =>
-          o
-            .setName('metric')
-            .setDescription('Métrica')
-            .setRequired(true)
-            .addChoices(
-              { name: 'Entregas (qty)', value: 'deliveries_qty' },
-              { name: 'Entregas (€)', value: 'deliveries_value' },
-              { name: 'Vendas (qty)', value: 'sales_qty' },
-              { name: 'Vendas (€)', value: 'sales_value' },
-              { name: 'Saídas', value: 'saidas_count' },
-              { name: 'Kills', value: 'kills_count' }
-            )
-        )
-        .addNumberOption(o => o.setName('valor').setDescription('Valor alvo').setRequired(true))
-        .addStringOption(o =>
-          o.setName('target').setDescription('Alvo (membro/role ou vazio para org)').setRequired(false)
-        )
-        .addStringOption(o => o.setName('descricao').setDescription('Descrição').setRequired(false))
-    ),
-
-  // ── Qualidade dos dados ──
-  new SlashCommandBuilder()
-    .setName('qualidade-dados')
-    .setDescription('Painel de qualidade dos dados (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
-  // ── Lifecycle do membro ──
-  new SlashCommandBuilder()
-    .setName('lifecycle')
-    .setDescription('Gerir lifecycle de membros (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addSubcommand(sc =>
-      sc
-        .setName('ver')
-        .setDescription('Ver estado')
-        .addUserOption(o => o.setName('membro').setDescription('Membro').setRequired(false))
-    )
-    .addSubcommand(sc =>
-      sc
-        .setName('mudar')
-        .setDescription('Mudar estado')
-        .addUserOption(o => o.setName('membro').setDescription('Membro').setRequired(true))
-        .addStringOption(o =>
-          o
-            .setName('estado')
-            .setDescription('Novo estado')
-            .setRequired(true)
-            .addChoices(
-              { name: 'Pendente', value: 'pending' },
-              { name: 'Activo', value: 'active' },
-              { name: 'Ausente', value: 'away' },
-              { name: 'Em Avaliação', value: 'on_review' },
-              { name: 'Promovido', value: 'promoted' },
-              { name: 'Rebaixado', value: 'demoted' },
-              { name: 'Removido', value: 'removed' },
-              { name: 'Saiu do Discord', value: 'left_discord' }
-            )
-        )
-        .addStringOption(o => o.setName('motivo').setDescription('Motivo').setRequired(false))
-    )
-    .addSubcommand(sc =>
-      sc
-        .setName('listar')
-        .setDescription('Listar por estado')
-        .addStringOption(o =>
-          o
-            .setName('estado')
-            .setDescription('Estado')
-            .setRequired(true)
-            .addChoices(
-              { name: 'Pendente', value: 'pending' },
-              { name: 'Activo', value: 'active' },
-              { name: 'Ausente', value: 'away' },
-              { name: 'Em Avaliação', value: 'on_review' },
-              { name: 'Promovido', value: 'promoted' },
-              { name: 'Rebaixado', value: 'demoted' },
-              { name: 'Removido', value: 'removed' },
-              { name: 'Saiu do Discord', value: 'left_discord' }
-            )
-        )
-    ),
-
   // ── Promoções / Rebaixamentos ──
   new SlashCommandBuilder()
     .setName('promover')
@@ -374,10 +308,10 @@ const commands = [
             .setDescription('Novo cargo')
             .setRequired(true)
             .addChoices(
-              { name: 'Young Blood', value: 'young_blood' },
               { name: 'Bairrista', value: 'bairrista' },
-              { name: 'Official', value: 'official' },
-              { name: 'OG', value: 'og' }
+              { name: 'Patrão di Zona', value: 'patrao_di_zona' },
+              { name: 'Oficial', value: 'oficial' },
+              { name: 'Chefia', value: 'chefia' }
             )
         )
         .addStringOption(o => o.setName('motivo').setDescription('Motivo').setRequired(false))
@@ -393,10 +327,10 @@ const commands = [
             .setDescription('Novo cargo')
             .setRequired(true)
             .addChoices(
-              { name: 'Young Blood', value: 'young_blood' },
               { name: 'Bairrista', value: 'bairrista' },
-              { name: 'Official', value: 'official' },
-              { name: 'OG', value: 'og' }
+              { name: 'Patrão di Zona', value: 'patrao_di_zona' },
+              { name: 'Oficial', value: 'oficial' },
+              { name: 'Chefia', value: 'chefia' }
             )
         )
         .addStringOption(o => o.setName('motivo').setDescription('Motivo').setRequired(false))
@@ -427,20 +361,6 @@ const commands = [
           { name: 'Este mês', value: 'month' }
         )
     ),
-
-  // ── Modo Manutenção ──
-  new SlashCommandBuilder()
-    .setName('manutencao')
-    .setDescription('Modo manutenção (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addSubcommand(sc => sc.setName('status').setDescription('Ver estado'))
-    .addSubcommand(sc =>
-      sc
-        .setName('ativar')
-        .setDescription('Activar')
-        .addStringOption(o => o.setName('motivo').setDescription('Motivo').setRequired(false))
-    )
-    .addSubcommand(sc => sc.setName('desativar').setDescription('Desactivar')),
 
   // ── Incidentes ──
   new SlashCommandBuilder()
@@ -557,85 +477,6 @@ const commands = [
       o.setName('passo').setDescription('Passo (1-8)').setRequired(false).setMinValue(1).setMaxValue(8)
     ),
 
-  // ── Simular permissões ──
-  new SlashCommandBuilder()
-    .setName('simular-permissoes')
-    .setDescription('Simular permissões de um cargo (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addStringOption(o =>
-      o
-        .setName('cargo')
-        .setDescription('Cargo')
-        .setRequired(true)
-        .addChoices(
-          { name: 'Young Blood', value: 'young_blood' },
-          { name: 'Bairrista', value: 'bairrista' },
-          { name: 'Official', value: 'official' },
-          { name: 'Patrão di Zona', value: 'patrao_di_zona' },
-          { name: 'OG', value: 'og' }
-        )
-    ),
-
-  // ── Tarefas ──
-  new SlashCommandBuilder()
-    .setName('tarefas')
-    .setDescription('Gestão de tarefas')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addSubcommand(sc =>
-      sc
-        .setName('listar')
-        .setDescription('Listar tarefas')
-        .addUserOption(o => o.setName('membro').setDescription('Filtrar').setRequired(false))
-    )
-    .addSubcommand(sc =>
-      sc
-        .setName('criar')
-        .setDescription('Criar tarefa (OG+)')
-        .addUserOption(o => o.setName('membro').setDescription('Membro').setRequired(true))
-        .addStringOption(o => o.setName('titulo').setDescription('Título').setRequired(true))
-        .addStringOption(o => o.setName('descricao').setDescription('Descrição').setRequired(false))
-        .addStringOption(o =>
-          o
-            .setName('tipo')
-            .setDescription('Tipo')
-            .setRequired(false)
-            .addChoices(
-              { name: 'Entregar', value: 'deliver' },
-              { name: 'Saídas', value: 'participate_saidas' },
-              { name: 'Encomenda', value: 'manage_order' },
-              { name: 'Arma', value: 'return_weapon' },
-              { name: 'Pendência', value: 'resolve_pending' },
-              { name: 'Outro', value: 'custom' }
-            )
-        )
-        .addStringOption(o => o.setName('prazo').setDescription('Prazo (ISO)').setRequired(false))
-    )
-    .addSubcommand(sc =>
-      sc
-        .setName('atualizar')
-        .setDescription('Actualizar estado')
-        .addIntegerOption(o => o.setName('id').setDescription('ID').setRequired(true))
-        .addStringOption(o =>
-          o
-            .setName('estado')
-            .setDescription('Estado')
-            .setRequired(true)
-            .addChoices(
-              { name: 'Pendente', value: 'pending' },
-              { name: 'Em progresso', value: 'in_progress' },
-              { name: 'Concluída', value: 'completed' },
-              { name: 'Falhada', value: 'failed' }
-            )
-        )
-    ),
-
-  // ── Reputação ──
-  new SlashCommandBuilder()
-    .setName('reputacao')
-    .setDescription('Ver reputação interna de um membro (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addUserOption(o => o.setName('membro').setDescription('Membro').setRequired(true)),
-
   // ── Ausências ──
   new SlashCommandBuilder()
     .setName('ausencias')
@@ -677,44 +518,6 @@ const commands = [
             .addChoices({ name: 'Aprovar', value: 'approved' }, { name: 'Rejeitar', value: 'rejected' })
         )
     ),
-
-  // ── Exportar ──
-  new SlashCommandBuilder()
-    .setName('exportar')
-    .setDescription('Exportar dados (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addStringOption(o =>
-      o
-        .setName('tipo')
-        .setDescription('Tipo')
-        .setRequired(true)
-        .addChoices(
-          { name: 'Entregas', value: 'entregas' },
-          { name: 'Vendas', value: 'vendas' },
-          { name: 'Saídas', value: 'saidas' }
-        )
-    )
-    .addStringOption(o => o.setName('inicio').setDescription('Data início (ISO)').setRequired(true))
-    .addStringOption(o => o.setName('fim').setDescription('Data fim (ISO)').setRequired(false)),
-
-  // ── Audit Trail ──
-  new SlashCommandBuilder()
-    .setName('audit-trail')
-    .setDescription('Histórico por objeto (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addStringOption(o =>
-      o
-        .setName('tipo')
-        .setDescription('Tipo')
-        .setRequired(true)
-        .addChoices(
-          { name: 'Entrega', value: 'entrega' },
-          { name: 'Encomenda', value: 'encomenda' },
-          { name: 'Membro', value: 'membro' },
-          { name: 'Item', value: 'item' }
-        )
-    )
-    .addIntegerOption(o => o.setName('id').setDescription('ID').setRequired(true)),
 
   // ── Meu resumo ──
   new SlashCommandBuilder().setName('meu-resumo').setDescription('O teu resumo semanal e pendentes'),

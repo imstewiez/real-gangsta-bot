@@ -27,6 +27,7 @@ const { handleMovimento, handleRanking } = require('../../../members/bairristaHa
 const {
   handleRegistarMaterialButton,
   handleEncomendasButton,
+  handleEncomendaModeSelect,
   handleStockCommand,
   handleAdjustStockButton,
   handleGerirMateriaisButton,
@@ -77,6 +78,9 @@ const {
 // ── Searchable item picker (itemsearch::open::<purpose>) ───────────────────
 const itemSearch = require('../../../inventory/itemSearch');
 
+// ── Global searchable select ───────────────────────────────────────────────
+const { handleSearchOpen, handleSearchClear } = require('../../../shared/selectSearch');
+
 // ── Perfil Operacional (drill-downs) ───────────────────────────────────────
 const perfilMaterial = require('../../../perfil/perfilMaterial');
 const perfilPvp = require('../../../perfil/perfilPvp');
@@ -105,6 +109,10 @@ const BUTTON_ROUTES = [
   prefix('lb::nav::', handleLeaderboardNav),
   exact('lb::custom::open', handleLeaderboardCustomOpen),
   exact('lb::refresh', handleLeaderboardRefresh),
+
+  // Global searchable select — pesquisa em dropdowns
+  prefix('search::open::', handleSearchOpen),
+  prefix('search::clear::', handleSearchClear),
 
   // Searchable item picker — botão abre modal com text input
   prefix('itemsearch::open::', itemSearch.handleOpenButton),
@@ -162,6 +170,7 @@ const BUTTON_ROUTES = [
   exact('bairrista::entregar_material', buttonAdapters.handleEntregarMaterialButton),
   exact('bairrista::registar_material', handleRegistarMaterialButton), // legacy fallback
   exact('bairrista::encomendar', handleEncomendasButton),
+  prefix('inv::encomenda_mode::', handleEncomendaModeSelect),
   exact('bairrista::vender', buttonAdapters.handleVenderButton),
   exact('bairrista::registar_kill', buttonAdapters.handleKillButton),
   exact('bairrista::ausencia', buttonAdapters.handleAusenciaButton),
@@ -173,7 +182,6 @@ const BUTTON_ROUTES = [
   exact('bairrista::ranking', handleRanking),
   exact('bairrista::progresso_tier', perfilProgressao.handle),
   exact('bairrista::catalogo', buttonAdapters.handleCatalogoButton),
-  exact('bairrista::metas', buttonAdapters.handleMetasButton),
   exact('bairrista::saidas', buttonAdapters.handleMinhasSaidasButton),
   exact('bairrista::meu_resumo', buttonAdapters.handleMeuResumoButton),
 
@@ -197,10 +205,8 @@ const BUTTON_ROUTES = [
   exact('chefia::ver_stock', handleStockCommand),
   exact('chefia::ajustar_stock', handleAdjustStockButton),
   exact('chefia::gerir_materiais', handleGerirMateriaisButton),
-  exact('chefia::listar_stickys', chefiaActions.listarStickys),
   exact('chefia::ver_tops', chefiaActions.verTops),
   exact('chefia::ver_logs', chefiaActions.verLogs),
-  exact('chefia::criar_meta', buttonAdapters.handleCriarMetaButton),
   exact('chefia::criar_incidente', buttonAdapters.handleCriarIncidenteButton),
   exact('chefia::transferir_stock', buttonAdapters.handleTransferirStockButton),
   exact('chefia::ausencias', buttonAdapters.handleAusenciaButton),
@@ -208,11 +214,9 @@ const BUTTON_ROUTES = [
   exact('chefia::relatorio', buttonAdapters.handleRelatorioButton),
   exact('chefia::dashboard', buttonAdapters.handleDashboardButton),
   exact('chefia::inactivos', buttonAdapters.handleInactivosButton),
-  exact('chefia::qualidade_dados', buttonAdapters.handleQualidadeDadosButton),
-  exact('chefia::exportar', buttonAdapters.handleExportarButton),
   exact('chefia::sync_sheets', buttonAdapters.handleSyncSheetsButton),
-  exact('chefia::republicar_disponibilidade', chefiaActions.republicarDisponibilidade),
   exact('chefia::republicar_paineis', chefiaActions.republicarTodosPaineis),
+  exact('chefia::promover', buttonAdapters.handlePromoverButton),
 
   // Painel da sessão (staff actions)
   prefix('saida::session_close_direct::', handleCloseSessionDirect),
@@ -226,11 +230,6 @@ const BUTTON_ROUTES = [
   exact('patrao::ver_entregas', patraoDiZonaActions.verEntregasOuVendas),
   exact('patrao::ver_vendas', patraoDiZonaActions.verEntregasOuVendas),
   exact('patrao::ver_tops', patraoDiZonaActions.verTopsBairristas),
-  exact('patrao::reputacao', buttonAdapters.handleReputacaoButton),
-  exact('patrao::tarefas', buttonAdapters.handleTarefasButton),
-  exact('patrao::manutencao', buttonAdapters.handleManutencaoButton),
-  exact('patrao::simular_permissoes', buttonAdapters.handleSimularPermissoesButton),
-  exact('patrao::audit_trail', buttonAdapters.handleAuditTrailButton),
 ];
 
 async function handleButton(interaction) {

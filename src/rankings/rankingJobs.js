@@ -7,6 +7,7 @@ const CONFIG = require('../config');
 const { log, warn } = require('../logger');
 const { jobRepo } = require('../repositories');
 const { recordWeeklyWinner } = require('../services/prizeService');
+const eventBus = require('../core/eventBus');
 
 async function _countDiscordRoleMembers(guild, roleIds) {
   const ids = (roleIds || []).filter(Boolean);
@@ -96,6 +97,16 @@ async function publishWeeklyTop(client) {
     if (channel) {
       await channel.send({ embeds: [embed] });
       log('[RANKINGS] Top semanal publicado.');
+
+      eventBus
+        .emitAsync('ranking.weekly_closed', {
+          weekStart: start.toISOString().split('T')[0],
+          weekEnd: end.toISOString().split('T')[0],
+          winnerMemberId: rankings[0]?.member_id || null,
+          publishedAt: new Date(),
+        })
+        .catch(e => warn(`[EVENT] ranking.weekly_closed: ${e.message}`));
+
       return { published: true, weekStart: start.toISOString() };
     }
     return { skipped: 'channel_unavailable' };

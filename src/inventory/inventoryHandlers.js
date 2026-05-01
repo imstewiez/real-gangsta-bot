@@ -6,9 +6,12 @@ const {
   TextInputStyle,
   ActionRowBuilder,
   StringSelectMenuBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
 } = require('discord.js');
 const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
-const { successEmbed, stockEmbed, brandEmbed, COLOR } = require('../shared/embedBuilders');
+const { successEmbed, stockEmbed, brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
 const { adjustStock, getCurrentStock } = require('./inventoryEngine');
 const {
   buildCategorySelectMenu,
@@ -125,10 +128,13 @@ async function handleCategorySelect(interaction) {
   else if (customId.includes('cat_encomenda')) itemPrefix = 'inv::select_encomenda';
   else itemPrefix = 'inv::select_item';
 
-  const menu = await buildItemSelectMenuForCategory(itemPrefix, 'Seleciona o item', category);
+  const rows = await buildItemSelectMenuForCategory(itemPrefix, 'Seleciona o item', category, {
+    searchKey: `item::${interaction.user.id}::${itemPrefix}`,
+    modalTitle: 'Pesquisar item',
+  });
   await safeUpdate(interaction, {
     content: INVENTORY.PROMPTS.CATEGORY_ITEM(category),
-    components: [menu],
+    components: rows,
   });
 }
 
@@ -149,10 +155,13 @@ async function handleStockCommand(interaction) {
 
 async function handleAdjustStockButton(interaction) {
   if (!(await requirePermission(interaction, isChefia))) return;
-  const menu = await buildCategorySelectMenu('inv::cat_ajuste', 'Seleciona a categoria');
+  const rows = await buildCategorySelectMenu('inv::cat_ajuste', 'Seleciona a categoria', {
+    searchKey: `ajuste::${interaction.user.id}`,
+    modalTitle: 'Pesquisar categoria',
+  });
   await safeReply(interaction, {
     content: 'Que categoria de item queres ajustar?',
-    components: [menu],
+    components: rows,
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -292,14 +301,20 @@ async function handleGerirActionSelect(interaction) {
 
   if (action === 'edit_price') {
     _setItemCtx(interaction.user.id, { action: 'edit_price' });
-    const menu = await buildCategorySelectMenu('inv::cat_edit', 'Seleciona a categoria');
-    return safeUpdate(interaction, { content: 'Que categoria de material queres editar?', components: [menu] });
+    const rows = await buildCategorySelectMenu('inv::cat_edit', 'Seleciona a categoria', {
+      searchKey: `edit::${interaction.user.id}`,
+      modalTitle: 'Pesquisar categoria',
+    });
+    return safeUpdate(interaction, { content: 'Que categoria de material queres editar?', components: rows });
   }
 
   if (action === 'deactivate') {
     _setItemCtx(interaction.user.id, { action: 'deactivate' });
-    const menu = await buildCategorySelectMenu('inv::cat_deactivate', 'Seleciona a categoria');
-    return safeUpdate(interaction, { content: 'Que categoria de material queres desativar?', components: [menu] });
+    const rows = await buildCategorySelectMenu('inv::cat_deactivate', 'Seleciona a categoria', {
+      searchKey: `deactivate::${interaction.user.id}`,
+      modalTitle: 'Pesquisar categoria',
+    });
+    return safeUpdate(interaction, { content: 'Que categoria de material queres desativar?', components: rows });
   }
 
   if (action === 'reactivate') {
@@ -482,10 +497,13 @@ async function handleReactivateItemSelect(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleEncomendasButton(interaction) {
-  const menu = await buildCategorySelectMenu('inv::cat_encomenda', 'Seleciona a categoria');
+  const rows = await buildCategorySelectMenu('inv::cat_encomenda', 'Seleciona a categoria', {
+    searchKey: `encomenda::${interaction.user.id}`,
+    modalTitle: 'Pesquisar categoria',
+  });
   await safeReply(interaction, {
     content: 'Seleciona a categoria do material que queres encomendar:',
-    components: [menu],
+    components: rows,
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -503,11 +521,95 @@ async function handleEncomendaSelect(interaction) {
       { messageClass: 'ERROR' }
     );
 
-  _setItemCtx(interaction.user.id, { itemId, itemName: item.name, action: 'order' });
+  const member = await memberRepo.findByDiscordId(interaction.user.id);
+  if (!member) return safeReply(interaction, { content: 'Não estás registado no sistema.' }, { messageClass: 'BANAL' });
+
+  // Calculate preview pricing for 1 unit
+  const { calculateOrderPricing } = require('../orders/orderPricingEngine');
+  const preview = await calculateOrderPricing({
+    itemId,
+    quantity: 1,
+    memberRole: member.role,
+    paymentMode: 'materials_money',
+  });
+
+  _setItemCtx(interaction.user.id, {
+    itemId,
+    itemName: item.name,
+    action: 'order',
+    role: member.role,
+  });
+
+  // Build preview embed
+  const embed = applyLogo(new EmbedBuilder()
+    .setTitle(`📦 Encomendar: ${item.name}`)
+    .setColor(COLOR.PRIMARY)
+    .setDescription(`Preço base: **${preview.unitPrice.toLocaleString('pt-PT')}€**`));
+
+  if (preview.hasRecipe) {
+    const ingLines = preview.ingredients.map(ing =>
+      `• ${ing.name}: ${ing.qty}x (~${ing.subtotal.toLocaleString('pt-PT')}€)`
+    );
+    embed.addFields({
+      name: '🛠️ Fórmula de Craft',
+      value: ingLines.join('\n'),
+      inline: false,
+    });
+    embed.addFields({
+      name: '💰 Custo dos Materiais',
+      value: `${preview.materialCost.toLocaleString('pt-PT')}€`,
+      inline: true,
+    });
+  }
+
+  embed.addFields(
+    {
+      name: '💳 Preço Final (com rank)',
+      value: `${preview.finalPrice.toLocaleString('pt-PT')}€ (${member.role})`,
+      inline: true,
+    },
+    {
+      name: 'ℹ️ Multiplicador',
+      value: `${(preview.multiplier * 100).toFixed(0)}%`,
+      inline: true,
+    }
+  );
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`inv::encomenda_mode::materials_money::${itemId}`)
+      .setLabel('📦 Entregar Materiais')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`inv::encomenda_mode::money_only::${itemId}`)
+      .setLabel('💵 Pagar em Dinheiro')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  await safeReply(interaction, {
+    embeds: [embed],
+    components: [row],
+    flags: MessageFlags.Ephemeral,
+  }, { messageClass: 'FLOW' });
+}
+
+async function handleEncomendaModeSelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const parts = interaction.customId.split('::');
+  const paymentMode = parts[3];
+  const itemId = parseInt(parts[4]);
+
+  const pending = pendingItemSelections.get(interaction.user.id);
+  if (!pending || pending.action !== 'order') {
+    return safeReply(interaction, { content: 'Sessão expirada.' }, { messageClass: 'BANAL' });
+  }
+
+  pending.paymentMode = paymentMode;
+  pendingItemSelections.set(interaction.user.id, pending);
 
   const modal = new ModalBuilder()
     .setCustomId('inv::modal_encomenda')
-    .setTitle(`Encomendar ${item.name}`)
+    .setTitle(`Encomendar ${pending.itemName}`)
     .addComponents(
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
@@ -549,12 +651,29 @@ async function handleEncomendaModal(interaction) {
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) return safeReply(interaction, { content: 'Não estás registado no sistema.' }, { messageClass: 'BANAL' });
 
-  const { query } = require('../db');
-  const insertRes = await query(
-    'INSERT INTO orders (member_id, item_id, quantity, notes) VALUES ($1, $2, $3, $4) RETURNING id, created_at',
-    [member.id, pending.itemId, quantity, notes]
-  );
-  const order = insertRes.rows[0];
+  const paymentMode = pending.paymentMode || 'materials_money';
+
+  // Calculate pricing
+  const { calculateOrderPricing } = require('../orders/orderPricingEngine');
+  const pricing = await calculateOrderPricing({
+    itemId: pending.itemId,
+    quantity,
+    memberRole: member.role,
+    paymentMode,
+  });
+
+  const ordersRepo = require('../repositories/orders');
+  const order = await ordersRepo.create({
+    memberId: member.id,
+    itemId: pending.itemId,
+    quantity,
+    unitPrice: pricing.unitPrice,
+    totalPrice: pricing.finalPrice,
+    notes,
+    paymentMode,
+    materialCost: pricing.materialCost,
+    moneyCost: paymentMode === 'money_only' ? pricing.finalPrice : 0,
+  });
 
   pendingItemSelections.delete(interaction.user.id);
 
@@ -564,10 +683,16 @@ async function handleEncomendaModal(interaction) {
     entityType: 'order',
     entityId: String(order.id),
     actorId: interaction.user.id,
-    afterState: { item: pending.itemName, quantity, notes },
+    afterState: {
+      item: pending.itemName,
+      quantity,
+      notes,
+      paymentMode,
+      totalPrice: pricing.finalPrice,
+    },
   });
 
-  // Event bus — notification routing publica em INVENTORY_EVENTS.
+  // Event bus
   const eventBus = require('../core/eventBus');
   eventBus
     .emitAsync('order.created', {
@@ -578,15 +703,24 @@ async function handleEncomendaModal(interaction) {
       actorId: interaction.user.id,
       status: 'pending',
       notes,
+      paymentMode,
+      totalPrice: pricing.finalPrice,
       createdAt: order.created_at,
       at: new Date(),
     })
     .catch(() => {});
 
-  const embed = successEmbed(
-    'Encomenda Registada',
-    `**${quantity}x** ${pending.itemName}\nEstado: Pendente\n${notes ? `Notas: ${notes}` : ''}\n\nA chefia será notificada.`
-  );
+  let description = `**${quantity}x** ${pending.itemName}\n`;
+  description += `Modo: ${paymentMode === 'money_only' ? '💵 Apenas Dinheiro' : '📦 Materiais + Dinheiro'}\n`;
+  description += `Preço final: **${pricing.finalPrice.toLocaleString('pt-PT')}€**\n`;
+  if (pricing.hasRecipe) {
+    description += `Custo materiais: ${pricing.materialCost.toLocaleString('pt-PT')}€\n`;
+  }
+  description += `Estado: Pendente\n`;
+  if (notes) description += `Notas: ${notes}\n`;
+  description += '\nA chefia será notificada.';
+
+  const embed = successEmbed('Encomenda Registada', description);
 
   return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
@@ -634,11 +768,14 @@ async function handleCartAdd(interaction) {
       { messageClass: 'BANAL' }
     );
   }
-  const menu = await buildCategorySelectMenu(`invcart::cat::${tipo}`, 'Escolhe a categoria');
+  const rows = await buildCategorySelectMenu(`invcart::cat::${tipo}`, 'Escolhe a categoria', {
+    searchKey: `cartcat::${interaction.user.id}::${tipo}`,
+    modalTitle: 'Pesquisar categoria',
+  });
   return safeUpdate(interaction, {
     content: `Escolhe a categoria do item a adicionar:`,
     embeds: [],
-    components: [menu],
+    components: rows,
   });
 }
 
@@ -648,11 +785,14 @@ async function handleCartCategory(interaction) {
   const tipo = interaction.customId.split('::')[2];
   const category = interaction.values[0];
   if (category === 'none') return;
-  const menu = await buildItemSelectMenuForCategory(`invcart::pick::${tipo}::${category}`, 'Escolhe o item', category);
+  const rows = await buildItemSelectMenuForCategory(`invcart::pick::${tipo}::${category}`, 'Escolhe o item', category, {
+    searchKey: `cartpick::${interaction.user.id}::${tipo}::${category}`,
+    modalTitle: 'Pesquisar item',
+  });
   return safeUpdate(interaction, {
     content: `Item da categoria **${category}**:`,
     embeds: [],
-    components: [menu],
+    components: rows,
   });
 }
 
@@ -661,7 +801,17 @@ async function handleCartCategory(interaction) {
 // pelo itemSearch (modal de pesquisa → select filtrado → aqui).
 async function _openCartQtyModal(interaction, tipo, item, { category = 'search' } = {}) {
   const isVenda = tipo === 'venda';
-  const basePrice = parseFloat(item.estimated_value) || 0;
+  const rawBasePrice = parseFloat(item.estimated_value) || 0;
+
+  // Apply sell multiplier if selling
+  let basePrice = rawBasePrice;
+  if (isVenda) {
+    const member = await memberRepo.findByDiscordId(interaction.user.id);
+    if (member) {
+      const { getRankMultiplier } = require('../orders/orderPricingEngine');
+      basePrice = Math.round(rawBasePrice * (1 + getRankMultiplier(member.role, 'sell')));
+    }
+  }
 
   const modalRows = [
     new ActionRowBuilder().addComponents(
@@ -679,9 +829,9 @@ async function _openCartQtyModal(interaction, tipo, item, { category = 'search' 
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
           .setCustomId('unit_price')
-          .setLabel(`Preço por unidade (base: ${basePrice}€)`)
+          .setLabel(`Preço por unidade (sugerido: ${basePrice}€)`)
           .setStyle(TextInputStyle.Short)
-          .setPlaceholder(`${basePrice} — deixa em branco para usar base`)
+          .setPlaceholder(`${basePrice} — deixa em branco para usar sugerido`)
           .setRequired(false)
           .setMaxLength(10)
       )
@@ -758,7 +908,17 @@ async function handleCartQtyModal(interaction) {
   if (!item) {
     return safeReply(interaction, { content: ERRORS.ITEM_NOT_FOUND() }, { messageClass: 'ERROR' });
   }
-  const basePrice = parseFloat(item.estimated_value) || 0;
+  const rawBasePrice = parseFloat(item.estimated_value) || 0;
+
+  // Apply sell multiplier if selling
+  let basePrice = rawBasePrice;
+  if (tipo === 'venda') {
+    const member = await memberRepo.findByDiscordId(interaction.user.id);
+    if (member) {
+      const { getRankMultiplier } = require('../orders/orderPricingEngine');
+      basePrice = Math.round(rawBasePrice * (1 + getRankMultiplier(member.role, 'sell')));
+    }
+  }
 
   let unitPrice = null;
   if (tipo === 'venda') {
@@ -768,7 +928,7 @@ async function handleCartQtyModal(interaction) {
       if (!Number.isFinite(parsed) || parsed < 0) {
         return safeReply(interaction, { content: `${EMOJI.ERRO} Preço inválido.` }, { messageClass: 'BANAL' });
       }
-      // Só guarda custom se diferente do base.
+      // Só guarda custom se diferente do base (com multiplier).
       if (parsed !== basePrice) unitPrice = parsed;
     }
   }
@@ -1033,7 +1193,7 @@ async function handleCartSubmit(interaction) {
       tipo,
     });
   } catch (e) {
-    return interaction.editReply({ content: `${EMOJI.ERRO} ${e.message}`, embeds: [], components: [] }).catch(() => {});
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}`, embeds: [], components: [] }, { messageClass: 'ERROR' });
   }
 
   // Notificar canal de staff (INVENTORY_EVENTS → CH_MATERIAL_ENTREG 1491506821599330545)
@@ -1077,7 +1237,7 @@ async function handleCartSubmit(interaction) {
 
   const embed = brandEmbed('MOVEMENT').setColor(COLOR.WARNING_SOFT).setTitle(title).setDescription(desc);
 
-  return interaction.editReply({ content: '', embeds: [embed], components: [] });
+  return safeReply(interaction, { content: '', embeds: [embed], components: [] }, { messageClass: 'RESULT' });
 }
 
 // ── Undo submission ─────────────────────────────────────────────────────────
@@ -1096,15 +1256,17 @@ async function handleCartUndo(interaction) {
     client: interaction.client,
   });
   if (!r.undone) {
-    return interaction.editReply({ content: `${EMOJI.WARN} ${r.reason}`, embeds: [], components: [] }).catch(() => {});
+    return safeReply(interaction, { content: `${EMOJI.WARN} ${r.reason}`, embeds: [], components: [] }, { messageClass: 'WARN' });
   }
-  return interaction
-    .editReply({
+  return safeReply(
+    interaction,
+    {
       content: `${EMOJI.OK} Submissão desfeita — ${r.deletedCount} linha(s) removida(s). O stock foi restaurado.`,
       embeds: [],
       components: [],
-    })
-    .catch(() => {});
+    },
+    { messageClass: 'BANAL' }
+  );
 }
 
 async function handleDeliveryApproverSelect(interaction) {
@@ -1115,9 +1277,11 @@ async function handleDeliveryApproverSelect(interaction) {
   const bairristaCart = require('./bairristaCart');
   const cart = bairristaCart.getCart(interaction.user.id);
   if (!cart || cart.tipo !== 'entrega') {
-    return interaction
-      .editReply({ content: `${EMOJI.PENDENTE} Carrinho expirado.`, embeds: [], components: [] })
-      .catch(() => {});
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.PENDENTE} Carrinho expirado.`, embeds: [], components: [] },
+      { messageClass: 'BANAL' }
+    );
   }
 
   let approverMember = null;
@@ -1127,13 +1291,15 @@ async function handleDeliveryApproverSelect(interaction) {
     approverMember = null;
   }
   if (!approverMember || !canOpenSession(approverMember)) {
-    return interaction
-      .editReply({
+    return safeReply(
+      interaction,
+      {
         content: `${EMOJI.ERRO} Tens de escolher um OG ou alguém acima na hierarquia.`,
         embeds: [],
         components: bairristaCart.buildDeliveryApproverComponents(),
-      })
-      .catch(() => {});
+      },
+      { messageClass: 'WARN' }
+    );
   }
 
   const linesSnapshot = cart.lines.map(l => ({
@@ -1154,7 +1320,7 @@ async function handleDeliveryApproverSelect(interaction) {
       createdBy: interaction.user.id,
     });
   } catch (e) {
-    return interaction.editReply({ content: `${EMOJI.ERRO} ${e.message}`, embeds: [], components: [] }).catch(() => {});
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}`, embeds: [], components: [] }, { messageClass: 'ERROR' });
   }
 
   bairristaCart.clearCart(interaction.user.id);
@@ -1330,6 +1496,7 @@ module.exports = {
   handleReactivateItemSelect,
   handleEncomendasButton,
   handleEncomendaSelect,
+  handleEncomendaModeSelect,
   handleEncomendaModal,
   pendingItemSelections,
   // Cart handlers

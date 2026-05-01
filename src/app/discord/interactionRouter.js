@@ -102,15 +102,14 @@ async function onInteraction(interaction) {
         warn(`${ctx.tag()} failed ${action} · ${e.message} · ${ctx.elapsed()}ms`);
         error(`[INTERACTION] Unhandled (${typeTagFor(interaction)}, user=${interaction.user?.id}): ${e.message}`, e);
         try {
-          const payload = {
-            content: ERRORS.INTERNAL(cid),
-            flags: MessageFlags.Ephemeral,
-          };
-          if (interaction.deferred || interaction.replied) {
-            await interaction.followUp(payload).catch(() => {});
-          } else {
-            await interaction.reply(payload).catch(() => {});
-          }
+          await safeReply(
+            interaction,
+            {
+              content: ERRORS.INTERNAL(cid),
+              flags: MessageFlags.Ephemeral,
+            },
+            { messageClass: 'ERROR' }
+          );
         } catch (_) {
           /* ignore */
         }

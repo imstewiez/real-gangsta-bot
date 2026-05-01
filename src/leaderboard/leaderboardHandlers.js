@@ -28,17 +28,19 @@ async function handleLeaderboardDetails(interaction) {
 
   const period = interaction.customId.split('::')[2];
   if (!['daily', 'weekly', 'monthly'].includes(period)) {
-    return interaction.editReply({ content: `${EMOJI.ERRO} Período inválido.` }).catch(() => {});
+    return safeReply(interaction, { content: `${EMOJI.ERRO} Período inválido.` }, { messageClass: 'WARN' });
   }
 
   try {
     const { embed, components } = await buildDetailsForPeriod(period, 0);
-    return interaction.editReply({ embeds: [embed], components }).catch(() => {});
+    return safeReply(interaction, { embeds: [embed], components }, { messageClass: 'COCKPIT' });
   } catch (e) {
     warn(`[LEADERBOARD] details (${period}) falhou: ${e.message}`);
-    return interaction
-      .editReply({ content: `${EMOJI.ERRO} Falha a carregar detalhes — tenta daqui a pouco.` })
-      .catch(() => {});
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} Falha a carregar detalhes — tenta daqui a pouco.` },
+      { messageClass: 'ERROR' }
+    );
   }
 }
 
@@ -49,17 +51,15 @@ async function handleLeaderboardNav(interaction) {
   const [, , period, offsetStr] = interaction.customId.split('::');
   const offset = parseInt(offsetStr, 10) || 0;
   if (!['daily', 'weekly', 'monthly'].includes(period)) {
-    return interaction.editReply({ content: `${EMOJI.ERRO} Período inválido.` }).catch(() => {});
+    return safeReply(interaction, { content: `${EMOJI.ERRO} Período inválido.` }, { messageClass: 'WARN' });
   }
 
   try {
     const { embed, components } = await buildDetailsForPeriod(period, offset);
-    return interaction.editReply({ embeds: [embed], components }).catch(() => {});
+    return safeReply(interaction, { embeds: [embed], components }, { messageClass: 'COCKPIT' });
   } catch (e) {
     warn(`[LEADERBOARD] nav (${period}, ${offset}) falhou: ${e.message}`);
-    return interaction
-      .editReply({ content: `${EMOJI.ERRO} Falha a carregar detalhes.` })
-      .catch(() => {});
+    return safeReply(interaction, { content: `${EMOJI.ERRO} Falha a carregar detalhes.` }, { messageClass: 'ERROR' });
   }
 }
 
@@ -98,12 +98,14 @@ async function handleLeaderboardCustomModal(interaction) {
 
   try {
     const { embed } = await buildDetailsForCustomRange(start, end);
-    return interaction.editReply({ embeds: [embed] }).catch(() => {});
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'COCKPIT' });
   } catch (e) {
     warn(`[LEADERBOARD] custom range (${start} → ${end}) falhou: ${e.message}`);
-    return interaction
-      .editReply({ content: `${EMOJI.ERRO} ${e.message || 'Falha a carregar leaderboard custom.'}` })
-      .catch(() => {});
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} ${e.message || 'Falha a carregar leaderboard custom.'}` },
+      { messageClass: 'ERROR' }
+    );
   }
 }
 
@@ -114,27 +116,33 @@ async function handleLeaderboardRefresh(interaction) {
   const gate = canUserRefresh(interaction.user.id);
   if (!gate.ok) {
     const secs = Math.ceil(gate.waitMs / 1000);
-    return interaction
-      .editReply({
-        content: `${EMOJI.PENDENTE} Aguarda **${secs}s** antes de pedir outro refresh.`,
-      })
-      .catch(() => {});
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.PENDENTE} Aguarda **${secs}s** antes de pedir outro refresh.` },
+      { messageClass: 'BANAL' }
+    );
   }
   markUserRefresh(interaction.user.id);
 
   try {
     const r = await publishOrRefresh(interaction.client);
     if (r.skipped) {
-      return interaction.editReply({ content: `${EMOJI.WARN} Refresh ignorado: ${r.skipped}.` }).catch(() => {});
+      return safeReply(
+        interaction,
+        { content: `${EMOJI.WARN} Refresh ignorado: ${r.skipped}.` },
+        { messageClass: 'WARN' }
+      );
     }
-    return interaction
-      .editReply({
+    return safeReply(
+      interaction,
+      {
         content: `${EMOJI.OK} Leaderboard actualizado. _(podes pedir outro refresh daqui a ${Math.round(REFRESH_COOLDOWN_MS / 1000)}s)_`,
-      })
-      .catch(() => {});
+      },
+      { messageClass: 'BANAL' }
+    );
   } catch (e) {
     warn(`[LEADERBOARD] refresh manual falhou: ${e.message}`);
-    return interaction.editReply({ content: `${EMOJI.ERRO} Falha a atualizar.` }).catch(() => {});
+    return safeReply(interaction, { content: `${EMOJI.ERRO} Falha a atualizar.` }, { messageClass: 'ERROR' });
   }
 }
 

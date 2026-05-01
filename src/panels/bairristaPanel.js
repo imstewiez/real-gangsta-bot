@@ -10,7 +10,7 @@ const { query } = require('../db');
 // Registar actividade, consultar progresso pessoal e ranking da firma.
 
 async function buildBairristaPanel() {
-  const [weeklyTop, activeGoals, memberCount] = await Promise.all([
+  const [weeklyTop, memberCount] = await Promise.all([
     query(`
       SELECT m.display_name, SUM(im.quantity) AS total_qty
       FROM inventory_movements im
@@ -21,13 +21,11 @@ async function buildBairristaPanel() {
       ORDER BY total_qty DESC
       LIMIT 3
     `),
-    query('SELECT COUNT(*)::int AS c FROM weekly_goals WHERE week_start <= CURRENT_DATE AND week_end >= CURRENT_DATE'),
     query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
   ]);
 
   const top3 = weeklyTop.rows;
-  const goals = activeGoals.rows[0]?.c ?? 0;
-  const members = memberCount.rows[0]?.c ?? 0;
+const members = memberCount.rows[0]?.c ?? 0;
 
   const topText =
     top3.length === 0
@@ -69,7 +67,6 @@ async function buildBairristaPanel() {
   const row2 = buttonRow(
     button({ customId: 'bairrista::ranking', label: 'Ver Ranking', style: 'Primary', emoji: EMOJI.MEDAL_1 }),
     button({ customId: 'bairrista::catalogo', label: 'Ver Catálogo', style: 'Primary', emoji: EMOJI.MATERIAL }),
-    button({ customId: 'bairrista::metas', label: 'Ver Metas', style: 'Primary', emoji: EMOJI.OK }),
     button({ customId: 'bairrista::saidas', label: 'As minhas Saídas', style: 'Primary', emoji: EMOJI.MOVIMENTO }),
     button({ customId: 'bairrista::meu_resumo', label: 'Meu Resumo', style: 'Primary', emoji: EMOJI.INFO })
   );
