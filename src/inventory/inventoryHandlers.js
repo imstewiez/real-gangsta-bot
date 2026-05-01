@@ -8,7 +8,7 @@ const {
   StringSelectMenuBuilder,
 } = require('discord.js');
 const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
-const { successEmbed, stockEmbed, brandEmbed } = require('../shared/embedBuilders');
+const { successEmbed, stockEmbed, brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { adjustStock, getCurrentStock } = require('./inventoryEngine');
 const {
   buildCategorySelectMenu,
