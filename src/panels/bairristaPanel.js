@@ -44,8 +44,7 @@ async function buildBairristaPanel() {
       .setDescription('**Trás pedra ao bairro. O bairro devolve-te nome.**')
       .addFields(
         { name: `${EMOJI.MEDAL_1} Top Entregas (Semana)`, value: topText, inline: false },
-        { name: `${EMOJI.PARTICIPANTE} Firma`, value: `**${members}** bairristas activos`, inline: true },
-        { name: `${EMOJI.OK} Metas`, value: `**${goals}** activas`, inline: true }
+        { name: `${EMOJI.PARTICIPANTE} Firma`, value: `**${members}** bairristas activos`, inline: true }
       )
   );
 
