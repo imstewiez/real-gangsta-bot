@@ -29,7 +29,7 @@ async function buildChefiaPanel() {
       ORDER BY total_qty DESC
       LIMIT 1
     `),
-      query("SELECT COUNT(*)::int AS c FROM incidents WHERE estado = 'open'"),
+      query("SELECT COUNT(*)::int AS c FROM incidents WHERE status = 'open'"),
       query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
       query("SELECT COUNT(*)::int AS c FROM kill_logs WHERE created_at >= date_trunc('week', NOW())"),
       query(

@@ -1,1 +1,1 @@
-﻿fix(panels): corrige qty->quantity, remove stock inexistente, fix weekly_goals sem status
+﻿fix(panels): incidents.estado -> incidents.status

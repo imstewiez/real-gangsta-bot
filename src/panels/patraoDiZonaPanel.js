@@ -34,7 +34,7 @@ async function buildPatraoDiZonaPanel() {
       LIMIT 1
     `),
       query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
-      query("SELECT COUNT(*)::int AS c FROM incidents WHERE estado = 'open'"),
+      query("SELECT COUNT(*)::int AS c FROM incidents WHERE status = 'open'"),
       query(
         'SELECT COUNT(*)::int AS c FROM weekly_goals WHERE week_start <= CURRENT_DATE AND week_end >= CURRENT_DATE'
       ),
