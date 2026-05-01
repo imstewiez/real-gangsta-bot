@@ -129,10 +129,14 @@ async function bootstrapPanel(client, panelDef) {
     let deletedCount = 0;
     let failedCount = 0;
     let lastId = null;
-    while (true) {
+    let more = true;
+    while (more) {
       const opts = lastId ? { limit: 100, before: lastId } : { limit: 100 };
       const batch = await channel.messages.fetch(opts).catch(() => null);
-      if (!batch || batch.size === 0) break;
+      if (!batch || batch.size === 0) {
+        more = false;
+        break;
+      }
       const botMsgs = [...batch.values()].filter(m => m.author.id === client.user.id);
       for (const msg of botMsgs) {
         try {
@@ -143,7 +147,7 @@ async function bootstrapPanel(client, panelDef) {
         }
       }
       lastId = batch.last()?.id;
-      if (batch.size < 100) break;
+      if (batch.size < 100) more = false;
     }
     if (deletedCount > 0 || failedCount > 0) {
       log(`[PANELS] ${deletedCount} mensagem(ns) apagada(s), ${failedCount} falha(s) em #${channel.name}.`);

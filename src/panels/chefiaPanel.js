@@ -111,14 +111,49 @@ async function buildChefiaPanel() {
       customId: 'panel::chefia_gerir',
       placeholder: '🟠 Gerir — escolhe uma acção',
       options: [
-        { label: 'Ajustar Stock', value: 'chefia::ajustar_stock', emoji: EMOJI.AJUSTAR, description: 'Corrigir quantidades de stock' },
-        { label: 'Gerir Materiais', value: 'chefia::gerir_materiais', emoji: EMOJI.EDITAR, description: 'Adicionar/remover itens do catálogo' },
+        {
+          label: 'Ajustar Stock',
+          value: 'chefia::ajustar_stock',
+          emoji: EMOJI.AJUSTAR,
+          description: 'Corrigir quantidades de stock',
+        },
+        {
+          label: 'Gerir Materiais',
+          value: 'chefia::gerir_materiais',
+          emoji: EMOJI.EDITAR,
+          description: 'Adicionar/remover itens do catálogo',
+        },
         { label: 'Promover', value: 'chefia::promover', emoji: EMOJI.PROGRESSO, description: 'Promover bairristas' },
-        { label: 'Lifecycle', value: 'chefia::lifecycle', emoji: EMOJI.PARTICIPANTE, description: 'Gerir ciclo de vida de membros' },
-        { label: 'Exportar', value: 'chefia::exportar', emoji: EMOJI.DINHEIRO, description: 'Exportar dados para ficheiro' },
-        { label: 'Sync Sheets', value: 'chefia::sync_sheets', emoji: EMOJI.REFRESH, description: 'Sincronizar com Google Sheets' },
-        { label: 'Qualidade Dados', value: 'chefia::qualidade_dados', emoji: EMOJI.INFO, description: 'Ver relatório de qualidade' },
-        { label: 'Republicar Painéis', value: 'chefia::republicar_paineis', emoji: '🔄', description: 'Republicar todos os painéis' },
+        {
+          label: 'Lifecycle',
+          value: 'chefia::lifecycle',
+          emoji: EMOJI.PARTICIPANTE,
+          description: 'Gerir ciclo de vida de membros',
+        },
+        {
+          label: 'Exportar',
+          value: 'chefia::exportar',
+          emoji: EMOJI.DINHEIRO,
+          description: 'Exportar dados para ficheiro',
+        },
+        {
+          label: 'Sync Sheets',
+          value: 'chefia::sync_sheets',
+          emoji: EMOJI.REFRESH,
+          description: 'Sincronizar com Google Sheets',
+        },
+        {
+          label: 'Qualidade Dados',
+          value: 'chefia::qualidade_dados',
+          emoji: EMOJI.INFO,
+          description: 'Ver relatório de qualidade',
+        },
+        {
+          label: 'Republicar Painéis',
+          value: 'chefia::republicar_paineis',
+          emoji: '🔄',
+          description: 'Republicar todos os painéis',
+        },
       ],
     })
   );
