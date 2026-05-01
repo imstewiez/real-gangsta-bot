@@ -1,1 +1,1 @@
-﻿fix(panels): incidents.estado -> incidents.status
+﻿fix(rankings): computa ranking em tempo real quando weekly_rankings esta vazio
