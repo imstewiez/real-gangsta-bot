@@ -78,22 +78,8 @@ function buildSelectOptions(slots) {
 
   // ── Disponível ──
   add('dia_todo', 'disponivel', 'Dia todo', '✅');
-  add('tarde', 'disponivel', 'Tarde (12–18h)', '✅');
-  add('noite', 'disponivel', 'Noite (18–00h)', '✅');
-  add('madrugada', 'disponivel', 'Madrugada (22–02h)', '✅');
-  for (const label of slotLabels) {
-    // skip se já está num range? Não, deixa o user decidir.
-    add(label, 'disponivel', label, '✅');
-  }
-
-  // ── Talvez ──
-  add('dia_todo', 'talvez', 'Dia todo', '⏰');
-  add('tarde', 'talvez', 'Tarde (12–18h)', '⏰');
-  add('noite', 'talvez', 'Noite (18–00h)', '⏰');
-  add('madrugada', 'talvez', 'Madrugada (22–02h)', '⏰');
-
-  // ── Indisponível ──
-  add('dia_todo', 'indisponivel', 'Todo o dia', '❌');
+  add('tarde', 'disponivel', 'Tarde', '✅');
+  add('noite', 'disponivel', 'Noite', '✅');
 
   // ── Limpar ──
   if (slotLabels.length) {

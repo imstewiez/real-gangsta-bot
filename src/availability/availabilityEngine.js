@@ -174,12 +174,7 @@ function buildComponents(session, slots) {
       .setCustomId(`avail::summary::${session.id}`)
       .setStyle(ButtonStyle.Primary)
       .setLabel('Resumo')
-      .setEmoji('📊'),
-    new ButtonBuilder()
-      .setCustomId(`avail::refresh::${session.id}`)
-      .setStyle(ButtonStyle.Secondary)
-      .setLabel('Atualizar')
-      .setEmoji('🔁')
+      .setEmoji('📊')
   );
 
   return [new ActionRowBuilder().addComponents(select), allRow, utilRow];

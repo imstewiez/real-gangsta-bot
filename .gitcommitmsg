@@ -1,1 +1,1 @@
-﻿fix(rankings): computa ranking em tempo real quando weekly_rankings esta vazio
+﻿fix(availability): reduz select para 3 opcoes + remove botao Atualizar
