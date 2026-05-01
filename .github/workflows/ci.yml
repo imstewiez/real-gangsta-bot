@@ -23,9 +23,9 @@ jobs:
       - name: Test with coverage (enforces thresholds via .c8rc.json)
         run: npm run test:coverage
         env:
-          DATABASE_URL: ""
-          DISCORD_BOT_TOKEN: "test"
-          DISCORD_GUILD_ID: "test"
+          DATABASE_URL: ''
+          DISCORD_BOT_TOKEN: 'test'
+          DISCORD_GUILD_ID: 'test'
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
@@ -62,33 +62,45 @@ jobs:
         env:
           DATABASE_URL: postgresql://bot:bot@localhost:5432/bot_ci
           DB_SSL_MODE: off
-          DISCORD_BOT_TOKEN: "test"
-          DISCORD_GUILD_ID: "test"
+          DISCORD_BOT_TOKEN: 'test'
+          DISCORD_GUILD_ID: 'test'
       - name: Integration tests
         run: npm run test:integration
         env:
           DATABASE_URL: postgresql://bot:bot@localhost:5432/bot_ci
           DB_SSL_MODE: off
-          DISCORD_BOT_TOKEN: "test"
-          DISCORD_GUILD_ID: "test"
+          DISCORD_BOT_TOKEN: 'test'
+          DISCORD_GUILD_ID: 'test'
 
-  deploy:
-    name: Deploy to Railway
+  verify-deploy:
+    name: Verify Railway Deploy
     needs: [lint-and-test, integration]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-      - name: Deploy
+      - name: Wait for Railway auto-deploy
+        run: sleep 45
+
+      - name: Check bot health endpoint
         run: |
-          if [ -z "$RAILWAY_TOKEN" ] || [ -z "$RAILWAY_SERVICE_NAME" ]; then
-            echo "⚠️ Railway secrets não configurados. Deploy skipado."
-            echo "   Adiciona RAILWAY_TOKEN e RAILWAY_SERVICE_NAME em Settings > Secrets."
+          HEALTH_URL="${{ secrets.BOT_HEALTH_URL }}"
+          if [ -z "$HEALTH_URL" ]; then
+            echo "ℹ️ BOT_HEALTH_URL não configurado. Skipping health check."
+            echo "   Adiciona BOT_HEALTH_URL em Settings > Secrets (ex: https://bot-di-zona.up.railway.app/health)"
             exit 0
           fi
-          railway up --service "$RAILWAY_SERVICE_NAME"
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_SERVICE_NAME: ${{ secrets.RAILWAY_SERVICE_NAME }}
+
+          echo "🔍 A verificar health endpoint: $HEALTH_URL"
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
+            echo "   Tentativa $i: HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "✅ Bot está online e saudável!"
+              exit 0
+            fi
+            sleep 15
+          done
+
+          echo "❌ Health endpoint não respondeu com 200 após 5 tentativas."
+          echo "   Verifica no Railway dashboard se o deploy ficou activo."
+          exit 1
