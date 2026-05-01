@@ -272,11 +272,7 @@ async function handleSearchClear(interaction) {
   const searchKey = _parseSearchKey(interaction);
   const data = SEARCH_STORE.get(searchKey);
   if (!data) {
-    return safeReply(
-      interaction,
-      { content: `${EMOJI.ERRO} Pesquisa expirada.` },
-      { messageClass: 'BANAL' }
-    );
+    return safeReply(interaction, { content: `${EMOJI.ERRO} Pesquisa expirada.` }, { messageClass: 'BANAL' });
   }
 
   const newRows = _rebuildMessageRows(data, data.options, interaction.message?.components || []);

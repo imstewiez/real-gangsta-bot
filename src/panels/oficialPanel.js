@@ -22,7 +22,7 @@ async function buildOficialPanel() {
   const ops = openOps.rows[0]?.c ?? 0;
   const kills = weekKills.rows[0]?.c ?? 0;
   const deliv = weekDeliveries.rows[0]?.c ?? 0;
-const members = memberCount.rows[0]?.c ?? 0;
+  const members = memberCount.rows[0]?.c ?? 0;
 
   const embed = applyLogo(
     brandEmbed('SHORT')
@@ -33,7 +33,7 @@ const members = memberCount.rows[0]?.c ?? 0;
         { name: `${EMOJI.SAIDA} Saídas Activas`, value: `**${ops}** em curso`, inline: true },
         { name: `${EMOJI.KILL} Kills (Semana)`, value: `**${kills}** registadas`, inline: true },
         { name: `${EMOJI.ENTREGA} Entregas (Semana)`, value: `**${deliv}** registadas`, inline: true },
-        { name: `${EMOJI.PARTICIPANTE} Firma`, value: `**${members}** activos`, inline: true },
+        { name: `${EMOJI.PARTICIPANTE} Firma`, value: `**${members}** activos`, inline: true }
       )
   );
 

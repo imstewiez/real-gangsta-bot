@@ -255,7 +255,10 @@ function buildDestaquesEmbed(saida, participants) {
   if (devolveram.length) {
     fields.push({
       name: `${EMOJI.OK} ${L.DEVOLVERAM} (${devolveram.length})`,
-      value: devolveram.slice(0, 10).map(m => `• ${fmt(m)}`).join('\n'),
+      value: devolveram
+        .slice(0, 10)
+        .map(m => `• ${fmt(m)}`)
+        .join('\n'),
       inline: false,
     });
   }
@@ -308,7 +311,9 @@ async function buildImpactoEmbed(saida) {
   if (profitSignal.length) {
     fields.push({
       name: `${EMOJI.LUCRO} Top lucro gerado`,
-      value: profitSignal.map((m, i) => `${rankBadge(i + 1)} <@${m.discord_id}> — ${formatMoney(m.profit_generated)}`).join('\n'),
+      value: profitSignal
+        .map((m, i) => `${rankBadge(i + 1)} <@${m.discord_id}> — ${formatMoney(m.profit_generated)}`)
+        .join('\n'),
       inline: false,
     });
   }

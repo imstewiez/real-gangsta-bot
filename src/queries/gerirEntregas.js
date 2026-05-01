@@ -100,10 +100,7 @@ async function handleApagar(interaction) {
     }
 
     // Hard delete original submission
-    const res = await client.query(
-      'DELETE FROM inventory_movements WHERE submission_id = $1',
-      [submissionId]
-    );
+    const res = await client.query('DELETE FROM inventory_movements WHERE submission_id = $1', [submissionId]);
     return res.rowCount;
   });
 

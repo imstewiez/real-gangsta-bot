@@ -51,7 +51,10 @@ async function handleDelete(interaction) {
       return res.rowCount;
     });
   } catch (e) {
-    return safeReply(interaction, { content: `❌ Erro ao eliminar saída: ${e.message}`, flags: MessageFlags.Ephemeral });
+    return safeReply(interaction, {
+      content: `❌ Erro ao eliminar saída: ${e.message}`,
+      flags: MessageFlags.Ephemeral,
+    });
   }
 
   await logAudit({

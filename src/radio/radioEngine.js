@@ -92,20 +92,14 @@ async function setRandom({ type, actorId, note }) {
 function buildEmbed(states) {
   const principal = states.find(s => s.radio_type === 'principal');
   const val = principal?.value || '—';
-  const when = principal?.updated_at
-    ? `<t:${Math.floor(new Date(principal.updated_at).getTime() / 1000)}:R>`
-    : '—';
+  const when = principal?.updated_at ? `<t:${Math.floor(new Date(principal.updated_at).getTime() / 1000)}:R>` : '—';
   const by = principal?.updated_by ? `<@${principal.updated_by}>` : '—';
   const modeTag = principal?.mode === 'random' ? '🎲 random' : '✋ manual';
 
   const embed = brandEmbed('MOVEMENT')
     .setColor(COLOR.DANGER)
     .setTitle('📻 Frequência da Firma')
-    .setDescription(
-      `**A rua fala nesta onda.**\n\n` +
-        `# \`${val}\`\n\n` +
-        `${modeTag} • ${by} • ${when}`
-    );
+    .setDescription(`**A rua fala nesta onda.**\n\n` + `# \`${val}\`\n\n` + `${modeTag} • ${by} • ${when}`);
 
   return applyLogo(embed);
 }
@@ -142,9 +136,7 @@ async function historyText(limit = 10) {
   for (const r of rows) {
     const when = `<t:${Math.floor(new Date(r.created_at).getTime() / 1000)}:R>`;
     const tag = r.mode === 'random' ? '🎲' : '✋';
-    lines.push(
-      `\`${r.old_value || '∅'}\` → \`${r.new_value}\` ${tag} • <@${r.actor_id}> ${when}`
-    );
+    lines.push(`\`${r.old_value || '∅'}\` → \`${r.new_value}\` ${tag} • <@${r.actor_id}> ${when}`);
   }
   return lines.join('\n');
 }

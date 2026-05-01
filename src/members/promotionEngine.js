@@ -70,9 +70,7 @@ async function _archiveBairristaChannel(guildMember, dbMember, client) {
 
     if (CONFIG.ARCHIVE_ON_PROMOTION) {
       if (CONFIG.BAIRRISTA_ARQUIVO_CATEGORY_ID) {
-        await queueChannelOp(() =>
-          channel.setParent(CONFIG.BAIRRISTA_ARQUIVO_CATEGORY_ID, { lockPermissions: false })
-        );
+        await queueChannelOp(() => channel.setParent(CONFIG.BAIRRISTA_ARQUIVO_CATEGORY_ID, { lockPermissions: false }));
       }
       await queueChannelOp(() =>
         channel.permissionOverwrites.edit(discordId, {
@@ -86,7 +84,9 @@ async function _archiveBairristaChannel(guildMember, dbMember, client) {
         [dbMember.channel_id]
       );
       const { EMOJI } = require('../content');
-      await channel.send({ content: `${EMOJI.AUDIT} Canal arquivado — ${displayName} subiu de cargo.` }).catch(() => {});
+      await channel
+        .send({ content: `${EMOJI.AUDIT} Canal arquivado — ${displayName} subiu de cargo.` })
+        .catch(() => {});
     } else if (CONFIG.DELETE_ON_PROMOTION) {
       await queueChannelOp(() => channel.delete(`Promoção de ${displayName}`));
       const { query } = require('../db');

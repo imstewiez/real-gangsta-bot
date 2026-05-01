@@ -9,13 +9,7 @@
 const { MessageFlags } = require('discord.js');
 const CONFIG = require('../config');
 const { radioRepo } = require('../repositories');
-const {
-  setRandom,
-  buildEmbed,
-  buildComponents,
-  TYPE_META,
-  notifyStickyChange,
-} = require('./radioEngine');
+const { setRandom, buildEmbed, buildComponents, TYPE_META, notifyStickyChange } = require('./radioEngine');
 const { safeReply } = require('../shared/interactionHelpers');
 const { successEmbed } = require('../shared/embedBuilders');
 const { isCommand, isOficial } = require('../permissions/permissionEngine');
@@ -73,9 +67,7 @@ async function handleRandom(interaction) {
       if (CONFIG.REDWOOD_ROLE_ID) mentions.push(`<@&${CONFIG.REDWOOD_ROLE_ID}>`);
       if (CONFIG.BAIRRISTAS_ROLE_ID) mentions.push(`<@&${CONFIG.BAIRRISTAS_ROLE_ID}>`);
       if (mentions.length) {
-        await interaction.channel.send(
-          `${mentions.join(' ')} 📻 **Nova Frequência:** \`${result.value}\``
-        );
+        await interaction.channel.send(`${mentions.join(' ')} 📻 **Nova Frequência:** \`${result.value}\``);
       }
     } catch (e) {
       warn(`[RADIO] mention falhou: ${e.message}`);

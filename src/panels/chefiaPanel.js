@@ -11,10 +11,9 @@ const { query } = require('../db');
 // Gestão da firma: metas, incidentes, stock, membros, relatórios.
 
 async function buildChefiaPanel() {
-  const [openOps, topWeek, openIncidents, activeMembers, weekKills, weekDeliveries] =
-    await Promise.all([
-      query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
-      query(`
+  const [openOps, topWeek, openIncidents, activeMembers, weekKills, weekDeliveries] = await Promise.all([
+    query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
+    query(`
       SELECT m.display_name, SUM(im.quantity) AS total_qty
       FROM inventory_movements im
       JOIN members m ON m.id = im.member_id
@@ -24,13 +23,13 @@ async function buildChefiaPanel() {
       ORDER BY total_qty DESC
       LIMIT 1
     `),
-      query("SELECT COUNT(*)::int AS c FROM incidents WHERE status = 'open'"),
-      query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
-      query("SELECT COUNT(*)::int AS c FROM kill_logs WHERE created_at >= date_trunc('week', NOW())"),
-      query(
-        "SELECT COUNT(*)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_bairrista','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
-      ),
-    ]);
+    query("SELECT COUNT(*)::int AS c FROM incidents WHERE status = 'open'"),
+    query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
+    query("SELECT COUNT(*)::int AS c FROM kill_logs WHERE created_at >= date_trunc('week', NOW())"),
+    query(
+      "SELECT COUNT(*)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_bairrista','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
+    ),
+  ]);
 
   const ops = openOps.rows[0]?.c ?? 0;
   const topName = topWeek.rows[0]?.display_name ?? '—';
@@ -65,7 +64,7 @@ async function buildChefiaPanel() {
 
   // Row 1 — Criar
   const row1 = buttonRow(
-button({ customId: 'chefia::criar_incidente', label: 'Criar Incidente', style: 'Success', emoji: EMOJI.ERRO }),
+    button({ customId: 'chefia::criar_incidente', label: 'Criar Incidente', style: 'Success', emoji: EMOJI.ERRO }),
     button({
       customId: 'chefia::transferir_stock',
       label: 'Transferir Stock',

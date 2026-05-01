@@ -441,15 +441,13 @@ async function handlePromoverModalSubmit(interaction) {
     });
     return safeReply(
       interaction,
-      { content: `${EMOJI.OK} **${guildMember.displayName}** promovido para **${cargo}**${motivo ? ` — ${motivo}` : ''}` },
+      {
+        content: `${EMOJI.OK} **${guildMember.displayName}** promovido para **${cargo}**${motivo ? ` — ${motivo}` : ''}`,
+      },
       { messageClass: 'BANAL' }
     );
   } catch (e) {
-    return safeReply(
-      interaction,
-      { content: `${EMOJI.INDISPONIVEL} Erro: ${e.message}` },
-      { messageClass: 'BANAL' }
-    );
+    return safeReply(interaction, { content: `${EMOJI.INDISPONIVEL} Erro: ${e.message}` }, { messageClass: 'BANAL' });
   }
 }
 

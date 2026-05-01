@@ -17,7 +17,12 @@ const { query } = require('../db');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
 const { getAllPeriodsLeaders, getPeriodLeaders, navigatePeriod } = require('./leaderboardEngine');
-const { buildLeaderboardEmbed, buildLeaderboardComponents, buildDetailsEmbed, buildDetailsComponents } = require('./leaderboardPanel');
+const {
+  buildLeaderboardEmbed,
+  buildLeaderboardComponents,
+  buildDetailsEmbed,
+  buildDetailsComponents,
+} = require('./leaderboardPanel');
 
 let _client = null;
 function setClient(client) {

@@ -200,7 +200,9 @@ async function buildSessionEmbed(saidaId) {
 
     // Progress bar de preenchimento
     const pct = totalCount > 0 ? Math.round((submittedCount / totalCount) * 100) : 0;
-    lines.push(`${EMOJI.PENDENTE} Preenchimento: ${progressBar(submittedCount, totalCount, { width: 10 })}  **${submittedCount}/${totalCount}** (${pct}%)`);
+    lines.push(
+      `${EMOJI.PENDENTE} Preenchimento: ${progressBar(submittedCount, totalCount, { width: 10 })}  **${submittedCount}/${totalCount}** (${pct}%)`
+    );
 
     if (submittedCount >= totalCount && totalCount > 0) {
       if (pendingWeapon > 0) {
@@ -245,11 +247,15 @@ async function buildSessionEmbed(saidaId) {
     lines.push('');
     lines.push(headerLine(EMOJI.FECHAR, 'Concluída'));
     lines.push(`${EMOJI.COMBATE} Resultado: **${resultLabel}**`);
-    lines.push(`${EMOJI.KILL} **${totalKills}** kills  ·  ${EMOJI.MORTE} **${totalDeaths}** mortes  ·  ${EMOJI.OK} **${vivos}** vivos`);
+    lines.push(
+      `${EMOJI.KILL} **${totalKills}** kills  ·  ${EMOJI.MORTE} **${totalDeaths}** mortes  ·  ${EMOJI.OK} **${vivos}** vivos`
+    );
     if (mvp) {
       const kScore = Math.round(mvp.performance_score || 0);
       const dScore = Math.round(mvp.discipline_score || 0);
-      lines.push(`${EMOJI.MVP} MVP: **${mvp.display_name || 'Participante'}**  ·  ${mvp.kills || 0}k  ·  peso ${kScore}  ·  disc. ${dScore}%`);
+      lines.push(
+        `${EMOJI.MVP} MVP: **${mvp.display_name || 'Participante'}**  ·  ${mvp.kills || 0}k  ·  peso ${kScore}  ·  disc. ${dScore}%`
+      );
     }
     if (pendingWeapon > 0) lines.push(`${EMOJI.WARN} **${pendingWeapon}** devolução(ões) de arma pendente(s)`);
   }

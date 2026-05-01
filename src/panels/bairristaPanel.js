@@ -25,7 +25,7 @@ async function buildBairristaPanel() {
   ]);
 
   const top3 = weeklyTop.rows;
-const members = memberCount.rows[0]?.c ?? 0;
+  const members = memberCount.rows[0]?.c ?? 0;
 
   const topText =
     top3.length === 0
