@@ -1036,31 +1036,28 @@ async function handleCartSubmit(interaction) {
     return interaction.editReply({ content: `${EMOJI.ERRO} ${e.message}`, embeds: [], components: [] }).catch(() => {});
   }
 
-  // Notificar canal de staff
+  // Notificar canal de staff (INVENTORY_EVENTS → CH_MATERIAL_ENTREG 1491506821599330545)
   try {
-    const CONFIG = require('../config');
-    const staffChannelId = CONFIG.TAG_REQUEST_CHANNEL_ID;
-    if (staffChannelId) {
-      const staffChannel = await interaction.client.channels.fetch(staffChannelId).catch(() => null);
-      if (staffChannel) {
-        const requestEmbed = bairristaCart.buildDeliveryRequestEmbed({
-          requestId: requestResult.request.id,
-          memberName: requestResult.member.display_name,
-          memberDiscordId: requestResult.member.discord_id,
-          lines: requestResult.lines,
-          totalQty: requestResult.totalQty,
-          totalValue: requestResult.totalValue,
-          notes: globalNotesSnapshot,
-          tipo,
-        });
-        const decisionComponents = bairristaCart.buildDeliveryDecisionComponents(requestResult.request.id);
-        const tipoLabel = tipo === 'venda' ? 'venda' : 'entrega';
-        await staffChannel.send({
-          content: `Nova **${tipoLabel}** pendente de aprovação.`,
-          embeds: [requestEmbed],
-          components: decisionComponents,
-        });
-      }
+    const { resolveChannel } = require('../notifications/channels');
+    const staffChannel = await resolveChannel(interaction.client, 'INVENTORY_EVENTS');
+    if (staffChannel) {
+      const requestEmbed = bairristaCart.buildDeliveryRequestEmbed({
+        requestId: requestResult.request.id,
+        memberName: requestResult.member.display_name,
+        memberDiscordId: requestResult.member.discord_id,
+        lines: requestResult.lines,
+        totalQty: requestResult.totalQty,
+        totalValue: requestResult.totalValue,
+        notes: globalNotesSnapshot,
+        tipo,
+      });
+      const decisionComponents = bairristaCart.buildDeliveryDecisionComponents(requestResult.request.id);
+      const tipoLabel = tipo === 'venda' ? 'venda' : 'entrega';
+      await staffChannel.send({
+        content: `Nova **${tipoLabel}** pendente de aprovação.`,
+        embeds: [requestEmbed],
+        components: decisionComponents,
+      });
     }
   } catch (e) {
     // Best-effort
@@ -1175,20 +1172,31 @@ async function handleDeliveryApproverSelect(interaction) {
     });
     const decisionComponents = bairristaCart.buildDeliveryDecisionComponents(result.request.id);
 
-    let delivered = 'DM';
-    try {
-      await approverMember.send({ embeds: [requestEmbed], components: decisionComponents });
-    } catch {
-      delivered = 'canal';
-      await interaction.channel
-        ?.send({
-          content: `<@${approverId}> tens uma entrega para confirmar.`,
-          embeds: [requestEmbed],
-          components: decisionComponents,
-        })
-        .catch(() => {
-          delivered = 'pendente';
-        });
+    let delivered = 'canal';
+    const { resolveChannel } = require('../notifications/channels');
+    const staffChannel = await resolveChannel(interaction.client, 'INVENTORY_EVENTS');
+    if (staffChannel) {
+      await staffChannel.send({
+        content: `<@${approverId}> tens uma entrega para confirmar.`,
+        embeds: [requestEmbed],
+        components: decisionComponents,
+      });
+    } else {
+      delivered = 'DM';
+      try {
+        await approverMember.send({ embeds: [requestEmbed], components: decisionComponents });
+      } catch {
+        delivered = 'local';
+        await interaction.channel
+          ?.send({
+            content: `<@${approverId}> tens uma entrega para confirmar.`,
+            embeds: [requestEmbed],
+            components: decisionComponents,
+          })
+          .catch(() => {
+            delivered = 'pendente';
+          });
+      }
     }
 
     const msg =
