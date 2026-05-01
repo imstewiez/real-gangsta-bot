@@ -541,14 +541,16 @@ async function handleEncomendaSelect(interaction) {
   });
 
   // Build preview embed
-  const embed = applyLogo(new EmbedBuilder()
-    .setTitle(`📦 Encomendar: ${item.name}`)
-    .setColor(COLOR.PRIMARY)
-    .setDescription(`Preço base: **${preview.unitPrice.toLocaleString('pt-PT')}€**`));
+  const embed = applyLogo(
+    new EmbedBuilder()
+      .setTitle(`📦 Encomendar: ${item.name}`)
+      .setColor(COLOR.PRIMARY)
+      .setDescription(`Preço base: **${preview.unitPrice.toLocaleString('pt-PT')}€**`)
+  );
 
   if (preview.hasRecipe) {
-    const ingLines = preview.ingredients.map(ing =>
-      `• ${ing.name}: ${ing.qty}x (~${ing.subtotal.toLocaleString('pt-PT')}€)`
+    const ingLines = preview.ingredients.map(
+      ing => `• ${ing.name}: ${ing.qty}x (~${ing.subtotal.toLocaleString('pt-PT')}€)`
     );
     embed.addFields({
       name: '🛠️ Fórmula de Craft',
@@ -586,11 +588,15 @@ async function handleEncomendaSelect(interaction) {
       .setStyle(ButtonStyle.Secondary)
   );
 
-  await safeReply(interaction, {
-    embeds: [embed],
-    components: [row],
-    flags: MessageFlags.Ephemeral,
-  }, { messageClass: 'FLOW' });
+  await safeReply(
+    interaction,
+    {
+      embeds: [embed],
+      components: [row],
+      flags: MessageFlags.Ephemeral,
+    },
+    { messageClass: 'FLOW' }
+  );
 }
 
 async function handleEncomendaModeSelect(interaction) {
@@ -1193,7 +1199,11 @@ async function handleCartSubmit(interaction) {
       tipo,
     });
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}`, embeds: [], components: [] }, { messageClass: 'ERROR' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} ${e.message}`, embeds: [], components: [] },
+      { messageClass: 'ERROR' }
+    );
   }
 
   // Notificar canal de staff (INVENTORY_EVENTS → CH_MATERIAL_ENTREG 1491506821599330545)
@@ -1256,7 +1266,11 @@ async function handleCartUndo(interaction) {
     client: interaction.client,
   });
   if (!r.undone) {
-    return safeReply(interaction, { content: `${EMOJI.WARN} ${r.reason}`, embeds: [], components: [] }, { messageClass: 'WARN' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.WARN} ${r.reason}`, embeds: [], components: [] },
+      { messageClass: 'WARN' }
+    );
   }
   return safeReply(
     interaction,
@@ -1320,7 +1334,11 @@ async function handleDeliveryApproverSelect(interaction) {
       createdBy: interaction.user.id,
     });
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}`, embeds: [], components: [] }, { messageClass: 'ERROR' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} ${e.message}`, embeds: [], components: [] },
+      { messageClass: 'ERROR' }
+    );
   }
 
   bairristaCart.clearCart(interaction.user.id);

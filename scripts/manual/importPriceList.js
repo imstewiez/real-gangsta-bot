@@ -19,7 +19,9 @@ const path = require('path');
 const { pool } = require('../../src/db');
 
 const DRY_RUN = process.env.DRY_RUN === '1';
-const JSON_PATH = process.env.PRICE_JSON || path.join(process.env.USERPROFILE || process.env.HOME, 'Downloads', 'lista_precos_corrigida.json');
+const JSON_PATH =
+  process.env.PRICE_JSON ||
+  path.join(process.env.USERPROFILE || process.env.HOME, 'Downloads', 'lista_precos_corrigida.json');
 
 // ── Normalização de nomes ─────────────────────────────────────────────────
 const NAME_NORMALIZATION = {
@@ -141,10 +143,11 @@ async function ensureItems(client, data) {
       console.log(`  [INSERT] ${item.name} (${item.category}) — ${item.price ?? 'sem preço'}€`);
     } else {
       if (item.price != null && !DRY_RUN) {
-        await client.query(
-          `UPDATE items SET estimated_value = $1, category = $2, updated_at = NOW() WHERE id = $3`,
-          [item.price, item.category, existing.rows[0].id]
-        );
+        await client.query(`UPDATE items SET estimated_value = $1, category = $2, updated_at = NOW() WHERE id = $3`, [
+          item.price,
+          item.category,
+          existing.rows[0].id,
+        ]);
       }
       results.updated++;
       console.log(`  [UPDATE] ${item.name} (${item.category}) — ${item.price ?? 'sem preço'}€`);
@@ -190,14 +193,16 @@ async function ensureRecipes(client, data, itemIdMap) {
           console.warn(`  [SKIP RECIPE] Item não encontrado: ${itemName}`);
           continue;
         }
-        const ingredients = entry.ingredientes.map(ing => {
-          const ingName = normalizeName(ing.nome);
-          const ingId = itemIdMap.get(ingName.toLowerCase());
-          if (!ingId) {
-            console.warn(`  [SKIP INGREDIENT] Ingrediente não encontrado: ${ingName} (para ${itemName})`);
-          }
-          return { name: ingName, itemId: ingId, quantity: ing.quantidade };
-        }).filter(i => i.itemId);
+        const ingredients = entry.ingredientes
+          .map(ing => {
+            const ingName = normalizeName(ing.nome);
+            const ingId = itemIdMap.get(ingName.toLowerCase());
+            if (!ingId) {
+              console.warn(`  [SKIP INGREDIENT] Ingrediente não encontrado: ${ingName} (para ${itemName})`);
+            }
+            return { name: ingName, itemId: ingId, quantity: ing.quantidade };
+          })
+          .filter(i => i.itemId);
 
         recipes.push({ itemId, category, tier: null, ingredients });
       }
@@ -211,14 +216,16 @@ async function ensureRecipes(client, data, itemIdMap) {
             console.warn(`  [SKIP RECIPE] Item não encontrado: ${itemName}`);
             continue;
           }
-          const ingredients = entry.ingredientes.map(ing => {
-            const ingName = normalizeName(ing.nome);
-            const ingId = itemIdMap.get(ingName.toLowerCase());
-            if (!ingId) {
-              console.warn(`  [SKIP INGREDIENT] Ingrediente não encontrado: ${ingName} (para ${itemName})`);
-            }
-            return { name: ingName, itemId: ingId, quantity: ing.quantidade };
-          }).filter(i => i.itemId);
+          const ingredients = entry.ingredientes
+            .map(ing => {
+              const ingName = normalizeName(ing.nome);
+              const ingId = itemIdMap.get(ingName.toLowerCase());
+              if (!ingId) {
+                console.warn(`  [SKIP INGREDIENT] Ingrediente não encontrado: ${ingName} (para ${itemName})`);
+              }
+              return { name: ingName, itemId: ingId, quantity: ing.quantidade };
+            })
+            .filter(i => i.itemId);
 
           recipes.push({ itemId, category, tier, ingredients });
         }
@@ -249,7 +256,9 @@ async function ensureRecipes(client, data, itemIdMap) {
         );
       }
     }
-    console.log(`  [RECIPE] ${recipe.category}${recipe.tier ? `/${recipe.tier}` : ''} → item_id=${recipe.itemId} (${recipe.ingredients.length} ingredientes)`);
+    console.log(
+      `  [RECIPE] ${recipe.category}${recipe.tier ? `/${recipe.tier}` : ''} → item_id=${recipe.itemId} (${recipe.ingredients.length} ingredientes)`
+    );
   }
 
   return { count: recipes.length };

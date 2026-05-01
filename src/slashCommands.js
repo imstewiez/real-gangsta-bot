@@ -78,7 +78,12 @@ const commands = [
         .setDescription('Listar entregas/vendas recentes')
         .addUserOption(o => o.setName('membro').setDescription('Filtrar por membro').setRequired(false))
         .addIntegerOption(o =>
-          o.setName('dias').setDescription('Dias para trás (default 7)').setRequired(false).setMinValue(1).setMaxValue(90)
+          o
+            .setName('dias')
+            .setDescription('Dias para trás (default 7)')
+            .setRequired(false)
+            .setMinValue(1)
+            .setMaxValue(90)
         )
     )
     .addSubcommand(sc =>

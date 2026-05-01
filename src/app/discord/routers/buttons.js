@@ -60,9 +60,7 @@ const {
   handleSummary: availHandleSummary,
   handleRefresh: availHandleRefresh,
 } = require('../../../availability/availabilityHandlers');
-const {
-  handleRandom: radioHandleRandom,
-} = require('../../../radio/radioHandlers');
+const { handleRandom: radioHandleRandom } = require('../../../radio/radioHandlers');
 const chefiaActions = require('../../../panels/chefiaActions');
 const patraoDiZonaActions = require('../../../panels/patraoDiZonaActions');
 const buttonAdapters = require('../../../panels/buttonAdapters');

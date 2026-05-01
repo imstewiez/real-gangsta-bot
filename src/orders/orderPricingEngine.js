@@ -12,18 +12,18 @@ const craftRecipeRepo = require('../repositories/craftRecipe');
 // ── Multiplicadores por rank ───────────────────────────────────────────────
 const RANK_MULTIPLIERS = {
   buy: {
-    bairrista: 0.30,
-    patrao_di_zona: 0.20,
-    oficial: 0.10,
-    chefia: 0.00,
-    inativo: 0.30,
+    bairrista: 0.3,
+    patrao_di_zona: 0.2,
+    oficial: 0.1,
+    chefia: 0.0,
+    inativo: 0.3,
   },
   sell: {
-    bairrista: 0.10,
-    patrao_di_zona: 0.20,
-    oficial: 0.30,
-    chefia: 0.30,
-    inativo: 0.10,
+    bairrista: 0.1,
+    patrao_di_zona: 0.2,
+    oficial: 0.3,
+    chefia: 0.3,
+    inativo: 0.1,
   },
 };
 

@@ -30,25 +30,17 @@ async function createRecipe({ itemId, category = 'outros', tier = null, ingredie
 }
 
 async function findByItemId(itemId) {
-  const res = await query(
-    `SELECT * FROM craft_recipes WHERE item_id = $1`,
-    [itemId]
-  );
+  const res = await query(`SELECT * FROM craft_recipes WHERE item_id = $1`, [itemId]);
   return res.rows[0] || null;
 }
 
 async function findByCategory(category) {
-  const res = await query(
-    `SELECT * FROM craft_recipes WHERE category = $1 ORDER BY id`,
-    [category]
-  );
+  const res = await query(`SELECT * FROM craft_recipes WHERE category = $1 ORDER BY id`, [category]);
   return res.rows;
 }
 
 async function getAllRecipes() {
-  const res = await query(
-    `SELECT * FROM craft_recipes ORDER BY category, tier, id`
-  );
+  const res = await query(`SELECT * FROM craft_recipes ORDER BY category, tier, id`);
   return res.rows;
 }
 
@@ -78,10 +70,7 @@ async function getRecipeWithIngredients(itemId) {
 
 async function deleteByItemId(itemId) {
   return queryWithTransaction(async client => {
-    const recipeRes = await client.query(
-      'SELECT id FROM craft_recipes WHERE item_id = $1',
-      [itemId]
-    );
+    const recipeRes = await client.query('SELECT id FROM craft_recipes WHERE item_id = $1', [itemId]);
     if (!recipeRes.rows[0]) return { deleted: false };
     const recipeId = recipeRes.rows[0].id;
     await client.query('DELETE FROM recipe_ingredients WHERE recipe_id = $1', [recipeId]);

@@ -74,9 +74,7 @@ async function buildPriceEmbeds() {
   const embeds = [];
 
   // ── Embed 1: Matérias-Primas, Minérios, Madeiras, Lixo ──────────────────
-  const embed1 = applyLogo(new EmbedBuilder()
-    .setTitle('📋 Preçario — Matérias-Primas & Recursos')
-    .setColor(0x3498db));
+  const embed1 = applyLogo(new EmbedBuilder().setTitle('📋 Preçario — Matérias-Primas & Recursos').setColor(0x3498db));
 
   for (const cat of ['materias_primas', 'minerios', 'madeiras', 'lixo']) {
     const catItems = items.filter(i => i.category === cat).sort((a, b) => a.name.localeCompare(b.name));
@@ -89,9 +87,7 @@ async function buildPriceEmbeds() {
   embeds.push(embed1);
 
   // ── Embed 2: Corpos, Prints, Carregadores, Coletes, Acessórios ─────────
-  const embed2 = applyLogo(new EmbedBuilder()
-    .setTitle('📋 Preçario — Componentes & Equipamento')
-    .setColor(0x2ecc71));
+  const embed2 = applyLogo(new EmbedBuilder().setTitle('📋 Preçario — Componentes & Equipamento').setColor(0x2ecc71));
 
   for (const cat of ['corpos', 'prints', 'carregadores', 'coletes', 'acessorios']) {
     const catItems = items.filter(i => i.category === cat).sort((a, b) => a.name.localeCompare(b.name));
@@ -103,9 +99,7 @@ async function buildPriceEmbeds() {
   embeds.push(embed2);
 
   // ── Embed 3: Armas (Orange, Red, Extra, Brancas) ───────────────────────
-  const embed3 = applyLogo(new EmbedBuilder()
-    .setTitle('📋 Preçario — Armas')
-    .setColor(0xe74c3c));
+  const embed3 = applyLogo(new EmbedBuilder().setTitle('📋 Preçario — Armas').setColor(0xe74c3c));
 
   for (const cat of ['armas_orange', 'armas_red', 'armas_extra', 'armas_brancas']) {
     const catItems = items.filter(i => i.category === cat).sort((a, b) => a.name.localeCompare(b.name));
@@ -120,9 +114,7 @@ async function buildPriceEmbeds() {
   embeds.push(embed3);
 
   // ── Embed 4: Drogas ────────────────────────────────────────────────────
-  const embedDrugs = applyLogo(new EmbedBuilder()
-    .setTitle('📋 Preçario — Drogas')
-    .setColor(0x9b59b6));
+  const embedDrugs = applyLogo(new EmbedBuilder().setTitle('📋 Preçario — Drogas').setColor(0x9b59b6));
   const drugItems = items.filter(i => i.category === 'drogas').sort((a, b) => a.name.localeCompare(b.name));
   if (drugItems.length) {
     const lines = drugItems.map(i => `\`${fmtPrice(i.estimated_value).padStart(6)}\` ${i.name}`);
@@ -148,16 +140,16 @@ async function buildPriceEmbeds() {
         const tierRecipes = catRecipes.filter(r => r.tier === tier).sort((a, b) => a.item_id - b.item_id);
         if (!tierRecipes.length) continue;
 
-        const embed = applyLogo(new EmbedBuilder()
-          .setTitle(`${catDef.label} (${tier.toUpperCase()})`)
-          .setColor(tier === 'orange' ? 0xf39c12 : 0xe74c3c));
+        const embed = applyLogo(
+          new EmbedBuilder()
+            .setTitle(`${catDef.label} (${tier.toUpperCase()})`)
+            .setColor(tier === 'orange' ? 0xf39c12 : 0xe74c3c)
+        );
 
         for (const r of tierRecipes) {
           const recipe = await craftRecipeRepo.getRecipeWithIngredients(r.item_id);
           if (!recipe) continue;
-          const ingLines = recipe.ingredients.map(ing =>
-            `• ${ing.ingredient_name}: ${ing.quantity}x`
-          );
+          const ingLines = recipe.ingredients.map(ing => `• ${ing.ingredient_name}: ${ing.quantity}x`);
           embed.addFields({
             name: recipe.item_name,
             value: ingLines.join('\n'),
@@ -167,16 +159,12 @@ async function buildPriceEmbeds() {
         embeds.push(embed);
       }
     } else {
-      const embed = applyLogo(new EmbedBuilder()
-        .setTitle(catDef.label)
-        .setColor(0x95a5a6));
+      const embed = applyLogo(new EmbedBuilder().setTitle(catDef.label).setColor(0x95a5a6));
 
       for (const r of catRecipes.sort((a, b) => a.item_id - b.item_id)) {
         const recipe = await craftRecipeRepo.getRecipeWithIngredients(r.item_id);
         if (!recipe) continue;
-        const ingLines = recipe.ingredients.map(ing =>
-          `• ${ing.ingredient_name}: ${ing.quantity}x`
-        );
+        const ingLines = recipe.ingredients.map(ing => `• ${ing.ingredient_name}: ${ing.quantity}x`);
         embed.addFields({
           name: recipe.item_name,
           value: ingLines.join('\n'),

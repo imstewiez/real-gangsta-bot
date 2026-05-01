@@ -11,7 +11,17 @@ const { query, queryWithTransaction } = require('../db');
 const eventBus = require('../core/eventBus');
 const { warn } = require('../logger');
 
-async function create({ memberId, itemId, quantity, unitPrice, totalPrice, notes = '', paymentMode = 'materials_money', materialCost = null, moneyCost = null }) {
+async function create({
+  memberId,
+  itemId,
+  quantity,
+  unitPrice,
+  totalPrice,
+  notes = '',
+  paymentMode = 'materials_money',
+  materialCost = null,
+  moneyCost = null,
+}) {
   const res = await query(
     `INSERT INTO orders (member_id, item_id, quantity, unit_price, total_price, status, notes, payment_mode, material_cost, money_cost)
      VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9)
