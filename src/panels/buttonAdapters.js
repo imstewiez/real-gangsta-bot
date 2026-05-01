@@ -1,0 +1,513 @@
+'use strict';
+/**
+ * Button adapters — mapeia novos customIds de painel para lógica existente.
+ * Reutiliza handlers de slash commands e queries sem duplicar código.
+ */
+
+const { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, MessageFlags } = require('discord.js');
+const { safeReply, safeShowModal } = require('../shared/interactionHelpers');
+const { requirePermission } = require('../shared/requirePermission');
+
+// ── Consultas simples (reutilizam handlers de /queries) ─────────────────────
+
+async function handleCatalogoButton(interaction) {
+  const { handle } = require('../queries/catalogo');
+  return handle(interaction);
+}
+
+async function handleMetasButton(interaction) {
+  const { handle } = require('../queries/metas');
+  // Simula subcommand 'listar'
+  interaction.options = { getSubcommand: () => 'listar' };
+  return handle(interaction);
+}
+
+async function handleMinhasSaidasButton(interaction) {
+  const { handle } = require('../queries/saidasMinhas');
+  interaction.options = { getInteger: () => null, getSubcommand: () => null };
+  return handle(interaction);
+}
+
+async function handleMeuResumoButton(interaction) {
+  const { handle } = require('../queries/meuResumo');
+  return handle(interaction);
+}
+
+async function handlePainelPendenciasButton(interaction) {
+  const { handle } = require('../queries/painelPendencias');
+  return handle(interaction);
+}
+
+async function handleRelatorioButton(interaction) {
+  const { handle } = require('../queries/relatorio');
+  interaction.options = {
+    getString: () => 'week',
+    getSubcommand: () => null,
+  };
+  return handle(interaction);
+}
+
+async function handleDashboardButton(interaction) {
+  const { handle } = require('../queries/dashboard');
+  return handle(interaction);
+}
+
+async function handleInactivosButton(interaction) {
+  const { handle } = require('../queries/inactivosBairristas');
+  interaction.options = {
+    getInteger: name => (name === 'dias_sem_actividade' ? 30 : 14),
+    getSubcommand: () => null,
+  };
+  return handle(interaction);
+}
+
+async function handleQualidadeDadosButton(interaction) {
+  const { handle } = require('../queries/qualidadeDados');
+  return handle(interaction);
+}
+
+async function handleExportarButton(interaction) {
+  const { handle } = require('../queries/exportar');
+  interaction.options = {
+    getString: name => (name === 'tipo' ? 'entregas' : '2024-01-01'),
+    getSubcommand: () => null,
+  };
+  return handle(interaction);
+}
+
+async function handleSyncSheetsButton(interaction) {
+  const { handle } = require('../queries/syncSheets');
+  interaction.options = {
+    getString: name => (name === 'acao' ? 'status' : null),
+    getSubcommand: () => null,
+  };
+  return handle(interaction);
+}
+
+async function handleReputacaoButton(interaction) {
+  const { handle } = require('../queries/reputacao');
+  return handle(interaction);
+}
+
+async function handleTarefasButton(interaction) {
+  const { handle } = require('../queries/tarefas');
+  interaction.options = {
+    getSubcommand: () => 'listar',
+    getUser: () => null,
+  };
+  return handle(interaction);
+}
+
+async function handleManutencaoButton(interaction) {
+  const { handle } = require('../queries/manutencao');
+  interaction.options = {
+    getSubcommand: () => 'status',
+    getString: () => null,
+  };
+  return handle(interaction);
+}
+
+async function handleSimularPermissoesButton(interaction) {
+  const { handle } = require('../queries/simularPermissoes');
+  interaction.options = {
+    getString: () => 'bairrista',
+    getSubcommand: () => null,
+  };
+  return handle(interaction);
+}
+
+async function handleAuditTrailButton(interaction) {
+  const { handle } = require('../queries/auditTrail');
+  interaction.options = {
+    getString: () => 'membro',
+    getInteger: () => 1,
+    getSubcommand: () => null,
+  };
+  return handle(interaction);
+}
+
+// ── Acções com modal ────────────────────────────────────────────────────────
+
+async function handleVenderButton(interaction) {
+  const modal = new ModalBuilder()
+    .setCustomId('adapter::modal_vender')
+    .setTitle('Vender Material')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('item')
+          .setLabel('Item (nome)')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('Ex: AK-47')
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('quantidade')
+          .setLabel('Quantidade')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('Ex: 10')
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('preco')
+          .setLabel('Preço por unidade (€) — opcional')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('Deixa vazio para usar catálogo')
+          .setRequired(false)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('nota')
+          .setLabel('Nota — opcional')
+          .setStyle(TextInputStyle.Paragraph)
+          .setPlaceholder('Nota adicional...')
+          .setRequired(false)
+      )
+    );
+  return safeShowModal(interaction, modal);
+}
+
+async function handleKillButton(interaction) {
+  const modal = new ModalBuilder()
+    .setCustomId('kill::modal')
+    .setTitle('Registar Kill')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('victim')
+          .setLabel('Vítima (nome ou descrição)')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('Ex: Rival da Ballas')
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('context')
+          .setLabel('Contexto — opcional')
+          .setStyle(TextInputStyle.Paragraph)
+          .setPlaceholder('Ex: Saída na Grove, arma usada...')
+          .setRequired(false)
+      )
+    );
+  return safeShowModal(interaction, modal);
+}
+
+async function handleAusenciaButton(interaction) {
+  const modal = new ModalBuilder()
+    .setCustomId('adapter::modal_ausencia')
+    .setTitle('Submeter Ausência')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('inicio')
+          .setLabel('Data início (YYYY-MM-DD)')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('2024-06-01')
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('fim')
+          .setLabel('Data fim (YYYY-MM-DD)')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('2024-06-07')
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('motivo')
+          .setLabel('Motivo — opcional')
+          .setStyle(TextInputStyle.Paragraph)
+          .setPlaceholder('Motivo da ausência...')
+          .setRequired(false)
+      )
+    );
+  return safeShowModal(interaction, modal);
+}
+
+async function handleCriarMetaButton(interaction) {
+  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
+  const modal = new ModalBuilder()
+    .setCustomId('adapter::modal_criar_meta')
+    .setTitle('Criar Meta')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('descricao')
+          .setLabel('Descrição da meta')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('Ex: 100 entregas esta semana')
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('valor')
+          .setLabel('Valor alvo (número)')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('100')
+          .setRequired(true)
+      )
+    );
+  return safeShowModal(interaction, modal);
+}
+
+async function handleCriarIncidenteButton(interaction) {
+  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
+  const modal = new ModalBuilder()
+    .setCustomId('adapter::modal_criar_incidente')
+    .setTitle('Criar Incidente')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('titulo')
+          .setLabel('Título')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('Ex: Desaparecimento de stock')
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('descricao')
+          .setLabel('Descrição — opcional')
+          .setStyle(TextInputStyle.Paragraph)
+          .setPlaceholder('Descreve o incidente...')
+          .setRequired(false)
+      )
+    );
+  return safeShowModal(interaction, modal);
+}
+
+async function handleTransferirStockButton(interaction) {
+  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
+  const modal = new ModalBuilder()
+    .setCustomId('adapter::modal_transferir')
+    .setTitle('Transferir Stock')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('item')
+          .setLabel('Item (nome)')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('Ex: AK-47')
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('quantidade')
+          .setLabel('Quantidade')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('10')
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('origem')
+          .setLabel('Origem (armazem/grupo)')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('armazem')
+          .setRequired(true)
+      ),
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('destino')
+          .setLabel('Destino (armazem/grupo)')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('grupo')
+          .setRequired(true)
+      )
+    );
+  return safeShowModal(interaction, modal);
+}
+
+// ── Delegação para handlers existentes ──────────────────────────────────────
+
+async function handleFecharSaidaButton(interaction) {
+  const { handleCloseSaidaButton } = require('../saidas/saidaHandlers');
+  return handleCloseSaidaButton(interaction);
+}
+
+async function handleEmitirMaterialButton(interaction) {
+  const { handleIssueToParticipantButton } = require('../saidas/saidaHandlers');
+  return handleIssueToParticipantButton(interaction);
+}
+
+async function handleAddParticipanteButton(interaction) {
+  const { handleAddParticipantButton } = require('../saidas/saidaHandlers');
+  return handleAddParticipantButton(interaction);
+}
+
+async function handleEntregarMaterialButton(interaction) {
+  const { handleRegistarMaterialButton } = require('../inventory/inventoryHandlers');
+  return handleRegistarMaterialButton(interaction);
+}
+
+// ── Modal submits ───────────────────────────────────────────────────────────
+
+async function handleVenderModalSubmit(interaction) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const item = interaction.fields.getTextInputValue('item');
+  const qty = parseInt(interaction.fields.getTextInputValue('quantidade'), 10);
+  const preco = interaction.fields.getTextInputValue('preco') || null;
+  const nota = interaction.fields.getTextInputValue('nota') || null;
+
+  if (!item || !qty || qty < 1) {
+    return safeReply(interaction, { content: '❌ Item e quantidade são obrigatórios.' }, { messageClass: 'BANAL' });
+  }
+
+  // Reutiliza a lógica de /venda via inventoryEngine
+  const { inventoryEngine } = require('../inventory/inventoryEngine');
+  const result = await inventoryEngine.registerSale({
+    memberId: interaction.user.id,
+    itemName: item,
+    quantity: qty,
+    price: preco ? parseFloat(preco) : null,
+    note: nota,
+  });
+
+  if (result.success) {
+    return safeReply(interaction, { content: `✅ Venda registada: **${qty}x ${item}**` }, { messageClass: 'BANAL' });
+  }
+  return safeReply(
+    interaction,
+    { content: `❌ ${result.error || 'Erro ao registar venda.'}` },
+    { messageClass: 'BANAL' }
+  );
+}
+
+async function handleAusenciaModalSubmit(interaction) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const inicio = interaction.fields.getTextInputValue('inicio');
+  const fim = interaction.fields.getTextInputValue('fim');
+  const motivo = interaction.fields.getTextInputValue('motivo') || null;
+
+  const { absenceRepo } = require('../repositories');
+  await absenceRepo.create({
+    discordId: interaction.user.id,
+    startDate: inicio,
+    endDate: fim,
+    reason: motivo,
+    status: 'pending',
+  });
+
+  return safeReply(
+    interaction,
+    { content: `✅ Ausência submetida: **${inicio}** a **${fim}**. Aguarda aprovação.` },
+    { messageClass: 'BANAL' }
+  );
+}
+
+async function handleCriarMetaModalSubmit(interaction) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const descricao = interaction.fields.getTextInputValue('descricao');
+  const valor = parseFloat(interaction.fields.getTextInputValue('valor'));
+
+  const { weeklyGoalService } = require('../services');
+  const { weekStart } = weeklyGoalService.getWeekBounds();
+  const goal = await weeklyGoalService.createGoal({
+    scope: 'org',
+    targetId: null,
+    metric: 'deliveries_qty',
+    targetValue: valor,
+    description: descricao,
+    createdBy: interaction.user.tag,
+    weekStart,
+  });
+
+  return safeReply(
+    interaction,
+    { content: `✅ Meta \`#${goal.id}\` criada: **${descricao}**` },
+    { messageClass: 'BANAL' }
+  );
+}
+
+async function handleCriarIncidenteModalSubmit(interaction) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const titulo = interaction.fields.getTextInputValue('titulo');
+  const descricao = interaction.fields.getTextInputValue('descricao') || null;
+
+  const { incidentRepo } = require('../repositories');
+  const inc = await incidentRepo.create({
+    title: titulo,
+    description: descricao,
+    severity: 'medium',
+    state: 'open',
+    source: 'panel',
+    createdBy: interaction.user.id,
+  });
+
+  return safeReply(
+    interaction,
+    { content: `✅ Incidente \`#${inc.id}\` criado: **${titulo}**` },
+    { messageClass: 'BANAL' }
+  );
+}
+
+async function handleTransferirModalSubmit(interaction) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const item = interaction.fields.getTextInputValue('item');
+  const qty = parseInt(interaction.fields.getTextInputValue('quantidade'), 10);
+  const origem = interaction.fields.getTextInputValue('origem');
+  const destino = interaction.fields.getTextInputValue('destino');
+
+  const { inventoryEngine } = require('../inventory/inventoryEngine');
+  const result = await inventoryEngine.transferStock({
+    itemName: item,
+    quantity: qty,
+    from: origem,
+    to: destino,
+    actorId: interaction.user.id,
+  });
+
+  if (result.success) {
+    return safeReply(
+      interaction,
+      { content: `✅ Transferido **${qty}x ${item}** de **${origem}** → **${destino}**.` },
+      { messageClass: 'BANAL' }
+    );
+  }
+  return safeReply(
+    interaction,
+    { content: `❌ ${result.error || 'Erro na transferência.'}` },
+    { messageClass: 'BANAL' }
+  );
+}
+
+module.exports = {
+  // Consultas
+  handleCatalogoButton,
+  handleMetasButton,
+  handleMinhasSaidasButton,
+  handleMeuResumoButton,
+  handlePainelPendenciasButton,
+  handleRelatorioButton,
+  handleDashboardButton,
+  handleInactivosButton,
+  handleQualidadeDadosButton,
+  handleExportarButton,
+  handleSyncSheetsButton,
+  handleReputacaoButton,
+  handleTarefasButton,
+  handleManutencaoButton,
+  handleSimularPermissoesButton,
+  handleAuditTrailButton,
+  // Modais (abrir)
+  handleVenderButton,
+  handleKillButton,
+  handleAusenciaButton,
+  handleCriarMetaButton,
+  handleCriarIncidenteButton,
+  handleTransferirStockButton,
+  // Delegação
+  handleFecharSaidaButton,
+  handleEmitirMaterialButton,
+  handleAddParticipanteButton,
+  handleEntregarMaterialButton,
+  // Modal submits
+  handleVenderModalSubmit,
+  handleAusenciaModalSubmit,
+  handleCriarMetaModalSubmit,
+  handleCriarIncidenteModalSubmit,
+  handleTransferirModalSubmit,
+};

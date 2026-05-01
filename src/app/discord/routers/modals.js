@@ -24,6 +24,7 @@ const saidaIndividual = require('../../../saidas/saidaIndividualResult');
 const { handleKillModal } = require('../../../kills/killHandlers');
 const { handleSetModal: radioHandleSetModal } = require('../../../radio/radioHandlers');
 const { handleDefineModal: prizeHandleDefineModal } = require('../../../queries/premios');
+const buttonAdapters = require('../../../panels/buttonAdapters');
 
 const exact = (id, handler) => ({ match: x => x === id, handler });
 const prefix = (p, handler) => ({ match: x => x.startsWith(p), handler });
@@ -62,6 +63,13 @@ const MODAL_ROUTES = [
 
   // Prémios semanais
   prefix('prize::define::', prizeHandleDefineModal),
+
+  // Button adapters — modais de painel (v12)
+  exact('adapter::modal_vender', buttonAdapters.handleVenderModalSubmit),
+  exact('adapter::modal_ausencia', buttonAdapters.handleAusenciaModalSubmit),
+  exact('adapter::modal_criar_meta', buttonAdapters.handleCriarMetaModalSubmit),
+  exact('adapter::modal_criar_incidente', buttonAdapters.handleCriarIncidenteModalSubmit),
+  exact('adapter::modal_transferir', buttonAdapters.handleTransferirModalSubmit),
 ];
 
 async function handleModal(interaction) {
