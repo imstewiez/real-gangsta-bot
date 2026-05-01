@@ -263,11 +263,9 @@ describe('bairristaCart — buildCartComponents', () => {
     bairristaCart.clearCart('U8');
   });
 
-  it('componentes de confirmação de entrega serializam sem emojis inválidos', () => {
-    const approverRows = bairristaCart.buildDeliveryApproverComponents();
+  it('componentes de decisão de entrega serializam sem emojis inválidos', () => {
     const decisionRows = bairristaCart.buildDeliveryDecisionComponents('12345678-aaaa-bbbb-cccc-ddddeeeeffff');
 
-    assert.doesNotThrow(() => approverRows.map(row => row.toJSON()));
     assert.doesNotThrow(() => decisionRows.map(row => row.toJSON()));
   });
 
@@ -283,7 +281,7 @@ describe('bairristaCart — buildCartComponents', () => {
     });
     const visible = JSON.stringify(embed.toJSON());
 
-    assert.match(visible, /confirmação/);
+    assert.match(visible, /aprovação/);
     assert.match(visible, /50€/);
     assert.doesNotMatch(visible, /Ã|Â|â/);
   });

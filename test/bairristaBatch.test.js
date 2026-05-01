@@ -515,7 +515,7 @@ describe('delivery requests - confirmacao OG+', () => {
     assert.equal(_insertedMovements.length, 0);
   });
 
-  it('outro user nao decide pedido', async () => {
+  it('nao decide pedido ja aprovado', async () => {
     const pending = await createDeliveryRequest({
       discordId: _members.bairrista.discord_id,
       approverDiscordId: _members.oficial.discord_id,
@@ -523,14 +523,24 @@ describe('delivery requests - confirmacao OG+', () => {
       createdBy: _members.bairrista.discord_id,
     });
 
-    const r = await decideDeliveryRequest({
+    // Primeira aprovação funciona
+    const r1 = await decideDeliveryRequest({
       requestId: pending.request.id,
-      decisionBy: 'OTHER',
+      decisionBy: _members.oficial.discord_id,
+      approve: true,
+    });
+    assert.equal(r1.ok, true);
+
+    // Segunda tentativa falha porque já foi aprovado
+    _insertedMovements.length = 0; // reset para verificar que não insere mais
+    const r2 = await decideDeliveryRequest({
+      requestId: pending.request.id,
+      decisionBy: _members.oficial.discord_id,
       approve: true,
     });
 
-    assert.equal(r.ok, false);
-    assert.match(r.reason, /OG\+/);
+    assert.equal(r2.ok, false);
+    assert.match(r2.reason, /já foi approved/);
     assert.equal(_insertedMovements.length, 0);
   });
 });
