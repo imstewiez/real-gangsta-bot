@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 const {
   MessageFlags,
   ModalBuilder,
@@ -1254,20 +1254,34 @@ async function handleDeliveryDecision(interaction) {
     const bairristaUser = await interaction.client.users.fetch(result.member.discord_id).catch(() => null);
     if (bairristaUser) {
       const tipoLabel = result.request?.tipo === 'venda' ? 'venda' : 'entrega';
+      const isVenda = result.request?.tipo === 'venda';
       if (approve) {
-        const embed = successEmbed(
-          '✅ Aprovado',
-          `A tua **${tipoLabel}** foi aprovada por <@${interaction.user.id}>.\n` +
-            `**${result.totalQty.toLocaleString('pt-PT')}** unidade(s) confirmadas no stock.`
-        );
+        const desc = [
+          'A tua **${tipoLabel}** foi **aprovada** por <@${interaction.user.id}>.',
+          '',
+          "📊 **${result.totalQty.toLocaleString('pt-PT')}** unidade(s) confirmadas no stock.",
+          '',
+          '```diff\n+  APROVADO\n```',
+        ];
+        const embed = brandEmbed('MOVEMENT')
+          .setColor(isVenda ? COLOR.GOLD : COLOR.SUCCESS)
+          .setTitle(
+            `${isVenda ? EMOJI.LUCRO : EMOJI.MATERIAL} ${tipoLabel.charAt(0).toUpperCase() + tipoLabel.slice(1)} Aprovada`
+          )
+          .setDescription(desc.join('\\n'));
         await bairristaUser.send({ embeds: [embed] }).catch(() => {});
       } else {
-        const embed = brandEmbed('SHORT')
+        const desc = [
+          'A tua **${tipoLabel}** foi **rejeitada** por <@${interaction.user.id}>.',
+          '',
+          '_Nada foi alterado no stock._',
+          '',
+          '```diff\n-  REJEITADO\n```',
+        ];
+        const embed = brandEmbed('MOVEMENT')
           .setColor(COLOR.DANGER)
-          .setTitle('❌ Rejeitado')
-          .setDescription(
-            `A tua **${tipoLabel}** foi rejeitada por <@${interaction.user.id}>.\n` + 'Nada foi alterado no stock.'
-          );
+          .setTitle(`${EMOJI.ERRO} ${tipoLabel.charAt(0).toUpperCase() + tipoLabel.slice(1)} Rejeitada`)
+          .setDescription(desc.join('\\n'));
         await bairristaUser.send({ embeds: [embed] }).catch(() => {});
       }
     }

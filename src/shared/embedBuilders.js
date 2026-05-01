@@ -31,8 +31,14 @@ const COLOR = Object.freeze({
 
 // Footer assinado pela Firma RedWood. Icone opcional via BOT_LOGO_URL.
 // Todas as embeds do bot devem passar por aqui — garante consistência visual.
-function brandEmbed(variant = 'SHORT') {
-  return new EmbedBuilder().setColor(CONFIG.BOT_COLOR).setFooter(footer(variant, CONFIG.BOT_LOGO_URL)).setTimestamp();
+// V13: logo aplicado automaticamente em todos os embeds (skipLogo para excepções).
+function brandEmbed(variant = 'SHORT', opts = {}) {
+  const embed = new EmbedBuilder()
+    .setColor(CONFIG.BOT_COLOR)
+    .setFooter(footer(variant, CONFIG.BOT_LOGO_URL))
+    .setTimestamp();
+  if (!opts.skipLogo) applyLogo(embed);
+  return embed;
 }
 
 // ── Data-rich helpers (reusáveis em qualquer embed) ─────────────────────────
@@ -134,9 +140,98 @@ function sectionDivider() {
 }
 
 // Aplica o logo como thumbnail (canto superior direito) se BOT_LOGO_URL existir.
-// Usar nos painéis principais. No-op silencioso se logo não estiver definido.
+// V13: chamado automaticamente por brandEmbed() em todos os embeds.
+// No-op silencioso se logo não estiver definido.
 function applyLogo(embed) {
   if (CONFIG.BOT_LOGO_URL) embed.setThumbnail(CONFIG.BOT_LOGO_URL);
+  return embed;
+}
+
+// ── Visual helpers v13 — separadores, pills, grids, listas ─────────────────
+
+/** Linha separadora decorativa para descrições: `─ ✦ Título ✦ ─` */
+function headerLine(icon, text) {
+  return `\n─ ${icon ? icon + ' ' : ''}${text} ${icon ? icon + ' ' : ''}─\n`;
+}
+
+/** Formata pares chave-valor em inline fields consistentes. */
+function dataGrid(pairs) {
+  return pairs.map(p => ({
+    name: `${p.icon || '•'} ${p.label}`,
+    value: `**${p.value}**`,
+    inline: p.inline !== false,
+  }));
+}
+
+/** Pill de estado com Discord markdown codeblock colorido.
+ *  color = 'diff' (verde/vermelho), 'fix' (amarelo), 'yaml' (azul), 'css' (cinza)
+ */
+function statusPill(text, color = 'diff') {
+  const lang = { diff: 'diff', warn: 'fix', info: 'yaml', muted: 'css' }[color] || color;
+  return `\`\`${lang}\n${text}\n\`\``;
+}
+
+/** Lista numerada ou com bullets de itens. */
+function itemList(lines, opts = {}) {
+  const { numbered = false, indent = '' } = opts;
+  return lines.map((l, i) => `${indent}${numbered ? `${i + 1}.` : '•'} ${l}`).join('\n');
+}
+
+/** Card de métrica rico — label + valor bold + delta opcional + icon. */
+function metricCard(label, value, opts = {}) {
+  const { delta = null, icon = '', inline = true } = opts;
+  let val = `**${value}**`;
+  if (delta) val += `  ·  ${delta.text || delta}`;
+  return { name: `${icon} ${label}`, value: val, inline };
+}
+
+/** Altera o texto do footer sem perder o iconURL existente. */
+function setFooterText(embed, text) {
+  const existing = embed.data?.footer || {};
+  const out = { text };
+  if (existing.iconURL) out.iconURL = existing.iconURL;
+  embed.setFooter(out);
+  return embed;
+}
+
+// ── Embed presets v13 — padrões comuns com branding automático ──────────────
+
+/** Rich embed para dados estruturados (entregas, saídas, etc). */
+function richEmbed({ title, description, color, fields = [], image, footerVariant = 'MOVEMENT' }) {
+  const embed = brandEmbed(footerVariant).setTitle(title);
+  if (description) embed.setDescription(description);
+  if (color) embed.setColor(color);
+  if (fields.length) embed.addFields(fields);
+  if (image) embed.setImage(image);
+  return embed;
+}
+
+/** Status embed para estados discretos (pendente/aprovado/recusado). */
+function statusEmbed({ status, title, description, actor, details = [], color, footerVariant = 'MOVEMENT' }) {
+  const embed = brandEmbed(footerVariant).setTitle(title);
+  if (color) embed.setColor(color);
+  const desc = [
+    description,
+    '',
+    statusPill(status, color === COLOR.SUCCESS ? 'diff' : color === COLOR.ERROR ? 'diff' : 'fix'),
+  ]
+    .filter(Boolean)
+    .join('\n');
+  embed.setDescription(desc);
+  if (actor) embed.addFields({ name: '👤 Actor', value: `<@${actor}>`, inline: true });
+  if (details.length) embed.addFields(dataGrid(details));
+  return embed;
+}
+
+/** Dashboard embed para painéis com múltiplas secções. */
+function dashboardEmbed({ title, sections = [], color, footerVariant = 'SHORT' }) {
+  const embed = brandEmbed(footerVariant).setTitle(title);
+  if (color) embed.setColor(color);
+  for (const sec of sections) {
+    if (sec.title) embed.addFields({ name: '\u200b', value: headerLine(sec.icon, sec.title), inline: false });
+    if (sec.lines) embed.addFields({ name: '\u200b', value: sec.lines.join('\n'), inline: false });
+    if (sec.fields) embed.addFields(sec.fields);
+  }
   return embed;
 }
 
@@ -280,4 +375,15 @@ module.exports = {
   streakBadge,
   trendArrow,
   sectionDivider,
+  // Visual helpers v13
+  headerLine,
+  dataGrid,
+  statusPill,
+  itemList,
+  metricCard,
+  setFooterText,
+  // Embed presets v13
+  richEmbed,
+  statusEmbed,
+  dashboardEmbed,
 };

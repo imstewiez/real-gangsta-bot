@@ -20,7 +20,7 @@
  */
 
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { brandEmbed, rankBadge, COLOR } = require('../shared/embedBuilders');
+const { brandEmbed, rankBadge, COLOR, headerLine, setFooterText } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 
 // Ícones canónicos por categoria — consistentes no embed e nos buttons.
@@ -94,17 +94,17 @@ function formatLeaderLine(category, leader) {
 function buildLeaderboardEmbed({ daily, weekly, monthly, refreshedAt }) {
   const embed = brandEmbed('TOP')
     .setColor(COLOR.GOLD)
-    .setTitle(`🏆  Leaderboard da Firma  🏆`)
+    .setTitle(`${EMOJI.TOPO} Leaderboard da Firma`)
     .setDescription(
       [
-        `_Top 1 em cada categoria, por período._`,
+        '_Top 1 em cada categoria, por período._',
         `_Atualizado <t:${Math.floor(refreshedAt.getTime() / 1000)}:R>._`,
       ].join('\n')
     );
 
   for (const period of [daily, weekly, monthly]) {
     const pIcon = PERIOD_ICON[period.period] || '•';
-    const header = `${pIcon} ${PERIOD_LABEL[period.period]} · _${period.label}_`;
+    const header = headerLine(pIcon, `${PERIOD_LABEL[period.period]} · ${period.label}`);
     const categories = period.categories;
     const lines = [
       formatLeaderLine('activity', categories.activity.leader),
@@ -113,12 +113,10 @@ function buildLeaderboardEmbed({ daily, weekly, monthly, refreshedAt }) {
       formatLeaderLine('delivered', categories.delivered.leader),
       formatLeaderLine('sold', categories.sold.leader),
     ];
-    embed.addFields({ name: header, value: lines.join('\n'), inline: false });
+    embed.addFields({ name: '\u200b', value: header + lines.join('\n'), inline: false });
   }
 
-  embed.setFooter({
-    text: `Firma RedWood · leaderboard · clica num período para ver top 5 de cada categoria`,
-  });
+  setFooterText(embed, 'leaderboard · clica num período para ver top 5 de cada categoria');
   return embed;
 }
 
@@ -198,7 +196,7 @@ function buildDetailsEmbed(periodData) {
     embed.addFields({ name: `${icon} ${label}`, value, inline: false });
   }
 
-  embed.setFooter({ text: `Firma RedWood · details leaderboard` });
+  setFooterText(embed, 'details leaderboard');
   return embed;
 }
 

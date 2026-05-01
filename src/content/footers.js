@@ -21,6 +21,12 @@ function footer(variant = 'SHORT', iconURL) {
   return out;
 }
 
+// Footer com contexto extra (ex: `Firma RedWood · movimento · pedido #abc123`).
+function footerWithContext(variant = 'SHORT', extra) {
+  const base = footerText(variant);
+  return extra ? `${base} · ${extra}` : base;
+}
+
 // Assinatura inline no fim de uma descrição (itálico, discreta).
 function inlineSign(variant = 'SHORT') {
   return `_${footerText(variant)}_`;
@@ -31,5 +37,6 @@ module.exports = {
   SIGNATURES,
   footer,
   footerText,
+  footerWithContext,
   inlineSign,
 };

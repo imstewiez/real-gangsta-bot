@@ -73,7 +73,7 @@ describe('availabilityTemplates', () => {
 
   it('stateMeta com estado desconhecido devolve fallback', () => {
     const m = stateMeta('xxx');
-    assert.equal(m.emoji, '❔');
+    assert.equal(m.emoji, 'ℹ️');
     assert.equal(m.label, 'xxx');
   });
 });

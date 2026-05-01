@@ -90,6 +90,8 @@ const EMOJI = {
   VER: '👁️',
   REFRESH: '🔄',
   AJUSTAR: '🔧',
+  SUBMETER: '📤',
+  GRAFICO: '📊',
 
   // ── Stickys / pins ─────────────────────────────────────────────────────
   STICKY: '📌',

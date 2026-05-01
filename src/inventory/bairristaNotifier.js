@@ -13,7 +13,16 @@
 const { ChannelType } = require('discord.js');
 const CONFIG = require('../config');
 const { bold } = require('../discord/structureTemplate');
-const { brandEmbed, rankBadge, COLOR } = require('../shared/embedBuilders');
+const {
+  brandEmbed,
+  rankBadge,
+  COLOR,
+  headerLine,
+  dataGrid,
+  statusPill,
+  metricCard,
+  setFooterText,
+} = require('../shared/embedBuilders');
 const { BAIRRISTAS, EMOJI } = require('../content');
 const { weekBounds } = require('../util');
 const { log, warn } = require('../logger');
@@ -101,42 +110,42 @@ async function notifyBairristaMovement(opts) {
     const color = isVenda ? COLOR.GOLD : COLOR.SUCCESS;
     const movValue = opts.quantity * (opts.itemPrice || 0);
 
-    const fields = [
-      { name: L.MEMBER, value: `<@${opts.memberDiscordId}>`, inline: true },
-      { name: L.ITEM, value: `**${opts.itemName}**`, inline: true },
-      { name: L.QTY, value: `**${opts.quantity}**`, inline: true },
+    const desc = [
+      headerLine(isVenda ? EMOJI.LUCRO : EMOJI.MATERIAL, isVenda ? 'MATERIAL' : 'MATERIAL'),
+      `**${opts.itemName}** · **${opts.quantity.toLocaleString('pt-PT')}x**`,
     ];
+    if (movValue > 0) desc.push(`💰 Valor: **${movValue.toLocaleString('pt-PT')}€**`);
 
-    if (movValue > 0) {
-      fields.push({
-        name: L.VALUE,
-        value: `**${movValue.toLocaleString('pt-PT')}€**`,
-        inline: true,
-      });
-    }
+    const fields = dataGrid([
+      { icon: '👤', label: 'Membro', value: `<@${opts.memberDiscordId}>`, inline: true },
+      { icon: '📝', label: 'Registou', value: `<@${opts.createdBy || opts.memberDiscordId}>`, inline: true },
+      { icon: '💰', label: 'Valor', value: `${movValue.toLocaleString('pt-PT')}€`, inline: true },
+    ]);
 
     if (opts.weekStats) {
       const ws = opts.weekStats;
-      fields.push({
-        name: L.WEEK_TOTAL,
-        value: `**${(ws.totalQty || 0).toLocaleString('pt-PT')}** (${ws.deliveries || 0}e · ${ws.sales || 0}v)`,
-        inline: true,
-      });
+      fields.push(metricCard('Semana', `${(ws.totalQty || 0).toLocaleString('pt-PT')} un`, { icon: '📊' }));
     }
-
     if (opts.rankPosition) {
       fields.push({
-        name: L.RANK_IMPACT,
+        name: '🏆 Ranking',
         value: `${rankBadge(opts.rankPosition.position)}/${opts.rankPosition.total}`,
         inline: true,
       });
     }
 
+    desc.push('', headerLine(EMOJI.OK, 'ESTADO'));
+    desc.push(statusPill('+  APROVADO', 'diff'));
+
     if (opts.notes) {
-      fields.push({ name: L.NOTES, value: opts.notes.slice(0, 200), inline: false });
+      desc.push('', `📝 Notas: _${opts.notes.slice(0, 200)}_`);
     }
 
-    const embed = brandEmbed('MOVEMENT').setColor(color).setTitle(title).addFields(fields);
+    const embed = brandEmbed('MOVEMENT')
+      .setColor(color)
+      .setTitle(title)
+      .setDescription(desc.join('\n'))
+      .addFields(fields);
 
     await channel.send({ embeds: [embed], allowedMentions: { parse: [] } });
   } catch (e) {
@@ -167,55 +176,48 @@ async function notifyBairristaBatch(opts) {
     const title = opts.lines.length > 1 ? `${baseTitle} · ${opts.lines.length} itens` : baseTitle;
     const color = isVenda ? COLOR.GOLD : COLOR.SUCCESS;
 
-    const fields = [
-      { name: L.MEMBER, value: `<@${opts.memberDiscordId}>`, inline: true },
-      { name: 'Total Qty', value: `**${opts.totalQty.toLocaleString('pt-PT')}**`, inline: true },
-    ];
-    if (opts.totalValue > 0) {
-      fields.push({
-        name: L.VALUE,
-        value: `**${opts.totalValue.toLocaleString('pt-PT')}€**`,
-        inline: true,
-      });
-    }
-
-    // Lista de itens dentro do embed — 1 linha por item, flag ⚡ se preço
-    // custom (vendas). Slice 20 para cobrir edge case (raro > 5 itens).
+    const desc = [headerLine(isVenda ? EMOJI.LUCRO : EMOJI.MATERIAL, isVenda ? 'ITENS' : 'ITENS')];
     const itemLines = opts.lines.slice(0, 20).map(l => {
       const valTag = l.lineValue > 0 ? ` · **${l.lineValue.toLocaleString('pt-PT')}€**` : '';
-      const priceTag =
-        isVenda && l.unitPrice != null
-          ? ` ⚡@${l.unitPrice}€` // preço custom diferente do base
-          : '';
-      return `• **${l.quantity}×** ${l.itemName}${priceTag}${valTag}`;
+      const priceTag = isVenda && l.unitPrice != null ? ` ⚡@${l.unitPrice}€` : '';
+      return `**${l.quantity}×** ${l.itemName}${priceTag}${valTag}`;
     });
-    if (opts.lines.length > 20) {
-      itemLines.push(`… +${opts.lines.length - 20} itens`);
-    }
-    fields.push({ name: L.ITEM, value: itemLines.join('\n').slice(0, 1024), inline: false });
+    if (opts.lines.length > 20) itemLines.push(`… +${opts.lines.length - 20} itens`);
+    desc.push(...itemLines);
+    desc.push('', `📊 **Total:** ${opts.totalQty.toLocaleString('pt-PT')} unidades`);
+    if (opts.totalValue > 0) desc.push(`💰 **Valor:** ${opts.totalValue.toLocaleString('pt-PT')}€`);
+
+    const fields = dataGrid([
+      { icon: '👤', label: 'Membro', value: `<@${opts.memberDiscordId}>`, inline: true },
+      { icon: '📝', label: 'Registou', value: `<@${opts.createdBy || opts.memberDiscordId}>`, inline: true },
+    ]);
 
     if (opts.weekStats) {
       const ws = opts.weekStats;
-      fields.push({
-        name: L.WEEK_TOTAL,
-        value: `**${(ws.totalQty || 0).toLocaleString('pt-PT')}** (${ws.deliveries || 0}e · ${ws.sales || 0}v)`,
-        inline: true,
-      });
+      fields.push(metricCard('Semana', `${(ws.totalQty || 0).toLocaleString('pt-PT')} un`, { icon: '📊' }));
     }
     if (opts.rankPosition) {
       fields.push({
-        name: L.RANK_IMPACT,
+        name: '🏆 Ranking',
         value: `${rankBadge(opts.rankPosition.position)}/${opts.rankPosition.total}`,
         inline: true,
       });
     }
+
+    desc.push('', headerLine(EMOJI.OK, 'ESTADO'));
+    desc.push(statusPill('+  APROVADO', 'diff'));
+
     if (opts.notes) {
-      fields.push({ name: L.NOTES, value: opts.notes.slice(0, 200), inline: false });
+      desc.push('', `📝 Notas: _${opts.notes.slice(0, 200)}_`);
     }
 
-    const embed = brandEmbed('MOVEMENT').setColor(color).setTitle(title).addFields(fields);
+    const embed = brandEmbed('MOVEMENT')
+      .setColor(color)
+      .setTitle(title)
+      .setDescription(desc.join('\n'))
+      .addFields(fields);
     if (opts.submissionId) {
-      embed.setFooter({ text: `submission ${opts.submissionId.slice(0, 8)}` });
+      setFooterText(embed, `submission ${opts.submissionId.slice(0, 8)}`);
     }
 
     const msg = await channel.send({ embeds: [embed], allowedMentions: { parse: [] } }).catch(e => {
@@ -246,10 +248,10 @@ async function editBairristaBatchAsCancelled(client, channelId, messageId) {
 
     const updated = brandEmbed('MOVEMENT')
       .setColor(COLOR.MUTED)
-      .setTitle(`❌ Cancelada — ${original.title || 'submission'}`)
+      .setTitle(`${EMOJI.ERRO} Cancelada — ${original.title || 'submission'}`)
       .setDescription('_Esta submission foi desfeita pelo autor dentro da janela de 5 min._')
       .addFields(original.fields || []);
-    if (original.footer?.text) updated.setFooter({ text: original.footer.text });
+    if (original.footer?.text) setFooterText(updated, original.footer.text);
 
     await msg.edit({ embeds: [updated] }).catch(() => {});
     return true;

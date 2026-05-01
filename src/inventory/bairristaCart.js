@@ -25,7 +25,7 @@ const {
   UserSelectMenuBuilder,
 } = require('discord.js');
 const { createSessionStore } = require('../shared/sessionStore');
-const { brandEmbed, COLOR } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR, headerLine, statusPill, itemList, setFooterText } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 
 const cartStore = createSessionStore('bairristaCart', { ttlMs: 15 * 60 * 1000 });
@@ -160,21 +160,21 @@ function buildCartComponents(cart, { canRepeat = false } = {}) {
       .setCustomId(`itemsearch::open::cart_${tipo}`)
       .setLabel('Procurar item')
       .setStyle(ButtonStyle.Primary)
-      .setEmoji('🔎')
+      .setEmoji(EMOJI.VER || '🔎')
   );
   addRow.addComponents(
     new ButtonBuilder()
       .setCustomId(`invcart::add::${tipo}`)
       .setLabel('Por categoria')
       .setStyle(ButtonStyle.Secondary)
-      .setEmoji('📁')
+      .setEmoji(EMOJI.CRAFT || '📁')
   );
   addRow.addComponents(
     new ButtonBuilder()
       .setCustomId(`invcart::notes::${tipo}`)
       .setLabel(cart.globalNotes ? 'Editar notas' : 'Notas')
       .setStyle(ButtonStyle.Secondary)
-      .setEmoji('📝')
+      .setEmoji(EMOJI.AUDIT || '📝')
   );
   if (canRepeat) {
     addRow.addComponents(
@@ -182,7 +182,7 @@ function buildCartComponents(cart, { canRepeat = false } = {}) {
         .setCustomId(`invcart::repeat::${tipo}`)
         .setLabel('Repetir')
         .setStyle(ButtonStyle.Secondary)
-        .setEmoji('🔁')
+        .setEmoji(EMOJI.REFRESH || '🔁')
     );
   }
   rows.push(addRow);
@@ -193,19 +193,19 @@ function buildCartComponents(cart, { canRepeat = false } = {}) {
       .setCustomId(`invcart::preview::${tipo}`)
       .setLabel('Rever')
       .setStyle(ButtonStyle.Secondary)
-      .setEmoji('🔍')
+      .setEmoji(EMOJI.VER || '🔍')
       .setDisabled(!hasLines),
     new ButtonBuilder()
       .setCustomId(`invcart::submit::${tipo}`)
-      .setLabel(hasLines ? `Submeter ${cart.lines.length} linha(s)` : 'Submeter')
+      .setLabel(hasLines ? `${EMOJI.SUBMETER || '📤'} Submeter` : 'Submeter')
       .setStyle(ButtonStyle.Success)
-      .setEmoji('✅')
+      .setEmoji(EMOJI.SUBMETER || '📤')
       .setDisabled(!hasLines),
     new ButtonBuilder()
       .setCustomId(`invcart::cancel::${tipo}`)
       .setLabel('Cancelar')
       .setStyle(ButtonStyle.Danger)
-      .setEmoji('❌')
+      .setEmoji(EMOJI.ERRO || '❌')
   );
   rows.push(submitRow);
 
@@ -313,23 +313,27 @@ function buildPreviewComponents(tipo) {
 function buildSubmissionFeedback({ submissionId, tipo, totalQty, totalValue, lineCount, promotionLine }) {
   const isVenda = tipo === 'venda';
   const title = isVenda ? `${EMOJI.LUCRO} Venda submetida` : `${EMOJI.MATERIAL} Entrega submetida`;
-  const lines = [`**${lineCount}** linha(s) · **${totalQty.toLocaleString('pt-PT')}** unidades`];
-  if (totalValue > 0) lines.push(`Valor: **${totalValue.toLocaleString('pt-PT')}€**`);
-  if (promotionLine) lines.push('', promotionLine);
-  lines.push('', '_Podes desfazer esta submissão nos próximos 5 min._');
+  const desc = [
+    headerLine(isVenda ? EMOJI.LUCRO : EMOJI.MATERIAL, isVenda ? 'RESUMO' : 'RESUMO'),
+    `**${lineCount}** linha(s) · **${totalQty.toLocaleString('pt-PT')}** unidades`,
+  ];
+  if (totalValue > 0) desc.push(`Valor: **${totalValue.toLocaleString('pt-PT')}€**`);
+  if (promotionLine) desc.push('', promotionLine);
+  desc.push('', statusPill(isVenda ? '+  PENDENTE DE APROVAÇÃO' : '+  PENDENTE DE APROVAÇÃO', 'diff'));
+  desc.push('', `_${EMOJI.INFO} Podes desfazer esta submissão nos próximos 5 min._`);
 
   const embed = brandEmbed('MOVEMENT')
     .setColor(isVenda ? COLOR.GOLD : COLOR.SUCCESS)
     .setTitle(title)
-    .setDescription(lines.join('\n'))
-    .setFooter({ text: `submission ${submissionId.slice(0, 8)}` });
+    .setDescription(desc.join('\n'));
+  setFooterText(embed, `submission ${submissionId.slice(0, 8)}`);
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`invcart::undo::${submissionId}`)
       .setLabel('Desfazer (5 min)')
       .setStyle(ButtonStyle.Secondary)
-      .setEmoji('↩️')
+      .setEmoji(EMOJI.VOLTAR || '↩️')
   );
 
   return { embed, components: [row] };
@@ -361,24 +365,34 @@ function buildDeliveryRequestEmbed({
   tipo,
 }) {
   const isVenda = tipo === 'venda';
-  const body = lines.map(l => `- **${l.itemName}** · **${l.quantity.toLocaleString('pt-PT')}x**`).join('\n');
-  const summaryLines = [`Total: **${totalQty.toLocaleString('pt-PT')}** unidades`];
-  if (totalValue > 0) summaryLines.push(`Valor estimado: **${totalValue.toLocaleString('pt-PT')}€**`);
   // Strip tipo prefix from notes for display
   const displayNotes = String(notes || '').replace(/^\[TIPO:\w+\]\s?/, '');
-  if (displayNotes) summaryLines.push('', `Notas: _${displayNotes}_`);
 
-  return brandEmbed('MOVEMENT')
+  const desc = [
+    `${EMOJI.BAIRRO} **Bairrista:** <@${memberDiscordId}>${memberName ? ` (${memberName})` : ''}`,
+    '',
+    headerLine(EMOJI.MATERIAL, 'ITENS'),
+    itemList(
+      lines.map(l => `**${l.itemName}** · **${l.quantity.toLocaleString('pt-PT')}x**`),
+      { numbered: true }
+    ),
+    '',
+    headerLine(EMOJI.INFO, 'RESUMO'),
+    `📊 **Total:** ${totalQty.toLocaleString('pt-PT')} unidades`,
+  ];
+  if (totalValue > 0) desc.push(`💰 **Valor estimado:** ${totalValue.toLocaleString('pt-PT')}€`);
+  if (displayNotes) desc.push('', `📝 **Notas:** _${displayNotes}_`);
+  desc.push('', headerLine(EMOJI.PENDENTE, 'ESTADO'));
+  desc.push(statusPill(isVenda ? '!  PENDENTE — VENDA' : '!  PENDENTE — ENTREGA', 'fix'));
+
+  const embed = brandEmbed('MOVEMENT')
     .setColor(isVenda ? COLOR.GOLD : COLOR.WARNING_SOFT)
     .setTitle(
       isVenda ? `${EMOJI.LUCRO} Venda pendente de aprovação` : `${EMOJI.MATERIAL} Entrega pendente de aprovação`
     )
-    .setDescription(
-      [`Bairrista: <@${memberDiscordId}>${memberName ? ` (${memberName})` : ''}`, '', body, '', ...summaryLines].join(
-        '\n'
-      )
-    )
-    .setFooter({ text: `pedido ${String(requestId).slice(0, 8)}` });
+    .setDescription(desc.join('\n'));
+  setFooterText(embed, `pedido ${String(requestId).slice(0, 8)}`);
+  return embed;
 }
 
 function buildDeliveryDecisionComponents(requestId) {
@@ -386,12 +400,14 @@ function buildDeliveryDecisionComponents(requestId) {
     new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId(`invdelivery::approve::${requestId}`)
-        .setLabel('Aceitar entrega')
-        .setStyle(ButtonStyle.Success),
+        .setLabel('Aprovar')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji(EMOJI.OK || '✅'),
       new ButtonBuilder()
         .setCustomId(`invdelivery::reject::${requestId}`)
         .setLabel('Recusar')
         .setStyle(ButtonStyle.Danger)
+        .setEmoji(EMOJI.ERRO || '❌')
     ),
   ];
 }

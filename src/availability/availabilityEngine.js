@@ -17,7 +17,8 @@ const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, 
 const CONFIG = require('../config');
 const { availabilityRepo } = require('../repositories');
 const { logAudit } = require('../audit/auditEngine');
-const { brandEmbed, COLOR } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR, headerLine, setFooterText } = require('../shared/embedBuilders');
+const { EMOJI } = require('../content');
 const { pickHeader, stateMeta, STATE_ORDER, STATE_META } = require('./availabilityTemplates');
 const { log, warn } = require('../logger');
 
@@ -60,7 +61,6 @@ function _weekdayPt(dateStr) {
 }
 
 function buildEmbed(session, tallies, totalVoters) {
-  const { EMOJI } = require('../content');
   const dateStr = String(session.session_date).split('T')[0];
   const weekday = _weekdayPt(dateStr);
   const isClosed = session.status === 'closed';
@@ -68,40 +68,42 @@ function buildEmbed(session, tallies, totalVoters) {
   // Peak slot — "melhor hora" em destaque
   const peak = _findPeakSlot(tallies);
   const peakLine = peak
-    ? `🎯 **Pico:** ${peak.label} · ${peak.yes} ✅${peak.maybe ? ` · ${peak.maybe} ⏰` : ''}`
+    ? `🎯 **Pico:** ${peak.label} · ${peak.yes} ${EMOJI.DISPONIVEL}${peak.maybe ? ` · ${peak.maybe} ${EMOJI.TALVEZ}` : ''}`
     : '_Ainda sem votos — sê o primeiro._';
 
   const statusLine = isClosed
     ? `${EMOJI.BLOQUEADO} **Sessão fechada** — votos congelados.`
-    : '🗳️ _Usa o menu abaixo para marcar a tua presença. Podes mudar a qualquer altura._';
+    : `${EMOJI.PRESENCA} _Usa o menu abaixo para marcar a tua presença. Podes mudar a qualquer altura._`;
 
   const voterLabel = totalVoters === 1 ? 'bairrista votou' : 'bairristas votaram';
   const voterBadge = totalVoters === 0 ? '_ninguém ainda_' : `**${totalVoters}** ${voterLabel}`;
 
+  const desc = [
+    `**${weekday.charAt(0).toUpperCase() + weekday.slice(1)}**, ${dateStr}`,
+    '',
+    peakLine,
+    `👥 ${voterBadge}`,
+    '',
+    statusLine,
+    '',
+    headerLine(EMOJI.PRESENCA, 'SLOTS'),
+  ];
+
   const embed = brandEmbed('HOUSE')
     .setColor(isClosed ? COLOR.MUTED : COLOR.INFO)
-    .setTitle(`${EMOJI.PRESENCA}  Presença do Bairro`)
-    .setDescription(
-      [
-        `**${weekday.charAt(0).toUpperCase() + weekday.slice(1)}**, ${dateStr}`,
-        '',
-        peakLine,
-        `👥 ${voterBadge}`,
-        '',
-        statusLine,
-      ].join('\n')
-    );
+    .setTitle(`${EMOJI.PRESENCA} Presença do Bairro`)
+    .setDescription(desc.join('\n'));
 
   // Slots em grelha de 3 colunas — 1 field por slot. Cada field mostra
-  // horário (inline), barra empilhada compacta, e contagens por estado
-  // na mesma linha.
+  // horário (inline), barra empilhada compacta, e contagens por estado.
   for (const t of tallies) {
     const bar = _stackedBar(t.counts, 8);
     const y = t.counts.disponivel || 0;
     const m = t.counts.talvez || 0;
     const n = t.counts.indisponivel || 0;
     const total = y + m + n;
-    const breakdown = total > 0 ? `✅ ${y}  ⏰ ${m}  ❌ ${n}` : '_sem votos_';
+    const breakdown =
+      total > 0 ? `${EMOJI.DISPONIVEL} ${y}  ${EMOJI.TALVEZ} ${m}  ${EMOJI.INDISPONIVEL} ${n}` : '_sem votos_';
     embed.addFields({
       name: `🕒 ${t.label}`,
       value: `\`${bar}\`\n${breakdown}`,
@@ -109,9 +111,7 @@ function buildEmbed(session, tallies, totalVoters) {
     });
   }
 
-  embed.setFooter({
-    text: `Firma RedWood · sessão #${session.id}${isClosed ? ' · fechada' : ' · reset amanhã às 07:00'}`,
-  });
+  setFooterText(embed, `sessão #${session.id}${isClosed ? ' · fechada' : ' · reset amanhã às 07:00'}`);
   return embed;
 }
 
@@ -146,17 +146,17 @@ function buildComponents(session, slots) {
       .setCustomId(`avail::all::${session.id}::disponivel`)
       .setStyle(ButtonStyle.Success)
       .setLabel('Apareço')
-      .setEmoji('✅'),
+      .setEmoji(EMOJI.DISPONIVEL || '✅'),
     new ButtonBuilder()
       .setCustomId(`avail::all::${session.id}::talvez`)
       .setStyle(ButtonStyle.Secondary)
       .setLabel('Talvez')
-      .setEmoji('⏰'),
+      .setEmoji(EMOJI.TALVEZ || '⏰'),
     new ButtonBuilder()
       .setCustomId(`avail::all::${session.id}::indisponivel`)
       .setStyle(ButtonStyle.Danger)
       .setLabel('Não dá')
-      .setEmoji('❌')
+      .setEmoji(EMOJI.INDISPONIVEL || '❌')
   );
   const utilRow = new ActionRowBuilder().addComponents(
     new ButtonBuilder()

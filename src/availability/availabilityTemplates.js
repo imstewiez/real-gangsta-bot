@@ -22,10 +22,12 @@ const HEADERS = [
   'Marca o teu horário. Os planos saem daqui.',
 ];
 
+const { EMOJI } = require('../content');
+
 const STATE_META = {
-  disponivel: { emoji: '✅', label: 'Disponível' },
-  indisponivel: { emoji: '❌', label: 'Não dá' },
-  talvez: { emoji: '⏰', label: 'Talvez / mais tarde' },
+  disponivel: { emoji: EMOJI.DISPONIVEL || '✅', label: 'Disponível' },
+  indisponivel: { emoji: EMOJI.INDISPONIVEL || '❌', label: 'Não dá' },
+  talvez: { emoji: EMOJI.TALVEZ || '⏰', label: 'Talvez / mais tarde' },
 };
 
 const STATE_ORDER = ['disponivel', 'talvez', 'indisponivel'];
@@ -35,7 +37,7 @@ function pickHeader() {
 }
 
 function stateMeta(state) {
-  return STATE_META[state] || { emoji: '❔', label: state };
+  return STATE_META[state] || { emoji: EMOJI.INFO || '❔', label: state };
 }
 
 module.exports = {

@@ -210,7 +210,7 @@ describe('leaderboardPanel — buildLeaderboardEmbed', () => {
       monthly: _emptyPeriod('monthly'),
       refreshedAt: new Date(),
     });
-    const weekField = embed.data.fields.find(f => f.name.includes('Esta semana'));
+    const weekField = embed.data.fields.find(f => f.value.includes('Esta semana'));
     assert.ok(weekField);
     assert.match(weekField.value, /<@42>/);
     assert.match(weekField.value, /<@46>/);
