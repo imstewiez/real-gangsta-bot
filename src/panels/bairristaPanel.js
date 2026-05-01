@@ -5,13 +5,12 @@ const { button, buttonRow } = require('../shared/ui/buttons');
 const { query } = require('../db');
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Painel do Bairrista — TUDO do dia-a-dia do bairro (REORGANIZADO)
+// Painel do Bairrista — Dia-a-dia (SIMPLIFICADO)
 // ══════════════════════════════════════════════════════════════════════════════
-// Aqui vive TUDO o que um bairrista precisa: registar actividade, consultar
-// stock, ver o seu progresso, etc. Cores: 🟢 Registar | 🔵 Ver | 🟠 Pessoal
+// Registar actividade, consultar progresso pessoal e ranking da firma.
 
 async function buildBairristaPanel() {
-  const [weeklyTop, activeGoals, memberCount, openOps] = await Promise.all([
+  const [weeklyTop, activeGoals, memberCount] = await Promise.all([
     query(`
       SELECT m.display_name, SUM(im.quantity) AS total_qty
       FROM inventory_movements im
@@ -24,13 +23,11 @@ async function buildBairristaPanel() {
     `),
     query('SELECT COUNT(*)::int AS c FROM weekly_goals WHERE week_start <= CURRENT_DATE AND week_end >= CURRENT_DATE'),
     query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
-    query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
   ]);
 
   const top3 = weeklyTop.rows;
   const goals = activeGoals.rows[0]?.c ?? 0;
   const members = memberCount.rows[0]?.c ?? 0;
-  const ops = openOps.rows[0]?.c ?? 0;
 
   const topText =
     top3.length === 0
@@ -50,13 +47,11 @@ async function buildBairristaPanel() {
       .addFields(
         { name: `${EMOJI.MEDAL_1} Top Entregas (Semana)`, value: topText, inline: false },
         { name: `${EMOJI.PARTICIPANTE} Firma`, value: `**${members}** bairristas activos`, inline: true },
-        { name: `${EMOJI.OK} Metas`, value: `**${goals}** activas`, inline: true },
-        { name: `${EMOJI.SAIDA} Saídas`, value: `**${ops}** em curso`, inline: true },
-        { name: `${EMOJI.INFO} Cores dos botões`, value: '🟢 Registar · 🔵 Ver · 🟠 Pessoal', inline: false }
+        { name: `${EMOJI.OK} Metas`, value: `**${goals}** activas`, inline: true }
       )
   );
 
-  // Row 1 — 🟢 REGISTAR (tudo o que um bairrista faz no dia-a-dia)
+  // Row 1 — Registar
   const row1 = buttonRow(
     button({
       customId: 'bairrista::entregar_material',
@@ -70,30 +65,23 @@ async function buildBairristaPanel() {
     button({ customId: 'bairrista::ausencia', label: 'Ausência', style: 'Success', emoji: EMOJI.PENDENTE })
   );
 
-  // Row 2 — 🔵 VER FIRMA (consultas públicas do bairro)
+  // Row 2 — Ver
   const row2 = buttonRow(
-    button({ customId: 'chefia::ver_stock', label: 'Ver Stock', style: 'Primary', emoji: EMOJI.STOCK }),
-    button({ customId: 'oficial::ver_saidas', label: 'Ver Saídas', style: 'Primary', emoji: EMOJI.SAIDA }),
     button({ customId: 'bairrista::ranking', label: 'Ver Ranking', style: 'Primary', emoji: EMOJI.MEDAL_1 }),
-    button({ customId: 'bairrista::catalogo', label: 'Ver Catálogo', style: 'Primary', emoji: EMOJI.MATERIAL })
-  );
-
-  // Row 3 — 🔵 MINHAS (consultas pessoais)
-  const row3 = buttonRow(
+    button({ customId: 'bairrista::catalogo', label: 'Ver Catálogo', style: 'Primary', emoji: EMOJI.MATERIAL }),
     button({ customId: 'bairrista::metas', label: 'Ver Metas', style: 'Primary', emoji: EMOJI.OK }),
     button({ customId: 'bairrista::saidas', label: 'As minhas Saídas', style: 'Primary', emoji: EMOJI.MOVIMENTO }),
     button({ customId: 'bairrista::meu_resumo', label: 'Meu Resumo', style: 'Primary', emoji: EMOJI.INFO })
   );
 
-  // Row 4 — 🟠 PESSOAL (cockpit individual)
-  const row4 = buttonRow(
+  // Row 3 — Pessoal
+  const row3 = buttonRow(
     button({ customId: 'bairrista::movimento', label: 'O meu Movimento', style: 'Secondary', emoji: EMOJI.FIRMA }),
     button({ customId: 'bairrista::historico', label: 'Histórico', style: 'Secondary', emoji: EMOJI.AUDIT }),
-    button({ customId: 'bairrista::progresso', label: 'Progresso', style: 'Secondary', emoji: EMOJI.PROGRESSO }),
-    button({ customId: 'bairrista::top_semanal', label: 'Topo Semanal', style: 'Secondary', emoji: EMOJI.TOPO })
+    button({ customId: 'bairrista::progresso', label: 'Progresso', style: 'Secondary', emoji: EMOJI.PROGRESSO })
   );
 
-  return { embeds: [embed], components: [row1, row2, row3, row4] };
+  return { embeds: [embed], components: [row1, row2, row3] };
 }
 
 module.exports = { buildBairristaPanel };

@@ -6,19 +6,14 @@ const { selectMenu, selectRow } = require('../shared/ui/selects');
 const { query } = require('../db');
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Painel da Chefia — Comando e Gestão (REORGANIZADO)
+// Painel da Chefia — Comando e Gestão (SIMPLIFICADO)
 // ══════════════════════════════════════════════════════════════════════════════
-// Aqui vive TUDO o que é gestão da firma: metas, incidentes, stock, membros,
-// relatórios, etc. Sem cenas de bairrista ou saídas — isso está nos painéis
-// do bairro e dos oficiais. Cores: 🟢 Criar · 🔵 Ver · 🟠 Gerir
+// Gestão da firma: metas, incidentes, stock, membros, relatórios.
 
 async function buildChefiaPanel() {
-  const [openOps, stockAgg, topWeek, openIncidents, activeMembers, weekKills, weekDeliveries, activeGoals] =
+  const [openOps, topWeek, openIncidents, activeMembers, weekKills, weekDeliveries, activeGoals] =
     await Promise.all([
       query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
-      query(
-        'SELECT COUNT(DISTINCT item_id)::int AS items, COALESCE(SUM(quantity),0)::int AS units FROM inventory_movements'
-      ),
       query(`
       SELECT m.display_name, SUM(im.quantity) AS total_qty
       FROM inventory_movements im
@@ -41,8 +36,6 @@ async function buildChefiaPanel() {
     ]);
 
   const ops = openOps.rows[0]?.c ?? 0;
-  const items = stockAgg.rows[0]?.items ?? 0;
-  const units = stockAgg.rows[0]?.units ?? 0;
   const topName = topWeek.rows[0]?.display_name ?? '—';
   const topQty = topWeek.rows[0]?.total_qty ?? 0;
   const inc = openIncidents.rows[0]?.c ?? 0;
@@ -58,11 +51,6 @@ async function buildChefiaPanel() {
       .setDescription('**Aqui não se pergunta — decide-se.**')
       .addFields(
         { name: `${EMOJI.SAIDA} Saídas`, value: `**${ops}** activas`, inline: true },
-        {
-          name: `${EMOJI.STOCK} Stock`,
-          value: `**${items}** itens · **${units.toLocaleString('pt-PT')}** un`,
-          inline: true,
-        },
         { name: `${EMOJI.PARTICIPANTE} Bairristas`, value: `**${members}** activos`, inline: true },
         {
           name: `${EMOJI.MEDAL_1} Top Entregador`,
@@ -76,12 +64,11 @@ async function buildChefiaPanel() {
           name: `${EMOJI.ERRO} Incidentes`,
           value: inc > 0 ? `**${inc}** abertos ${EMOJI.WARN}` : `**0** abertos ${EMOJI.OK}`,
           inline: true,
-        },
-        { name: `${EMOJI.INFO} Cores`, value: '🟢 Criar · 🔵 Ver · 🟠 Gerir', inline: true }
+        }
       )
   );
 
-  // Row 1 — 🟢 CRIAR (gestão da firma)
+  // Row 1 — Criar
   const row1 = buttonRow(
     button({ customId: 'chefia::criar_meta', label: 'Criar Meta', style: 'Success', emoji: EMOJI.OK }),
     button({ customId: 'chefia::criar_incidente', label: 'Criar Incidente', style: 'Success', emoji: EMOJI.ERRO }),
@@ -94,11 +81,11 @@ async function buildChefiaPanel() {
     button({ customId: 'chefia::ausencias', label: 'Ausências', style: 'Success', emoji: EMOJI.PENDENTE })
   );
 
-  // Row 2 — 🔵 VER (dashboards e relatórios)
+  // Row 2 — Ver
   const row2 = buttonRow(
     button({
       customId: 'chefia::painel_pendencias',
-      label: 'Painel Pendências',
+      label: 'Pendências',
       style: 'Primary',
       emoji: EMOJI.PENDENTE,
     }),
@@ -107,7 +94,7 @@ async function buildChefiaPanel() {
     button({ customId: 'chefia::inactivos', label: 'Inactivos', style: 'Primary', emoji: EMOJI.WARN })
   );
 
-  // Row 3 — 🟠 GERIR (administração da firma — compressão via select menu)
+  // Row 3 — Gerir (compressão via select menu)
   const row3 = selectRow(
     selectMenu({
       customId: 'panel::chefia_gerir',

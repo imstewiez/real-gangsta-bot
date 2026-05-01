@@ -5,11 +5,9 @@ const { button, buttonRow } = require('../shared/ui/buttons');
 const { query } = require('../db');
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Painel do Oficial — Operações e Saídas (REORGANIZADO)
+// Painel do Oficial — Operações e Saídas (SIMPLIFICADO)
 // ══════════════════════════════════════════════════════════════════════════════
-// Aqui vive TUDO o que é operações: abrir/fechar saídas, emitir material,
-// gerir participantes, ver estatísticas. Sem cenas de bairrista — isso está
-// no painel do bairro. Cores: 🟢 Operações | 🔵 Ver
+// Abrir/fechar saídas, emitir material, gerir participantes, ver operações.
 
 async function buildOficialPanel() {
   const [openOps, weekKills, weekDeliveries, activeGoals, memberCount] = await Promise.all([
@@ -38,12 +36,11 @@ async function buildOficialPanel() {
         { name: `${EMOJI.KILL} Kills (Semana)`, value: `**${kills}** registadas`, inline: true },
         { name: `${EMOJI.ENTREGA} Entregas (Semana)`, value: `**${deliv}** registadas`, inline: true },
         { name: `${EMOJI.PARTICIPANTE} Firma`, value: `**${members}** activos`, inline: true },
-        { name: `${EMOJI.OK} Metas`, value: `**${goals}** activas`, inline: true },
-        { name: `${EMOJI.INFO} Cores`, value: '🟢 Operações · 🔵 Ver', inline: true }
+        { name: `${EMOJI.OK} Metas`, value: `**${goals}** activas`, inline: true }
       )
   );
 
-  // Row 1 — 🟢 OPERAÇÕES (core do Oficial)
+  // Row 1 — Operações
   const row1 = buttonRow(
     button({ customId: 'chefia::criar_saida', label: 'Abrir Saída', style: 'Success', emoji: EMOJI.NOVO }),
     button({ customId: 'chefia::fechar_saida', label: 'Fechar Saída', style: 'Success', emoji: EMOJI.FECHAR }),
@@ -56,13 +53,12 @@ async function buildOficialPanel() {
     })
   );
 
-  // Row 2 — 🔵 VER (consultas de operações)
+  // Row 2 — Ver
   const row2 = buttonRow(
     button({ customId: 'chefia::ver_stock', label: 'Ver Stock', style: 'Primary', emoji: EMOJI.STOCK }),
     button({ customId: 'oficial::ver_saidas', label: 'Ver Saídas', style: 'Primary', emoji: EMOJI.SAIDA }),
     button({ customId: 'chefia::stats_open', label: 'Estatísticas', style: 'Primary', emoji: EMOJI.GRAFICO }),
-    button({ customId: 'chefia::ver_logs', label: 'Logs', style: 'Primary', emoji: EMOJI.AUDIT }),
-    button({ customId: 'chefia::listar_stickys', label: 'Stickys', style: 'Primary', emoji: EMOJI.STICKY })
+    button({ customId: 'chefia::ver_logs', label: 'Logs', style: 'Primary', emoji: EMOJI.AUDIT })
   );
 
   return { embeds: [embed], components: [row1, row2] };
