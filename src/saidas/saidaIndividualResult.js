@@ -44,7 +44,7 @@ const {
 const { query } = require('../db');
 const { saidaRepo, memberRepo } = require('../repositories');
 const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
-const { brandEmbed, errorEmbed, COLOR } = require('../shared/embedBuilders');
+const { brandEmbed, errorEmbed, successEmbed, COLOR, headerLine } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { formatPtDate } = require('../shared/formatPtDate');
 const { isChefia, isOficial } = require('../permissions/permissionEngine');
@@ -317,23 +317,26 @@ async function handleSubmitResultModal(interaction) {
   const saidaSession = require('./saidaSession');
   saidaSession.refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
 
-  // Feedback ao participante
+  // Feedback ao participante — embed rico
   const lines = [
-    `${EMOJI.OK} Resultado ${isEdit ? '**editado**' : 'registado'} na **Saída #${saidaId}**.`,
-    '',
-    `• ${died ? `${EMOJI.MORTE} Morreste` : `${EMOJI.OK} Sobreviveste`}`,
-    `• ${EMOJI.KILL} **${kills}** kill(s)`,
+    `${died ? `${EMOJI.MORTE} Morreste` : `${EMOJI.OK} Sobreviveste`}`,
+    `${EMOJI.KILL} **${kills}** kill${kills === 1 ? '' : 's'}`,
   ];
   if (weaponReturnStatus === 'declared_returned') {
-    lines.push(`• ${EMOJI.ARMA} Declaraste que devolveste a arma — **pendente de confirmação staff**`);
+    lines.push(`${EMOJI.ARMA} Arma declarada devolvida — **aguarda confirmação staff**`);
   } else if (weaponReturnStatus === 'confirmed_not_returned') {
-    lines.push(`• ${EMOJI.ARMA} Arma não devolvida (${died ? 'morreste com ela' : 'declaraste'})`);
+    lines.push(`${EMOJI.ARMA} Arma não devolvida (${died ? 'morreste com ela' : 'declaraste'})`);
   }
+
+  const feedbackEmbed = successEmbed(
+    `${EMOJI.OK} Resultado ${isEdit ? 'editado' : 'registado'} — Saída #${saidaId}`,
+    lines.join('\n')
+  );
 
   // Auto-check: se todos preencheram, notificar staff
   _checkAllResultsSubmitted(interaction.client, saidaId).catch(() => {});
 
-  return safeReply(interaction, { content: lines.join('\n') }, { messageClass: 'RESULT' });
+  return safeReply(interaction, { embeds: [feedbackEmbed] }, { messageClass: 'RESULT' });
 }
 
 /**
@@ -417,7 +420,8 @@ async function handleRepingPendentes(interaction) {
     .setColor(COLOR.DANGER)
     .setTitle(`${EMOJI.WARN} Saída #${saidaId} — Faltam ${pending.length} resultado(s)!`)
     .setDescription(
-      `**Preencham o vosso resultado!** Cliquem no botão **"${EMOJI.OK} Preencher o meu Resultado"** acima ↑\n\n` +
+      `**Preencham o vosso resultado!** Cliquem no botão **"${EMOJI.OK} Preencher o meu Resultado"** acima ↑\n` +
+        headerLine(EMOJI.PENDENTE, 'Pendentes') +
         pendingLines.join('\n') +
         '\n\n_A sessão não fecha sem os vossos dados._'
     );
