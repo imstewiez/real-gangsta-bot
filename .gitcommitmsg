@@ -1,1 +1,1 @@
-﻿ci: fix lint error and run prettier format
+﻿fix(panels): corrige nome de tabelas e colunas (stock, quantity, movement_type)

@@ -16,9 +16,7 @@ async function buildChefiaPanel() {
   const [openOps, stockAgg, topWeek, openIncidents, activeMembers, weekKills, weekDeliveries, activeGoals] =
     await Promise.all([
       query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
-      query(
-        'SELECT COUNT(DISTINCT item_id)::int AS items, COALESCE(SUM(balance),0)::int AS units FROM inventory_stock_snapshot'
-      ),
+      query('SELECT COUNT(DISTINCT item_id)::int AS items, COALESCE(SUM(quantity),0)::int AS units FROM stock'),
       query(`
       SELECT m.display_name, SUM(im.qty) AS total_qty
       FROM inventory_movements im
@@ -33,7 +31,7 @@ async function buildChefiaPanel() {
       query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
       query("SELECT COUNT(*)::int AS c FROM kill_logs WHERE created_at >= date_trunc('week', NOW())"),
       query(
-        "SELECT COUNT(*)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_morador','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
+        "SELECT COUNT(*)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_bairrista','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
       ),
       query("SELECT COUNT(*)::int AS c FROM weekly_goals WHERE status = 'active'"),
     ]);
