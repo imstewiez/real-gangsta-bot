@@ -119,27 +119,15 @@ async function bootstrapPanel(client, panelDef) {
       return { key: panelDef.key, status: 'failed', reason: `canal ${channelId} não encontrado (bot sem acesso?)` };
     }
 
-    const panelMessages = await getStateKey('panelMessages', {});
-    const existingMessageId = panelMessages[panelDef.key];
     // build() pode ser sync ou async (radio lê DB). Await tolera ambos.
     const payload = await panelDef.build();
 
-    if (existingMessageId) {
-      try {
-        const msg = await channel.messages.fetch(existingMessageId);
-        await msg.edit(payload);
-        log(`[PANELS] Painel '${panelDef.key}' atualizado (msg ${existingMessageId}, fonte ${source}).`);
-        return { key: panelDef.key, status: 'edited', channelId, messageId: existingMessageId, source };
-      } catch {
-        // Message gone, will create new
-      }
-    }
-
-    // Apaga TODAS as mensagens recentes do bot no canal (até 100) para garantir
-    // que não ficam painéis antigos/flutuantes após um rebuild forçado.
+    // Apaga TODAS as mensagens do bot no canal para garantir rebuild limpo.
+    // Nunca editamos — sempre criamos mensagens novas. Assim cada deploy
+    // mostra os painéis actualizados sem depender de state ou schema version.
     let deletedCount = 0;
     let lastId = null;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
       const opts = lastId ? { limit: 100, before: lastId } : { limit: 100 };
       const batch = await channel.messages.fetch(opts).catch(() => null);
       if (!batch || batch.size === 0) break;
@@ -156,6 +144,7 @@ async function bootstrapPanel(client, panelDef) {
     }
 
     const newMsg = await channel.send(payload);
+    const panelMessages = await getStateKey('panelMessages', {});
     panelMessages[panelDef.key] = newMsg.id;
     await setStateKey('panelMessages', panelMessages);
     log(`[PANELS] Painel '${panelDef.key}' publicado (msg ${newMsg.id}, fonte ${source}).`);
