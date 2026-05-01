@@ -3,15 +3,14 @@
  * Handlers para interações de disponibilidade.
  *
  * customIds usados:
- *   avail::vote_select::<sessionId>      — StringSelectMenu (slot:state)
+ *   avail::vote_select::<sessionId>      — StringSelectMenu (range:state)
  *   avail::all::<sessionId>::<state>     — Botão "para todos os slots"
  *   avail::summary::<sessionId>          — Botão resumo (ephemeral)
  *   avail::refresh::<sessionId>          — Botão refresh do embed
  */
 
 const { MessageFlags } = require('discord.js');
-const { availabilityRepo } = require('../repositories');
-const { recordVote, recordBulkVote, updateSessionMessage, getSummaryText } = require('./availabilityEngine');
+const { recordRangeVote, recordBulkVote, updateSessionMessage, getSummaryText } = require('./availabilityEngine');
 const { stateMeta } = require('./availabilityTemplates');
 const { safeReply } = require('../shared/interactionHelpers');
 const { AVAILABILITY, EMOJI, ERRORS } = require('../content');
@@ -31,15 +30,12 @@ async function handleVoteSelect(interaction) {
       { content: `${EMOJI.WARN} Sem opção escolhida.`, flags: MessageFlags.Ephemeral },
       { messageClass: 'BANAL' }
     );
-  const [slotIdStr, state] = value.split(':');
-  const slotId = parseInt(slotIdStr, 10);
 
-  const result = await recordVote({
+  const result = await recordRangeVote({
     client: interaction.client,
     sessionId,
-    slotId,
     discordUserId: interaction.user.id,
-    voteState: state,
+    value,
   });
 
   if (!result.ok) {
@@ -53,17 +49,41 @@ async function handleVoteSelect(interaction) {
     );
   }
 
-  const slots = await availabilityRepo.getSlots(sessionId);
-  const slot = slots.find(s => s.id === slotId);
-  const m = stateMeta(state);
+  if (result.state === 'limpar') {
+    return safeReply(
+      interaction,
+      {
+        content: `${EMOJI.INFO} Marcações removidas (${result.count} slot${result.count === 1 ? '' : 's'}).`,
+        flags: MessageFlags.Ephemeral,
+      },
+      { messageClass: 'BANAL' }
+    );
+  }
+
+  const m = stateMeta(result.state);
+  const rangeName = _rangeLabelFromValue(value);
   return safeReply(
     interaction,
     {
-      content: AVAILABILITY.VOTE_RECORDED(slot?.slot_label || slotId, m.label, m.emoji),
+      content: `${m.emoji} Marcado como **${m.label}** — ${rangeName}.`,
       flags: MessageFlags.Ephemeral,
     },
     { messageClass: 'BANAL' }
   );
+}
+
+function _rangeLabelFromValue(value) {
+  const [rangeKey] = value.split(':');
+  const map = {
+    dia_todo: 'dia todo',
+    tarde: 'tarde (12–18h)',
+    noite: 'noite (18–00h)',
+    madrugada: 'madrugada (22–02h)',
+    limpar: 'limpar',
+  };
+  if (map[rangeKey]) return map[rangeKey];
+  // slot individual — o rangeKey é o label do slot (ex: "14:00")
+  return rangeKey;
 }
 
 async function handleVoteAll(interaction) {

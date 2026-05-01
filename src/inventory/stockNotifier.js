@@ -20,6 +20,7 @@ const { ChannelType, EmbedBuilder } = require('discord.js');
 const CONFIG = require('../config');
 const { CATEGORY_BY_KEY, bold } = require('../discord/structureTemplate');
 const { brandEmbed, COLOR, setFooterText } = require('../shared/embedBuilders');
+const { formatPtDate } = require('../shared/formatPtDate');
 const { log, warn } = require('../logger');
 
 let _client = null;
@@ -245,7 +246,7 @@ async function publishStockSummary() {
 
     const embed = brandEmbed()
       .setColor(COLOR.INFO)
-      .setTitle(`📊 Resumo de Stock — ${new Date().toLocaleString('pt-PT')}`)
+      .setTitle(`📊 Resumo de Stock — ${formatPtDate(new Date())}`)
       .setDescription(`Total estimado: **${totalValue.toLocaleString('pt-PT')} €**`);
 
     for (const [category, items] of Object.entries(grouped)) {

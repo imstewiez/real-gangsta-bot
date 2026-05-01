@@ -172,7 +172,10 @@ function startAll(client) {
     const { createSession, closeSession, todayDateString } = require('../availability/availabilityEngine');
     registerJob('availability_auto_publish', 5 * 60 * 1000, async client => {
       const now = new Date();
-      if (now.getHours() !== CONFIG.AVAILABILITY_AUTO_PUBLISH_HOUR) return { skipped: 'wrong_hour' };
+      const lisbonHour = Number(
+        new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Lisbon', hour: 'numeric', hour12: false }).format(now)
+      );
+      if (lisbonHour !== CONFIG.AVAILABILITY_AUTO_PUBLISH_HOUR) return { skipped: 'wrong_hour' };
       const date = todayDateString();
 
       // Fecha qualquer sessão aberta do dia anterior ANTES de criar a nova.
@@ -199,7 +202,10 @@ function startAll(client) {
   // log-bairristas (idempotente — se totalQty=0 faz skip).
   registerJob('bairrista_daily_summary', 30 * 60 * 1000, async () => {
     const now = new Date();
-    if (now.getHours() !== (CONFIG.BAIRRISTA_DAILY_SUMMARY_HOUR || 23)) return { skipped: 'wrong_hour' };
+    const lisbonHour = Number(
+      new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Lisbon', hour: 'numeric', hour12: false }).format(now)
+    );
+    if (lisbonHour !== (CONFIG.BAIRRISTA_DAILY_SUMMARY_HOUR || 23)) return { skipped: 'wrong_hour' };
     return await publishBairristaDailySummary();
   });
 

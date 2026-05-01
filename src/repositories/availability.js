@@ -162,6 +162,14 @@ async function getDistinctVoterCount(sessionId) {
   return res.rows[0]?.n || 0;
 }
 
+async function deleteVotesForUser(sessionId, discordUserId) {
+  const res = await query(`DELETE FROM availability_votes WHERE session_id = $1 AND discord_user_id = $2`, [
+    sessionId,
+    discordUserId,
+  ]);
+  return res.rowCount || 0;
+}
+
 module.exports = {
   getOpenSession,
   getSessionById,
@@ -176,4 +184,5 @@ module.exports = {
   getTallies,
   getVoters,
   getDistinctVoterCount,
+  deleteVotesForUser,
 };

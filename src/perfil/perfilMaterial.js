@@ -10,6 +10,7 @@ const { MessageFlags, ActionRowBuilder, StringSelectMenuBuilder } = require('dis
 const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
+const { formatPtDate } = require('../shared/formatPtDate');
 const { bairristaStatsRepo, memberAnalyticsRepo } = require('../repositories');
 const { buttonRow, button } = require('../shared/ui/buttons');
 
@@ -125,7 +126,8 @@ async function getStats(discordId, period, offsetPeriods) {
 
 function periodLabel(period) {
   if (period === 'month') {
-    return new Date().toLocaleString('pt-PT', { month: 'long', year: 'numeric' });
+    const d = new Date();
+    return new Intl.DateTimeFormat('pt-PT', { month: 'long', year: 'numeric', timeZone: 'Europe/Lisbon' }).format(d);
   }
   if (period === 'alltime') return 'Histórico';
   return 'Esta semana';

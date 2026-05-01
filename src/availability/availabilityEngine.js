@@ -18,8 +18,16 @@ const CONFIG = require('../config');
 const { availabilityRepo } = require('../repositories');
 const { logAudit } = require('../audit/auditEngine');
 const { brandEmbed, COLOR, headerLine, setFooterText } = require('../shared/embedBuilders');
+const { formatPtDateOnly } = require('../shared/formatPtDate');
 const { EMOJI } = require('../content');
-const { pickHeader, stateMeta, STATE_ORDER, STATE_META } = require('./availabilityTemplates');
+const {
+  pickHeader,
+  stateMeta,
+  STATE_ORDER,
+  STATE_META,
+  buildSelectOptions,
+  resolveRangeValue,
+} = require('./availabilityTemplates');
 const { log, warn } = require('../logger');
 
 function todayDateString() {
@@ -50,10 +58,11 @@ function _findPeakSlot(tallies) {
   return best;
 }
 
-// Fmt dia da semana em PT-PT (seg, ter, qua…).
-function _weekdayPt(dateStr) {
+// Fmt dia da semana em PT-PT (segunda, terça, quarta…).
+function _weekdayPt(dateInput) {
   try {
-    const d = new Date(`${String(dateStr).split('T')[0]}T12:00:00`);
+    const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    if (isNaN(d.getTime())) return '';
     return new Intl.DateTimeFormat('pt-PT', { weekday: 'long', timeZone: 'Europe/Lisbon' }).format(d);
   } catch {
     return '';
@@ -61,8 +70,8 @@ function _weekdayPt(dateStr) {
 }
 
 function buildEmbed(session, tallies, totalVoters) {
-  const dateStr = String(session.session_date).split('T')[0];
-  const weekday = _weekdayPt(dateStr);
+  const dateStr = formatPtDateOnly(session.session_date);
+  const weekday = _weekdayPt(session.session_date);
   const isClosed = session.status === 'closed';
 
   // Peak slot — "melhor hora" em destaque
@@ -73,72 +82,74 @@ function buildEmbed(session, tallies, totalVoters) {
 
   const statusLine = isClosed
     ? `${EMOJI.BLOQUEADO} **Sessão fechada** — votos congelados.`
-    : `${EMOJI.PRESENCA} _Usa o menu abaixo para marcar a tua presença. Podes mudar a qualquer altura._`;
+    : `${EMOJI.PRESENCA} _Usa o menu abaixo para marcar intervalos de uma vez._`;
 
   const voterLabel = totalVoters === 1 ? 'bairrista votou' : 'bairristas votaram';
   const voterBadge = totalVoters === 0 ? '_ninguém ainda_' : `**${totalVoters}** ${voterLabel}`;
 
-  const desc = [
+  // Agrupar slots por período do dia
+  const groups = _groupSlotsByPeriod(tallies);
+
+  const lines = [
     `**${weekday.charAt(0).toUpperCase() + weekday.slice(1)}**, ${dateStr}`,
     '',
     peakLine,
     `👥 ${voterBadge}`,
     '',
     statusLine,
-    '',
-    headerLine(EMOJI.PRESENCA, 'SLOTS'),
   ];
+
+  for (const group of groups) {
+    lines.push('', `**${group.icon} ${group.name}**`);
+    for (const t of group.slots) {
+      const bar = _stackedBar(t.counts, 10);
+      const y = t.counts.disponivel || 0;
+      const m = t.counts.talvez || 0;
+      const n = t.counts.indisponivel || 0;
+      const total = y + m + n;
+      const isPeak = peak && peak.label === t.label;
+      const breakdown =
+        total > 0
+          ? `${EMOJI.DISPONIVEL} ${y}   ${EMOJI.TALVEZ} ${m}   ${EMOJI.INDISPONIVEL} ${n}${isPeak ? '  🔥' : ''}`
+          : '_sem votos_';
+      lines.push(`\`🕐 ${t.label.padEnd(5)}\` ${bar}  ${breakdown}`);
+    }
+  }
 
   const embed = brandEmbed('HOUSE')
     .setColor(isClosed ? COLOR.MUTED : COLOR.INFO)
     .setTitle(`${EMOJI.PRESENCA} Presença do Bairro`)
-    .setDescription(desc.join('\n'));
-
-  // Slots em grelha de 3 colunas — 1 field por slot. Cada field mostra
-  // horário (inline), barra empilhada compacta, e contagens por estado.
-  for (const t of tallies) {
-    const bar = _stackedBar(t.counts, 8);
-    const y = t.counts.disponivel || 0;
-    const m = t.counts.talvez || 0;
-    const n = t.counts.indisponivel || 0;
-    const total = y + m + n;
-    const breakdown =
-      total > 0 ? `${EMOJI.DISPONIVEL} ${y}  ${EMOJI.TALVEZ} ${m}  ${EMOJI.INDISPONIVEL} ${n}` : '_sem votos_';
-    embed.addFields({
-      name: `🕒 ${t.label}`,
-      value: `\`${bar}\`\n${breakdown}`,
-      inline: true,
-    });
-  }
+    .setDescription(lines.join('\n'));
 
   setFooterText(embed, `sessão #${session.id}${isClosed ? ' · fechada' : ' · reset amanhã às 07:00'}`);
   return embed;
 }
 
+// Agrupa slots por período do dia para melhor legibilidade.
+function _groupSlotsByPeriod(tallies) {
+  const tarde = tallies.filter(t => ['12:00', '14:00', '16:00', '18:00'].includes(t.label));
+  const noite = tallies.filter(t => ['18:00', '20:00', '22:00'].includes(t.label));
+  const madrugada = tallies.filter(t => ['00:00', '02:00'].includes(t.label));
+  const outros = tallies.filter(t => !tarde.includes(t) && !noite.includes(t) && !madrugada.includes(t));
+
+  const groups = [];
+  if (tarde.length) groups.push({ name: 'TARDE', icon: '🌅', slots: tarde });
+  if (noite.length) groups.push({ name: 'NOITE', icon: '🌙', slots: noite });
+  if (madrugada.length) groups.push({ name: 'MADRUGADA', icon: '🌑', slots: madrugada });
+  if (outros.length) groups.push({ name: 'OUTROS', icon: '🕐', slots: outros });
+  return groups;
+}
+
 function buildComponents(session, slots) {
   if (session.status === 'closed') return []; // nada de votar quando fechada
 
+  const selectOpts = buildSelectOptions(slots);
   const select = new StringSelectMenuBuilder()
     .setCustomId(`avail::vote_select::${session.id}`)
-    .setPlaceholder('Marca a tua presença')
+    .setPlaceholder('📅 Marca intervalos de uma vez')
     .setMinValues(1)
-    .setMaxValues(1);
-
-  // Discord limita a 25 opções por select. Cada slot gera 3 opções (×estado).
-  // Truncar a 8 slots (8 × 3 = 24 opções) para caber com margem.
-  const maxSlots = Math.min(slots.length, 8);
-  for (let i = 0; i < maxSlots; i++) {
-    const slot = slots[i];
-    for (const state of STATE_ORDER) {
-      const m = STATE_META[state];
-      select.addOptions({
-        label: `${slot.slot_label} — ${m.label}`,
-        description: `Marca ${slot.slot_label} como ${m.label.toLowerCase()}`,
-        value: `${slot.id}:${state}`,
-        emoji: m.emoji,
-      });
-    }
-  }
+    .setMaxValues(1)
+    .addOptions(selectOpts);
 
   // Atalhos: aplicar mesmo estado a TODOS os slots.
   const allRow = new ActionRowBuilder().addComponents(
@@ -329,6 +340,36 @@ async function recordBulkVote({ client, sessionId, discordUserId, voteState }) {
   return { ok: true, count };
 }
 
+/**
+ * Voto por intervalo/range — resolve o value do select (ex: 'tarde:disponivel')
+ * para a lista de slots e aplica o estado a todos.
+ */
+async function recordRangeVote({ client, sessionId, discordUserId, value }) {
+  const session = await availabilityRepo.getSessionById(sessionId);
+  if (!session) return { ok: false, reason: 'session_not_found' };
+  if (session.status !== 'open') return { ok: false, reason: 'session_closed' };
+
+  const slots = await availabilityRepo.getSlots(sessionId);
+  const resolved = resolveRangeValue(value, slots);
+  if (!resolved) return { ok: false, reason: 'invalid_range' };
+
+  if (resolved.state === 'limpar') {
+    const deleted = await availabilityRepo.deleteVotesForUser(sessionId, discordUserId);
+    updateSessionMessage(client, sessionId).catch(e => warn(`[AVAIL] update msg falhou: ${e.message}`));
+    return { ok: true, state: 'limpar', count: deleted };
+  }
+
+  if (!STATE_META[resolved.state]) return { ok: false, reason: 'invalid_state' };
+
+  let count = 0;
+  for (const slotId of resolved.slotIds) {
+    await availabilityRepo.upsertVote({ sessionId, slotId, discordUserId, voteState: resolved.state });
+    count++;
+  }
+  updateSessionMessage(client, sessionId).catch(e => warn(`[AVAIL] update msg falhou: ${e.message}`));
+  return { ok: true, state: resolved.state, count, slotIds: resolved.slotIds };
+}
+
 async function getSummaryText(sessionId) {
   const session = await availabilityRepo.getSessionById(sessionId);
   if (!session) return null;
@@ -351,7 +392,7 @@ async function getSummaryText(sessionId) {
   }
 
   const lines = [
-    `**Sessão #${session.id}** — ${session.session_date.toString().split('T')[0]}`,
+    `**Sessão #${session.id}** — ${formatPtDateOnly(session.session_date)}`,
     `Total de votantes: **${total}**`,
     '',
   ];
@@ -377,5 +418,6 @@ module.exports = {
   closeSession,
   recordVote,
   recordBulkVote,
+  recordRangeVote,
   getSummaryText,
 };

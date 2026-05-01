@@ -109,6 +109,7 @@ async function publishKillToChannel(client, kill) {
   if (!ch) return false;
 
   const { brandEmbed, COLOR } = require('../shared/embedBuilders');
+  const { formatPtDateOnly } = require('../shared/formatPtDate');
   const { EMOJI, KILLS } = require('../content');
 
   const killerMention = kill.killer?.discord_id
@@ -121,7 +122,7 @@ async function publishKillToChannel(client, kill) {
   if (kill.spot) fields.push({ name: KILLS.LABELS.SPOT, value: kill.spot, inline: true });
   if (kill.saida_id) fields.push({ name: KILLS.LABELS.SAIDA, value: `#${kill.saida_id}`, inline: true });
   if (kill.context) fields.push({ name: 'Contexto', value: kill.context, inline: false });
-  fields.push({ name: KILLS.LABELS.QUANDO, value: String(kill.date).split('T')[0], inline: true });
+  fields.push({ name: KILLS.LABELS.QUANDO, value: formatPtDateOnly(kill.date), inline: true });
 
   const embed = brandEmbed('STREET')
     .setColor(COLOR.DARK)

@@ -46,6 +46,8 @@ const {
   STATE_ORDER,
   pickHeader,
   stateMeta,
+  buildSelectOptions,
+  resolveRangeValue,
 } = require('../src/availability/availabilityTemplates');
 const { buildEmbed, buildComponents, todayDateString } = require('../src/availability/availabilityEngine');
 
@@ -91,25 +93,46 @@ describe('availabilityEngine — UI builders', () => {
     assert.match(todayDateString(), /^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it('buildEmbed tem título, fields por slot e total de votantes no description', () => {
+  it('buildEmbed tem título, slots na description e total de votantes', () => {
     const tallies = [
-      { slotId: 1, label: '20:30', position: 0, counts: { disponivel: 3, indisponivel: 1 } },
-      { slotId: 2, label: '21:30', position: 1, counts: { talvez: 2 } },
+      { slotId: 1, label: '12:00', position: 0, counts: { disponivel: 3, indisponivel: 1 } },
+      { slotId: 2, label: '14:00', position: 1, counts: { talvez: 2 } },
+      { slotId: 3, label: '20:00', position: 2, counts: { disponivel: 8, talvez: 1 } },
     ];
     const embed = buildEmbed(fakeSession, tallies, 4);
     const json = embed.toJSON();
     assert.ok(json.title.includes('Presença'));
-    assert.equal(json.fields.length, 2);
-    assert.ok(json.fields[0].name.includes('20:30'));
-    // Embed redesign: total de votantes aparece no description (com emoji 👥)
-    // e o footer tem metadata da sessão.
+    // Novo design: slots aparecem na description, não em fields
+    assert.ok(json.description.includes('12:00'));
+    assert.ok(json.description.includes('14:00'));
+    assert.ok(json.description.includes('20:00'));
     assert.ok(json.description.includes('4'));
     assert.ok(json.description.includes('votaram'));
     assert.ok(json.footer.text.includes(`sessão #${fakeSession.id}`));
+    // Pico destacado
+    assert.ok(json.description.includes('Pico:'));
+    assert.ok(json.description.includes('🔥'));
+  });
+
+  it('buildEmbed fecha sem fields (slots todos na description)', () => {
+    const tallies = [{ slotId: 1, label: '12:00', position: 0, counts: {} }];
+    const embed = buildEmbed(fakeSession, tallies, 0);
+    const json = embed.toJSON();
+    // Sem votos — description deve ter "ninguém ainda"
+    assert.ok(json.description.includes('ninguém ainda'));
   });
 
   it('buildComponents respeita os limites do Discord (≤5 rows, ≤25 options no select)', () => {
-    const slots = Array.from({ length: 8 }, (_, i) => ({ id: i + 1, slot_label: `${20 + i}:30` }));
+    const slots = [
+      { id: 1, slot_label: '12:00' },
+      { id: 2, slot_label: '14:00' },
+      { id: 3, slot_label: '16:00' },
+      { id: 4, slot_label: '18:00' },
+      { id: 5, slot_label: '20:00' },
+      { id: 6, slot_label: '22:00' },
+      { id: 7, slot_label: '00:00' },
+      { id: 8, slot_label: '02:00' },
+    ];
     const rows = buildComponents(fakeSession, slots);
     assert.ok(rows.length <= 5, `≤5 rows; foram ${rows.length}`);
 
@@ -117,8 +140,8 @@ describe('availabilityEngine — UI builders', () => {
     const select = selectRow.components[0];
     // Tipo 3 = StringSelectMenu
     assert.equal(select.type, 3);
-    // 8 slots × 3 estados = 24 opções (≤25)
-    assert.equal(select.options.length, 24);
+    assert.ok(select.options.length <= 25, `≤25 opções; foram ${select.options.length}`);
+    assert.ok(select.options.length > 0, 'select deve ter opções');
 
     // Restantes rows são botões — máx 5 por row
     for (let i = 1; i < rows.length; i++) {
@@ -131,5 +154,59 @@ describe('availabilityEngine — UI builders', () => {
     const closed = { ...fakeSession, status: 'closed' };
     const rows = buildComponents(closed, []);
     assert.deepEqual(rows, []);
+  });
+});
+
+describe('availabilityTemplates — ranges', () => {
+  const slots = [
+    { id: 1, slot_label: '12:00' },
+    { id: 2, slot_label: '14:00' },
+    { id: 3, slot_label: '16:00' },
+    { id: 4, slot_label: '18:00' },
+    { id: 5, slot_label: '20:00' },
+    { id: 6, slot_label: '22:00' },
+    { id: 7, slot_label: '00:00' },
+    { id: 8, slot_label: '02:00' },
+  ];
+
+  it('buildSelectOptions gera opções dentro do limite de 25', () => {
+    const opts = buildSelectOptions(slots);
+    assert.ok(opts.length <= 25, `≤25 opções; foram ${opts.length}`);
+    assert.ok(opts.length > 5, 'deve haver várias opções');
+    // Deve conter opções de intervalo + slot individual + limpar
+    assert.ok(opts.some(o => o.value === 'dia_todo:disponivel'));
+    assert.ok(opts.some(o => o.value === 'tarde:disponivel'));
+    assert.ok(opts.some(o => o.value === 'limpar:limpar'));
+  });
+
+  it('resolveRangeValue resolve intervalos para slot_ids correctos', () => {
+    const r1 = resolveRangeValue('tarde:disponivel', slots);
+    assert.equal(r1.state, 'disponivel');
+    assert.deepEqual(r1.slotIds, [1, 2, 3, 4]);
+
+    const r2 = resolveRangeValue('noite:disponivel', slots);
+    assert.deepEqual(r2.slotIds, [4, 5, 6]);
+
+    const r3 = resolveRangeValue('madrugada:disponivel', slots);
+    assert.deepEqual(r3.slotIds, [6, 7, 8]);
+
+    const r4 = resolveRangeValue('dia_todo:talvez', slots);
+    assert.equal(r4.state, 'talvez');
+    assert.equal(r4.slotIds.length, 8);
+
+    const r5 = resolveRangeValue('limpar:limpar', slots);
+    assert.equal(r5.state, 'limpar');
+    assert.equal(r5.slotIds.length, 8);
+  });
+
+  it('resolveRangeValue resolve slot individual', () => {
+    const r = resolveRangeValue('14:00:disponivel', slots);
+    assert.equal(r.state, 'disponivel');
+    assert.deepEqual(r.slotIds, [2]);
+  });
+
+  it('resolveRangeValue devolve null para value inválido', () => {
+    assert.equal(resolveRangeValue('invalid', slots), null);
+    assert.equal(resolveRangeValue('', slots), null);
   });
 });
