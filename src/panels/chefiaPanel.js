@@ -1,17 +1,16 @@
 'use strict';
 const { brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
-const { BUTTONS, EMOJI } = require('../content');
-const { buttonFromDef, button, buttonRow } = require('../shared/ui/buttons');
+const { EMOJI } = require('../content');
+const { button, buttonRow } = require('../shared/ui/buttons');
 const { query } = require('../db');
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Centro de Comando — Painel da Chefia (RENOVADO v10)
+// Painel da Chefia — Comando (RENOVADO v11)
 // ══════════════════════════════════════════════════════════════════════════════
-// Embed dinâmico com dados reais da DB + botões com cores funcionais.
-// Cores: 🟢 Criar | 🔵 Ver | 🟠 Gerir
+// Secções: 🟢 Abrir/Criar | 🔵 Ver/Consultar | 🟠 Gerir/Dados
 
 async function buildChefiaPanel() {
-  const [openOps, stockAgg, topWeekly, openIncidents, activeMembers] = await Promise.all([
+  const [openOps, stockAgg, topWeek, openIncidents, activeMembers] = await Promise.all([
     query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
     query(
       'SELECT COUNT(DISTINCT item_id)::int AS items, COALESCE(SUM(balance),0)::int AS units FROM inventory_stock_snapshot'
@@ -30,46 +29,42 @@ async function buildChefiaPanel() {
     query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
   ]);
 
-  const opsCount = openOps.rows[0]?.c ?? 0;
-  const stockItems = stockAgg.rows[0]?.items ?? 0;
-  const stockUnits = stockAgg.rows[0]?.units ?? 0;
-  const topName = topWeekly.rows[0]?.display_name ?? '—';
-  const topQty = topWeekly.rows[0]?.total_qty ?? 0;
-  const incCount = openIncidents.rows[0]?.c ?? 0;
-  const membersCount = activeMembers.rows[0]?.c ?? 0;
+  const ops = openOps.rows[0]?.c ?? 0;
+  const items = stockAgg.rows[0]?.items ?? 0;
+  const units = stockAgg.rows[0]?.units ?? 0;
+  const topName = topWeek.rows[0]?.display_name ?? '—';
+  const topQty = topWeek.rows[0]?.total_qty ?? 0;
+  const inc = openIncidents.rows[0]?.c ?? 0;
+  const members = activeMembers.rows[0]?.c ?? 0;
 
   const embed = applyLogo(
     brandEmbed('MOVEMENT')
       .setColor(COLOR.DANGER)
-      .setTitle(`${EMOJI.LIDER} O Comando | Firma RedWood`)
-      .setDescription(
-        '**Aqui não se pergunta — decide-se.**\n' + 'Daqui abre-se a rua, fecha-se a rua, aperta-se a casa.'
-      )
+      .setTitle(`${EMOJI.LIDER} Painel da Chefia | Firma RedWood`)
+      .setDescription('**Aqui não se pergunta — decide-se.**')
       .addFields(
-        { name: `${EMOJI.SAIDA} Saídas Activas`, value: `**${opsCount}** em curso`, inline: true },
+        { name: `${EMOJI.SAIDA} Saídas`, value: `**${ops}** activas`, inline: true },
         {
           name: `${EMOJI.STOCK} Stock`,
-          value: `**${stockItems}** itens · **${stockUnits.toLocaleString('pt-PT')}** un`,
+          value: `**${items}** itens · **${units.toLocaleString('pt-PT')}** un`,
           inline: true,
         },
-        { name: `${EMOJI.PARTICIPANTE} Bairristas`, value: `**${membersCount}** activos`, inline: true },
+        { name: `${EMOJI.PARTICIPANTE} Bairristas`, value: `**${members}** activos`, inline: true },
         {
-          name: `${EMOJI.MEDAL_1} Top Entregador (Semana)`,
-          value: `**${topName}** — ${topQty.toLocaleString('pt-PT')} qty`,
+          name: `${EMOJI.MEDAL_1} Top Entregador`,
+          value: `**${topName}** — ${Number(topQty).toLocaleString('pt-PT')} qty`,
           inline: true,
         },
         {
           name: `${EMOJI.ERRO} Incidentes`,
-          value: incCount > 0 ? `**${incCount}** abertos ⚠️` : '**0** abertos ✅',
+          value: inc > 0 ? `**${inc}** abertos ⚠️` : '**0** abertos ✅',
           inline: true,
         },
-        { name: `${EMOJI.INFO} Dica`, value: '🟢 = criar · 🔵 = ver · 🟠 = gerir', inline: true }
+        { name: `${EMOJI.INFO} Cores dos botões`, value: '🟢 Criar · 🔵 Ver · 🟠 Gerir', inline: true }
       )
   );
 
-  const B = BUTTONS.CHEFIA;
-
-  // Row 1 — Criar 🟢
+  // Row 1 — 🟢 CRIAR / ABRIR / REGISTAR
   const row1 = buttonRow(
     button({ customId: 'chefia::criar_saida', label: 'Abrir Saída', style: 'Success', emoji: EMOJI.NOVO }),
     button({
@@ -77,29 +72,36 @@ async function buildChefiaPanel() {
       label: 'Registar Material',
       style: 'Success',
       emoji: EMOJI.ENTREGA,
-    })
+    }),
+    button({ customId: 'bairrista::encomendar', label: 'Encomendar', style: 'Success', emoji: EMOJI.ENCOMENDA })
   );
 
-  // Row 2 — Ver 🔵
+  // Row 2 — 🔵 VER / CONSULTAR
   const row2 = buttonRow(
-    buttonFromDef('chefia::ver_saidas', B.VER_SAIDAS),
-    buttonFromDef('chefia::ver_stock', B.VER_STOCK),
+    button({ customId: 'chefia::ver_saidas', label: 'Ver Saídas', style: 'Primary', emoji: EMOJI.SAIDA }),
+    button({ customId: 'chefia::ver_stock', label: 'Ver Stock', style: 'Primary', emoji: EMOJI.STOCK }),
     button({ customId: 'chefia::stats_open', label: 'Estatísticas', style: 'Primary', emoji: EMOJI.GRAFICO }),
     button({ customId: 'bairrista::ranking', label: 'Ranking', style: 'Primary', emoji: EMOJI.MEDAL_1 })
   );
 
-  // Row 3 — Gerir 🟠
+  // Row 3 — 🟠 GERIR / DADOS
   const row3 = buttonRow(
-    buttonFromDef('chefia::ajustar_stock', B.AJUSTAR_STOCK),
-    buttonFromDef('chefia::gerir_materiais', B.GERIR_MATERIAIS),
-    buttonFromDef('chefia::listar_stickys', B.STICKYS),
-    button({ customId: 'bairrista::movimento', label: 'Movimento', style: 'Secondary', emoji: EMOJI.FIRMA })
+    button({
+      customId: 'patrao::listar_bairristas',
+      label: 'Listar Bairristas',
+      style: 'Secondary',
+      emoji: EMOJI.PARTICIPANTE,
+    }),
+    button({ customId: 'chefia::ajustar_stock', label: 'Ajustar Stock', style: 'Secondary', emoji: EMOJI.AJUSTAR }),
+    button({ customId: 'chefia::gerir_materiais', label: 'Gerir Materiais', style: 'Secondary', emoji: EMOJI.EDITAR }),
+    button({ customId: 'chefia::listar_stickys', label: 'Stickys', style: 'Secondary', emoji: EMOJI.STICKY })
   );
 
-  // Row 4 — Dados 🟠
+  // Row 4 — 🟠 DADOS / RELATÓRIOS
   const row4 = buttonRow(
-    buttonFromDef('chefia::ver_tops', B.TOPS),
-    buttonFromDef('chefia::ver_logs', B.LOGS),
+    button({ customId: 'chefia::ver_tops', label: 'Topo', style: 'Secondary', emoji: EMOJI.TOPO }),
+    button({ customId: 'chefia::ver_logs', label: 'Logs', style: 'Secondary', emoji: EMOJI.AUDIT }),
+    button({ customId: 'bairrista::movimento', label: 'Movimento', style: 'Secondary', emoji: EMOJI.FIRMA }),
     button({ customId: 'bairrista::historico', label: 'Histórico', style: 'Secondary', emoji: EMOJI.AUDIT })
   );
 

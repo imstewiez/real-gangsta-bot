@@ -1,16 +1,17 @@
 'use strict';
 const { brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
-const { BUTTONS, EMOJI } = require('../content');
-const { buttonFromDef, button, buttonRow } = require('../shared/ui/buttons');
+const { EMOJI } = require('../content');
+const { button, buttonRow } = require('../shared/ui/buttons');
 const { query } = require('../db');
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Painel Casa — Bairrista (RENOVADO v10)
+// Painel do Bairrista — TUDO num só sítio (RENOVADO v11)
 // ══════════════════════════════════════════════════════════════════════════════
-// Embed dinâmico com dados reais do bairro + botões com cores funcionais.
+// Secções: 🟢 Registar | 🔵 Ver | 🟠 Pessoal
+// Cores funcionais: Verde = ação · Azul = consulta · Laranja = pessoal
 
 async function buildBairristaPanel() {
-  const [weeklyRank, weeklyGoals, totalMembers] = await Promise.all([
+  const [weeklyTop, activeGoals, memberCount] = await Promise.all([
     query(`
       SELECT m.display_name, SUM(im.qty) AS total_qty
       FROM inventory_movements im
@@ -25,51 +26,54 @@ async function buildBairristaPanel() {
     query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
   ]);
 
-  const top3 = weeklyRank.rows;
-  const goalsCount = weeklyGoals.rows[0]?.c ?? 0;
-  const membersCount = totalMembers.rows[0]?.c ?? 0;
+  const top3 = weeklyTop.rows;
+  const goals = activeGoals.rows[0]?.c ?? 0;
+  const members = memberCount.rows[0]?.c ?? 0;
 
-  let topText = '';
-  if (top3.length === 0) topText = '_Sem entregas esta semana._';
-  else {
-    topText = top3
-      .map(
-        (r, i) =>
-          `${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'} **${r.display_name}** — ${Number(r.total_qty).toLocaleString('pt-PT')} qty`
-      )
-      .join('\n');
-  }
+  const topText =
+    top3.length === 0
+      ? '_Sem entregas esta semana._'
+      : top3
+          .map(
+            (r, i) =>
+              `${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'} **${r.display_name}** — ${Number(r.total_qty).toLocaleString('pt-PT')} qty`
+          )
+          .join('\n');
 
   const embed = applyLogo(
     brandEmbed('HOUSE')
       .setColor(COLOR.GOLD)
-      .setTitle(`${EMOJI.CASA} Painel do Bairro | Firma RedWood`)
-      .setDescription('**A Firma não paga conversa. Paga peso.**')
+      .setTitle(`${EMOJI.CASA} Painel do Bairrista | Firma RedWood`)
+      .setDescription('**Trás pedra ao bairro. O bairro devolve-te nome.**')
       .addFields(
         { name: `${EMOJI.MEDAL_1} Top Entregas (Semana)`, value: topText, inline: false },
-        { name: `${EMOJI.PARTICIPANTE} Bairristas`, value: `**${membersCount}** na firma`, inline: true },
-        { name: `${EMOJI.OK} Metas Activas`, value: `**${goalsCount}** esta semana`, inline: true },
-        { name: `${EMOJI.INFO} Dica`, value: '🟢 = registar · 🔵 = ver · 🟠 = consultar', inline: false }
+        { name: `${EMOJI.PARTICIPANTE} Firma`, value: `**${members}** bairristas activos`, inline: true },
+        { name: `${EMOJI.OK} Metas`, value: `**${goals}** activas esta semana`, inline: true },
+        { name: `${EMOJI.INFO} Cores dos botões`, value: '🟢 Registar · 🔵 Ver · 🟠 Pessoal', inline: false }
       )
   );
 
-  const B = BUTTONS.BAIRRISTA;
-
-  // Row 1 — Criar 🟢
+  // Row 1 — 🟢 REGISTAR (acções principais)
   const row1 = buttonRow(
-    buttonFromDef('bairrista::registar_material', B.ENTREGA),
+    button({
+      customId: 'bairrista::registar_material',
+      label: 'Registar Material',
+      style: 'Success',
+      emoji: EMOJI.ENTREGA,
+    }),
     button({ customId: 'bairrista::encomendar', label: 'Encomendar', style: 'Success', emoji: EMOJI.ENCOMENDA })
   );
 
-  // Row 2 — Ver 🔵
+  // Row 2 — 🔵 VER (consulta pública)
   const row2 = buttonRow(
-    buttonFromDef('bairrista::movimento', B.MOVIMENTO),
-    buttonFromDef('bairrista::ranking', B.RANKING),
-    button({ customId: 'chefia::ver_stock', label: 'Ver Stock', style: 'Primary', emoji: EMOJI.STOCK })
+    button({ customId: 'oficial::ver_saidas', label: 'Ver Saídas', style: 'Primary', emoji: EMOJI.SAIDA }),
+    button({ customId: 'chefia::ver_stock', label: 'Ver Stock', style: 'Primary', emoji: EMOJI.STOCK }),
+    button({ customId: 'bairrista::ranking', label: 'Ranking', style: 'Primary', emoji: EMOJI.MEDAL_1 })
   );
 
-  // Row 3 — Consultar 🟠
+  // Row 3 — 🟠 PESSOAL (cockpit individual)
   const row3 = buttonRow(
+    button({ customId: 'bairrista::movimento', label: 'O meu Movimento', style: 'Secondary', emoji: EMOJI.FIRMA }),
     button({ customId: 'bairrista::historico', label: 'Histórico', style: 'Secondary', emoji: EMOJI.AUDIT }),
     button({ customId: 'bairrista::progresso', label: 'Progresso', style: 'Secondary', emoji: EMOJI.TOPO }),
     button({ customId: 'bairrista::top_semanal', label: 'Topo Semanal', style: 'Secondary', emoji: EMOJI.MEDAL_1 })

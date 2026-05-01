@@ -1,16 +1,16 @@
 'use strict';
 const { brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
-const { BUTTONS, EMOJI } = require('../content');
-const { buttonFromDef, button, buttonRow } = require('../shared/ui/buttons');
+const { EMOJI } = require('../content');
+const { button, buttonRow } = require('../shared/ui/buttons');
 const { query } = require('../db');
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Painel do Patrão di Zona (RENOVADO v10)
+// Painel do Patrão di Zona (RENOVADO v11)
 // ══════════════════════════════════════════════════════════════════════════════
-// Embed dinâmico com dados reais da zona + botões com cores funcionais.
+// Secções: 🟢 Ações | 🔵 Ver Zona | 🟠 Dados
 
 async function buildPatraoDiZonaPanel() {
-  const [activeMembers, weeklyDeliveries, weeklySales, topZone] = await Promise.all([
+  const [activeMembers, weekDeliveries, weekSales, topZone] = await Promise.all([
     query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
     query(
       "SELECT COALESCE(SUM(qty),0)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_morador','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
@@ -30,9 +30,9 @@ async function buildPatraoDiZonaPanel() {
     `),
   ]);
 
-  const membersCount = activeMembers.rows[0]?.c ?? 0;
-  const delivQty = weeklyDeliveries.rows[0]?.c ?? 0;
-  const salesQty = weeklySales.rows[0]?.c ?? 0;
+  const members = activeMembers.rows[0]?.c ?? 0;
+  const deliv = weekDeliveries.rows[0]?.c ?? 0;
+  const sales = weekSales.rows[0]?.c ?? 0;
   const topName = topZone.rows[0]?.display_name ?? '—';
   const topQty = topZone.rows[0]?.total_qty ?? 0;
 
@@ -42,25 +42,19 @@ async function buildPatraoDiZonaPanel() {
       .setTitle(`${EMOJI.LIDER} Painel do Patrão di Zona | Firma RedWood`)
       .setDescription('**A zona é tua.**')
       .addFields(
-        { name: `${EMOJI.PARTICIPANTE} Bairristas Activos`, value: `**${membersCount}** na firma`, inline: true },
-        {
-          name: `${EMOJI.ENTREGA} Entregas (Semana)`,
-          value: `**${delivQty.toLocaleString('pt-PT')}** qty`,
-          inline: true,
-        },
-        { name: `${EMOJI.VENDA} Vendas (Semana)`, value: `**${salesQty.toLocaleString('pt-PT')}** qty`, inline: true },
+        { name: `${EMOJI.PARTICIPANTE} Bairristas`, value: `**${members}** activos`, inline: true },
+        { name: `${EMOJI.ENTREGA} Entregas (Semana)`, value: `**${deliv.toLocaleString('pt-PT')}** qty`, inline: true },
+        { name: `${EMOJI.VENDA} Vendas (Semana)`, value: `**${sales.toLocaleString('pt-PT')}** qty`, inline: true },
         {
           name: `${EMOJI.MEDAL_1} Top da Zona`,
           value: `**${topName}** — ${Number(topQty).toLocaleString('pt-PT')} qty`,
           inline: false,
         },
-        { name: `${EMOJI.INFO} Dica`, value: '🟢 = acção · 🔵 = ver dados · 🟠 = consultar', inline: false }
+        { name: `${EMOJI.INFO} Cores dos botões`, value: '🟢 Ação · 🔵 Ver · 🟠 Consultar', inline: false }
       )
   );
 
-  const B = BUTTONS.PATRAO;
-
-  // Row 1 — Ações 🟢
+  // Row 1 — 🟢 AÇÕES
   const row1 = buttonRow(
     button({
       customId: 'bairrista::registar_material',
@@ -68,22 +62,28 @@ async function buildPatraoDiZonaPanel() {
       style: 'Success',
       emoji: EMOJI.ENTREGA,
     }),
-    button({ customId: 'bairrista::encomendar', label: 'Encomendar', style: 'Success', emoji: EMOJI.ENCOMENDA })
+    button({ customId: 'chefia::criar_saida', label: 'Abrir Saída', style: 'Success', emoji: EMOJI.NOVO })
   );
 
-  // Row 2 — Ver 🔵
+  // Row 2 — 🔵 VER ZONA
   const row2 = buttonRow(
-    buttonFromDef('patrao::listar_bairristas', B.LISTAR),
-    buttonFromDef('patrao::ver_entregas', B.ENTREGAS),
-    buttonFromDef('patrao::ver_vendas', B.VENDAS),
-    buttonFromDef('patrao::ver_tops', B.TOPOS)
+    button({
+      customId: 'patrao::listar_bairristas',
+      label: 'Listar Bairristas',
+      style: 'Primary',
+      emoji: EMOJI.PARTICIPANTE,
+    }),
+    button({ customId: 'patrao::ver_entregas', label: 'Ver Entregas', style: 'Primary', emoji: EMOJI.ENTREGA }),
+    button({ customId: 'patrao::ver_vendas', label: 'Ver Vendas', style: 'Primary', emoji: EMOJI.VENDA }),
+    button({ customId: 'patrao::ver_tops', label: 'Topo da Zona', style: 'Primary', emoji: EMOJI.TOPO })
   );
 
-  // Row 3 — Consultar 🟠
+  // Row 3 — 🟠 CONSULTAR
   const row3 = buttonRow(
-    button({ customId: 'bairrista::movimento', label: 'Movimento', style: 'Secondary', emoji: EMOJI.FIRMA }),
+    button({ customId: 'chefia::ver_stock', label: 'Ver Stock', style: 'Secondary', emoji: EMOJI.STOCK }),
     button({ customId: 'bairrista::ranking', label: 'Ranking', style: 'Secondary', emoji: EMOJI.MEDAL_1 }),
-    button({ customId: 'bairrista::historico', label: 'Histórico', style: 'Secondary', emoji: EMOJI.AUDIT })
+    button({ customId: 'bairrista::movimento', label: 'Movimento', style: 'Secondary', emoji: EMOJI.FIRMA }),
+    button({ customId: 'chefia::stats_open', label: 'Estatísticas', style: 'Secondary', emoji: EMOJI.GRAFICO })
   );
 
   return { embeds: [embed], components: [row1, row2, row3] };
