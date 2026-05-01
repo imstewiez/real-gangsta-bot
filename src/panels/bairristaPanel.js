@@ -5,10 +5,10 @@ const { button, buttonRow } = require('../shared/ui/buttons');
 const { query } = require('../db');
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Painel do Bairrista — TUDO num só sítio (RENOVADO v12)
+// Painel do Bairrista — TUDO do dia-a-dia do bairro (REORGANIZADO)
 // ══════════════════════════════════════════════════════════════════════════════
-// Herança: Base (todos os outros painéis herdam deste)
-// Cores globais: 🟢 Criar/Registar | 🔵 Ver/Consultar | 🟠 Pessoal/Gerir
+// Aqui vive TUDO o que um bairrista precisa: registar actividade, consultar
+// stock, ver o seu progresso, etc. Cores: 🟢 Registar | 🔵 Ver | 🟠 Pessoal
 
 async function buildBairristaPanel() {
   const [weeklyTop, activeGoals, memberCount, openOps] = await Promise.all([
@@ -56,7 +56,7 @@ async function buildBairristaPanel() {
       )
   );
 
-  // Row 1 — 🟢 REGISTAR (acções principais do dia-a-dia)
+  // Row 1 — 🟢 REGISTAR (tudo o que um bairrista faz no dia-a-dia)
   const row1 = buttonRow(
     button({
       customId: 'bairrista::entregar_material',
@@ -66,38 +66,34 @@ async function buildBairristaPanel() {
     }),
     button({ customId: 'bairrista::vender', label: 'Vender', style: 'Success', emoji: EMOJI.VENDA }),
     button({ customId: 'bairrista::registar_kill', label: 'Registar Kill', style: 'Success', emoji: EMOJI.KILL }),
-    button({ customId: 'bairrista::encomendar', label: 'Encomendar', style: 'Success', emoji: EMOJI.ENCOMENDA })
+    button({ customId: 'bairrista::encomendar', label: 'Encomendar', style: 'Success', emoji: EMOJI.ENCOMENDA }),
+    button({ customId: 'bairrista::ausencia', label: 'Ausência', style: 'Success', emoji: EMOJI.PENDENTE })
   );
 
-  // Row 2 — 🟢 SUBMETER
+  // Row 2 — 🔵 VER FIRMA (consultas públicas do bairro)
   const row2 = buttonRow(
-    button({ customId: 'bairrista::ausencia', label: 'Submeter Ausência', style: 'Success', emoji: EMOJI.PENDENTE })
-  );
-
-  // Row 3 — 🔵 VER (consultas públicas)
-  const row3 = buttonRow(
     button({ customId: 'chefia::ver_stock', label: 'Ver Stock', style: 'Primary', emoji: EMOJI.STOCK }),
     button({ customId: 'oficial::ver_saidas', label: 'Ver Saídas', style: 'Primary', emoji: EMOJI.SAIDA }),
     button({ customId: 'bairrista::ranking', label: 'Ver Ranking', style: 'Primary', emoji: EMOJI.MEDAL_1 }),
     button({ customId: 'bairrista::catalogo', label: 'Ver Catálogo', style: 'Primary', emoji: EMOJI.MATERIAL })
   );
 
-  // Row 4 — 🔵 MINHAS (consultas pessoais)
-  const row4 = buttonRow(
+  // Row 3 — 🔵 MINHAS (consultas pessoais)
+  const row3 = buttonRow(
     button({ customId: 'bairrista::metas', label: 'Ver Metas', style: 'Primary', emoji: EMOJI.OK }),
     button({ customId: 'bairrista::saidas', label: 'As minhas Saídas', style: 'Primary', emoji: EMOJI.MOVIMENTO }),
     button({ customId: 'bairrista::meu_resumo', label: 'Meu Resumo', style: 'Primary', emoji: EMOJI.INFO })
   );
 
-  // Row 5 — 🟠 PESSOAL (cockpit individual)
-  const row5 = buttonRow(
+  // Row 4 — 🟠 PESSOAL (cockpit individual)
+  const row4 = buttonRow(
     button({ customId: 'bairrista::movimento', label: 'O meu Movimento', style: 'Secondary', emoji: EMOJI.FIRMA }),
     button({ customId: 'bairrista::historico', label: 'Histórico', style: 'Secondary', emoji: EMOJI.AUDIT }),
     button({ customId: 'bairrista::progresso', label: 'Progresso', style: 'Secondary', emoji: EMOJI.PROGRESSO }),
     button({ customId: 'bairrista::top_semanal', label: 'Topo Semanal', style: 'Secondary', emoji: EMOJI.TOPO })
   );
 
-  return { embeds: [embed], components: [row1, row2, row3, row4, row5] };
+  return { embeds: [embed], components: [row1, row2, row3, row4] };
 }
 
 module.exports = { buildBairristaPanel };

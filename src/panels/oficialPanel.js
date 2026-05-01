@@ -5,13 +5,11 @@ const { button, buttonRow } = require('../shared/ui/buttons');
 const { query } = require('../db');
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Painel do Oficial — Secretaria (RENOVADO v12)
+// Painel do Oficial — Operações e Saídas (REORGANIZADO)
 // ══════════════════════════════════════════════════════════════════════════════
-// Herança: TUDO do Bairrista + funções de Oficial
-// Cores globais: 🟢 Criar/Registar | 🔵 Ver/Consultar | 🟠 Pessoal/Gerir
-//
-// NOTA: Discord limita a 5 action rows por mensagem. O painel original tinha 6
-// rows e falhava sempre no bootstrap. Agora comprimido para 5 rows.
+// Aqui vive TUDO o que é operações: abrir/fechar saídas, emitir material,
+// gerir participantes, ver estatísticas. Sem cenas de bairrista — isso está
+// no painel do bairro. Cores: 🟢 Operações | 🔵 Ver
 
 async function buildOficialPanel() {
   const [openOps, weekKills, weekDeliveries, activeGoals, memberCount] = await Promise.all([
@@ -41,25 +39,12 @@ async function buildOficialPanel() {
         { name: `${EMOJI.ENTREGA} Entregas (Semana)`, value: `**${deliv}** registadas`, inline: true },
         { name: `${EMOJI.PARTICIPANTE} Firma`, value: `**${members}** activos`, inline: true },
         { name: `${EMOJI.OK} Metas`, value: `**${goals}** activas`, inline: true },
-        { name: `${EMOJI.INFO} Cores`, value: '🟢 Registar · 🔵 Ver · 🟠 Pessoal', inline: true }
+        { name: `${EMOJI.INFO} Cores`, value: '🟢 Operações · 🔵 Ver', inline: true }
       )
   );
 
-  // Row 1 — 🟢 REGISTAR (base, herdado do bairrista)
+  // Row 1 — 🟢 OPERAÇÕES (core do Oficial)
   const row1 = buttonRow(
-    button({
-      customId: 'bairrista::entregar_material',
-      label: 'Entregar Material',
-      style: 'Success',
-      emoji: EMOJI.ENTREGA,
-    }),
-    button({ customId: 'bairrista::vender', label: 'Vender', style: 'Success', emoji: EMOJI.VENDA }),
-    button({ customId: 'bairrista::registar_kill', label: 'Registar Kill', style: 'Success', emoji: EMOJI.KILL }),
-    button({ customId: 'bairrista::encomendar', label: 'Encomendar', style: 'Success', emoji: EMOJI.ENCOMENDA })
-  );
-
-  // Row 2 — 🟢 SAÍDAS + OFICIAL (operações)
-  const row2 = buttonRow(
     button({ customId: 'chefia::criar_saida', label: 'Abrir Saída', style: 'Success', emoji: EMOJI.NOVO }),
     button({ customId: 'chefia::fechar_saida', label: 'Fechar Saída', style: 'Success', emoji: EMOJI.FECHAR }),
     button({ customId: 'oficial::emitir_material', label: 'Emitir Material', style: 'Success', emoji: EMOJI.FORNECER }),
@@ -71,33 +56,16 @@ async function buildOficialPanel() {
     })
   );
 
-  // Row 3 — 🔵 VER (consultas)
-  const row3 = buttonRow(
+  // Row 2 — 🔵 VER (consultas de operações)
+  const row2 = buttonRow(
     button({ customId: 'chefia::ver_stock', label: 'Ver Stock', style: 'Primary', emoji: EMOJI.STOCK }),
     button({ customId: 'oficial::ver_saidas', label: 'Ver Saídas', style: 'Primary', emoji: EMOJI.SAIDA }),
     button({ customId: 'chefia::stats_open', label: 'Estatísticas', style: 'Primary', emoji: EMOJI.GRAFICO }),
-    button({ customId: 'bairrista::ranking', label: 'Ver Ranking', style: 'Primary', emoji: EMOJI.MEDAL_1 })
-  );
-
-  // Row 4 — 🔵 MAIS (consultas adicionais)
-  const row4 = buttonRow(
-    button({ customId: 'bairrista::catalogo', label: 'Ver Catálogo', style: 'Primary', emoji: EMOJI.MATERIAL }),
-    button({ customId: 'bairrista::metas', label: 'Ver Metas', style: 'Primary', emoji: EMOJI.OK }),
-    button({ customId: 'bairrista::saidas', label: 'As minhas Saídas', style: 'Primary', emoji: EMOJI.MOVIMENTO }),
-    button({ customId: 'bairrista::meu_resumo', label: 'Meu Resumo', style: 'Primary', emoji: EMOJI.INFO }),
+    button({ customId: 'chefia::ver_logs', label: 'Logs', style: 'Primary', emoji: EMOJI.AUDIT }),
     button({ customId: 'chefia::listar_stickys', label: 'Stickys', style: 'Primary', emoji: EMOJI.STICKY })
   );
 
-  // Row 5 — 🟠 PESSOAL + LOGS
-  const row5 = buttonRow(
-    button({ customId: 'bairrista::movimento', label: 'O meu Movimento', style: 'Secondary', emoji: EMOJI.FIRMA }),
-    button({ customId: 'bairrista::historico', label: 'Histórico', style: 'Secondary', emoji: EMOJI.AUDIT }),
-    button({ customId: 'bairrista::progresso', label: 'Progresso', style: 'Secondary', emoji: EMOJI.PROGRESSO }),
-    button({ customId: 'bairrista::top_semanal', label: 'Topo Semanal', style: 'Secondary', emoji: EMOJI.TOPO }),
-    button({ customId: 'chefia::ver_logs', label: 'Logs', style: 'Secondary', emoji: EMOJI.AUDIT })
-  );
-
-  return { embeds: [embed], components: [row1, row2, row3, row4, row5] };
+  return { embeds: [embed], components: [row1, row2] };
 }
 
 module.exports = { buildOficialPanel };

@@ -6,14 +6,11 @@ const { selectMenu, selectRow } = require('../shared/ui/selects');
 const { query } = require('../db');
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Painel da Chefia — Comando (RENOVADO v12)
+// Painel da Chefia — Comando e Gestão (REORGANIZADO)
 // ══════════════════════════════════════════════════════════════════════════════
-// Herança: TUDO do Oficial + funções de Chefia
-// Cores globais: 🟢 Criar/Registar | 🔵 Ver/Consultar | 🟠 Pessoal/Gerir
-//
-// NOTA: Discord limita a 5 action rows por mensagem. O painel original tinha 8
-// rows e falhava sempre no bootstrap. Agora comprimido para 5 rows via select
-// menu na categoria GERIR.
+// Aqui vive TUDO o que é gestão da firma: metas, incidentes, stock, membros,
+// relatórios, etc. Sem cenas de bairrista ou saídas — isso está nos painéis
+// do bairro e dos oficiais. Cores: 🟢 Criar · 🔵 Ver · 🟠 Gerir
 
 async function buildChefiaPanel() {
   const [openOps, stockAgg, topWeek, openIncidents, activeMembers, weekKills, weekDeliveries, activeGoals] =
@@ -78,66 +75,42 @@ async function buildChefiaPanel() {
           value: inc > 0 ? `**${inc}** abertos ${EMOJI.WARN}` : `**0** abertos ${EMOJI.OK}`,
           inline: true,
         },
-        { name: `${EMOJI.INFO} Cores`, value: '🟢 Registar · 🔵 Ver · 🟠 Gerir', inline: true }
+        { name: `${EMOJI.INFO} Cores`, value: '🟢 Criar · 🔵 Ver · 🟠 Gerir', inline: true }
       )
   );
 
-  // Row 1 — 🟢 REGISTAR (base, herdado do bairrista)
+  // Row 1 — 🟢 CRIAR (gestão da firma)
   const row1 = buttonRow(
+    button({ customId: 'chefia::criar_meta', label: 'Criar Meta', style: 'Success', emoji: EMOJI.OK }),
+    button({ customId: 'chefia::criar_incidente', label: 'Criar Incidente', style: 'Success', emoji: EMOJI.ERRO }),
     button({
-      customId: 'bairrista::entregar_material',
-      label: 'Entregar Material',
+      customId: 'chefia::transferir_stock',
+      label: 'Transferir Stock',
       style: 'Success',
-      emoji: EMOJI.ENTREGA,
+      emoji: EMOJI.MOVIMENTO,
     }),
-    button({ customId: 'bairrista::vender', label: 'Vender', style: 'Success', emoji: EMOJI.VENDA }),
-    button({ customId: 'bairrista::registar_kill', label: 'Registar Kill', style: 'Success', emoji: EMOJI.KILL }),
-    button({ customId: 'bairrista::encomendar', label: 'Encomendar', style: 'Success', emoji: EMOJI.ENCOMENDA })
+    button({ customId: 'chefia::ausencias', label: 'Ausências', style: 'Success', emoji: EMOJI.PENDENTE })
   );
 
-  // Row 2 — 🟢 SAÍDAS + OFICIAL (operações)
+  // Row 2 — 🔵 VER (dashboards e relatórios)
   const row2 = buttonRow(
-    button({ customId: 'chefia::criar_saida', label: 'Abrir Saída', style: 'Success', emoji: EMOJI.NOVO }),
-    button({ customId: 'chefia::fechar_saida', label: 'Fechar Saída', style: 'Success', emoji: EMOJI.FECHAR }),
-    button({ customId: 'oficial::emitir_material', label: 'Emitir Material', style: 'Success', emoji: EMOJI.FORNECER }),
     button({
-      customId: 'oficial::add_participante',
-      label: 'Add Participante',
-      style: 'Success',
-      emoji: EMOJI.PARTICIPANTE,
-    })
+      customId: 'chefia::painel_pendencias',
+      label: 'Painel Pendências',
+      style: 'Primary',
+      emoji: EMOJI.PENDENTE,
+    }),
+    button({ customId: 'chefia::relatorio', label: 'Relatório', style: 'Primary', emoji: EMOJI.AUDIT }),
+    button({ customId: 'chefia::dashboard', label: 'Dashboard', style: 'Primary', emoji: EMOJI.GRAFICO }),
+    button({ customId: 'chefia::inactivos', label: 'Inactivos', style: 'Primary', emoji: EMOJI.WARN })
   );
 
-  // Row 3 — 🔵 VER (consultas)
-  const row3 = buttonRow(
-    button({ customId: 'chefia::ver_stock', label: 'Ver Stock', style: 'Primary', emoji: EMOJI.STOCK }),
-    button({ customId: 'chefia::ver_saidas', label: 'Ver Saídas', style: 'Primary', emoji: EMOJI.SAIDA }),
-    button({ customId: 'chefia::stats_open', label: 'Estatísticas', style: 'Primary', emoji: EMOJI.GRAFICO }),
-    button({ customId: 'bairrista::ranking', label: 'Ver Ranking', style: 'Primary', emoji: EMOJI.MEDAL_1 })
-  );
-
-  // Row 4 — 🔵 MAIS (consultas adicionais)
-  const row4 = buttonRow(
-    button({ customId: 'bairrista::catalogo', label: 'Ver Catálogo', style: 'Primary', emoji: EMOJI.MATERIAL }),
-    button({ customId: 'bairrista::metas', label: 'Ver Metas', style: 'Primary', emoji: EMOJI.OK }),
-    button({ customId: 'chefia::ver_logs', label: 'Logs', style: 'Primary', emoji: EMOJI.AUDIT }),
-    button({ customId: 'chefia::listar_stickys', label: 'Stickys', style: 'Primary', emoji: EMOJI.STICKY })
-  );
-
-  // Row 5 — 🟠 GERIR (compressão via select menu para respeitar limite de 5 rows)
-  const row5 = selectRow(
+  // Row 3 — 🟠 GERIR (administração da firma — compressão via select menu)
+  const row3 = selectRow(
     selectMenu({
       customId: 'panel::chefia_gerir',
       placeholder: '🟠 Gerir — escolhe uma acção',
       options: [
-        { label: 'Criar Meta', value: 'chefia::criar_meta', emoji: EMOJI.OK, description: 'Definir nova meta semanal' },
-        { label: 'Criar Incidente', value: 'chefia::criar_incidente', emoji: EMOJI.ERRO, description: 'Registar novo incidente' },
-        { label: 'Transferir Stock', value: 'chefia::transferir_stock', emoji: EMOJI.MOVIMENTO, description: 'Mover stock entre locais' },
-        { label: 'Ausências', value: 'chefia::ausencias', emoji: EMOJI.PENDENTE, description: 'Gerir ausências da firma' },
-        { label: 'Painel Pendências', value: 'chefia::painel_pendencias', emoji: EMOJI.PENDENTE, description: 'Ver todas as pendências' },
-        { label: 'Relatório', value: 'chefia::relatorio', emoji: EMOJI.AUDIT, description: 'Gerar relatório semanal' },
-        { label: 'Dashboard', value: 'chefia::dashboard', emoji: EMOJI.GRAFICO, description: 'Ver dashboard da firma' },
-        { label: 'Inactivos', value: 'chefia::inactivos', emoji: EMOJI.WARN, description: 'Listar bairristas inactivos' },
         { label: 'Ajustar Stock', value: 'chefia::ajustar_stock', emoji: EMOJI.AJUSTAR, description: 'Corrigir quantidades de stock' },
         { label: 'Gerir Materiais', value: 'chefia::gerir_materiais', emoji: EMOJI.EDITAR, description: 'Adicionar/remover itens do catálogo' },
         { label: 'Promover', value: 'chefia::promover', emoji: EMOJI.PROGRESSO, description: 'Promover bairristas' },
@@ -150,7 +123,7 @@ async function buildChefiaPanel() {
     })
   );
 
-  return { embeds: [embed], components: [row1, row2, row3, row4, row5] };
+  return { embeds: [embed], components: [row1, row2, row3] };
 }
 
 module.exports = { buildChefiaPanel };
