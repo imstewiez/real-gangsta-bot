@@ -1008,37 +1008,8 @@ async function handleCartSubmit(interaction) {
     );
   }
 
-  if (tipo === 'entrega') {
-    try {
-      const approverEmbed = bairristaCart
-        .buildCartEmbed(cart, {
-          extraNote:
-            `${EMOJI.PENDENTE} Escolhe o OG+ que vai receber/confirmar esta entrega. ` +
-            'O stock s\u00f3 muda depois dessa pessoa aceitar.',
-        })
-        .setTitle(`${EMOJI.MATERIAL} Confirmar entrega com OG+`);
-      return safeUpdate(
-        interaction,
-        {
-          content: '',
-          embeds: [approverEmbed],
-          components: bairristaCart.buildDeliveryApproverComponents(),
-        },
-        { messageClass: 'FLOW' }
-      );
-    } catch (e) {
-      return safeReply(
-        interaction,
-        {
-          content: `${EMOJI.ERRO} Falha ao abrir confirma\u00e7\u00e3o da entrega: ${e.message}`,
-          flags: MessageFlags.Ephemeral,
-        },
-        { messageClass: 'FLOW' }
-      );
-    }
-  }
-
-  // For direct submissions, acknowledge first so a double-click cannot submit twice.
+  // ── V12: TODAS as submissões (entrega + venda) criam Delivery Request ─────
+  // Só a chefia (Patrão/OG/Kingpin/Manda-Chuva) pode aprovar.
   await interaction.deferUpdate().catch(() => {});
 
   const linesSnapshot = cart.lines.map(l => ({
@@ -1048,45 +1019,68 @@ async function handleCartSubmit(interaction) {
   }));
   const globalNotesSnapshot = cart.globalNotes;
   bairristaCart.clearCart(interaction.user.id);
+  parentStore.clearParent(interaction.user.id);
 
-  const { recordDeliveryBatch } = require('./inventoryEngine');
-  let result;
+  const { createDeliveryRequest } = require('./inventoryEngine');
+  let requestResult;
   try {
-    result = await recordDeliveryBatch({
+    requestResult = await createDeliveryRequest({
       discordId: interaction.user.id,
-      tipo,
+      approverDiscordId: null,
       lines: linesSnapshot,
       globalNotes: globalNotesSnapshot,
       createdBy: interaction.user.id,
+      tipo,
     });
   } catch (e) {
     return interaction.editReply({ content: `${EMOJI.ERRO} ${e.message}`, embeds: [], components: [] }).catch(() => {});
   }
 
-  const { checkAndPromote, getPromotionProgress, formatTierName } = require('../members/autoPromotionEngine');
-  const promoResult = await checkAndPromote(interaction.user.id, interaction.guild, interaction.client).catch(
-    () => null
-  );
-  let promotionLine = '';
-  if (promoResult?.promoted) {
-    promotionLine = `${EMOJI.LIDER} **Subida autom\u00e1tica** \u2014 agora \u00e9s **${formatTierName(promoResult.to)}**!`;
-  } else {
-    const progress = await getPromotionProgress(interaction.user.id).catch(() => null);
-    if (progress && !progress.maxedOut && progress.threshold) {
-      promotionLine = `${EMOJI.TOPO} Progresso \u2192 ${progress.nextTierName}: **${progress.progress}%** (faltam ${progress.remaining.toLocaleString('pt-PT')})`;
+  // Notificar canal de staff
+  try {
+    const CONFIG = require('../config');
+    const staffChannelId = CONFIG.TAG_REQUEST_CHANNEL_ID;
+    if (staffChannelId) {
+      const staffChannel = await interaction.client.channels.fetch(staffChannelId).catch(() => null);
+      if (staffChannel) {
+        const requestEmbed = bairristaCart.buildDeliveryRequestEmbed({
+          requestId: requestResult.request.id,
+          memberName: requestResult.member.display_name,
+          memberDiscordId: requestResult.member.discord_id,
+          lines: requestResult.lines,
+          totalQty: requestResult.totalQty,
+          totalValue: requestResult.totalValue,
+          notes: globalNotesSnapshot,
+          tipo,
+        });
+        const decisionComponents = bairristaCart.buildDeliveryDecisionComponents(requestResult.request.id);
+        const tipoLabel = tipo === 'venda' ? 'venda' : 'entrega';
+        await staffChannel.send({
+          content: `Nova **${tipoLabel}** pendente de aprovação.`,
+          embeds: [requestEmbed],
+          components: decisionComponents,
+        });
+      }
     }
+  } catch (e) {
+    // Best-effort
   }
 
-  const feedback = bairristaCart.buildSubmissionFeedback({
-    submissionId: result.submissionId,
-    tipo,
-    totalQty: result.totalQty,
-    totalValue: result.totalValue,
-    lineCount: result.lines.length,
-    promotionLine,
-  });
+  const isVenda = tipo === 'venda';
+  const title = isVenda ? `${EMOJI.LUCRO} Venda submetida` : `${EMOJI.MATERIAL} Entrega submetida`;
+  const desc = [
+    `**${requestResult.lines.length}** linha(s) · **${requestResult.totalQty.toLocaleString('pt-PT')}** unidades`,
+    requestResult.totalValue > 0 ? `Valor: **${requestResult.totalValue.toLocaleString('pt-PT')}€**` : '',
+    '',
+    `${EMOJI.PENDENTE} **Aguarda aprovação da chefia.**`,
+    'Só quando a chefia aprovar é que o stock será actualizado.',
+  ]
+    .filter(Boolean)
+    .join('\n');
 
-  return interaction.editReply({ content: '', embeds: [feedback.embed], components: feedback.components });
+  const embed = brandEmbed('MOVEMENT').setColor(COLOR.WARNING_SOFT).setTitle(title).setDescription(desc);
+
+  return interaction.editReply({ content: '', embeds: [embed], components: [] });
 }
 
 // ── Undo submission ─────────────────────────────────────────────────────────
@@ -1216,6 +1210,20 @@ async function handleDeliveryApproverSelect(interaction) {
 
 async function handleDeliveryDecision(interaction) {
   if (isDuplicate(interaction.id)) return;
+
+  // V12: só Patrão/OG/Kingpin/Manda-Chuva podem aprovar
+  const { isPatraoDiZona } = require('../permissions/permissionEngine');
+  if (!isPatraoDiZona(interaction.member)) {
+    return safeReply(
+      interaction,
+      {
+        content: `${EMOJI.ERRO} Só Patrão di Zona, OG, Kingpin ou Manda-Chuva podem aprovar entregas/vendas.`,
+        flags: MessageFlags.Ephemeral,
+      },
+      { messageClass: 'BANAL' }
+    );
+  }
+
   await interaction.deferUpdate().catch(() => {});
 
   const [, action, requestId] = interaction.customId.split('::');
@@ -1233,10 +1241,36 @@ async function handleDeliveryDecision(interaction) {
       .catch(() => {});
   }
 
+  // Notificar o bairrista do resultado
+  try {
+    const bairristaUser = await interaction.client.users.fetch(result.member.discord_id).catch(() => null);
+    if (bairristaUser) {
+      const tipoLabel = result.request?.tipo === 'venda' ? 'venda' : 'entrega';
+      if (approve) {
+        const embed = successEmbed(
+          '✅ Aprovado',
+          `A tua **${tipoLabel}** foi aprovada por <@${interaction.user.id}>.\n` +
+            `**${result.totalQty.toLocaleString('pt-PT')}** unidade(s) confirmadas no stock.`
+        );
+        await bairristaUser.send({ embeds: [embed] }).catch(() => {});
+      } else {
+        const embed = brandEmbed('SHORT')
+          .setColor(COLOR.DANGER)
+          .setTitle('❌ Rejeitado')
+          .setDescription(
+            `A tua **${tipoLabel}** foi rejeitada por <@${interaction.user.id}>.\n` + 'Nada foi alterado no stock.'
+          );
+        await bairristaUser.send({ embeds: [embed] }).catch(() => {});
+      }
+    }
+  } catch (_) {
+    // Best-effort DM
+  }
+
   if (!approve) {
     return interaction
       .editReply({
-        content: `${EMOJI.OK} Entrega recusada. Nada foi alterado no stock.`,
+        content: `${EMOJI.OK} ${result.request?.tipo === 'venda' ? 'Venda' : 'Entrega'} recusada. Nada foi alterado no stock.`,
         embeds: [],
         components: [],
       })
@@ -1249,7 +1283,7 @@ async function handleDeliveryDecision(interaction) {
   return interaction
     .editReply({
       content:
-        `${EMOJI.OK} Entrega aceite. ` +
+        `${EMOJI.OK} ${result.request?.tipo === 'venda' ? 'Venda' : 'Entrega'} aceite. ` +
         `${result.totalQty.toLocaleString('pt-PT')} unidade(s) foram confirmadas no stock para <@${result.member.discord_id}>.`,
       embeds: [],
       components: [],

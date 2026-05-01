@@ -350,15 +350,29 @@ function buildDeliveryApproverComponents() {
   ];
 }
 
-function buildDeliveryRequestEmbed({ requestId, memberName, memberDiscordId, lines, totalQty, totalValue, notes }) {
+function buildDeliveryRequestEmbed({
+  requestId,
+  memberName,
+  memberDiscordId,
+  lines,
+  totalQty,
+  totalValue,
+  notes,
+  tipo,
+}) {
+  const isVenda = tipo === 'venda';
   const body = lines.map(l => `- **${l.itemName}** · **${l.quantity.toLocaleString('pt-PT')}x**`).join('\n');
   const summaryLines = [`Total: **${totalQty.toLocaleString('pt-PT')}** unidades`];
   if (totalValue > 0) summaryLines.push(`Valor estimado: **${totalValue.toLocaleString('pt-PT')}€**`);
-  if (notes) summaryLines.push('', `Notas: _${notes}_`);
+  // Strip tipo prefix from notes for display
+  const displayNotes = String(notes || '').replace(/^\[TIPO:\w+\]\s?/, '');
+  if (displayNotes) summaryLines.push('', `Notas: _${displayNotes}_`);
 
   return brandEmbed('MOVEMENT')
-    .setColor(COLOR.WARNING_SOFT)
-    .setTitle(`${EMOJI.MATERIAL} Entrega pendente de confirmação`)
+    .setColor(isVenda ? COLOR.GOLD : COLOR.WARNING_SOFT)
+    .setTitle(
+      isVenda ? `${EMOJI.LUCRO} Venda pendente de aprovação` : `${EMOJI.MATERIAL} Entrega pendente de aprovação`
+    )
     .setDescription(
       [`Bairrista: <@${memberDiscordId}>${memberName ? ` (${memberName})` : ''}`, '', body, '', ...summaryLines].join(
         '\n'

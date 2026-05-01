@@ -466,7 +466,14 @@ async function recordDeliveryBatch({ discordId, tipo, lines, globalNotes = '', c
   };
 }
 
-async function createDeliveryRequest({ discordId, approverDiscordId, lines, globalNotes = '', createdBy }) {
+async function createDeliveryRequest({
+  discordId,
+  approverDiscordId,
+  lines,
+  globalNotes = '',
+  createdBy,
+  tipo = 'entrega',
+}) {
   if (!Array.isArray(lines) || lines.length === 0) {
     throw new Error('Carrinho vazio — adiciona pelo menos 1 item antes de submeter.');
   }
@@ -474,9 +481,12 @@ async function createDeliveryRequest({ discordId, approverDiscordId, lines, glob
   const member = await memberRepo.findByDiscordId(discordId);
   if (!member) throw new Error('Membro não encontrado.');
 
-  const enrichedLines = await enrichCartLines('entrega', lines);
+  const enrichedLines = await enrichCartLines(tipo, lines);
   const { totalQty, totalValue } = batchTotals(enrichedLines);
   const requestId = crypto.randomUUID();
+
+  // V12: guarda tipo no notes como prefixo parseável (até migration adicionar coluna)
+  const notesWithTipo = `[TIPO:${tipo}]${globalNotes ? ' ' + globalNotes : ''}`;
 
   const request = await deliveryRequestRepo.create({
     id: requestId,
@@ -484,7 +494,7 @@ async function createDeliveryRequest({ discordId, approverDiscordId, lines, glob
     requesterDiscordId: member.discord_id,
     approverDiscordId,
     lines: enrichedLines,
-    notes: globalNotes,
+    notes: notesWithTipo,
     totalQty,
     totalValue,
     createdBy,
@@ -496,7 +506,7 @@ async function createDeliveryRequest({ discordId, approverDiscordId, lines, glob
     entityId: requestId,
     actorId: createdBy,
     afterState: {
-      approverDiscordId,
+      tipo,
       memberName: member.display_name,
       lines: enrichedLines.map(l => ({ item: l.itemName, qty: l.quantity })),
       totalQty,
@@ -508,15 +518,17 @@ async function createDeliveryRequest({ discordId, approverDiscordId, lines, glob
   return { request, member, lines: enrichedLines, totalQty, totalValue };
 }
 
+function _extractTipoFromNotes(notes) {
+  const m = String(notes || '').match(/^\[TIPO:(\w+)\]/);
+  return m ? m[1] : 'entrega';
+}
+
 async function decideDeliveryRequest({ requestId, decisionBy, approve, reason = '' }) {
   const txResult = await queryWithTransaction(async client => {
     const request = await deliveryRequestRepo.findPendingByIdForUpdate(requestId, client);
     if (!request) return { ok: false, reason: 'Pedido não encontrado.' };
     if (request.status !== 'pending') {
       return { ok: false, reason: `Pedido já foi ${request.status}.` };
-    }
-    if (request.approver_discord_id !== decisionBy) {
-      return { ok: false, reason: 'Só o OG+ escolhido pode decidir esta entrega.' };
     }
 
     if (!approve) {
@@ -531,9 +543,11 @@ async function decideDeliveryRequest({ requestId, decisionBy, approve, reason = 
     const member = await memberRepo.findByDiscordId(request.requester_discord_id);
     if (!member) return { ok: false, reason: 'Membro do pedido já não existe.' };
 
-    const enrichedLines = await enrichCartLines('entrega', request.lines);
+    const tipo = _extractTipoFromNotes(request.notes);
+    const enrichedLines = await enrichCartLines(tipo, request.lines);
     const submissionId = crypto.randomUUID();
-    const movementType = member.role === 'oficial' ? 'entrega_oficial' : 'entrega_bairrista';
+    const movementType =
+      tipo === 'venda' ? 'venda_bairrista' : member.role === 'oficial' ? 'entrega_oficial' : 'entrega_bairrista';
     const notes = [request.notes, `Confirmado por <@${decisionBy}>`].filter(Boolean).join('\n');
     const movements = [];
 
@@ -596,7 +610,7 @@ async function decideDeliveryRequest({ requestId, decisionBy, approve, reason = 
     submissionId: txResult.submissionId,
     movements: txResult.movements,
     member: txResult.member,
-    tipo: 'entrega',
+    tipo: _extractTipoFromNotes(txResult.notes),
     movementType: txResult.movementType,
     enrichedLines: txResult.lines,
     globalNotes: txResult.notes,
