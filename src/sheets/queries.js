@@ -112,14 +112,14 @@ async function getDashboardKPIs() {
     ),
     week_mov AS (
       SELECT
-        SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS entradas,
-        SUM(CASE WHEN movement_type IN ('venda_bairrista') THEN quantity ELSE 0 END)::int AS vendas
+        COALESCE(SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END), 0)::int AS entradas,
+        COALESCE(SUM(CASE WHEN movement_type IN ('venda_bairrista') THEN quantity ELSE 0 END), 0)::int AS vendas
       FROM inventory_movements
       WHERE created_at >= (SELECT w_start FROM week_bounds)
     ),
     prev_mov AS (
       SELECT
-        SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS entradas
+        COALESCE(SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END), 0)::int AS entradas
       FROM inventory_movements
       WHERE created_at >= (SELECT pw_start FROM week_bounds)
         AND created_at < (SELECT pw_end FROM week_bounds)
@@ -148,10 +148,10 @@ async function getDashboardKPIs() {
     ),
     week_mat AS (
       SELECT
-        SUM(CASE WHEN om.direction='fornecido' THEN om.quantity ELSE 0 END)::int AS supplied_units,
-        SUM(CASE WHEN om.direction='devolvido' THEN om.quantity ELSE 0 END)::int AS returned_units,
-        SUM(CASE WHEN om.direction='perdido'   THEN om.quantity ELSE 0 END)::int AS lost_units,
-        SUM(CASE WHEN om.direction='consumido' THEN om.quantity ELSE 0 END)::int AS consumed_units
+        COALESCE(SUM(CASE WHEN om.direction='fornecido' THEN om.quantity ELSE 0 END), 0)::int AS supplied_units,
+        COALESCE(SUM(CASE WHEN om.direction='devolvido' THEN om.quantity ELSE 0 END), 0)::int AS returned_units,
+        COALESCE(SUM(CASE WHEN om.direction='perdido'   THEN om.quantity ELSE 0 END), 0)::int AS lost_units,
+        COALESCE(SUM(CASE WHEN om.direction='consumido' THEN om.quantity ELSE 0 END), 0)::int AS consumed_units
       FROM operation_materials om
       JOIN operations o ON o.id = om.operation_id
       WHERE o.date >= (SELECT w_start FROM week_bounds) AND o.status = 'concluida'
@@ -166,10 +166,10 @@ async function getDashboardKPIs() {
     ),
     member_counts AS (
       SELECT
-        SUM(CASE WHEN role = 'bairrista'      AND status='ativo' THEN 1 ELSE 0 END)::int AS bairristas,
-        SUM(CASE WHEN role = 'patrao_di_zona' AND status='ativo' THEN 1 ELSE 0 END)::int AS patroes,
-        SUM(CASE WHEN role = 'oficial'        AND status='ativo' THEN 1 ELSE 0 END)::int AS oficiais,
-        SUM(CASE WHEN role = 'chefia'         AND status='ativo' THEN 1 ELSE 0 END)::int AS chefia
+        COALESCE(SUM(CASE WHEN role = 'bairrista'      AND status='ativo' THEN 1 ELSE 0 END), 0)::int AS bairristas,
+        COALESCE(SUM(CASE WHEN role = 'patrao_di_zona' AND status='ativo' THEN 1 ELSE 0 END), 0)::int AS patroes,
+        COALESCE(SUM(CASE WHEN role = 'oficial'        AND status='ativo' THEN 1 ELSE 0 END), 0)::int AS oficiais,
+        COALESCE(SUM(CASE WHEN role = 'chefia'         AND status='ativo' THEN 1 ELSE 0 END), 0)::int AS chefia
       FROM members
     )
     SELECT
@@ -271,15 +271,15 @@ async function getWeeklySummary() {
       `
     SELECT
       COUNT(DISTINCT o.id)::int AS ops,
-      SUM(CASE WHEN o.result='vitoria' THEN 1 ELSE 0 END)::int AS wins,
-      SUM(CASE WHEN o.result='derrota' THEN 1 ELSE 0 END)::int AS losses,
-      SUM(CASE WHEN o.result='empate' THEN 1 ELSE 0 END)::int AS draws,
-      SUM(COALESCE(o.our_kills,0))::int AS kills,
-      SUM(COALESCE(o.deaths,0))::int AS deaths,
-      SUM(COALESCE(o.gross_value,0))::numeric AS gross,
-      SUM(COALESCE(o.net_value,0))::numeric AS net,
-      SUM(COALESCE(o.returned_value,0))::numeric AS returned,
-      SUM(COALESCE(o.supplied_value,0))::numeric AS supplied
+      COALESCE(SUM(CASE WHEN o.result='vitoria' THEN 1 ELSE 0 END), 0)::int AS wins,
+      COALESCE(SUM(CASE WHEN o.result='derrota' THEN 1 ELSE 0 END), 0)::int AS losses,
+      COALESCE(SUM(CASE WHEN o.result='empate' THEN 1 ELSE 0 END), 0)::int AS draws,
+      COALESCE(SUM(COALESCE(o.our_kills,0)), 0)::int AS kills,
+      COALESCE(SUM(COALESCE(o.deaths,0)), 0)::int AS deaths,
+      COALESCE(SUM(COALESCE(o.gross_value,0)), 0)::numeric AS gross,
+      COALESCE(SUM(COALESCE(o.net_value,0)), 0)::numeric AS net,
+      COALESCE(SUM(COALESCE(o.returned_value,0)), 0)::numeric AS returned,
+      COALESCE(SUM(COALESCE(o.supplied_value,0)), 0)::numeric AS supplied
     FROM operations o
     WHERE o.date >= $1::date ${end ? 'AND o.date < $2::date' : ''} AND o.status = 'concluida'`,
       end ? [start, end] : [start]
@@ -291,10 +291,10 @@ async function getWeeklySummary() {
   const deliveries = await query(
     `
     SELECT
-      SUM(CASE WHEN sm.movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END)::int AS entregas,
-      SUM(CASE WHEN sm.movement_type IN ('venda_bairrista') THEN quantity ELSE 0 END)::int AS vendas,
-      SUM(CASE WHEN sm.movement_type IN ('entrega_bairrista','venda_bairrista','entrega_oficial')
-          THEN quantity ELSE 0 END)::int AS weighted
+      COALESCE(SUM(CASE WHEN sm.movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity ELSE 0 END), 0)::int AS entregas,
+      COALESCE(SUM(CASE WHEN sm.movement_type IN ('venda_bairrista') THEN quantity ELSE 0 END), 0)::int AS vendas,
+      COALESCE(SUM(CASE WHEN sm.movement_type IN ('entrega_bairrista','venda_bairrista','entrega_oficial')
+          THEN quantity ELSE 0 END), 0)::int AS weighted
     FROM inventory_movements sm
     WHERE sm.created_at >= $1::date`,
     [w.start]
@@ -386,7 +386,7 @@ async function getMembersFull() {
     ) mv ON true
     LEFT JOIN member_saida_stats mss ON mss.member_id = m.id
     LEFT JOIN member_last_saida mls ON mls.member_id = m.id
-    WHERE m.status = 'ativo' OR m.status IS NULL
+    WHERE m.status = 'ativo'
     ORDER BY m.display_name`);
   return r.rows;
 }
@@ -518,7 +518,7 @@ async function getKillsKPIs() {
   const total = await query('SELECT COUNT(*)::int AS n FROM kill_logs');
   const week = await query("SELECT COUNT(*)::int AS n FROM kill_logs WHERE created_at >= NOW() - INTERVAL '7 days'");
   const topKiller = await query(`
-    SELECT m.display_name, COUNT(*)::int AS kills
+    SELECT COALESCE(m.display_name, '—') AS display_name, COUNT(*)::int AS kills
     FROM kill_logs k JOIN members m ON m.id = k.killer_id
     GROUP BY m.display_name ORDER BY kills DESC LIMIT 1`);
   const topFaction = await query(`
@@ -720,7 +720,7 @@ async function getTopMovers() {
 
   const topEntregas = await query(
     `
-    SELECT m.display_name, SUM(sm.quantity)::int AS value
+    SELECT COALESCE(m.display_name, '—') AS display_name, SUM(sm.quantity)::int AS value
     FROM inventory_movements sm
     JOIN members m ON m.id = sm.member_id
     WHERE sm.created_at >= $1::date
@@ -732,7 +732,7 @@ async function getTopMovers() {
 
   const topKills = await query(
     `
-    SELECT m.display_name, COUNT(*)::int AS value
+    SELECT COALESCE(m.display_name, '—') AS display_name, COUNT(*)::int AS value
     FROM kill_logs k
     JOIN members m ON m.id = k.killer_id
     WHERE k.created_at >= $1::date
@@ -743,10 +743,10 @@ async function getTopMovers() {
 
   const topProfit = await query(
     `
-    SELECT m.display_name, SUM(COALESCE(o.net_value,0))::numeric AS value
+    SELECT COALESCE(m.display_name, '—') AS display_name, SUM(COALESCE(o.net_value,0))::numeric AS value
     FROM operations o
     LEFT JOIN members m ON m.id = o.leader_id
-    WHERE o.date >= $1::date AND o.status = 'concluida'
+    WHERE o.date >= $1::date AND o.status = 'concluida' AND o.leader_id IS NOT NULL
     GROUP BY m.display_name
     ORDER BY value DESC NULLS LAST LIMIT 3`,
     [w.start]

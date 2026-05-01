@@ -110,11 +110,15 @@ async function publishOrRefresh(client = _client, { force = false } = {}) {
   if (state?.message_id) {
     const msg = await channel.messages.fetch(state.message_id).catch(() => null);
     if (msg) {
-      await msg
-        .edit({ embeds: [embed], components, allowedMentions: { parse: [] } })
-        .catch(e => warn(`[LEADERBOARD] edit falhou: ${e.message}`));
-      await _touchState(channelId).catch(() => {});
-      return { action: 'edited', messageId: msg.id };
+      try {
+        await msg.edit({ embeds: [embed], components, allowedMentions: { parse: [] } });
+        await _touchState(channelId).catch(() => {});
+        return { action: 'edited', messageId: msg.id };
+      } catch (e) {
+        warn(`[LEADERBOARD] edit falhou: ${e.message}`);
+        // Não actualiza last_refreshed_at — permite retry no próximo ciclo
+        return { action: 'edit_failed', messageId: msg.id, error: e.message };
+      }
     }
     // Fall-through: cria novo (state stale).
   }

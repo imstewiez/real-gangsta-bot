@@ -173,7 +173,7 @@ async function syncDashboard(batch, sheetId) {
     columnCount: COL_COUNT,
   });
 
-  const fmtMover = r => (r ? `${r.display_name} · ${Number(r.value).toLocaleString('pt-PT')}` : '—');
+  const fmtMover = r => (r ? `${r.display_name || '—'} · ${Number(r.value).toLocaleString('pt-PT')}` : '—');
   const highlights = [
     { icon: '🏆', label: 'Top Contributor (entregas)', value: fmtMover(movers.topEntregas[0]), unit: 'un.' },
     { icon: '🎯', label: 'Top Killer', value: fmtMover(movers.topKills[0]), unit: 'kills' },
@@ -181,7 +181,7 @@ async function syncDashboard(batch, sheetId) {
       icon: '💰',
       label: 'Top Líder por Lucro',
       value: movers.topProfit[0]
-        ? `${movers.topProfit[0].display_name} · ${Math.round(Number(movers.topProfit[0].value)).toLocaleString('pt-PT')} €`
+        ? `${movers.topProfit[0].display_name || '—'} · ${Math.round(Number(movers.topProfit[0].value)).toLocaleString('pt-PT')} €`
         : '—',
       unit: '',
     },

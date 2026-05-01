@@ -42,10 +42,11 @@ function dayBounds(date = new Date()) {
   return { start, end };
 }
 
-function monthBoundsUTC(date = new Date()) {
+function monthBounds(date = new Date()) {
   const d = new Date(date);
-  const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0));
-  const end = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1, 0, 0, 0) - 1);
+  const start = new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0);
+  const end = new Date(d.getFullYear(), d.getMonth() + 1, 1, 0, 0, 0);
+  end.setMilliseconds(-1);
   return { start, end };
 }
 
@@ -66,7 +67,7 @@ function periodBounds(period, refDate = new Date()) {
     return { start, end, label };
   }
   if (period === 'monthly') {
-    const { start, end } = monthBoundsUTC(refDate);
+    const { start, end } = monthBounds(refDate);
     const label = new Intl.DateTimeFormat('pt-PT', { month: 'long', year: 'numeric' }).format(start);
     return { start, end, label };
   }
@@ -89,7 +90,7 @@ async function getActivityLeaders(start, end, limit = 5) {
              COUNT(DISTINCT COALESCE(im.submission_id::text, 'single-' || im.id::text)) AS submissions
         FROM inventory_movements im
        WHERE im.member_id IS NOT NULL
-         AND im.created_at >= $1 AND im.created_at <= $2
+         AND im.created_at::date >= $1::date AND im.created_at::date <= $2::date
          AND im.movement_type IN (${sqlIn(CONTRIBUTION_TYPES)})
        GROUP BY im.member_id
     ),
@@ -297,7 +298,7 @@ async function getAllPeriodsLeaders() {
 module.exports = {
   // period helpers
   dayBounds,
-  monthBoundsUTC,
+  monthBounds,
   periodBounds,
   // individual categories (exposed for testing/debug)
   getActivityLeaders,

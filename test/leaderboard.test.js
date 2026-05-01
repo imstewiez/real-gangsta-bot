@@ -30,7 +30,7 @@ require.cache[resolved('db.js')] = {
   },
 };
 
-const { dayBounds, monthBoundsUTC, periodBounds } = require('../src/leaderboard/leaderboardEngine');
+const { dayBounds, monthBounds, periodBounds } = require('../src/leaderboard/leaderboardEngine');
 
 const {
   formatLeaderLine,
@@ -61,15 +61,15 @@ describe('leaderboardEngine — period bounds', () => {
     assert.equal(start.getDate(), end.getDate());
   });
 
-  it('monthBoundsUTC: day 1 00:00 UTC → último milisegundo do mês', () => {
-    const ref = new Date('2026-04-19T15:30:00Z');
-    const { start, end } = monthBoundsUTC(ref);
-    assert.equal(start.getUTCDate(), 1);
-    assert.equal(start.getUTCHours(), 0);
-    assert.equal(start.getUTCMonth(), 3); // April = 3
-    // end é último ms de April (30 Apr 23:59:59.999 UTC)
-    assert.equal(end.getUTCMonth(), 3);
-    assert.equal(end.getUTCDate(), 30);
+  it('monthBounds: day 1 00:00 local → último milisegundo do mês', () => {
+    const ref = new Date('2026-04-19T15:30:00');
+    const { start, end } = monthBounds(ref);
+    assert.equal(start.getDate(), 1);
+    assert.equal(start.getHours(), 0);
+    assert.equal(start.getMonth(), 3); // April = 3
+    // end é último ms de April (30 Apr 23:59:59.999 local)
+    assert.equal(end.getMonth(), 3);
+    assert.equal(end.getDate(), 30);
   });
 
   it('periodBounds("daily") devolve label "DD mês"', () => {
