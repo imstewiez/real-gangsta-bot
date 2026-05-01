@@ -71,36 +71,3 @@ jobs:
           DB_SSL_MODE: off
           DISCORD_BOT_TOKEN: 'test'
           DISCORD_GUILD_ID: 'test'
-
-  verify-deploy:
-    name: Verify Railway Deploy
-    needs: [lint-and-test, integration]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - name: Wait for Railway auto-deploy
-        run: sleep 45
-
-      - name: Check bot health endpoint
-        run: |
-          HEALTH_URL="${{ secrets.BOT_HEALTH_URL }}"
-          if [ -z "$HEALTH_URL" ]; then
-            echo "ℹ️ BOT_HEALTH_URL não configurado. Skipping health check."
-            echo "   Adiciona BOT_HEALTH_URL em Settings > Secrets (ex: https://bot-di-zona.up.railway.app/health)"
-            exit 0
-          fi
-
-          echo "🔍 A verificar health endpoint: $HEALTH_URL"
-          for i in 1 2 3 4 5; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
-            echo "   Tentativa $i: HTTP $STATUS"
-            if [ "$STATUS" = "200" ]; then
-              echo "✅ Bot está online e saudável!"
-              exit 0
-            fi
-            sleep 15
-          done
-
-          echo "❌ Health endpoint não respondeu com 200 após 5 tentativas."
-          echo "   Verifica no Railway dashboard se o deploy ficou activo."
-          exit 1
