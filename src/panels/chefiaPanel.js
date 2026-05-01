@@ -159,10 +159,10 @@ async function buildChefiaPanel() {
     button({ customId: 'chefia::sync_sheets', label: 'Sync Sheets', style: 'Secondary', emoji: EMOJI.REFRESH }),
     button({ customId: 'chefia::qualidade_dados', label: 'Qualidade Dados', style: 'Secondary', emoji: EMOJI.INFO }),
     button({
-      customId: 'chefia::republicar_disponibilidade',
-      label: 'Republicar Disp.',
+      customId: 'chefia::republicar_paineis',
+      label: 'Republicar Painéis',
       style: 'Secondary',
-      emoji: EMOJI.PRESENCA,
+      emoji: '🔄',
     })
   );
 

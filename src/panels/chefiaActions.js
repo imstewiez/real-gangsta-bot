@@ -128,9 +128,48 @@ async function republicarDisponibilidade(interaction) {
   );
 }
 
+async function republicarTodosPaineis(interaction) {
+  if (!(await requirePermission(interaction, isChefia))) return;
+
+  const { bootstrapAll } = require('../panelBootstrap');
+
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  const results = await bootstrapAll(interaction.client);
+
+  const created = results.filter(r => r.status === 'created');
+  const skipped = results.filter(r => r.status === 'skipped');
+  const failed = results.filter(r => r.status === 'failed');
+
+  const lines = [
+    `${EMOJI.OK} **Painéis republicados.**`,
+    `• ${created.length} publicados / ${skipped.length} skipped / ${failed.length} falhas`,
+  ];
+  if (created.length) {
+    lines.push('', '🟢 **Publicados:**');
+    for (const r of created) lines.push(`• ${r.key} → <#${r.channelId}>`);
+  }
+  if (skipped.length) {
+    lines.push('', '⚪ **Skipped:**');
+    for (const r of skipped.slice(0, 3)) lines.push(`• ${r.key}: ${r.reason}`);
+    if (skipped.length > 3) lines.push(`• ... e mais ${skipped.length - 3}`);
+  }
+  if (failed.length) {
+    lines.push('', '🔴 **Falhas:**');
+    for (const r of failed) lines.push(`• ${r.key}: ${r.reason}`);
+  }
+
+  return safeReply(
+    interaction,
+    { content: lines.join('\n').slice(0, 1900), flags: MessageFlags.Ephemeral },
+    { messageClass: 'BANAL' }
+  );
+}
+
 module.exports = {
   listarStickys,
   verTops,
   verLogs,
   republicarDisponibilidade,
+  republicarTodosPaineis,
 };

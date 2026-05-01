@@ -213,6 +213,7 @@ const BUTTON_ROUTES = [
   exact('chefia::exportar', buttonAdapters.handleExportarButton),
   exact('chefia::sync_sheets', buttonAdapters.handleSyncSheetsButton),
   exact('chefia::republicar_disponibilidade', chefiaActions.republicarDisponibilidade),
+  exact('chefia::republicar_paineis', chefiaActions.republicarTodosPaineis),
 
   // Painel da sessão (staff actions)
   prefix('saida::session_close_direct::', handleCloseSessionDirect),
