@@ -4,7 +4,7 @@
  * Reutiliza handlers de slash commands e queries sem duplicar código.
  */
 
-const { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, MessageFlags } = require('discord.js');
+const { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, MessageFlags, StringSelectMenuBuilder } = require('discord.js');
 const { safeReply, safeShowModal } = require('../shared/interactionHelpers');
 const { requirePermission } = require('../shared/requirePermission');
 const { EMOJI } = require('../content');
@@ -389,26 +389,74 @@ async function handleTransferirModalSubmit(interaction) {
 
 async function handlePromoverButton(interaction) {
   if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
+  const { query } = require('../db');
+
+  const members = await query(`
+    SELECT id, discord_id, display_name, role
+    FROM members
+    WHERE status = 'ativo'
+    ORDER BY display_name NULLS LAST
+    LIMIT 25
+  `);
+
+  if (members.rows.length === 0) {
+    return safeReply(interaction, { content: `${EMOJI.INDISPONIVEL} Nenhum membro activo encontrado.` }, { messageClass: 'BANAL' });
+  }
+
+  const options = members.rows.map(m => ({
+    label: m.display_name || m.discord_id,
+    value: m.discord_id,
+    description: `Cargo actual: ${m.role || '—'}`,
+  }));
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId('adapter::select_promover_membro')
+    .setPlaceholder('Escolhe o membro a promover...')
+    .setOptions(options);
+
+  return safeReply(
+    interaction,
+    {
+      content: `${EMOJI.PROGRESSO} **Promover Membro** — passo 1 de 3`,
+      components: [new ActionRowBuilder().addComponents(select)],
+    },
+    { messageClass: 'BANAL' }
+  );
+}
+
+async function handlePromoverMembroSelect(interaction) {
+  const discordId = interaction.values[0];
+  const CARGOS = [
+    { label: 'Bairrista', value: 'bairrista' },
+    { label: 'Oficial', value: 'oficial' },
+    { label: 'Patrão di Zona', value: 'patrao_di_zona' },
+    { label: 'Chefia', value: 'chefia' },
+    { label: 'Inactivo', value: 'inativo' },
+  ];
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(`adapter::select_promover_cargo::${discordId}`)
+    .setPlaceholder('Escolhe o novo cargo...')
+    .setOptions(CARGOS.map(c => ({ label: c.label, value: c.value, description: `Novo cargo: ${c.label}` })));
+
+  return safeReply(
+    interaction,
+    {
+      content: `${EMOJI.PROGRESSO} **Promover Membro** — passo 2 de 3`,
+      components: [new ActionRowBuilder().addComponents(select)],
+    },
+    { messageClass: 'BANAL' }
+  );
+}
+
+async function handlePromoverCargoSelect(interaction) {
+  const cargo = interaction.values[0];
+  const discordId = interaction.customId.split('::')[3];
+
   const modal = new ModalBuilder()
-    .setCustomId('adapter::modal_promover')
+    .setCustomId(`adapter::modal_promover::${discordId}::${cargo}`)
     .setTitle('Promover Membro')
     .addComponents(
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('member_id')
-          .setLabel('ID do Discord do membro')
-          .setStyle(TextInputStyle.Short)
-          .setPlaceholder('123456789012345678')
-          .setRequired(true)
-      ),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('cargo')
-          .setLabel('Novo cargo')
-          .setStyle(TextInputStyle.Short)
-          .setPlaceholder('bairrista, oficial, patrao_di_zona, chefia')
-          .setRequired(true)
-      ),
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
           .setCustomId('motivo')
@@ -423,8 +471,9 @@ async function handlePromoverButton(interaction) {
 
 async function handlePromoverModalSubmit(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  const memberIdInput = interaction.fields.getTextInputValue('member_id');
-  const cargo = interaction.fields.getTextInputValue('cargo');
+  const parts = interaction.customId.split('::');
+  const memberIdInput = parts.length >= 5 ? parts[3] : interaction.fields.getTextInputValue('member_id');
+  const cargo = parts.length >= 5 ? parts[4] : interaction.fields.getTextInputValue('cargo');
   const motivo = interaction.fields.getTextInputValue('motivo') || '';
 
   const guildMember = await interaction.guild.members.fetch(memberIdInput).catch(() => null);
@@ -468,6 +517,36 @@ async function handlePromoverModalSubmit(interaction) {
   }
 }
 
+async function handleChefiaAusenciasButton(interaction) {
+  await requirePermission(interaction, { minRole: 'OG' });
+  const { query } = require('../db');
+  const { brandEmbed } = require('../shared/embedBuilders');
+
+  const result = await query(`
+    SELECT m.display_name, a.start_date, a.end_date, a.reason
+    FROM member_absences a
+    JOIN members m ON m.id = a.member_id
+    WHERE a.status = 'approved' AND CURRENT_DATE BETWEEN a.start_date AND a.end_date
+    ORDER BY a.end_date DESC
+  `);
+
+  const embed = brandEmbed('MOVEMENT')
+    .setTitle(`${EMOJI.PENDENTE} Ausências Activas`)
+    .setDescription('Membros em ausência no momento:');
+
+  if (result.rows.length === 0) {
+    embed.addFields({ name: 'Tudo em ordem', value: 'Nenhum membro em ausência activa.' });
+  } else {
+    const lines = result.rows.map(r => {
+      const reason = r.reason ? ` — *${r.reason}*` : '';
+      return `• **${r.display_name}**: ${r.start_date} → ${r.end_date}${reason}`;
+    });
+    embed.addFields({ name: `${result.rows.length} membro(s)`, value: lines.join('\n') });
+  }
+
+  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
+}
+
 module.exports = {
   // Consultas
   handleCatalogoButton,
@@ -485,6 +564,7 @@ module.exports = {
   handleAusenciaButton,
   handleCriarIncidenteButton,
   handleTransferirStockButton,
+  handleChefiaAusenciasButton,
   // Delegação
   handleFecharSaidaButton,
   handleEmitirMaterialButton,
@@ -496,5 +576,7 @@ module.exports = {
   handleCriarIncidenteModalSubmit,
   handleTransferirModalSubmit,
   handlePromoverButton,
+  handlePromoverMembroSelect,
+  handlePromoverCargoSelect,
   handlePromoverModalSubmit,
 };

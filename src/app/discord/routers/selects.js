@@ -114,6 +114,10 @@ const SELECT_ROUTES = [
 
   // Order management — chefia select actions
   exact('order::manage_action', orderManagement.handleOrderManageSelect),
+
+  // Promoção — chefia select flow
+  exact('adapter::select_promover_membro', require('../../../panels/buttonAdapters').handlePromoverMembroSelect),
+  prefix('adapter::select_promover_cargo::', require('../../../panels/buttonAdapters').handlePromoverCargoSelect),
 ];
 
 async function handleSelect(interaction) {

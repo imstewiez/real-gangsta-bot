@@ -209,7 +209,7 @@ const BUTTON_ROUTES = [
   exact('chefia::ver_logs', chefiaActions.verLogs),
   exact('chefia::criar_incidente', buttonAdapters.handleCriarIncidenteButton),
   exact('chefia::transferir_stock', buttonAdapters.handleTransferirStockButton),
-  exact('chefia::ausencias', buttonAdapters.handleAusenciaButton),
+  exact('chefia::ausencias', buttonAdapters.handleChefiaAusenciasButton),
   exact('chefia::painel_pendencias', buttonAdapters.handlePainelPendenciasButton),
   exact('chefia::relatorio', buttonAdapters.handleRelatorioButton),
   exact('chefia::dashboard', buttonAdapters.handleDashboardButton),

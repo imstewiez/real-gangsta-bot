@@ -6,11 +6,11 @@ const { selectMenu, selectRow } = require('../shared/ui/selects');
 const { query } = require('../db');
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Painel da Chefia — Comando e Gestão (SIMPLIFICADO)
+// Painel da Chefia — Comando e Gestão (SIMPLIFICADO v2)
 // ══════════════════════════════════════════════════════════════════════════════
 
 async function buildChefiaPanel() {
-  const [openOps, topWeek, openIncidents, activeMembers, weekKills, weekDeliveries] = await Promise.all([
+  const [openOps, topWeek, activeMembers, weekKills, weekDeliveries, activeAbsences] = await Promise.all([
     query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
     query(`
       SELECT m.display_name, SUM(im.quantity) AS total_qty
@@ -22,21 +22,21 @@ async function buildChefiaPanel() {
       ORDER BY total_qty DESC
       LIMIT 1
     `),
-    query("SELECT COUNT(*)::int AS c FROM incidents WHERE status = 'open'"),
     query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'ativo'"),
     query("SELECT COUNT(*)::int AS c FROM kill_logs WHERE created_at >= date_trunc('week', NOW())"),
     query(
       "SELECT COUNT(*)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_bairrista','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
     ),
+    query("SELECT COUNT(*)::int AS c FROM member_absences WHERE status = 'approved' AND CURRENT_DATE BETWEEN start_date AND end_date"),
   ]);
 
   const ops = openOps.rows[0]?.c ?? 0;
   const topName = topWeek.rows[0]?.display_name ?? '—';
   const topQty = topWeek.rows[0]?.total_qty ?? 0;
-  const inc = openIncidents.rows[0]?.c ?? 0;
   const members = activeMembers.rows[0]?.c ?? 0;
   const kills = weekKills.rows[0]?.c ?? 0;
   const deliv = weekDeliveries.rows[0]?.c ?? 0;
+  const abs = activeAbsences.rows[0]?.c ?? 0;
 
   const embed = applyLogo(
     brandEmbed('MOVEMENT')
@@ -54,8 +54,8 @@ async function buildChefiaPanel() {
         { name: `${EMOJI.KILL} Kills (Semana)`, value: `**${kills}** registadas`, inline: true },
         { name: `${EMOJI.ENTREGA} Entregas (Semana)`, value: `**${deliv}** registadas`, inline: true },
         {
-          name: `${EMOJI.ERRO} Incidentes`,
-          value: inc > 0 ? `**${inc}** abertos ${EMOJI.WARN}` : `**0** abertos ${EMOJI.OK}`,
+          name: `${EMOJI.PENDENTE} Ausências`,
+          value: abs > 0 ? `**${abs}** activas ${EMOJI.WARN}` : `**0** activas ${EMOJI.OK}`,
           inline: true,
         }
       )
@@ -63,8 +63,8 @@ async function buildChefiaPanel() {
 
   // Row 1 — Acções rápidas
   const row1 = buttonRow(
-    button({ customId: 'chefia::criar_incidente', label: 'Criar Incidente', style: 'Success', emoji: EMOJI.ERRO }),
-    button({ customId: 'chefia::ausencias', label: 'Ausências', style: 'Success', emoji: EMOJI.PENDENTE })
+    button({ customId: 'chefia::ausencias', label: 'Ausências', style: 'Success', emoji: EMOJI.PENDENTE }),
+    button({ customId: 'chefia::inactivos', label: 'Inactivos', style: 'Primary', emoji: EMOJI.WARN })
   );
 
   // Row 2 — Consultas
@@ -76,8 +76,7 @@ async function buildChefiaPanel() {
       emoji: EMOJI.PENDENTE,
     }),
     button({ customId: 'chefia::relatorio', label: 'Relatório', style: 'Primary', emoji: EMOJI.AUDIT }),
-    button({ customId: 'chefia::dashboard', label: 'Dashboard', style: 'Primary', emoji: EMOJI.GRAFICO }),
-    button({ customId: 'chefia::inactivos', label: 'Inactivos', style: 'Primary', emoji: EMOJI.WARN })
+    button({ customId: 'chefia::dashboard', label: 'Dashboard', style: 'Primary', emoji: EMOJI.GRAFICO })
   );
 
   // Row 3 — Gerir (compressão via select menu)
@@ -104,24 +103,6 @@ async function buildChefiaPanel() {
           value: 'chefia::gerir_encomendas',
           emoji: EMOJI.ENCOMENDA,
           description: 'Aprovar, processar e entregar encomendas',
-        },
-        {
-          label: 'Gerir Entregas',
-          value: 'chefia::gerir_entregas',
-          emoji: EMOJI.ENTREGA,
-          description: 'Listar/apagar/corrigir entregas e vendas',
-        },
-        {
-          label: 'Eliminar Saída',
-          value: 'chefia::eliminar_saida',
-          emoji: EMOJI.ERRO,
-          description: 'Apagar saída do histórico',
-        },
-        {
-          label: 'Sync Sheets',
-          value: 'chefia::sync_sheets',
-          emoji: EMOJI.REFRESH,
-          description: 'Sincronizar com Google Sheets',
         },
         {
           label: 'Republicar Painéis',

@@ -78,6 +78,7 @@ const MODAL_ROUTES = [
   exact('adapter::modal_ausencia', buttonAdapters.handleAusenciaModalSubmit),
   exact('adapter::modal_criar_incidente', buttonAdapters.handleCriarIncidenteModalSubmit),
   exact('adapter::modal_transferir', buttonAdapters.handleTransferirModalSubmit),
+  prefix('adapter::modal_promover::', buttonAdapters.handlePromoverModalSubmit),
   exact('adapter::modal_promover', buttonAdapters.handlePromoverModalSubmit),
 ];
 
