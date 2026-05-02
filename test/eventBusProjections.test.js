@@ -38,5 +38,4 @@ describe('eventBus + projections', () => {
     // Não deve rebentar
     await assert.doesNotReject(bus.emitAsync('__test_err__', {}));
   });
-
 });

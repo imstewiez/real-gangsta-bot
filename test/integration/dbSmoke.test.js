@@ -61,12 +61,12 @@ describe('integration/dbSmoke', () => {
   it('inventory_movements CHECK rejeita movement_types legacy', async () => {
     // Precisa de item + member válidos para passar FKs; criamos minimal.
     await pool.query(
-      'INSERT INTO members (discord_id, username, display_name, role) VALUES (\'mv-test\', \'x\', \'x\', \'bairrista\') ON CONFLICT DO NOTHING'
+      "INSERT INTO members (discord_id, username, display_name, role) VALUES ('mv-test', 'x', 'x', 'bairrista') ON CONFLICT DO NOTHING"
     );
     const m = await pool.query("SELECT id FROM members WHERE discord_id = 'mv-test'");
     const memberId = m.rows[0].id;
     await pool.query(
-      'INSERT INTO items (name, category, unit, estimated_value) VALUES (\'mv-test-item\', \'outros\', \'unidade\', 10) ON CONFLICT DO NOTHING'
+      "INSERT INTO items (name, category, unit, estimated_value) VALUES ('mv-test-item', 'outros', 'unidade', 10) ON CONFLICT DO NOTHING"
     );
     const i = await pool.query("SELECT id FROM items WHERE name = 'mv-test-item'");
     const itemId = i.rows[0].id;
@@ -127,13 +127,13 @@ describe('integration/dbSmoke', () => {
 
   it('migration 029: PRIMARY KEY em spot previne duplicados (UPSERT)', async () => {
     const future = new Date(Date.now() + 60_000);
-    await pool.query('INSERT INTO spot_cooldowns (spot, expires_at, saida_id) VALUES (\'smoke-test-spot\', $1, 1)', [
+    await pool.query("INSERT INTO spot_cooldowns (spot, expires_at, saida_id) VALUES ('smoke-test-spot', $1, 1)", [
       future,
     ]);
     // Segunda insert com mesmo spot — deve falhar (PK) ou ser suportada por ON CONFLICT.
     let error = null;
     try {
-      await pool.query('INSERT INTO spot_cooldowns (spot, expires_at, saida_id) VALUES (\'smoke-test-spot\', $1, 2)', [
+      await pool.query("INSERT INTO spot_cooldowns (spot, expires_at, saida_id) VALUES ('smoke-test-spot', $1, 2)", [
         future,
       ]);
     } catch (e) {

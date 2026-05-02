@@ -12,7 +12,18 @@
  *   7. Footer
  */
 
-const { COLOR, FONT, NUM_FMT, cell, bodyCell, bodyBoldCell, numCell, formatDelta, rankCell } = require('../theme');
+const {
+  COLOR,
+  FONT,
+  NUM_FMT,
+  cell,
+  bodyCell,
+  bodyBoldCell,
+  mutedCell,
+  numCell,
+  formatDelta,
+  rankCell,
+} = require('../theme');
 const {
   headerBlock,
   sectionHeader,

@@ -59,12 +59,7 @@ require.cache[resolved('inventory/stockNotifier.js')] = {
   exports: { notifyMovement: async () => {}, setClient: () => {}, publishStockSummary: async () => {} },
 };
 
-const {
-  startSaida,
-  closeSaida,
-  _assertTransition,
-  ALLOWED_TRANSITIONS,
-} = require('../src/saidas/saidaEngine');
+const { startSaida, closeSaida, _assertTransition, ALLOWED_TRANSITIONS } = require('../src/saidas/saidaEngine');
 
 describe('saida state machine — transições', () => {
   beforeEach(() => {
