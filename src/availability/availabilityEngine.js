@@ -37,28 +37,6 @@ function todayDateString() {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Lisbon' }).format(new Date());
 }
 
-// Barra empilhada para visualizar distribuição de votos por slot.
-// ✅ verdes, ⏰ talvez amarelo, ❌ não dá vermelho.
-function _stackedBar(counts, width = 10) {
-  const total = Object.values(counts).reduce((a, b) => a + (b || 0), 0);
-  if (total === 0) return '·'.repeat(width);
-  const y = Math.round(((counts.disponivel || 0) / total) * width);
-  const m = Math.round(((counts.talvez || 0) / total) * width);
-  const n = width - y - m;
-  return '█'.repeat(Math.max(0, y)) + '▒'.repeat(Math.max(0, m)) + '░'.repeat(Math.max(0, n));
-}
-
-// Identifica a "melhor hora" — slot com mais ✅. Empate → mais cedo.
-function _findPeakSlot(tallies) {
-  let best = null;
-  for (const t of tallies) {
-    const yes = t.counts.disponivel || 0;
-    if (yes === 0) continue;
-    if (!best || yes > best.yes) best = { label: t.label, yes, maybe: t.counts.talvez || 0 };
-  }
-  return best;
-}
-
 // Fmt dia da semana em PT-PT (segunda, terça, quarta…).
 function _weekdayPt(dateInput) {
   try {
@@ -75,29 +53,32 @@ function buildEmbed(session, tallies, totalVoters) {
   const weekday = _weekdayPt(session.session_date);
   const isClosed = session.status === 'closed';
 
-  // Peak slot — "melhor hora" em destaque
-  const peak = _findPeakSlot(tallies);
-  const peakLine = peak
-    ? `🎯 **Pico:** ${peak.label} · ${peak.yes} ${EMOJI.DISPONIVEL}${peak.maybe ? ` · ${peak.maybe} ${EMOJI.TALVEZ}` : ''}`
-    : '_Ainda sem votos — sê o primeiro._';
-
   const statusLine = isClosed
     ? `${EMOJI.BLOQUEADO} **Sessão fechada** — votos congelados.`
-    : `${EMOJI.PRESENCA} _Usa o menu abaixo para marcar intervalos de uma vez._`;
+    : `${EMOJI.PRESENCA} _Usa o menu abaixo para marcar a tua disponibilidade._`;
 
   const voterLabel = totalVoters === 1 ? 'bairrista votou' : 'bairristas votaram';
   const voterBadge = totalVoters === 0 ? '_ninguém ainda_' : `**${totalVoters}** ${voterLabel}`;
 
-  // Agrupar slots por período do dia
-  const groups = _groupSlotsByPeriod(tallies);
+  // Slot lines — simples, sem barras empilhadas
+  const slotLines = tallies.map(t => {
+    const y = t.counts.disponivel || 0;
+    const m = t.counts.talvez || 0;
+    const n = t.counts.indisponivel || 0;
+    const total = y + m + n;
+    const breakdown =
+      total > 0 ? `${EMOJI.DISPONIVEL} ${y}   ${EMOJI.TALVEZ} ${m}   ${EMOJI.INDISPONIVEL} ${n}` : '_sem votos_';
+    return `**${t.label}** — ${breakdown}`;
+  });
 
   const desc = [
     `**${weekday.charAt(0).toUpperCase() + weekday.slice(1)}**, ${dateStr}`,
     '',
-    peakLine,
     `👥 ${voterBadge}`,
     '',
     statusLine,
+    '',
+    ...slotLines,
   ];
 
   const embed = brandEmbed('HOUSE', { skipLogo: true })
@@ -105,45 +86,8 @@ function buildEmbed(session, tallies, totalVoters) {
     .setTitle(`${EMOJI.PRESENCA} Presença do Bairro`)
     .setDescription(desc.join('\n'));
 
-  // Slots por período — 1 field por grupo (manhã/tarde/noite).
-  for (const group of groups) {
-    const slotLines = group.slots.map(t => {
-      const bar = _stackedBar(t.counts, 8);
-      const y = t.counts.disponivel || 0;
-      const m = t.counts.talvez || 0;
-      const n = t.counts.indisponivel || 0;
-      const total = y + m + n;
-      const isPeak = peak && peak.label === t.label;
-      const breakdown =
-        total > 0
-          ? `${EMOJI.DISPONIVEL} ${y}  ${EMOJI.TALVEZ} ${m}  ${EMOJI.INDISPONIVEL} ${n}${isPeak ? '  🔥' : ''}`
-          : '_sem votos_';
-      return `\`🕒 ${t.label.padEnd(5)}\` ${bar}  ${breakdown}`;
-    });
-    embed.addFields({
-      name: `${group.icon} ${group.name}`,
-      value: slotLines.join('\n').slice(0, 1024) || '_sem dados_',
-      inline: false,
-    });
-  }
-
   setFooterText(embed, `sessão #${session.id}${isClosed ? ' · fechada' : ' · reset amanhã às 07:00'}`);
   return embed;
-}
-
-// Agrupa slots por período do dia para melhor legibilidade.
-function _groupSlotsByPeriod(tallies) {
-  const tarde = tallies.filter(t => ['12:00', '14:00', '16:00', '18:00'].includes(t.label));
-  const noite = tallies.filter(t => ['18:00', '20:00', '22:00'].includes(t.label));
-  const madrugada = tallies.filter(t => ['00:00', '02:00'].includes(t.label));
-  const outros = tallies.filter(t => !tarde.includes(t) && !noite.includes(t) && !madrugada.includes(t));
-
-  const groups = [];
-  if (tarde.length) groups.push({ name: 'TARDE', icon: '🌅', slots: tarde });
-  if (noite.length) groups.push({ name: 'NOITE', icon: '🌙', slots: noite });
-  if (madrugada.length) groups.push({ name: 'MADRUGADA', icon: '🌑', slots: madrugada });
-  if (outros.length) groups.push({ name: 'OUTROS', icon: '🕐', slots: outros });
-  return groups;
 }
 
 function buildComponents(session, slots) {
@@ -152,10 +96,10 @@ function buildComponents(session, slots) {
   const selectOpts = buildSelectOptions(slots);
   const selectRows = buildSearchableSelect({
     customId: `avail::vote_select::${session.id}`,
-    placeholder: '📅 Marca intervalos de uma vez',
+    placeholder: '📅 Marca a tua disponibilidade',
     options: selectOpts,
     searchKey: `avail::${session.id}`,
-    modalTitle: 'Pesquisar intervalo',
+    modalTitle: 'Pesquisar opção',
     messageClass: 'FLOW',
   });
 

@@ -3,7 +3,7 @@
  * Handlers para interações de disponibilidade.
  *
  * customIds usados:
- *   avail::vote_select::<sessionId>      — StringSelectMenu (range:state)
+ *   avail::vote_select::<sessionId>      — StringSelectMenu (slot:state)
  *   avail::all::<sessionId>::<state>     — Botão "para todos os slots"
  *   avail::summary::<sessionId>          — Botão resumo (ephemeral)
  *   avail::refresh::<sessionId>          — Botão refresh do embed
@@ -61,29 +61,21 @@ async function handleVoteSelect(interaction) {
   }
 
   const m = stateMeta(result.state);
-  const rangeName = _rangeLabelFromValue(value);
+  const slotName = _slotNameFromValue(value);
   return safeReply(
     interaction,
     {
-      content: `${m.emoji} Marcado como **${m.label}** — ${rangeName}.`,
+      content: `${m.emoji} Marcado como **${m.label}** — ${slotName}.`,
       flags: MessageFlags.Ephemeral,
     },
     { messageClass: 'BANAL' }
   );
 }
 
-function _rangeLabelFromValue(value) {
-  const [rangeKey] = value.split(':');
-  const map = {
-    dia_todo: 'dia todo',
-    tarde: 'tarde (12–18h)',
-    noite: 'noite (18–00h)',
-    madrugada: 'madrugada (22–02h)',
-    limpar: 'limpar',
-  };
-  if (map[rangeKey]) return map[rangeKey];
-  // slot individual — o rangeKey é o label do slot (ex: "14:00")
-  return rangeKey;
+function _slotNameFromValue(value) {
+  const [slotLabel] = value.split(':');
+  if (slotLabel === 'limpar') return 'limpar';
+  return slotLabel;
 }
 
 async function handleVoteAll(interaction) {

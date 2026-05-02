@@ -32,56 +32,29 @@ const STATE_META = {
 
 const STATE_ORDER = ['disponivel', 'talvez', 'indisponivel'];
 
-// ── Intervalos pré-definidos para voto em bloco ────────────────────────────
-// Cada range mapeia para um estado e um conjunto de slots (por label).
-// O engine filtra contra os slots existentes da sessão.
-
-/** Slots que compõem cada intervalo nomeado (labels hardcoded = default config). */
-const RANGE_SLOTS = {
-  tarde: ['12:00', '14:00', '16:00', '18:00'],
-  noite: ['18:00', '20:00', '22:00'],
-  madrugada: ['22:00', '00:00', '02:00'],
-};
-
 /**
  * Gera as opções do SelectMenu de voto.
  * Recebe os slots existentes da sessão e devolve array de { value, label, emoji, description }.
- * value = `<rangeKey>:<state>` exceto 'limpar' que é especial.
+ * value = `<slotLabel>:<state>` exceto 'limpar' que é especial.
  */
 function buildSelectOptions(slots) {
   const slotLabels = slots.map(s => s.slot_label);
   const opts = [];
 
-  const add = (rangeKey, state, groupLabel, emoji) => {
-    let targets;
-    if (rangeKey === 'dia_todo') targets = [...slotLabels];
-    else if (rangeKey === 'limpar') targets = [...slotLabels];
-    else if (RANGE_SLOTS[rangeKey]) {
-      targets = RANGE_SLOTS[rangeKey].filter(l => slotLabels.includes(l));
-    } else {
-      // slot individual
-      targets = slotLabels.filter(l => l === rangeKey);
+  // Slot individual × estado
+  for (const label of slotLabels) {
+    for (const state of STATE_ORDER) {
+      const m = STATE_META[state];
+      opts.push({
+        label: `${m.emoji} ${label} — ${m.label}`,
+        description: `Marcar ${label} como ${m.label.toLowerCase()}`,
+        value: `${label}:${state}`,
+        emoji: m.emoji,
+      });
     }
-    if (!targets.length) return;
-    const stateLabel = STATE_META[state]?.label || state;
-    const desc =
-      targets.length === slotLabels.length
-        ? `Aplica a todos os slots (${targets.length})`
-        : `Slots: ${targets.join(', ')}`;
-    opts.push({
-      label: `${emoji} ${groupLabel}`,
-      description: desc,
-      value: `${rangeKey}:${state}`,
-      emoji,
-    });
-  };
+  }
 
-  // ── Disponível ──
-  add('dia_todo', 'disponivel', 'Dia todo', '✅');
-  add('tarde', 'disponivel', 'Tarde', '✅');
-  add('noite', 'disponivel', 'Noite', '✅');
-
-  // ── Limpar ──
+  // Limpar
   if (slotLabels.length) {
     opts.push({
       label: '🗑️ Limpar marcações',
@@ -95,7 +68,7 @@ function buildSelectOptions(slots) {
 }
 
 /**
- * Resolve um value do select (ex: 'tarde:disponivel') para a lista de slot_ids
+ * Resolve um value do select (ex: 'Dia Todo:disponivel') para o slot_id
  * e o estado final. Recebe os slots da sessão.
  */
 function resolveRangeValue(value, slots) {
@@ -109,15 +82,10 @@ function resolveRangeValue(value, slots) {
     return { state: 'limpar', slotIds: slots.map(s => s.id) };
   }
 
-  const slotLabels = slots.map(s => s.slot_label);
-  let targets;
-  if (rangeKey === 'dia_todo') targets = [...slotLabels];
-  else if (RANGE_SLOTS[rangeKey]) targets = RANGE_SLOTS[rangeKey].filter(l => slotLabels.includes(l));
-  else targets = slotLabels.filter(l => l === rangeKey);
-
   const slotMap = new Map(slots.map(s => [s.slot_label, s.id]));
-  const slotIds = targets.map(l => slotMap.get(l)).filter(Boolean);
-  return { state, slotIds };
+  const slotId = slotMap.get(rangeKey);
+  if (!slotId) return null;
+  return { state, slotIds: [slotId] };
 }
 
 function pickHeader() {

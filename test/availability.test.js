@@ -93,48 +93,39 @@ describe('availabilityEngine — UI builders', () => {
     assert.match(todayDateString(), /^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it('buildEmbed tem título, slots em fields e total de votantes', () => {
+  it('buildEmbed tem título, slots na description e total de votantes', () => {
     const tallies = [
-      { slotId: 1, label: '12:00', position: 0, counts: { disponivel: 3, indisponivel: 1 } },
-      { slotId: 2, label: '14:00', position: 1, counts: { talvez: 2 } },
-      { slotId: 3, label: '20:00', position: 2, counts: { disponivel: 8, talvez: 1 } },
+      { slotId: 1, label: 'Dia Todo', position: 0, counts: { disponivel: 3, indisponivel: 1 } },
+      { slotId: 2, label: 'Tarde', position: 1, counts: { talvez: 2 } },
+      { slotId: 3, label: 'Noite', position: 2, counts: { disponivel: 8, talvez: 1 } },
     ];
     const embed = buildEmbed(fakeSession, tallies, 4);
     const json = embed.toJSON();
     assert.ok(json.title.includes('Presença'));
-    // Slots aparecem em fields (um por período)
-    const fieldValues = json.fields.map(f => f.value).join('\n');
-    assert.ok(fieldValues.includes('12:00'));
-    assert.ok(fieldValues.includes('14:00'));
-    assert.ok(fieldValues.includes('20:00'));
+    // Slots aparecem na description (não em fields)
+    assert.ok(json.description.includes('Dia Todo'));
+    assert.ok(json.description.includes('Tarde'));
+    assert.ok(json.description.includes('Noite'));
     assert.ok(json.description.includes('4'));
     assert.ok(json.description.includes('votaram'));
     assert.ok(json.footer.text.includes(`sessão #${fakeSession.id}`));
-    // Pico destacado
-    assert.ok(json.description.includes('Pico:'));
-    assert.ok(fieldValues.includes('🔥'));
   });
 
-  it('buildEmbed fecha com fields (slots por período)', () => {
-    const tallies = [{ slotId: 1, label: '12:00', position: 0, counts: {} }];
+  it('buildEmbed fecha sem fields', () => {
+    const tallies = [{ slotId: 1, label: 'Dia Todo', position: 0, counts: {} }];
     const embed = buildEmbed({ ...fakeSession, status: 'closed' }, tallies, 0);
     const json = embed.toJSON();
     assert.ok(json.description.includes('fechada'));
-    const fieldValues = json.fields.map(f => f.value).join('\n');
-    assert.ok(fieldValues.includes('12:00'));
-    assert.ok(json.fields.length > 0);
+    assert.ok(json.description.includes('Dia Todo'));
+    // Não deve ter fields (layout simplificado)
+    assert.ok(!json.fields || json.fields.length === 0);
   });
 
   it('buildComponents respeita os limites do Discord (≤5 rows, ≤25 options no select)', () => {
     const slots = [
-      { id: 1, slot_label: '12:00' },
-      { id: 2, slot_label: '14:00' },
-      { id: 3, slot_label: '16:00' },
-      { id: 4, slot_label: '18:00' },
-      { id: 5, slot_label: '20:00' },
-      { id: 6, slot_label: '22:00' },
-      { id: 7, slot_label: '00:00' },
-      { id: 8, slot_label: '02:00' },
+      { id: 1, slot_label: 'Dia Todo' },
+      { id: 2, slot_label: 'Tarde' },
+      { id: 3, slot_label: 'Noite' },
     ];
     const rows = buildComponents(fakeSession, slots);
     assert.ok(rows.length <= 5, `≤5 rows; foram ${rows.length}`);
@@ -160,56 +151,48 @@ describe('availabilityEngine — UI builders', () => {
   });
 });
 
-describe('availabilityTemplates — ranges', () => {
+describe('availabilityTemplates — slots', () => {
   const slots = [
-    { id: 1, slot_label: '12:00' },
-    { id: 2, slot_label: '14:00' },
-    { id: 3, slot_label: '16:00' },
-    { id: 4, slot_label: '18:00' },
-    { id: 5, slot_label: '20:00' },
-    { id: 6, slot_label: '22:00' },
-    { id: 7, slot_label: '00:00' },
-    { id: 8, slot_label: '02:00' },
+    { id: 1, slot_label: 'Dia Todo' },
+    { id: 2, slot_label: 'Tarde' },
+    { id: 3, slot_label: 'Noite' },
   ];
 
   it('buildSelectOptions gera opções dentro do limite de 25', () => {
     const opts = buildSelectOptions(slots);
     assert.ok(opts.length <= 25, `≤25 opções; foram ${opts.length}`);
-    assert.ok(opts.length >= 3, 'deve haver pelo menos 3 opções');
-    // Deve conter opções de intervalo + limpar
-    assert.ok(opts.some(o => o.value === 'dia_todo:disponivel'));
-    assert.ok(opts.some(o => o.value === 'tarde:disponivel'));
+    // 3 slots × 3 estados + 1 limpar = 10
+    assert.equal(opts.length, 10, '3 slots × 3 estados + limpar = 10');
+    // Deve conter opções para cada slot + estado
+    assert.ok(opts.some(o => o.value === 'Dia Todo:disponivel'));
+    assert.ok(opts.some(o => o.value === 'Tarde:talvez'));
+    assert.ok(opts.some(o => o.value === 'Noite:indisponivel'));
     assert.ok(opts.some(o => o.value === 'limpar:limpar'));
   });
 
-  it('resolveRangeValue resolve intervalos para slot_ids correctos', () => {
-    const r1 = resolveRangeValue('tarde:disponivel', slots);
-    assert.equal(r1.state, 'disponivel');
-    assert.deepEqual(r1.slotIds, [1, 2, 3, 4]);
+  it('resolveRangeValue resolve slot individual', () => {
+    const r = resolveRangeValue('Dia Todo:disponivel', slots);
+    assert.equal(r.state, 'disponivel');
+    assert.deepEqual(r.slotIds, [1]);
 
-    const r2 = resolveRangeValue('noite:disponivel', slots);
-    assert.deepEqual(r2.slotIds, [4, 5, 6]);
+    const r2 = resolveRangeValue('Tarde:talvez', slots);
+    assert.equal(r2.state, 'talvez');
+    assert.deepEqual(r2.slotIds, [2]);
 
-    const r3 = resolveRangeValue('madrugada:disponivel', slots);
-    assert.deepEqual(r3.slotIds, [6, 7, 8]);
-
-    const r4 = resolveRangeValue('dia_todo:talvez', slots);
-    assert.equal(r4.state, 'talvez');
-    assert.equal(r4.slotIds.length, 8);
-
-    const r5 = resolveRangeValue('limpar:limpar', slots);
-    assert.equal(r5.state, 'limpar');
-    assert.equal(r5.slotIds.length, 8);
+    const r3 = resolveRangeValue('Noite:indisponivel', slots);
+    assert.equal(r3.state, 'indisponivel');
+    assert.deepEqual(r3.slotIds, [3]);
   });
 
-  it('resolveRangeValue resolve slot individual', () => {
-    const r = resolveRangeValue('14:00:disponivel', slots);
-    assert.equal(r.state, 'disponivel');
-    assert.deepEqual(r.slotIds, [2]);
+  it('resolveRangeValue resolve limpar', () => {
+    const r = resolveRangeValue('limpar:limpar', slots);
+    assert.equal(r.state, 'limpar');
+    assert.equal(r.slotIds.length, 3);
   });
 
   it('resolveRangeValue devolve null para value inválido', () => {
     assert.equal(resolveRangeValue('invalid', slots), null);
     assert.equal(resolveRangeValue('', slots), null);
+    assert.equal(resolveRangeValue('Slot Inexistente:disponivel', slots), null);
   });
 });
