@@ -40,7 +40,7 @@ function _setItemCtx(userId, ctx) {
 // REGISTAR MATERIAL — fluxo unificado: Entrega ou Venda
 // ═══════════════════════════════════════════════════════════════════════════
 
-// Step 1: Bairrista clica "Registar Material" → escolhe Entrega ou Venda
+// Step 1: Bairrista clica "Entregar Material" → inicia carrinho de entrega
 async function handleRegistarMaterialButton(interaction) {
   // Early check: o user existe no sistema?
   const member = await memberRepo.findByDiscordId(interaction.user.id);
@@ -55,37 +55,19 @@ async function handleRegistarMaterialButton(interaction) {
     );
   }
 
-  const options = [
-    {
-      label: 'Entrega (dar material)',
-      description: 'Material entregue à casa sem pagamento',
-      value: 'entrega',
-      emoji: '📥',
-    },
-    {
-      label: 'Venda (vender material)',
-      description: 'Material vendido — valor calculado automaticamente',
-      value: 'venda',
-      emoji: '💰',
-    },
-  ];
+  // Vai directo para entrega (o botão "Vender" no painel cobre vendas)
+  const tipo = 'entrega';
+  const bairristaCart = require('./bairristaCart');
+  const cart = bairristaCart.createCart(interaction.user.id, tipo);
 
-  const row = new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId('inv::select_tipo_registo')
-      .setPlaceholder(INVENTORY.SELECTS.TIPO_REGISTO)
-      .setMinValues(1)
-      .setMaxValues(1)
-      .addOptions(options)
-  );
+  const movementType = member.role === 'oficial' ? 'entrega_oficial' : 'entrega_bairrista';
+  const last = await inventoryRepo.getLastSubmissionForMember(member.id, movementType).catch(() => null);
+  const canRepeat = Boolean(last?.lines?.length);
 
-  await safeReply(interaction, {
-    content: INVENTORY.PROMPTS.ENTREGA_OU_VENDA,
-    components: [row],
-    flags: MessageFlags.Ephemeral,
-  });
-  // Regista a interaction-parent — permite que qualquer handler da cascade
-  // feche este ephemeral antes de abrir um modal.
+  const embed = bairristaCart.buildCartEmbed(cart);
+  const components = bairristaCart.buildCartComponents(cart, { canRepeat });
+
+  await safeReply(interaction, { content: '', embeds: [embed], components, flags: MessageFlags.Ephemeral });
   parentStore.setParent(interaction.user.id, interaction);
 }
 
