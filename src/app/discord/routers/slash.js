@@ -23,30 +23,20 @@ const { handleMeuPedido } = require('../../../onboarding/meuPedido');
 const syncSheets = require('../../../queries/syncSheets');
 const backfillTopicos = require('../../../queries/backfillTopicos');
 const cleanupTopicos = require('../../../queries/cleanupTopicos');
-const organizeTopicos = require('../../../queries/organizeTopicos');
 const novaCategoriaTopicos = require('../../../queries/novaCategoriaTopicos');
-const dedupTopicos = require('../../../queries/dedupTopicos');
 const inactivosBairristas = require('../../../queries/inactivosBairristas');
 const premios = require('../../../queries/premios');
 const gerirItens = require('../../../queries/gerirItens');
-const qualidadeDados = require('../../../queries/qualidadeDados');
-const lifecycle = require('../../../queries/lifecycle');
 const promover = require('../../../queries/promover');
 const painelPendencias = require('../../../queries/painelPendencias');
 const meuPainel = require('../../../queries/meuPainel');
 const relatorio = require('../../../queries/relatorio');
-const manutencao = require('../../../queries/manutencao');
 const incidentes = require('../../../queries/incidentes');
 const catalogoMelhorado = require('../../../queries/catalogoMelhorado');
 const stockMelhorado = require('../../../queries/stockMelhorado');
 const ajuda = require('../../../queries/ajuda');
 const tutorial = require('../../../queries/tutorial');
-const simularPermissoes = require('../../../queries/simularPermissoes');
-const tarefas = require('../../../queries/tarefas');
-const reputacao = require('../../../queries/reputacao');
 const ausencias = require('../../../queries/ausencias');
-const exportar = require('../../../queries/exportar');
-const auditTrail = require('../../../queries/auditTrail');
 const meuResumo = require('../../../queries/meuResumo');
 const dashboard = require('../../../queries/dashboard');
 const erros = require('../../../queries/erros');
@@ -75,30 +65,20 @@ const SLASH_ROUTES = {
   'sync-sheets': syncSheets.handle,
   'backfill-topicos': backfillTopicos.handle,
   'cleanup-topicos': cleanupTopicos.handle,
-  'organize-topicos': organizeTopicos.handle,
   'nova-categoria-topicos': novaCategoriaTopicos.handle,
-  'dedup-topicos': dedupTopicos.handle,
   'inactivos-bairristas': inactivosBairristas.handle,
   premios: premios.handle,
   'gerir-itens': gerirItens.handle,
-  'qualidade-dados': qualidadeDados.handle,
-  lifecycle: lifecycle.handle,
   promover: promover.handle,
   'painel-pendencias': painelPendencias.handle,
   'meu-painel': meuPainel.handle,
   relatorio: relatorio.handle,
-  manutencao: manutencao.handle,
   incidentes: incidentes.handle,
   'catalogo-melhorado': catalogoMelhorado.handle,
   'stock-melhorado': stockMelhorado.handle,
   ajuda: ajuda.handle,
   tutorial: tutorial.handle,
-  'simular-permissoes': simularPermissoes.handle,
-  tarefas: tarefas.handle,
-  reputacao: reputacao.handle,
   ausencias: ausencias.handle,
-  exportar: exportar.handle,
-  'audit-trail': auditTrail.handle,
   'meu-resumo': meuResumo.handle,
   dashboard: dashboard.handle,
   erros: erros.handle,
