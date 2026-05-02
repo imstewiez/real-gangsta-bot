@@ -27,7 +27,9 @@ async function buildChefiaPanel() {
     query(
       "SELECT COUNT(*)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_bairrista','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
     ),
-    query("SELECT COUNT(*)::int AS c FROM member_absences WHERE status = 'approved' AND CURRENT_DATE BETWEEN start_date AND end_date"),
+    query(
+      "SELECT COUNT(*)::int AS c FROM member_absences WHERE status = 'approved' AND CURRENT_DATE BETWEEN start_date AND end_date"
+    ),
   ]);
 
   const ops = openOps.rows[0]?.c ?? 0;

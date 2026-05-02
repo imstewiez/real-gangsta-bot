@@ -70,10 +70,7 @@ function _onOrderEvent(evt) {
         .setCustomId(`order::aceitar::${evt.orderId}`)
         .setLabel('Aceitar')
         .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId(`order::recusar::${evt.orderId}`)
-        .setLabel('Recusar')
-        .setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId(`order::recusar::${evt.orderId}`).setLabel('Recusar').setStyle(ButtonStyle.Danger)
     );
     components.push(row);
   } else if (evt.status === 'in_progress') {
@@ -82,10 +79,7 @@ function _onOrderEvent(evt) {
         .setCustomId(`order::entregue::${evt.orderId}`)
         .setLabel('Marcar Entregue')
         .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId(`order::recusar::${evt.orderId}`)
-        .setLabel('Recusar')
-        .setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId(`order::recusar::${evt.orderId}`).setLabel('Recusar').setStyle(ButtonStyle.Danger)
     );
     components.push(row);
   }

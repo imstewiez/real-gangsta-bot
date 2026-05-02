@@ -31,7 +31,9 @@ async function handle(interaction) {
       ORDER BY balance ASC, name
       LIMIT 5
     `),
-    query("SELECT COUNT(*)::int AS n FROM member_absences WHERE status = 'approved' AND CURRENT_DATE BETWEEN start_date AND end_date"),
+    query(
+      "SELECT COUNT(*)::int AS n FROM member_absences WHERE status = 'approved' AND CURRENT_DATE BETWEEN start_date AND end_date"
+    ),
   ]);
 
   const embed = brandEmbed('MOVEMENT')

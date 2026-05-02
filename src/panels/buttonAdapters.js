@@ -4,7 +4,14 @@
  * Reutiliza handlers de slash commands e queries sem duplicar código.
  */
 
-const { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, MessageFlags, StringSelectMenuBuilder } = require('discord.js');
+const {
+  ModalBuilder,
+  TextInputBuilder,
+  ActionRowBuilder,
+  TextInputStyle,
+  MessageFlags,
+  StringSelectMenuBuilder,
+} = require('discord.js');
 const { safeReply, safeShowModal } = require('../shared/interactionHelpers');
 const { requirePermission } = require('../shared/requirePermission');
 const { EMOJI } = require('../content');
@@ -400,7 +407,11 @@ async function handlePromoverButton(interaction) {
   `);
 
   if (members.rows.length === 0) {
-    return safeReply(interaction, { content: `${EMOJI.INDISPONIVEL} Nenhum membro activo encontrado.` }, { messageClass: 'BANAL' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.INDISPONIVEL} Nenhum membro activo encontrado.` },
+      { messageClass: 'BANAL' }
+    );
   }
 
   const options = members.rows.map(m => ({

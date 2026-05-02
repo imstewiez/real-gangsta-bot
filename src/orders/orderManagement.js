@@ -12,7 +12,14 @@
  *   pending → denied|cancelled
  */
 
-const { MessageFlags, ActionRowBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const {
+  MessageFlags,
+  ActionRowBuilder,
+  StringSelectMenuBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+} = require('discord.js');
 const { ordersRepo } = require('../repositories');
 const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
 const { brandEmbed } = require('../shared/embedBuilders');
@@ -179,14 +186,24 @@ async function handleOrderAceitarButton(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
-    const order = await ordersRepo.updateStatus(orderId, { status: 'in_progress', actorDiscordId: interaction.user.id });
+    const order = await ordersRepo.updateStatus(orderId, {
+      status: 'in_progress',
+      actorDiscordId: interaction.user.id,
+    });
     return safeReply(
       interaction,
-      { content: `🔧 Encomenda **#${order.id}** — ${order.quantity}× ${order.item_name} → **Em Processo**.`, flags: MessageFlags.Ephemeral },
+      {
+        content: `🔧 Encomenda **#${order.id}** — ${order.quantity}× ${order.item_name} → **Em Processo**.`,
+        flags: MessageFlags.Ephemeral,
+      },
       { messageClass: 'BANAL' }
     );
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.WARN} Erro: ${e.message}`, flags: MessageFlags.Ephemeral }, { messageClass: 'ERROR' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.WARN} Erro: ${e.message}`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'ERROR' }
+    );
   }
 }
 
@@ -199,11 +216,18 @@ async function handleOrderEntregueButton(interaction) {
     const order = await ordersRepo.updateStatus(orderId, { status: 'fulfilled', actorDiscordId: interaction.user.id });
     return safeReply(
       interaction,
-      { content: `✅ Encomenda **#${order.id}** — ${order.quantity}× ${order.item_name} → **Entregue**.`, flags: MessageFlags.Ephemeral },
+      {
+        content: `✅ Encomenda **#${order.id}** — ${order.quantity}× ${order.item_name} → **Entregue**.`,
+        flags: MessageFlags.Ephemeral,
+      },
       { messageClass: 'BANAL' }
     );
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.WARN} Erro: ${e.message}`, flags: MessageFlags.Ephemeral }, { messageClass: 'ERROR' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.WARN} Erro: ${e.message}`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'ERROR' }
+    );
   }
 }
 
@@ -234,15 +258,33 @@ async function handleOrderRecusarModal(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
-    const order = await ordersRepo.updateStatus(orderId, { status: 'denied', actorDiscordId: interaction.user.id, notes: motivo });
+    const order = await ordersRepo.updateStatus(orderId, {
+      status: 'denied',
+      actorDiscordId: interaction.user.id,
+      notes: motivo,
+    });
     return safeReply(
       interaction,
-      { content: `⛔ Encomenda **#${order.id}** — ${order.quantity}× ${order.item_name} → **Recusada**\nMotivo: ${motivo}`, flags: MessageFlags.Ephemeral },
+      {
+        content: `⛔ Encomenda **#${order.id}** — ${order.quantity}× ${order.item_name} → **Recusada**\nMotivo: ${motivo}`,
+        flags: MessageFlags.Ephemeral,
+      },
       { messageClass: 'BANAL' }
     );
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.WARN} Erro: ${e.message}`, flags: MessageFlags.Ephemeral }, { messageClass: 'ERROR' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.WARN} Erro: ${e.message}`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'ERROR' }
+    );
   }
 }
 
-module.exports = { handleGerirEncomendas, handleOrderManageSelect, handleOrderAceitarButton, handleOrderEntregueButton, handleOrderRecusarButton, handleOrderRecusarModal };
+module.exports = {
+  handleGerirEncomendas,
+  handleOrderManageSelect,
+  handleOrderAceitarButton,
+  handleOrderEntregueButton,
+  handleOrderRecusarButton,
+  handleOrderRecusarModal,
+};
