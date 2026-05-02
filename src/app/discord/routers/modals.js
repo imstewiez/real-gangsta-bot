@@ -80,6 +80,9 @@ const MODAL_ROUTES = [
   exact('adapter::modal_transferir', buttonAdapters.handleTransferirModalSubmit),
   prefix('adapter::modal_promover::', buttonAdapters.handlePromoverModalSubmit),
   exact('adapter::modal_promover', buttonAdapters.handlePromoverModalSubmit),
+
+  // Encomendas — modal de recusa
+  prefix('order::modal_recusar::', require('../../../orders/orderManagement').handleOrderRecusarModal),
 ];
 
 async function handleModal(interaction) {

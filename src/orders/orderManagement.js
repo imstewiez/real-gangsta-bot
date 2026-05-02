@@ -12,7 +12,7 @@
  *   pending → denied|cancelled
  */
 
-const { MessageFlags, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
+const { MessageFlags, ActionRowBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const { ordersRepo } = require('../repositories');
 const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
 const { brandEmbed } = require('../shared/embedBuilders');
@@ -173,4 +173,76 @@ async function handleOrderManageSelect(interaction) {
   }
 }
 
-module.exports = { handleGerirEncomendas, handleOrderManageSelect };
+async function handleOrderAceitarButton(interaction) {
+  const orderId = parseInt(interaction.customId.split('::')[2], 10);
+  if (!orderId) return safeReply(interaction, { content: `${EMOJI.WARN} ID inválido.` }, { messageClass: 'BANAL' });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  try {
+    const order = await ordersRepo.updateStatus(orderId, { status: 'in_progress', actorDiscordId: interaction.user.id });
+    return safeReply(
+      interaction,
+      { content: `🔧 Encomenda **#${order.id}** — ${order.quantity}× ${order.item_name} → **Em Processo**.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
+  } catch (e) {
+    return safeReply(interaction, { content: `${EMOJI.WARN} Erro: ${e.message}`, flags: MessageFlags.Ephemeral }, { messageClass: 'ERROR' });
+  }
+}
+
+async function handleOrderEntregueButton(interaction) {
+  const orderId = parseInt(interaction.customId.split('::')[2], 10);
+  if (!orderId) return safeReply(interaction, { content: `${EMOJI.WARN} ID inválido.` }, { messageClass: 'BANAL' });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  try {
+    const order = await ordersRepo.updateStatus(orderId, { status: 'fulfilled', actorDiscordId: interaction.user.id });
+    return safeReply(
+      interaction,
+      { content: `✅ Encomenda **#${order.id}** — ${order.quantity}× ${order.item_name} → **Entregue**.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
+  } catch (e) {
+    return safeReply(interaction, { content: `${EMOJI.WARN} Erro: ${e.message}`, flags: MessageFlags.Ephemeral }, { messageClass: 'ERROR' });
+  }
+}
+
+async function handleOrderRecusarButton(interaction) {
+  const orderId = parseInt(interaction.customId.split('::')[2], 10);
+  if (!orderId) return safeReply(interaction, { content: `${EMOJI.WARN} ID inválido.` }, { messageClass: 'BANAL' });
+
+  const modal = new ModalBuilder()
+    .setCustomId(`order::modal_recusar::${orderId}`)
+    .setTitle('Recusar Encomenda')
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId('motivo')
+          .setLabel('Motivo da recusa')
+          .setStyle(TextInputStyle.Paragraph)
+          .setPlaceholder('Material indisponível, preço incorreto, etc.')
+          .setRequired(true)
+          .setMaxLength(500)
+      )
+    );
+  return interaction.showModal(modal);
+}
+
+async function handleOrderRecusarModal(interaction) {
+  const orderId = parseInt(interaction.customId.split('::')[3], 10);
+  const motivo = interaction.fields.getTextInputValue('motivo');
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  try {
+    const order = await ordersRepo.updateStatus(orderId, { status: 'denied', actorDiscordId: interaction.user.id, notes: motivo });
+    return safeReply(
+      interaction,
+      { content: `⛔ Encomenda **#${order.id}** — ${order.quantity}× ${order.item_name} → **Recusada**\nMotivo: ${motivo}`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
+  } catch (e) {
+    return safeReply(interaction, { content: `${EMOJI.WARN} Erro: ${e.message}`, flags: MessageFlags.Ephemeral }, { messageClass: 'ERROR' });
+  }
+}
+
+module.exports = { handleGerirEncomendas, handleOrderManageSelect, handleOrderAceitarButton, handleOrderEntregueButton, handleOrderRecusarButton, handleOrderRecusarModal };

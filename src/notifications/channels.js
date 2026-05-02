@@ -53,6 +53,12 @@ const FAMILY_CONFIG = {
     defaultId: DISCOVERED.CH_TOP_SEMANAL, // 1493242996337147915
     slugs: ['top-semanal', 'tops-semanais', 'tops', 'ranking'],
   },
+  ORDERS: {
+    envId: 'ORDERS_CHANNEL_ID',
+    fallbackEnvs: [],
+    defaultId: DISCOVERED.CH_REG_ENCOMENDAS, // 1490397798745505972
+    slugs: ['registo-encomendas', 'encomendas', 'pedidos'],
+  },
 };
 
 // Normaliza nome de canal para comparação: remove emojis, sub-bold unicode

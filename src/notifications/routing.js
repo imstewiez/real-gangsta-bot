@@ -59,7 +59,37 @@ function _onMaterialTransferred(evt) {
 
 function _onOrderEvent(evt) {
   const embed = templates.orderLifecycleEmbed(evt);
-  return _publish('INVENTORY_EVENTS', { embeds: [embed] });
+  // Log no canal de inventario (consolidado)
+  _publish('INVENTORY_EVENTS', { embeds: [embed] }).catch(() => {});
+  // Publica no canal dedicado de encomendas com botoes de gestao
+  const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+  const components = [];
+  if (evt.event === 'created' || evt.status === 'pending') {
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`order::aceitar::${evt.orderId}`)
+        .setLabel('Aceitar')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`order::recusar::${evt.orderId}`)
+        .setLabel('Recusar')
+        .setStyle(ButtonStyle.Danger)
+    );
+    components.push(row);
+  } else if (evt.status === 'in_progress') {
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`order::entregue::${evt.orderId}`)
+        .setLabel('Marcar Entregue')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId(`order::recusar::${evt.orderId}`)
+        .setLabel('Recusar')
+        .setStyle(ButtonStyle.Danger)
+    );
+    components.push(row);
+  }
+  return _publish('ORDERS', { embeds: [embed], components });
 }
 
 function _onMemberJoined(evt) {

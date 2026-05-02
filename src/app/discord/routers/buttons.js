@@ -219,6 +219,11 @@ const BUTTON_ROUTES = [
   exact('chefia::promover', buttonAdapters.handlePromoverButton),
   exact('chefia::gerir_encomendas', orderManagement.handleGerirEncomendas),
 
+  // Botões de encomenda no canal dedicado
+  prefix('order::aceitar::', orderManagement.handleOrderAceitarButton),
+  prefix('order::entregue::', orderManagement.handleOrderEntregueButton),
+  prefix('order::recusar::', orderManagement.handleOrderRecusarButton),
+
   // Painel da sessão (staff actions)
   prefix('saida::session_close_direct::', handleCloseSessionDirect),
   prefix('session::close::', handleCloseSaidaButton),
