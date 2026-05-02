@@ -163,7 +163,7 @@ async function getDistinctVoterCount(sessionId) {
 }
 
 async function deleteVotesForUser(sessionId, discordUserId) {
-  const res = await query(`DELETE FROM availability_votes WHERE session_id = $1 AND discord_user_id = $2`, [
+  const res = await query('DELETE FROM availability_votes WHERE session_id = $1 AND discord_user_id = $2', [
     sessionId,
     discordUserId,
   ]);

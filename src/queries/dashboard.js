@@ -10,18 +10,18 @@ async function handle(interaction) {
 
   const [stockTotal, pendingDel, pendingSales, pendingOrd, openSaidas, weapons, topWeekly, incidents] =
     await Promise.all([
-      query(`SELECT SUM(quantity)::int as n FROM stock`),
-      query(`SELECT COUNT(*)::int as n FROM inventory_delivery_requests WHERE status='pending'`),
-      query(`SELECT COUNT(*)::int as n FROM inventory_delivery_requests WHERE status='pending' AND type='venda'`),
-      query(`SELECT COUNT(*)::int as n FROM orders WHERE status IN ('pending','received','under_review')`),
-      query(`SELECT COUNT(*)::int as n FROM operations WHERE status NOT IN ('concluida','cancelada')`),
+      query('SELECT SUM(quantity)::int as n FROM stock'),
+      query("SELECT COUNT(*)::int as n FROM inventory_delivery_requests WHERE status='pending'"),
+      query("SELECT COUNT(*)::int as n FROM inventory_delivery_requests WHERE status='pending' AND type='venda'"),
+      query("SELECT COUNT(*)::int as n FROM orders WHERE status IN ('pending','in_progress','ready')"),
+      query("SELECT COUNT(*)::int as n FROM operations WHERE status NOT IN ('concluida','cancelada')"),
       query(
-        `SELECT COUNT(*)::int as n FROM operation_participants sp JOIN operations s ON s.id=sp.operation_id WHERE sp.weapon_returned=false AND s.status='concluida'`
+        "SELECT COUNT(*)::int as n FROM operation_participants sp JOIN operations s ON s.id=sp.operation_id WHERE sp.weapon_returned=false AND s.status='concluida'"
       ),
       query(
-        `SELECT m.display_name, wr.hybrid_score FROM weekly_rankings wr JOIN members m ON m.id=wr.member_id WHERE wr.week_start=(SELECT MAX(week_start) FROM weekly_rankings) ORDER BY wr.position LIMIT 3`
+        'SELECT m.display_name, wr.hybrid_score FROM weekly_rankings wr JOIN members m ON m.id=wr.member_id WHERE wr.week_start=(SELECT MAX(week_start) FROM weekly_rankings) ORDER BY wr.position LIMIT 3'
       ),
-      query(`SELECT COUNT(*)::int as n FROM incidents WHERE status IN ('open','analysing')`),
+      query("SELECT COUNT(*)::int as n FROM incidents WHERE status IN ('open','analysing')"),
     ]);
 
   const embed = brandEmbed('MOVEMENT')

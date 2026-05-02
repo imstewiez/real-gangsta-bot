@@ -1,6 +1,6 @@
 'use strict';
 const { query } = require('../db');
-const { warn, log } = require('../logger');
+const { warn } = require('../logger');
 const CONFIG = require('../config');
 
 async function logAudit({

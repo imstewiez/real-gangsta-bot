@@ -1,5 +1,5 @@
 'use strict';
-const { publishWeeklyTop, publishDailySummary } = require('../rankings/rankingJobs');
+const { publishWeeklyTop, publishDailySummary, publishBairristaWeeklyPrize } = require('../rankings/rankingJobs');
 const {
   publishBairristaDailySummary,
   publishBairristaWeeklySummary,
@@ -51,14 +51,15 @@ function startAll(client) {
     registerJob('weekly_rankings', 30 * 60 * 1000, publishWeeklyTop);
   }
   registerJob('daily_summary', 30 * 60 * 1000, publishDailySummary);
+  registerJob('bairrista_weekly_prize', 30 * 60 * 1000, publishBairristaWeeklyPrize);
 
   // Reconciliação de invariantes de roles (diário, 4h da manhã aprox)
-  registerJob('role_invariants', 24 * 60 * 60 * 1000, async client => {
+  registerJob('role_invariants', 24 * 60 * 60 * 1000, async discordClient => {
     try {
-      const guild = client.guilds.cache.get(CONFIG.DISCORD_GUILD_ID);
+      const guild = discordClient.guilds.cache.get(CONFIG.DISCORD_GUILD_ID);
       if (!guild) return;
       const { reconcileAllMembers } = require('../members/roleInvariants');
-      return await reconcileAllMembers(guild, { actor: 'system:daily-job' });
+      return reconcileAllMembers(guild, { actor: 'system:daily-job' });
     } catch (e) {
       warn(`[SCHEDULER] role_invariants failed: ${e.message}`);
     }
@@ -77,17 +78,17 @@ function startAll(client) {
   // job_runs > 90d, radio_history > 365d. Soft-delete availability > 180d.
   registerJob('retention', 24 * 60 * 60 * 1000, async () => {
     const { runRetention } = require('./retentionJob');
-    return await runRetention({ dryRun: false, actor: 'system:scheduler' });
+    return runRetention({ dryRun: false, actor: 'system:scheduler' });
   });
 
   // Reconcile drift Discord↔DB — corre 1x por dia (dry-run). Os fixes
   // aplicam-se diariamente via `role_invariants` acima. Este job existe
   // para gauges Prometheus + relatório de drift em /versao (data health).
-  registerJob('reconcile_daily', 24 * 60 * 60 * 1000, async client => {
-    const guild = client?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
+  registerJob('reconcile_daily', 24 * 60 * 60 * 1000, async discordClient => {
+    const guild = discordClient?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
     if (!guild) return { skipped: 'no_guild' };
     const { runReconcile } = require('../reconcile');
-    return await runReconcile({ domain: 'all', guild, dryRun: true, actor: 'system:scheduler' });
+    return runReconcile({ domain: 'all', guild, dryRun: true, actor: 'system:scheduler' });
   });
 
   // Data health — actualiza gauges Prometheus (stale tabs, drift, retention
@@ -95,8 +96,8 @@ function startAll(client) {
   registerJob(
     'data_health_collect',
     5 * 60 * 1000,
-    async client => {
-      const guild = client?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
+    async discordClient => {
+      const guild = discordClient?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
       const { collect } = require('../lib/dataHealth');
       const r = await collect({ guild });
       return {
@@ -114,10 +115,10 @@ function startAll(client) {
   registerJob(
     'stock_alerts',
     60 * 60 * 1000,
-    async client => {
+    async discordClient => {
       const { setClient, checkAndAlert } = require('../inventory/stockAlertEngine');
-      setClient(client);
-      return await checkAndAlert({ dryRun: false });
+      setClient(discordClient);
+      return checkAndAlert({ dryRun: false });
     },
     { runOnStart: true }
   );
@@ -142,11 +143,11 @@ function startAll(client) {
   registerJob(
     'backfill_topicos',
     24 * 60 * 60 * 1000,
-    async client => {
-      const guild = client?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
+    async discordClient => {
+      const guild = discordClient?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
       if (!guild) return { skipped: 'no_guild' };
       const { backfill } = require('../topics/backfillTopicosJob');
-      return await backfill(guild, { dryRun: false });
+      return backfill(guild, { dryRun: false });
     },
     { runOnStart: false }
   );
@@ -156,32 +157,19 @@ function startAll(client) {
   registerJob(
     'cleanup_topicos',
     24 * 60 * 60 * 1000,
-    async client => {
-      const guild = client?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
+    async discordClient => {
+      const guild = discordClient?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
       if (!guild) return { skipped: 'no_guild' };
       const { cleanup } = require('../topics/cleanupTopicosJob');
-      return await cleanup(guild, { dryRun: false });
+      return cleanup(guild, { dryRun: false });
     },
     { runOnStart: false }
   );
 
-  // Catalog prices — DESACTIVADO. O precário agora é gerido via
-  // scripts/manual/importPriceList.js a partir de lista_precos_corrigida.json.
-  // Removido para evitar sobrescrever preços importados manualmente.
-  // registerJob(
-  //   'catalog_prices',
-  //   7 * 24 * 60 * 60 * 1000,
-  //   async () => {
-  //     const { runCatalogPricesSync } = require('./catalogPricesJob');
-  //     return await runCatalogPricesSync();
-  //   },
-  //   { runOnStart: true }
-  // );
-
   // Sticky messages — refresh time-based (modo repost com threshold_minutes)
-  registerJob('sticky_time_refresh', 60 * 1000, async client => {
+  registerJob('sticky_time_refresh', 60 * 1000, async discordClient => {
     const { runTimeBasedRefresh } = require('../sticky/stickyEngine');
-    return await runTimeBasedRefresh(client);
+    return runTimeBasedRefresh(discordClient);
   });
 
   // Stock summary — snapshot periódico no canal resumo-stock
@@ -189,7 +177,7 @@ function startAll(client) {
     const intervalMs = (CONFIG.STOCK_SUMMARY_INTERVAL_HOURS || 4) * 60 * 60 * 1000;
     registerJob('stock_summary', intervalMs, async () => {
       const { publishStockSummary } = require('../inventory/stockNotifier');
-      return await publishStockSummary();
+      return publishStockSummary();
     });
   }
 
@@ -198,7 +186,7 @@ function startAll(client) {
   if (CONFIG.AVAILABILITY_AUTO_PUBLISH_ENABLED && CONFIG.AVAILABILITY_CHANNEL_ID) {
     const { availabilityRepo } = require('../repositories');
     const { createSession, closeSession, todayDateString } = require('../availability/availabilityEngine');
-    registerJob('availability_auto_publish', 5 * 60 * 1000, async client => {
+    registerJob('availability_auto_publish', 5 * 60 * 1000, async discordClient => {
       const now = new Date();
       const lisbonHour = Number(
         new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Lisbon', hour: 'numeric', hour12: false }).format(now)
@@ -211,13 +199,15 @@ function startAll(client) {
       // (historial) e uma sessão fresca substitui-a.
       const prevOpen = await availabilityRepo.findOpenBefore(CONFIG.AVAILABILITY_CHANNEL_ID, date).catch(() => []);
       for (const sess of prevOpen) {
-        await closeSession({ client, sessionId: sess.id, actorId: 'system:daily-reset' }).catch(() => {});
+        await closeSession({ client: discordClient, sessionId: sess.id, actorId: 'system:daily-reset' }).catch(
+          () => {}
+        );
       }
 
       const existing = await availabilityRepo.getOpenSession(CONFIG.AVAILABILITY_CHANNEL_ID, date);
       if (existing) return { skipped: 'already_open', sessionId: existing.id, closedPrev: prevOpen.length };
       const { session } = await createSession({
-        client,
+        client: discordClient,
         channelId: CONFIG.AVAILABILITY_CHANNEL_ID,
         createdBy: 'system:auto-publish',
       });
@@ -234,21 +224,21 @@ function startAll(client) {
       new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Lisbon', hour: 'numeric', hour12: false }).format(now)
     );
     if (lisbonHour !== (CONFIG.BAIRRISTA_DAILY_SUMMARY_HOUR || 23)) return { skipped: 'wrong_hour' };
-    return await publishBairristaDailySummary();
+    return publishBairristaDailySummary();
   });
 
   // Resumo semanal: corre de 6 em 6h, publica na sexta (dia 5).
   registerJob('bairrista_weekly_summary', 6 * 60 * 60 * 1000, async () => {
     const now = new Date();
     if (now.getDay() !== (CONFIG.BAIRRISTA_WEEKLY_SUMMARY_DAY || 5)) return { skipped: 'wrong_day' };
-    return await publishBairristaWeeklySummary();
+    return publishBairristaWeeklySummary();
   });
 
   // Resumo mensal: corre de 12 em 12h, publica no dia 1 de cada mês.
   registerJob('bairrista_monthly_summary', 12 * 60 * 60 * 1000, async () => {
     const now = new Date();
     if (now.getDate() !== 1) return { skipped: 'not_first_day' };
-    return await publishBairristaMonthlySummary();
+    return publishBairristaMonthlySummary();
   });
 
   // Spot cooldown expirer — 1/min. Edita mensagem para "livre" e apaga
@@ -257,18 +247,18 @@ function startAll(client) {
   registerJob(
     'spot_cooldown_expirer',
     60 * 1000,
-    async client => {
+    async discordClient => {
       const { runExpirer } = require('../saidas/spotCooldown');
-      return await runExpirer(client);
+      return runExpirer(discordClient);
     },
     { runOnStart: true }
   );
 
   // Saida request expirer — 1/min. Auto-rejeita pedidos 'requested' com
   // idade > SAIDA_REQUEST_TTL_MINUTES (default 15min). DM ao requester.
-  registerJob('saida_request_expirer', 60 * 1000, async client => {
+  registerJob('saida_request_expirer', 60 * 1000, async discordClient => {
     const { expireStaleRequests } = require('../saidas/saidaEngine');
-    return await expireStaleRequests(client);
+    return expireStaleRequests(discordClient);
   });
 
   // Leaderboard live refresh — 5 min. runOnStart garante panel publicado
@@ -276,12 +266,12 @@ function startAll(client) {
   registerJob(
     'leaderboard_refresh',
     5 * 60 * 1000,
-    async client => {
+    async discordClient => {
       const { publishOrRefresh, setClient } = require('../leaderboard/leaderboardPublisher');
-      setClient(client);
+      setClient(discordClient);
       // force=true: scheduler sempre refresca no tick (ignora debounce
       // global que só protege path manual contra burst de N users).
-      return await publishOrRefresh(client, { force: true });
+      return publishOrRefresh(discordClient, { force: true });
     },
     { runOnStart: true }
   );

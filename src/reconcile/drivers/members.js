@@ -11,7 +11,7 @@
  * last_discord_reconciled_at.
  */
 
-const CONFIG = require('../../config');
+// const CONFIG = require('../../config');
 const { memberRepo } = require('../../repositories');
 const { markMemberDiscordReconciled } = require('../../repositories/_meta');
 const { detectRoleFromGuildMember, backfillMembers } = require('../../members/backfill');

@@ -100,6 +100,12 @@ async function buildChefiaPanel() {
         },
         { label: 'Promover', value: 'chefia::promover', emoji: EMOJI.PROGRESSO, description: 'Promover bairristas' },
         {
+          label: 'Gerir Encomendas',
+          value: 'chefia::gerir_encomendas',
+          emoji: EMOJI.ENCOMENDA,
+          description: 'Aprovar, processar e entregar encomendas',
+        },
+        {
           label: 'Gerir Entregas',
           value: 'chefia::gerir_entregas',
           emoji: EMOJI.ENTREGA,

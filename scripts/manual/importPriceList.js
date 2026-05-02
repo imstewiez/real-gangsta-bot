@@ -102,7 +102,7 @@ async function ensureItems(client, data) {
       }
     } else if (typeof list === 'object') {
       // craft_weapons has sub-categories (orange, red)
-      for (const [subCategory, subList] of Object.entries(list)) {
+      for (const [_subCategory, subList] of Object.entries(list)) {
         for (const entry of subList) {
           items.push({
             name: entry.nome,
@@ -142,8 +142,8 @@ async function ensureItems(client, data) {
       results.inserted++;
       console.log(`  [INSERT] ${item.name} (${item.category}) — ${item.price ?? 'sem preço'}€`);
     } else {
-      if (item.price != null && !DRY_RUN) {
-        await client.query(`UPDATE items SET estimated_value = $1, category = $2, updated_at = NOW() WHERE id = $3`, [
+      if (item.price !== null && item.price !== undefined && !DRY_RUN) {
+        await client.query('UPDATE items SET estimated_value = $1, category = $2, updated_at = NOW() WHERE id = $3', [
           item.price,
           item.category,
           existing.rows[0].id,
@@ -265,7 +265,7 @@ async function ensureRecipes(client, data, itemIdMap) {
 }
 
 async function main() {
-  console.log(`=== IMPORTAÇÃO LISTA DE PREÇOS ===`);
+  console.log('=== IMPORTAÇÃO LISTA DE PREÇOS ===');
   console.log(`JSON: ${JSON_PATH}`);
   console.log(`DRY RUN: ${DRY_RUN ? 'SIM' : 'NÃO'}`);
   console.log('');

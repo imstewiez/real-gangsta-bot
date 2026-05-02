@@ -26,7 +26,6 @@ const {
   FONT_FAMILY,
   NUM_FMT,
   ROW_H,
-  COL_W,
   BORDER,
   SIGNATURE,
   cell,
@@ -35,20 +34,18 @@ const {
   sectionCell,
   sectionHintCell,
   headerCell,
-  subHeaderCell,
   bodyCell,
   bodyBoldCell,
-  mutedCell,
   captionCell,
   numCell,
   signatureCell,
   kpiLabelCell,
   kpiValueCell,
   kpiDeltaCell,
-  badgeCell,
+  miniKPILabelCell,
+  miniKPIValueCell,
+  miniKPIDeltaCell,
   rankCell,
-  formatDelta,
-  rgb,
 } = require('../theme');
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -138,6 +135,120 @@ function sectionHeader(batch, sheetId, row, { title, hint = null, columnCount, f
     batch.mergeCells(sheetId, row, row + 1, 0, mergeEnd);
   }
   batch.setRowHeight(sheetId, row, ROW_H.SECTION);
+  return row + 1;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mini KPI row — 2 linhas de altura para N cards lado a lado (metade do kpiStrip).
+// Row 1: label (7px) + value (14px bold) empilhados com wrap numa célula.
+// Row 2: delta (7px colorido).
+// Usa bg CARD para destacar do fundo da app.
+//
+// cards: [{label, value, numberFormat, delta?, deltaDirection?, hint?}]
+// Retorna próxima row disponível.
+// ─────────────────────────────────────────────────────────────────────────────
+function miniKPIRow(batch, sheetId, row, cards, columnCount) {
+  const n = cards.length;
+  if (n === 0) return row;
+  const span = Math.floor(columnCount / n);
+  const remainder = columnCount - span * n;
+
+  const labelRow = Array(columnCount).fill(cell('', { bg: COLOR.BG_CARD }));
+  const deltaRow = Array(columnCount).fill(cell('', { bg: COLOR.BG_CARD }));
+
+  let col = 0;
+  cards.forEach((c, i) => {
+    const w = span + (i < remainder ? 1 : 0);
+    const sep = i > 0 ? BORDER.LEFT_SEPARATOR : undefined;
+    const label = (c.label || '').toUpperCase();
+    const deltaText = c.delta !== undefined ? c.delta : c.hint || '';
+    const deltaDir = c.deltaDirection || 'flat';
+
+    // Valor formatado como string
+    const valStr =
+      c.numberFormat && Number.isFinite(c.value)
+        ? c.value.toLocaleString('pt-PT', { maximumFractionDigits: 2 })
+        : String(c.value ?? '—');
+
+    // Row 1: label + valor (wrap)
+    const text1 = `${label}\n${valStr}`;
+    labelRow[col] = cell(text1, {
+      bg: COLOR.BG_CARD,
+      font: { fontFamily: FONT_FAMILY, fontSize: 13, bold: true, foregroundColor: COLOR.WHITE },
+      align: 'LEFT',
+      vAlign: 'MIDDLE',
+      wrap: true,
+      borders: sep,
+    });
+
+    // Row 2: delta colorido
+    let deltaColor = COLOR.GRAY;
+    if (deltaDir === 'up' || deltaDir === true) deltaColor = COLOR.GREEN_DEEP;
+    else if (deltaDir === 'down' || deltaDir === false) deltaColor = COLOR.RED_SIGNAL;
+
+    deltaRow[col] = cell(deltaText, {
+      bg: COLOR.BG_CARD,
+      font: { fontFamily: FONT_FAMILY, fontSize: 7, bold: true, foregroundColor: deltaColor },
+      align: 'LEFT',
+      vAlign: 'TOP',
+      borders: sep,
+    });
+
+    col += w;
+  });
+
+  batch.updateCells(sheetId, row, 0, [labelRow]);
+  batch.updateCells(sheetId, row + 1, 0, [deltaRow]);
+  batch.setRowHeight(sheetId, row, 36);
+  batch.setRowHeight(sheetId, row + 1, 14);
+  return row + 2;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Compact ranking row — escreve N itens de ranking numa só row, side-by-side.
+// Cada item: {rank, label, value, valueFormat?, sub?}
+// Usado para destaques/top-N compactos.
+// ─────────────────────────────────────────────────────────────────────────────
+function compactRankingRow(batch, sheetId, row, items, columnCount) {
+  const n = items.length;
+  if (n === 0) return row;
+  const span = Math.floor(columnCount / n);
+  const remainder = columnCount - span * n;
+
+  const rowCells = Array(columnCount).fill(cell('', { bg: COLOR.BG_APP }));
+  let col = 0;
+  items.forEach((it, i) => {
+    const w = span + (i < remainder ? 1 : 0);
+    const sep = i > 0 ? BORDER.LEFT_SEPARATOR : undefined;
+    const label = it.label || '';
+    const valStr =
+      it.value !== undefined && it.value !== null
+        ? it.valueFormat
+          ? it.value.toLocaleString('pt-PT')
+          : String(it.value)
+        : '—';
+    const sub = it.sub || '';
+    const fullText = sub ? `${label}\n${valStr}\n${sub}` : `${label}\n${valStr}`;
+
+    const rankC = rankCell(it.rank || i + 1);
+    // Merge rank + texto numa célula só com wrap
+    rowCells[col] = {
+      userEnteredValue: { stringValue: fullText },
+      userEnteredFormat: {
+        backgroundColor: COLOR.BG_BLOCK,
+        textFormat: { fontFamily: FONT_FAMILY, fontSize: 10, bold: true, foregroundColor: COLOR.OFF_WHITE },
+        horizontalAlignment: 'LEFT',
+        verticalAlignment: 'MIDDLE',
+        wrapStrategy: 'WRAP',
+        borders: sep ? { ...sep, left: sep.left } : undefined,
+      },
+    };
+
+    col += w;
+  });
+
+  batch.updateCells(sheetId, row, 0, [rowCells]);
+  batch.setRowHeight(sheetId, row, 36);
   return row + 1;
 }
 
@@ -270,15 +381,15 @@ function rankingBlock(batch, sheetId, row, items, columnCount, { labelCol = 1, v
 // ─────────────────────────────────────────────────────────────────────────────
 function alertBox(batch, sheetId, row, { message, kind = 'info', columnCount }) {
   const palette = {
-    info: { bg: COLOR.BLUE_SOFT, fg: COLOR.BLUE_DEEP, icon: 'ⓘ' },
-    warn: { bg: COLOR.YELLOW_SOFT, fg: COLOR.YELLOW_DEEP, icon: '⚠' },
-    danger: { bg: COLOR.RED_SIGNAL_SOFT, fg: COLOR.RED_SIGNAL, icon: '✖' },
-    success: { bg: COLOR.GREEN_SOFT, fg: COLOR.GREEN_DEEP, icon: '✓' },
+    info: { bg: COLOR.BLUE_SOFT, fg: COLOR.BLUE_DEEP, icon: 'i' },
+    warn: { bg: COLOR.YELLOW_SOFT, fg: COLOR.YELLOW_DEEP, icon: '!' },
+    danger: { bg: COLOR.RED_SIGNAL_SOFT, fg: COLOR.RED_SIGNAL, icon: 'x' },
+    success: { bg: COLOR.GREEN_SOFT, fg: COLOR.GREEN_DEEP, icon: '+' },
   };
   const p = palette[kind] || palette.info;
-  const c = cell(`${p.icon}  ${message}`, {
+  const c = cell(`[${p.icon}] ${message}`, {
     bg: p.bg,
-    font: { fontFamily: FONT_FAMILY, fontSize: 10, bold: true, foregroundColor: p.fg },
+    font: { fontFamily: FONT_FAMILY, fontSize: 9, bold: true, foregroundColor: p.fg },
     align: 'LEFT',
     vAlign: 'MIDDLE',
     borders: { left: { style: 'SOLID_THICK', width: 3, color: p.fg } },
@@ -286,7 +397,7 @@ function alertBox(batch, sheetId, row, { message, kind = 'info', columnCount }) 
   const fill = Array(columnCount - 1).fill(cell('', { bg: p.bg }));
   batch.updateCells(sheetId, row, 0, [[c, ...fill]]);
   batch.mergeCells(sheetId, row, row + 1, 0, columnCount);
-  batch.setRowHeight(sheetId, row, 24);
+  batch.setRowHeight(sheetId, row, 20);
   return row + 1;
 }
 
@@ -385,14 +496,15 @@ function sectionWithKPIs(batch, sheetId, row, { title, hint, cards, columnCount 
 //
 // values: array de {col, value, numberFormat} ou array directo de cells.
 // ─────────────────────────────────────────────────────────────────────────────
-function totalRow(batch, sheetId, row, { label = 'TOTAL', values = [], columnCount }) {
+function totalRow(batch, sheetId, row, { label = 'TOTAL', values = [], columnCount, bg }) {
   const boldWhite = { fontFamily: FONT_FAMILY, fontSize: 10, bold: true, foregroundColor: COLOR.WHITE };
   const topBorder = { top: { style: 'SOLID', width: 1, color: COLOR.RED_DEEP } };
+  const rowBg = bg || COLOR.BG_BLOCK_ALT;
   const cells = Array(columnCount)
     .fill(null)
-    .map(() => cell('', { bg: COLOR.BG_BLOCK_ALT, borders: topBorder }));
+    .map(() => cell('', { bg: rowBg, borders: topBorder }));
   cells[0] = cell(label, {
-    bg: COLOR.BG_BLOCK_ALT,
+    bg: rowBg,
     font: boldWhite,
     align: 'RIGHT',
     vAlign: 'MIDDLE',
@@ -401,7 +513,7 @@ function totalRow(batch, sheetId, row, { label = 'TOTAL', values = [], columnCou
   for (const v of values) {
     if (v.col >= 0 && v.col < columnCount) {
       cells[v.col] = cell(v.value, {
-        bg: COLOR.BG_BLOCK_ALT,
+        bg: rowBg,
         font: boldWhite,
         align: 'RIGHT',
         vAlign: 'MIDDLE',
@@ -421,48 +533,14 @@ function _fmtNowPT() {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Legacy shims — manter os nomes antigos a apontar para os novos enquanto
-// as tabs ainda não foram migradas.
-// ─────────────────────────────────────────────────────────────────────────────
-const writeHeader = (batch, sheetId, title, columnCount, freezeAt = 0) =>
-  headerBlock(batch, sheetId, { title, subtitle: null, columnCount, freezeAt });
-
-const writeKpiBar = (batch, sheetId, row, kpis, columnCount) =>
-  kpiStrip(
-    batch,
-    sheetId,
-    row,
-    kpis.map(k => ({
-      label: k.label,
-      value: k.value,
-      numberFormat: k.fmt,
-      hint: '',
-    })),
-    columnCount
-  );
-
-const writeTableHeader = tableHeader;
-
-const writeDivider = (batch, sheetId, row, columnCount, color) => {
-  const variant =
-    color && color.red !== undefined && Math.abs(color.red - COLOR.RED_DEEP.red) > 0.1 ? 'hair' : 'accent';
-  return divider(batch, sheetId, row, columnCount, variant);
-};
-
-const writeSection = (batch, sheetId, row, title, columnCount) =>
-  sectionHeader(batch, sheetId, row, { title, columnCount });
-
-const writeFooter = (batch, sheetId, row, columnCount, freezeAt = 0) =>
-  footerBlock(batch, sheetId, row, columnCount, freezeAt);
-
 module.exports = {
-  // API nova
   headerBlock,
   sectionHeader,
   spacer,
   divider,
   kpiStrip,
+  miniKPIRow,
+  compactRankingRow,
   tableHeader,
   tableBody,
   rankingBlock,
@@ -476,11 +554,5 @@ module.exports = {
   applyRowBanding,
   gangTitle,
   sectionWithKPIs,
-  // API antiga (shims)
-  writeHeader,
-  writeKpiBar,
-  writeTableHeader,
-  writeDivider,
-  writeSection,
-  writeFooter,
+  ROW_H,
 };

@@ -32,7 +32,7 @@ const {
   MessageFlags,
 } = require('discord.js');
 const { inventoryRepo } = require('../repositories');
-const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
 const { EMOJI } = require('../content');
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -49,7 +49,7 @@ const { EMOJI } = require('../content');
  * Usado em AMBOS os lados (query e nome do item) para match consistente.
  */
 function normalize(str) {
-  if (str == null) return '';
+  if (str === null || str === undefined) return '';
   return String(str)
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -197,7 +197,7 @@ async function handleSubmitModal(interaction) {
   // Pesquisa demasiado ampla (>25 matches verdadeiros — não cortados pelo limit)
   const tooBroadHint =
     matches.length === 25
-      ? `\n_(25 resultados — pesquisa demasiado ampla, escreve mais letras para filtrar melhor.)_`
+      ? '\n_(25 resultados — pesquisa demasiado ampla, escreve mais letras para filtrar melhor.)_'
       : '';
 
   const select = buildResultsSelect(purpose, matches);

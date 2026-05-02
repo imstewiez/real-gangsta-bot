@@ -1,7 +1,6 @@
 # Message Lifecycle — Política central
 
-Canonical em `src/shared/messagePolicy.js` + `src/shared/interactionHelpers.js`
-+ `src/shared/expireFlow.js`.
+Canonical em `src/shared/messagePolicy.js` + `src/shared/interactionHelpers.js`.
 
 ## Taxonomia (7 classes)
 
@@ -50,26 +49,6 @@ return safeReply(interaction, { embeds: [step], components: [select] },
 
 Código antigo que usa `dismissible: true` continua a funcionar (→ BANAL).
 `dismissible: false` mapeia para FLOW.
-
-## Fluxo expirado
-
-Quando um fluxo (FLOW) chega ao fim ou expira:
-
-```js
-const { markExpiredNow, scheduleFlowExpire } = require('../shared/expireFlow');
-
-// Ao completar um wizard com sucesso:
-await markExpiredNow(interaction, 'Sessão concluída.');
-
-// Ao abrir um fluxo, agendar expiração preventiva:
-scheduleFlowExpire(interaction, {
-  afterMs: 10 * 60_000,
-  reason: 'Sessão expirada. Abre pelo painel.',
-});
-```
-
-A mensagem fica com embed de expiração + componentes desactivados — o
-utilizador sabe que não vale a pena clicar.
 
 ## Datas e timestamps
 

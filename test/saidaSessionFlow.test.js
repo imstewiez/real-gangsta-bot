@@ -25,7 +25,7 @@ const _queries = [];
 const _txQueries = [];
 let _participants = [];
 let _scoringMembers = [];
-let _auditLogs = [];
+const _auditLogs = [];
 
 function _resetCapture() {
   _queries.length = 0;

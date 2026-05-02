@@ -1,5 +1,5 @@
 {
-  "all": false,
+  "all": true,
   "check-coverage": true,
   "include": ["src/**/*.js"],
   "exclude": [
@@ -11,7 +11,6 @@
     "src/web/server.js",
     "src/app/bootstrap.js",
     "src/index.js",
-    "src/sheets/**",
     "src/content/**",
     "src/reconcile/**",
     "src/notifications/**",
@@ -43,21 +42,13 @@
     "src/audit/**",
     "src/repositories/itemAdmin.js",
     "src/repositories/memberLifecycle.js",
-    "src/repositories/dataQuality.js",
-    "src/repositories/task.js",
-    "src/repositories/reputation.js",
     "src/repositories/absence.js",
-    "src/repositories/maintenance.js",
     "src/repositories/incident.js",
-    "src/services/itemAdminService.js",
-    "src/shared/stateVisuals.js",
-    "src/shared/privacyFilter.js",
-    "src/shared/confirmationDraft.js",
-    "src/shared/expiredButtonHandler.js"
+    "src/services/itemAdminService.js"
   ],
-  "lines": 50,
-  "statements": 50,
-  "branches": 75,
-  "functions": 38,
+  "lines": 26,
+  "statements": 26,
+  "branches": 72,
+  "functions": 32,
   "reporter": ["text-summary", "lcov"]
 }

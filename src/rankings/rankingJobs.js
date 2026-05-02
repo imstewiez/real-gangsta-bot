@@ -1,6 +1,6 @@
 'use strict';
 const { computeWeeklyRankings, getCurrentWeekRanking, getWeekSummary } = require('./rankingEngine');
-const { rankingEmbed, brandEmbed } = require('../shared/embedBuilders');
+const { rankingEmbed, brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { weekBounds } = require('../util');
 const { query } = require('../db');
 const CONFIG = require('../config');
@@ -200,4 +200,60 @@ async function publishDailySummary(client) {
   }
 }
 
-module.exports = { publishWeeklyTop, publishDailySummary };
+async function publishBairristaWeeklyPrize(client) {
+  if (!CONFIG.BAIRRISTA_WEEKLY_PRIZE_CHANNEL_ID) return { skipped: 'no_channel' };
+
+  const now = new Date();
+  if (now.getDay() !== CONFIG.BAIRRISTA_WEEKLY_PRIZE_DAY || now.getHours() !== CONFIG.BAIRRISTA_WEEKLY_PRIZE_HOUR) {
+    return { skipped: 'wrong_time' };
+  }
+
+  const prevWeek = new Date();
+  prevWeek.setDate(prevWeek.getDate() - 7);
+  const { start, end } = weekBounds(prevWeek);
+  const weekStart = start.toISOString().split('T')[0];
+  const weekEnd = end.toISOString().split('T')[0];
+
+  if (await alreadyPublishedSince('bairrista_weekly_prize', start)) {
+    return { skipped: 'already_published', weekStart };
+  }
+
+  try {
+    const { rankingRepo } = require('../repositories');
+    const winner = await rankingRepo.getWeekTopBairristaByDeliveries(weekStart);
+
+    const embed = brandEmbed('HOUSE')
+      .setTitle('🏆 Prémio da Semana — Bairristas')
+      .setColor(COLOR.GOLD)
+      .setDescription(
+        `Semana **${weekStart}** a **${weekEnd}**\n\n` +
+          (winner
+            ? 'O bairrista que mais entregou material foi:\n\n' +
+              `**${winner.display_name}**\n` +
+              `📦 **${(winner.deliveries || 0).toLocaleString('pt-PT')}** entregas\n` +
+              `⭐ Tier: ${winner.tier || '—'}`
+            : '_Nenhum bairrista registou entregas esta semana._')
+      );
+
+    if (winner) {
+      embed.addFields(
+        { name: 'Vendas', value: `**${(winner.sales || 0).toLocaleString('pt-PT')}**`, inline: true },
+        { name: 'Saídas', value: `**${(winner.operations_count || 0).toLocaleString('pt-PT')}**`, inline: true },
+        { name: 'Kills', value: `**${(winner.kills_count || 0).toLocaleString('pt-PT')}**`, inline: true }
+      );
+    }
+
+    const channel = await client.channels.fetch(CONFIG.BAIRRISTA_WEEKLY_PRIZE_CHANNEL_ID).catch(() => null);
+    if (channel) {
+      await channel.send({ embeds: [embed] });
+      log('[PRIZE] Prémio bairrista da semana publicado.');
+      return { published: true, weekStart, winnerId: winner?.member_id || null };
+    }
+    return { skipped: 'channel_unavailable' };
+  } catch (e) {
+    warn(`[PRIZE] Falha ao publicar prémio bairrista: ${e.message}`);
+    throw e;
+  }
+}
+
+module.exports = { publishWeeklyTop, publishDailySummary, publishBairristaWeeklyPrize };

@@ -17,7 +17,6 @@ e dependências entre eles. Fonte: `src/jobs/scheduler.js`.
 | `data_health_collect` | 5 min | **sim** | DB + Discord guild | Actualiza gauges (stale tabs, drift, retention, stuck jobs) |
 | `stock_alerts` | 1h | **sim** | DB + STOCK canal | Posta alerta se item.balance < alert_threshold (throttle 24h) |
 | `monthly_rankings` | 6h | **sim** | DB | Calcula rankings do mês + all_time_stats |
-| `catalog_prices` | 7d | não | DB + config/prices-catalog.json | Aplica preços do JSON à tabela items |
 | `sticky_time_refresh` | 1 min | não | Discord guild | Refaz posts sticky `mode=repost` que ultrapassaram threshold_minutes |
 | `stock_summary` | N h (config) | não | `STOCK_NOTIFY_ENABLED=true` | Snapshot periódico no canal resumo-stock |
 | `availability_auto_publish` | 5 min | não | `AVAILABILITY_AUTO_PUBLISH_ENABLED=true` + AVAILABILITY_CHANNEL_ID | Abre sessão diária de disponibilidade à hora configurada |

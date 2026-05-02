@@ -11,7 +11,7 @@
  * Cada função recebe um payload de domínio e devolve um EmbedBuilder.
  */
 
-const { EmbedBuilder } = require('discord.js');
+// const { EmbedBuilder } = require('discord.js');
 const { EMOJI, SAIDA_TYPE } = require('../content');
 const { formatPtDate } = require('../shared/formatPtDate');
 const { brandEmbed, COLOR } = require('../shared/embedBuilders');
@@ -49,14 +49,15 @@ function inventoryMovementEmbed(p) {
   if (p.actorId && p.actorId !== p.memberDiscordId) {
     fields.push({ name: 'Registou', value: mention(p.actorId), inline: true });
   }
-  if (p.value != null || (p.quantity && p.itemValue)) {
-    const val = p.value != null ? p.value : (Number(p.quantity) || 0) * (Number(p.itemValue) || 0);
+  if ((p.value !== null && p.value !== undefined) || (p.quantity && p.itemValue)) {
+    const val =
+      p.value !== null && p.value !== undefined ? p.value : (Number(p.quantity) || 0) * (Number(p.itemValue) || 0);
     if (val > 0) fields.push({ name: 'Valor estimado', value: fmtVal(val), inline: true });
   }
   if (p.operationId) {
     fields.push({ name: 'Saída', value: `#${p.operationId}`, inline: true });
   }
-  if (p.balanceAfter != null) {
+  if (p.balanceAfter !== null && p.balanceAfter !== undefined) {
     fields.push({ name: 'Stock após', value: `**${fmt(p.balanceAfter)}**`, inline: true });
   }
   if (p.notes) {
@@ -84,6 +85,8 @@ function inventoryTransferEmbed(p) {
 const ORDER_EVENT_META = {
   created: { label: 'Nova Encomenda', color: COLOR.WARNING_SOFT, emoji: EMOJI.NOVO },
   approved: { label: 'Encomenda Aprovada', color: COLOR.GREEN_ALT, emoji: EMOJI.OK },
+  in_progress: { label: 'Encomenda em Processo', color: COLOR.INFO, emoji: '🔧' },
+  ready: { label: 'Encomenda Pronta', color: COLOR.PRIMARY, emoji: '📦' },
   fulfilled: { label: 'Encomenda Entregue', color: COLOR.SUCCESS, emoji: EMOJI.MATERIAL },
   denied: { label: 'Encomenda Recusada', color: COLOR.DANGER, emoji: EMOJI.ERRO },
   cancelled: { label: 'Encomenda Cancelada', color: COLOR.MUTED, emoji: '🚫' },
@@ -197,10 +200,11 @@ function saidaLifecycleEmbed(p) {
     fields.push({ name: 'Resultado', value: RESULT_LABEL[p.result] || p.result, inline: true });
   }
 
-  if (p.participantsCount != null) {
+  if (p.participantsCount !== null && p.participantsCount !== undefined) {
     const parts = [`**${p.participantsCount}** totais`];
-    if (p.characterized_count != null) parts.push(`${p.characterized_count} caracterizados`);
-    if (p.workers_count != null) parts.push(`${p.workers_count} trabalhadores`);
+    if (p.characterized_count !== null && p.characterized_count !== undefined)
+      parts.push(`${p.characterized_count} caracterizados`);
+    if (p.workers_count !== null && p.workers_count !== undefined) parts.push(`${p.workers_count} trabalhadores`);
     fields.push({ name: 'Participantes', value: parts.join(' · '), inline: false });
   }
 
@@ -212,11 +216,11 @@ function saidaLifecycleEmbed(p) {
 
   // Closed stats — material em UNIDADES (não €)
   if (p.event === 'closed') {
-    if (p.suppliedUnits != null)
+    if (p.suppliedUnits !== null && p.suppliedUnits !== undefined)
       fields.push({ name: `${EMOJI.MATERIAL} Fornecido`, value: `**${fmt(p.suppliedUnits)}** un.`, inline: true });
-    if (p.returnedUnits != null)
+    if (p.returnedUnits !== null && p.returnedUnits !== undefined)
       fields.push({ name: `${EMOJI.DEVOLVER} Devolvido`, value: `**${fmt(p.returnedUnits)}** un.`, inline: true });
-    if (p.lostUnits != null)
+    if (p.lostUnits !== null && p.lostUnits !== undefined)
       fields.push({ name: `${EMOJI.PERDIDO} Perdido`, value: `**${fmt(p.lostUnits)}** un.`, inline: true });
     if (p.craftAmount > 0)
       fields.push({ name: `${EMOJI.CRAFT} Craftado`, value: `**${fmt(p.craftAmount)}** un.`, inline: true });

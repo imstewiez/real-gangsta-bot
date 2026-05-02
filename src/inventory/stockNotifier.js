@@ -16,7 +16,7 @@
  * Resumo periódico + alertas → `resumo-stock`.
  */
 
-const { ChannelType, EmbedBuilder } = require('discord.js');
+const { ChannelType } = require('discord.js');
 const CONFIG = require('../config');
 const { CATEGORY_BY_KEY, bold } = require('../discord/structureTemplate');
 const { brandEmbed, COLOR, setFooterText } = require('../shared/embedBuilders');

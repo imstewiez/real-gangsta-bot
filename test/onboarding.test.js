@@ -38,7 +38,7 @@ const memberRepoStub = {
 require.cache[resolvedPath('db.js')] = {
   exports: {
     pool: { connect: async () => ({ query: async () => ({ rows: [] }), release: () => {} }) },
-    query: async () => ({ rows: [{ total_qty: _memberMaterialQty }] }),
+    query: async () => ({ rows: [{ total_points: _memberMaterialQty }] }),
     // Stub para withAdvisoryLock — executa callback com um txClient que
     // responde às queries que checkAndPromote faz dentro do lock.
     withAdvisoryLock: async (_key, callback) => {
@@ -60,11 +60,11 @@ require.cache[resolvedPath('db.js')] = {
               rowCount: 1,
             };
           }
-          if (sql.includes('SUM(im.quantity)')) {
-            return { rows: [{ total_qty: _memberMaterialQty }], rowCount: 1 };
+          if (sql.includes('SUM(im.quantity')) {
+            return { rows: [{ total_points: _memberMaterialQty }], rowCount: 1 };
           }
           if (sql.startsWith('UPDATE members SET tier')) {
-            return { rowCount: _memberMaterialQty >= 25000 ? 1 : 0, rows: [] };
+            return { rowCount: _memberMaterialQty >= 50000 ? 1 : 0, rows: [] };
           }
           return { rows: [], rowCount: 0 };
         },
@@ -169,20 +169,20 @@ describe('autoPromotionEngine — getPromotionProgress', () => {
     assert.equal(p.nextTier, 'o_gunao');
     assert.equal(p.maxedOut, false);
     assert.equal(parseFloat(p.progress), 0);
-    assert.equal(p.remaining, 25000);
+    assert.equal(p.remaining, 50000);
   });
 
   it('young_blood a 50% do threshold', async () => {
     _currentMember = { id: 1, role: 'bairrista', tier: 'young_blood' };
-    _memberMaterialQty = 12500;
+    _memberMaterialQty = 25000;
     const p = await getPromotionProgress('111');
     assert.equal(parseFloat(p.progress), 50);
-    assert.equal(p.remaining, 12500);
+    assert.equal(p.remaining, 25000);
   });
 
-  it('o_gunao com 50k material: 100% progresso', async () => {
+  it('o_gunao com 100k material: 100% progresso', async () => {
     _currentMember = { id: 1, role: 'bairrista', tier: 'o_gunao' };
-    _memberMaterialQty = 50000;
+    _memberMaterialQty = 100000;
     const p = await getPromotionProgress('222');
     assert.equal(p.currentTier, 'o_gunao');
     assert.equal(p.nextTier, 'gangster_fodido');

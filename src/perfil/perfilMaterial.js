@@ -10,7 +10,7 @@ const { MessageFlags, ActionRowBuilder, StringSelectMenuBuilder } = require('dis
 const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
-const { formatPtDate } = require('../shared/formatPtDate');
+// const { formatPtDate } = require('../shared/formatPtDate');
 const { bairristaStatsRepo, memberAnalyticsRepo } = require('../repositories');
 const { buttonRow, button } = require('../shared/ui/buttons');
 

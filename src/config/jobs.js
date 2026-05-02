@@ -10,6 +10,8 @@ module.exports = {
   // Bairrista summary hours
   BAIRRISTA_DAILY_SUMMARY_HOUR: optNum('BAIRRISTA_DAILY_SUMMARY_HOUR', 23),
   BAIRRISTA_WEEKLY_SUMMARY_DAY: optNum('BAIRRISTA_WEEKLY_SUMMARY_DAY', 5), // 5 = sexta
+  BAIRRISTA_WEEKLY_PRIZE_DAY: optNum('BAIRRISTA_WEEKLY_PRIZE_DAY', 1), // 1 = segunda
+  BAIRRISTA_WEEKLY_PRIZE_HOUR: optNum('BAIRRISTA_WEEKLY_PRIZE_HOUR', 20),
   // Cooldown em spots após criar uma saída — durante este tempo, nenhuma
   // outra saída da org pode abrir no mesmo spot.
   SPOT_COOLDOWN_MINUTES: optNum('SPOT_COOLDOWN_MINUTES', 60),

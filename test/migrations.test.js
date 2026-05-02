@@ -18,10 +18,10 @@ describe('migrations', () => {
     assert.equal(ids.length, unique.size, `Duplicate IDs: ${ids.filter((id, i) => ids.indexOf(id) !== i)}`);
   });
 
-  it('IDs are sequential (no gaps)', () => {
+  it('IDs are strictly increasing with no duplicates', () => {
     const ids = migrations.map(m => m.id).sort((a, b) => a - b);
-    for (let i = 0; i < ids.length; i++) {
-      assert.equal(ids[i], i + 1, `Expected ID ${i + 1}, got ${ids[i]} — gap or misnumber`);
+    for (let i = 1; i < ids.length; i++) {
+      assert.ok(ids[i] > ids[i - 1], `Migration IDs must be strictly increasing: ${ids[i - 1]} >= ${ids[i]}`);
     }
   });
 

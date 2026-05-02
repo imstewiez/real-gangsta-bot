@@ -1,11 +1,6 @@
 'use strict';
 /**
- * Tab Saídas & Combate — central operacional unificada.
- *   1. KPIs topo (saídas, winrate, kills, mortes, lucro, top killer, spots)
- *   2. Ledger de saídas (tabela principal)
- *   3. Subsecção participantes (tabela resumida)
- *   4. Subsecção combate (top killers, kill log recente)
- *   5. Subsecção spots (tabela agregada + tier badges)
+ * Tab Saídas & Combate v2 — central operacional compacta.
  */
 
 const {
@@ -29,10 +24,9 @@ const {
   sectionHeader,
   spacer,
   divider,
-  kpiStrip,
+  miniKPIRow,
   tableHeader,
   tableBody,
-  rankingBlock,
   totalRow,
   footerBlock,
   autoResizeAll,
@@ -43,28 +37,21 @@ const { getSaidasFull, getParticipantsFull, getKillsFull, getKillsKPIs, getSpots
 const SAIDAS_HEADERS = [
   'ID',
   'Data',
-  'Hora',
   'Spot',
   'Tipo',
   'Líder',
   'Estado',
   'Resultado',
   'Inimigo',
-  'Facção',
   'Ppl',
-  'Caract.',
-  'Trab.',
   'K',
   'M',
-  'Viv.',
-  'Vol.',
-  'Forn.(un)',
-  'Dev.(un)',
-  'Perd.(un)',
-  'Cons.(un)',
+  'Forn.',
+  'Perd.',
   'Bruto (€)',
   'Líquido (€)',
-  'Δ',
+  'Rent.%',
+  'K/D',
   'Notas',
 ];
 const PART_HEADERS = [
@@ -75,11 +62,6 @@ const PART_HEADERS = [
   'Tipo',
   'Arma',
   'Role',
-  'Org?',
-  'Forn.(un)',
-  'Dev.(un)',
-  'Perd.(un)',
-  'Cons.(un)',
   'K',
   'M',
   'Vivo?',
@@ -87,6 +69,7 @@ const PART_HEADERS = [
   'MVP',
   'Perf',
   'Disc',
+  'Mat.Δ',
   'Notas',
 ];
 const SPOTS_HEADERS = [
@@ -108,7 +91,7 @@ const SPOTS_HEADERS = [
   'Última',
 ];
 const KILLS_HEADERS = ['Data/Hora', 'Killer', 'Vítima', 'Facção', 'Spot', 'Saída', 'Confirmado', 'Notas'];
-const COL_COUNT = SAIDAS_HEADERS.length; // 23
+const COL_COUNT = SAIDAS_HEADERS.length; // 18
 
 function resultBadge(r) {
   const map = {
@@ -180,7 +163,6 @@ async function syncSaidas(batch, sheetId) {
     getSpotsFull(),
   ]);
 
-  // ── KPIs topo ────────────────────────────────────────────────────────────
   const concluidas = rows.filter(r => r.status === 'concluida');
   const wins = concluidas.filter(r => r.result === 'vitoria').length;
   const losses = concluidas.filter(r => r.result === 'derrota').length;
@@ -197,8 +179,6 @@ async function syncSaidas(batch, sheetId) {
   const bestSpot = spots.slice().sort((a, b) => Number(b.total_net_value || 0) - Number(a.total_net_value || 0))[0];
   const worstSpot = spots.slice().sort((a, b) => (b.our_deaths || 0) - (a.our_deaths || 0))[0];
 
-  // Grow é feito pelo syncEngine via pre-flight (PRE_SYNC_MIN_ROWS).
-
   let row = headerBlock(batch, sheetId, {
     title: gangTitle('Saídas & Combate'),
     subtitle: `${rows.length} saídas · ${parts.length} participações · ${kpiK.total} kills · ${activeSpots.length} spots activos`,
@@ -207,11 +187,11 @@ async function syncSaidas(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
   row = sectionHeader(batch, sheetId, row, {
-    title: '🎯 PANORAMA OPERACIONAL',
+    title: 'PANORAMA OPERACIONAL',
     hint: 'acumulado + combate',
     columnCount: COL_COUNT,
   });
-  row = kpiStrip(
+  row = miniKPIRow(
     batch,
     sheetId,
     row,
@@ -248,7 +228,7 @@ async function syncSaidas(batch, sheetId) {
     COL_COUNT
   );
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
-  row = kpiStrip(
+  row = miniKPIRow(
     batch,
     sheetId,
     row,
@@ -256,29 +236,26 @@ async function syncSaidas(batch, sheetId) {
       {
         label: 'Top Killer',
         value: kpiK.topKiller ? kpiK.topKiller.display_name : '—',
-        numberFormat: null,
         delta: kpiK.topKiller ? `${kpiK.topKiller.kills} kills` : '—',
         deltaDirection: 'up',
       },
       {
         label: 'Melhor Spot',
         value: bestSpot ? bestSpot.spot : '—',
-        numberFormat: null,
         delta: bestSpot ? `${Math.round(Number(bestSpot.total_net_value) || 0).toLocaleString('pt-PT')} €` : '—',
         deltaDirection: 'up',
       },
       {
         label: 'Pior Spot',
         value: worstSpot ? worstSpot.spot : '—',
-        numberFormat: null,
         delta: worstSpot ? `${worstSpot.our_deaths} mortes` : '—',
         deltaDirection: 'down',
       },
       {
-        label: 'Survival Rate',
+        label: 'Survival',
         value: survRate,
         numberFormat: NUM_FMT.PCT,
-        delta: `${mvps} MVPs · ${pDeaths} mortes em participações`,
+        delta: `${mvps} MVPs · ${pDeaths} mortes`,
         deltaDirection: survRate >= 0.7 ? 'up' : 'down',
       },
     ],
@@ -289,97 +266,78 @@ async function syncSaidas(batch, sheetId) {
 
   // ── A. Ledger de saídas ──────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '📋 LEDGER DE SAÍDAS',
+    title: 'LEDGER DE SAÍDAS',
     hint: 'mais recentes no topo · filtros activos',
     columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, SAIDAS_HEADERS);
   batch.freezeRows(sheetId, row);
   const saidasFirstRow = row;
-  const saidasRows = rows.map(s => [
-    bodyBoldCell(`#${s.id}`),
-    bodyCell(s.date ? new Date(s.date).toISOString().split('T')[0] : '—'),
-    bodyCell(s.hora || '—'),
-    bodyCell(s.spot || '—'),
-    captionCell(s.tipo || '—'),
-    bodyCell(s.leader_name || '—'),
-    statusBadge(s.status),
-    resultBadge(s.result),
-    bodyCell(s.enemy_name || '—'),
-    captionCell(s.enemy_faction || '—'),
-    numCell(s.participantes, NUM_FMT.INT),
-    numCell(s.caracterizados || 0, NUM_FMT.INT),
-    numCell(s.trabalhadores || 0, NUM_FMT.INT),
-    killCell(s.kills),
-    deathCell(s.deaths),
-    numCell(s.survivors, NUM_FMT.INT),
-    numCell(s.returned_bairro, NUM_FMT.INT),
-    numCell(s.supplied_units, NUM_FMT.INT),
-    numCell(s.returned_units, NUM_FMT.INT),
-    numCell(s.lost_units, NUM_FMT.INT),
-    numCell(s.consumed_units, NUM_FMT.INT),
-    numCell(Number(s.gross), NUM_FMT.EURO),
-    numCell(Number(s.net), NUM_FMT.EURO),
-    cell(s.was_profitable === true ? '▲' : s.was_profitable === false ? '▼' : '—', {
-      bg: COLOR.BG_APP,
-      font:
-        s.was_profitable === true
-          ? { fontFamily: 'Inter', fontSize: 11, bold: true, foregroundColor: COLOR.GREEN_DEEP }
-          : s.was_profitable === false
-            ? { fontFamily: 'Inter', fontSize: 11, bold: true, foregroundColor: COLOR.RED_SIGNAL }
-            : { fontFamily: 'Inter', fontSize: 11, foregroundColor: COLOR.GRAY },
-      align: 'CENTER',
-      vAlign: 'MIDDLE',
-    }),
-    bodyCell(s.result_notes || '', { wrap: true }),
-  ]);
+  const saidasRows = rows.map(s => {
+    const rentPct = Number(s.gross) > 0 ? Number(s.net) / Number(s.gross) : 0;
+    const kdSaida = (s.deaths || 0) > 0 ? (s.kills || 0) / (s.deaths || 0) : s.kills || 0;
+    return [
+      bodyBoldCell(`#${s.id}`),
+      bodyCell(s.date ? new Date(s.date).toISOString().split('T')[0] : '—'),
+      bodyCell(s.spot || '—'),
+      captionCell(s.tipo || '—'),
+      bodyCell(s.leader_name || '—'),
+      statusBadge(s.status),
+      resultBadge(s.result),
+      bodyCell(s.enemy_name || '—'),
+      numCell(s.participantes, NUM_FMT.INT),
+      killCell(s.kills),
+      deathCell(s.deaths),
+      numCell(s.supplied_units, NUM_FMT.INT),
+      numCell(s.lost_units, NUM_FMT.INT),
+      numCell(Number(s.gross), NUM_FMT.EURO),
+      numCell(Number(s.net), NUM_FMT.EURO),
+      numCell(rentPct, NUM_FMT.PCT),
+      numCell(kdSaida, NUM_FMT.KD),
+      bodyCell(s.result_notes || '', { wrap: true }),
+    ];
+  });
   row = tableBody(batch, sheetId, row, saidasRows, { basicFilter: true, columnCount: COL_COUNT });
   if (saidasRows.length) {
     const sTotalKills = rows.reduce((a, r) => a + (r.kills || 0), 0);
     const sTotalDeaths = rows.reduce((a, r) => a + (r.deaths || 0), 0);
-    const sTotalSurv = rows.reduce((a, r) => a + (r.survivors || 0), 0);
     const sTotalSupp = rows.reduce((a, r) => a + (r.supplied_units || 0), 0);
-    const sTotalRet = rows.reduce((a, r) => a + (r.returned_units || 0), 0);
     const sTotalLost = rows.reduce((a, r) => a + (r.lost_units || 0), 0);
-    const sTotalCons = rows.reduce((a, r) => a + (r.consumed_units || 0), 0);
     const sTotalGross = rows.reduce((a, r) => a + Number(r.gross || 0), 0);
     row = totalRow(batch, sheetId, row, {
       label: 'TOTAL',
       columnCount: COL_COUNT,
       values: [
-        { col: 10, value: rows.reduce((a, r) => a + (r.participantes || 0), 0), numberFormat: NUM_FMT.INT },
-        { col: 13, value: sTotalKills, numberFormat: NUM_FMT.INT },
-        { col: 14, value: sTotalDeaths, numberFormat: NUM_FMT.INT },
-        { col: 15, value: sTotalSurv, numberFormat: NUM_FMT.INT },
-        { col: 17, value: sTotalSupp, numberFormat: NUM_FMT.INT },
-        { col: 18, value: sTotalRet, numberFormat: NUM_FMT.INT },
-        { col: 19, value: sTotalLost, numberFormat: NUM_FMT.INT },
-        { col: 20, value: sTotalCons, numberFormat: NUM_FMT.INT },
-        { col: 21, value: sTotalGross, numberFormat: NUM_FMT.EURO },
-        { col: 22, value: totalNet, numberFormat: NUM_FMT.EURO },
+        { col: 8, value: rows.reduce((a, r) => a + (r.participantes || 0), 0), numberFormat: NUM_FMT.INT },
+        { col: 9, value: sTotalKills, numberFormat: NUM_FMT.INT },
+        { col: 10, value: sTotalDeaths, numberFormat: NUM_FMT.INT },
+        { col: 11, value: sTotalSupp, numberFormat: NUM_FMT.INT },
+        { col: 12, value: sTotalLost, numberFormat: NUM_FMT.INT },
+        { col: 13, value: sTotalGross, numberFormat: NUM_FMT.EURO },
+        { col: 14, value: totalNet, numberFormat: NUM_FMT.EURO },
       ],
     });
     const N = saidasRows.length;
-    // K col=13, M col=14, Líquido col=22 (shifted +2 from Caract./Trab. columns)
-    batch.addRule(conditionalGreaterThan(sheetId, saidasFirstRow, 13, saidasFirstRow + N, 14, 3, COLOR.GREEN_SOFT));
+    batch.addRule(conditionalGreaterThan(sheetId, saidasFirstRow, 9, saidasFirstRow + N, 10, 3, COLOR.GREEN_SOFT));
     batch.addRule(
-      conditionalGreaterThan(sheetId, saidasFirstRow, 14, saidasFirstRow + N, 15, 2, COLOR.RED_SIGNAL_SOFT)
+      conditionalGreaterThan(sheetId, saidasFirstRow, 10, saidasFirstRow + N, 11, 2, COLOR.RED_SIGNAL_SOFT)
     );
-    batch.addRule(conditionalLessThan(sheetId, saidasFirstRow, 22, saidasFirstRow + N, 23, 0, COLOR.RED_SIGNAL_SOFT));
-    batch.addRule(conditionalGreaterThan(sheetId, saidasFirstRow, 22, saidasFirstRow + N, 23, 500, COLOR.GREEN_SOFT));
+    batch.addRule(conditionalLessThan(sheetId, saidasFirstRow, 14, saidasFirstRow + N, 15, 0, COLOR.RED_SIGNAL_SOFT));
+    batch.addRule(conditionalGreaterThan(sheetId, saidasFirstRow, 14, saidasFirstRow + N, 15, 500, COLOR.GREEN_SOFT));
   }
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
 
   // ── B. Participantes ─────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '🎖️ LEDGER DE PARTICIPAÇÕES',
+    title: 'LEDGER DE PARTICIPAÇÕES',
     hint: `${parts.length} registos · detalhe por membro por saída`,
     columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, PART_HEADERS.concat(Array(COL_COUNT - PART_HEADERS.length).fill('')));
   const partsFirstRow = row;
   const partsRows = parts.map(p => {
+    const matDelta = (p.returned_units || 0) - (p.issued_units || 0);
     const cells = [
       bodyBoldCell(`#${p.saida_id}`),
       bodyCell(fmtDate(p.date)),
@@ -388,11 +346,6 @@ async function syncSaidas(batch, sheetId) {
       participantTypeBadge(p.participant_type),
       weaponBadge(p.own_weapon),
       captionCell(p.role || 'membro'),
-      boolBadge(p.received_org_material),
-      numCell(p.issued_units, NUM_FMT.INT),
-      numCell(p.returned_units, NUM_FMT.INT),
-      numCell(p.lost_units, NUM_FMT.INT),
-      numCell(p.consumed_units, NUM_FMT.INT),
       killCell(p.kills),
       deathCell(p.deaths),
       boolBadge(p.survived),
@@ -400,6 +353,7 @@ async function syncSaidas(batch, sheetId) {
       mvpBadgeCell(p.mvp_flag),
       numCell(Number(p.perf), NUM_FMT.DEC),
       numCell(Number(p.disc), NUM_FMT.DEC),
+      numCell(matDelta, NUM_FMT.INT_DELTA),
       bodyCell(p.notes || '', { wrap: true }),
     ];
     while (cells.length < COL_COUNT) cells.push(cell('', { bg: COLOR.BG_APP }));
@@ -408,15 +362,14 @@ async function syncSaidas(batch, sheetId) {
   row = tableBody(batch, sheetId, row, partsRows);
   if (partsRows.length) {
     const N = partsRows.length;
-    // K col=12, Perf col=17, Disc col=18 (Tipo+Arma replaced Próprio?)
-    batch.addRule(conditionalGreaterThan(sheetId, partsFirstRow, 12, partsFirstRow + N, 13, 2, COLOR.GREEN_SOFT));
+    batch.addRule(conditionalGreaterThan(sheetId, partsFirstRow, 7, partsFirstRow + N, 8, 2, COLOR.GREEN_SOFT));
     batch.addRule(
       conditionalGradient(
         sheetId,
         partsFirstRow,
-        17,
+        12,
         partsFirstRow + N,
-        18,
+        13,
         COLOR.RED_SIGNAL_SOFT,
         COLOR.YELLOW_SOFT,
         COLOR.GREEN_SOFT
@@ -426,9 +379,9 @@ async function syncSaidas(batch, sheetId) {
       conditionalGradient(
         sheetId,
         partsFirstRow,
-        18,
+        13,
         partsFirstRow + N,
-        19,
+        14,
         COLOR.RED_SIGNAL_SOFT,
         COLOR.YELLOW_SOFT,
         COLOR.GREEN_SOFT
@@ -438,9 +391,9 @@ async function syncSaidas(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
 
-  // ── C. Spots (heatmap + tabela) ──────────────────────────────────────────
+  // ── C. Spots ─────────────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '📍 SPOTS · TABELA COMPLETA',
+    title: 'SPOTS · TABELA COMPLETA',
     hint: `${activeSpots.length} activos`,
     columnCount: COL_COUNT,
   });
@@ -504,7 +457,7 @@ async function syncSaidas(batch, sheetId) {
 
   // ── D. Kill log ──────────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '🔫 KILL LOG',
+    title: 'KILL LOG',
     hint: `últimas ${kills.length} kills`,
     columnCount: COL_COUNT,
   });

@@ -2,7 +2,7 @@
 const { EmbedBuilder } = require('discord.js');
 const CONFIG = require('../config');
 const content = require('../content');
-const { formatPtDate, formatPtDateOnly } = require('./formatPtDate');
+const { formatPtDateOnly } = require('./formatPtDate');
 
 const { EMOJI, footer, ROLE, STATUS, SAIDA_TYPE, ONBOARDING, INVENTORY, RANKINGS } = content;
 

@@ -25,7 +25,7 @@ const ONBOARDING = {
   // ── Confirmação ao user após submeter o modal ──
   REQUEST_RECEIVED_TITLE: `${E.TAG} Pedido em Análise`,
   REQUEST_RECEIVED_BODY: (name, nickname) =>
-    `Leitura aberta em teu nome:\n` +
+    'Leitura aberta em teu nome:\n' +
     `**${name}** _(${nickname})_\n` +
     '\n' +
     `${E.TAG} **1. Pedido enviado** — a chefia recebeu.\n` +

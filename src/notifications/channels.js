@@ -15,7 +15,7 @@
  */
 
 const CONFIG = require('../config');
-const { log, warn } = require('../logger');
+const { warn } = require('../logger');
 const { DISCOVERED } = require('../discord/structureTemplate');
 
 // Mapeamento família → variável ENV preferida → defaultId (pin direto)

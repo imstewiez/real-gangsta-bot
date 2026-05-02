@@ -33,7 +33,7 @@ async function handle(interaction) {
     const P = BAIRRISTAS.PROGRESS;
     embed.addFields(
       { name: P.CURRENT_TIER, value: `**${progress.currentTierName}**`, inline: true },
-      { name: `${EMOJI.MATERIAL} Material total`, value: `**${fmt(progress.totalQty)}** ${P.UNITS}`, inline: true }
+      { name: `${EMOJI.MATERIAL} XP total`, value: `**${fmt(progress.totalQty)}** ${P.UNITS}`, inline: true }
     );
 
     if (!progress.maxedOut && progress.threshold) {
@@ -44,7 +44,7 @@ async function handle(interaction) {
           name: `${EMOJI.TOPO} Progresso`,
           value:
             `${bar} **${progress.progress}%**\n` +
-            `**${fmt(progress.totalQty)}** / ${fmt(progress.threshold)}\n` +
+            `**${fmt(progress.totalQty)}** / ${fmt(progress.threshold)} ${P.UNITS}\n` +
             `${P.REMAINING}: **${fmt(progress.remaining)}** ${P.UNITS}`,
           inline: false,
         }

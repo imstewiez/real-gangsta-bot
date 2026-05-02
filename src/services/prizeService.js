@@ -11,7 +11,7 @@
  */
 
 const { prizeRepo } = require('../repositories');
-const { log, warn } = require('../logger');
+const { log } = require('../logger');
 const { logAudit } = require('../audit/auditEngine');
 
 async function recordWeeklyWinner({ weekStart, weekEnd, winnerMemberId, hybridScore, metrics }) {

@@ -263,7 +263,7 @@ describe('saida end-to-end — vitória com 3 participantes', () => {
       { member_id: 2, kills: 2, survived: true, died: false, issued_value: 100, returned_value: 100 },
     ];
     state.saidaFields = { result: 'vitoria', spot: 'Plaza' };
-    const closed = await finalizeSaida(500, 'a');
+    await finalizeSaida(500, 'a');
     const mvpUpdate = state.participantUpdates.find(u => u.fields.mvp_flag);
     assert.ok(mvpUpdate, 'há MVP');
     assert.equal(mvpUpdate.memberId, 2, 'empate de kills → vivo com disciplina 100% ganha');
@@ -278,7 +278,7 @@ describe('saida end-to-end — vitória com 3 participantes', () => {
       { member_id: 2, kills: 0, survived: true, died: false, issued_value: 100, returned_value: 100 },
     ];
     state.saidaFields = { result: 'vitoria', spot: 'Plaza2' };
-    const closed = await finalizeSaida(510, 'a');
+    await finalizeSaida(510, 'a');
     const mvpUpdate = state.participantUpdates.find(u => u.fields.mvp_flag);
     assert.ok(mvpUpdate, 'há MVP');
     assert.equal(mvpUpdate.memberId, 1, 'morto com 10 kills > vivo sem kills');

@@ -99,6 +99,9 @@ const FONT = {
   RANK_1: _font({ fontSize: 10, bold: true, foregroundColor: COLOR.GOLD }),
   RANK_2: _font({ fontSize: 10, bold: true, foregroundColor: COLOR.SILVER }),
   RANK_3: _font({ fontSize: 10, bold: true, foregroundColor: COLOR.BRONZE }),
+  MINI_KPI_LABEL: _font({ fontSize: 7, bold: true, foregroundColor: COLOR.GRAY }),
+  MINI_KPI_VALUE: _font({ fontSize: 14, bold: true, foregroundColor: COLOR.WHITE }),
+  MINI_KPI_DELTA: _font({ fontSize: 7, bold: true, foregroundColor: COLOR.GRAY_LIGHT }),
 };
 
 // ─── Spacing / Row heights ───────────────────────────────────────────────────
@@ -142,6 +145,8 @@ const NUM_FMT = {
   DATE: { type: 'DATE', pattern: 'yyyy-mm-dd' },
   DATETIME: { type: 'DATE_TIME', pattern: 'yyyy-mm-dd hh:mm' },
   KD: { type: 'NUMBER', pattern: '0.00' },
+  RATIO: { type: 'NUMBER', pattern: '0.00"x"' },
+  PER_MILLE: { type: 'NUMBER', pattern: '0.0"‰"' },
 };
 
 // ─── Borders ─────────────────────────────────────────────────────────────────
@@ -162,6 +167,12 @@ const BORDER = {
     bottom: _border(COLOR.GRAPHITE),
     left: _border(COLOR.GRAPHITE),
     right: _border(COLOR.GRAPHITE),
+  },
+  BOX_CARD: {
+    top: _border(COLOR.IRON),
+    bottom: _border(COLOR.IRON),
+    left: _border(COLOR.IRON),
+    right: _border(COLOR.IRON),
   },
 };
 
@@ -307,7 +318,7 @@ function pillCell(value, pillColor, textColor) {
 function rankCell(position) {
   const pos = Number(position);
   if (pos === 1) {
-    return cell('🥇 1º', {
+    return cell('1º', {
       bg: COLOR.GOLD_SOFT,
       font: FONT.RANK_1,
       align: 'CENTER',
@@ -321,7 +332,7 @@ function rankCell(position) {
     });
   }
   if (pos === 2) {
-    return cell('🥈 2º', {
+    return cell('2º', {
       bg: COLOR.SILVER_SOFT,
       font: FONT.RANK_2,
       align: 'CENTER',
@@ -335,7 +346,7 @@ function rankCell(position) {
     });
   }
   if (pos === 3) {
-    return cell('🥉 3º', {
+    return cell('3º', {
       bg: COLOR.BRONZE_SOFT,
       font: FONT.RANK_3,
       align: 'CENTER',
@@ -348,7 +359,22 @@ function rankCell(position) {
       },
     });
   }
-  return cell(`${pos}`, { bg: COLOR.BG_APP, font: FONT.MUTED, align: 'CENTER', vAlign: 'MIDDLE' });
+  return cell(`${pos}º`, { bg: COLOR.BG_APP, font: FONT.MUTED, align: 'CENTER', vAlign: 'MIDDLE' });
+}
+
+// Mini KPI cells (compact 1-row cards)
+function miniKPILabelCell(value) {
+  return cell(value.toUpperCase(), { bg: COLOR.BG_CARD, font: FONT.MINI_KPI_LABEL, align: 'LEFT', vAlign: 'TOP' });
+}
+function miniKPIValueCell(value, numberFormat) {
+  return cell(value, { bg: COLOR.BG_CARD, font: FONT.MINI_KPI_VALUE, align: 'LEFT', vAlign: 'MIDDLE', numberFormat });
+}
+function miniKPIDeltaCell(value, direction, numberFormat) {
+  let font = FONT.MINI_KPI_DELTA;
+  if (direction === 'up' || direction === true) font = { ...FONT.MINI_KPI_DELTA, foregroundColor: COLOR.GREEN_DEEP };
+  else if (direction === 'down' || direction === false)
+    font = { ...FONT.MINI_KPI_DELTA, foregroundColor: COLOR.RED_SIGNAL };
+  return cell(value, { bg: COLOR.BG_CARD, font, align: 'LEFT', vAlign: 'BOTTOM', numberFormat });
 }
 
 // Delta formatado como texto "▲ +12.3%" / "▼ −4.1%" / "— 0%"
@@ -466,6 +492,9 @@ module.exports = {
   kpiLabelCell,
   kpiValueCell,
   kpiDeltaCell,
+  miniKPILabelCell,
+  miniKPIValueCell,
+  miniKPIDeltaCell,
   badgeCell,
   pillCell,
   rankCell,

@@ -6,7 +6,7 @@
 const { MessageFlags } = require('discord.js');
 const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed } = require('../shared/embedBuilders');
-const { ERRORS } = require('../content');
+// const { ERRORS } = require('../content');
 const { isChefia } = require('../permissions/permissionEngine');
 const { requirePermission } = require('../shared/requirePermission');
 const { getRecentLogs } = require('../audit/auditEngine');

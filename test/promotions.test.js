@@ -56,9 +56,9 @@ describe('tier hierarchy & promotion chain', () => {
     assert.equal(CONFIG.BAIRRISTA_DEFAULT_TIER, 'young_blood');
   });
 
-  it('thresholds default são 25k → 50k', () => {
-    assert.equal(CONFIG.PROMO_YOUNG_BLOOD_TO_GUNAO, 25000);
-    assert.equal(CONFIG.PROMO_GUNAO_TO_GANGSTER_FODIDO, 50000);
+  it('thresholds default são 50k → 100k', () => {
+    assert.equal(CONFIG.PROMO_YOUNG_BLOOD_TO_GUNAO, 50000);
+    assert.equal(CONFIG.PROMO_GUNAO_TO_GANGSTER_FODIDO, 100000);
   });
 
   it('PROMOTIONS encadeia young_blood → o_gunao → gangster_fodido', () => {

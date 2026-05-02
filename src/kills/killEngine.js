@@ -8,7 +8,7 @@
 const { memberRepo, killRepo, saidaRepo } = require('../repositories');
 const { logAudit } = require('../audit/auditEngine');
 const CONFIG = require('../config');
-const { EmbedBuilder } = require('discord.js');
+// const { EmbedBuilder } = require('discord.js');
 const eventBus = require('../core/eventBus');
 const { warn } = require('../logger');
 
@@ -34,7 +34,7 @@ async function recordKill({
   if (!killer) throw new Error('Killer não encontrado na base de membros.');
 
   // Guards para kill com saidaId — standalone (saidaId=null) continua livre.
-  if (saidaId != null) {
+  if (saidaId !== null && saidaId !== undefined) {
     const saida = await saidaRepo.findById(saidaId);
     if (!saida) throw new Error(`Saída #${saidaId} não existe.`);
 

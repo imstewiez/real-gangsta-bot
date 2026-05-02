@@ -20,7 +20,6 @@ const { publishSessionEmbed } = require('./saidaSession');
 const {
   EMOJI,
   ERRORS,
-  SUCCESS,
   SAIDAS,
   MODALS,
   VALID_RESULTS,
@@ -28,7 +27,7 @@ const {
   RESULT_EMOJI,
   RESULT_DESCRIPTION,
 } = require('../content');
-const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
+const { formatPtDateOnly } = require('../shared/formatPtDate');
 const { warn } = require('../logger');
 
 // Context efémero por user durante fluxos multi-step.
@@ -483,10 +482,9 @@ async function handleCloseSaidaModal(interaction) {
   const had_craft = craft_amount > 0;
   const had_fight = result === 'vitoria' || result === 'derrota';
 
-  let closedData;
   try {
     // Transita para em_liquidacao — participantes preenchem resultados depois.
-    closedData = await saidaEngine.closeSaida(
+    await saidaEngine.closeSaida(
       ctx.saidaId,
       {
         result,

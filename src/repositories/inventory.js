@@ -235,7 +235,7 @@ async function getLastSubmissionForMember(memberId, movementType) {
  */
 async function deleteSubmission(submissionId) {
   if (!submissionId) return 0;
-  const res = await query(`DELETE FROM inventory_movements WHERE submission_id = $1`, [submissionId]);
+  const res = await query('DELETE FROM inventory_movements WHERE submission_id = $1', [submissionId]);
   return res.rowCount;
 }
 
@@ -245,15 +245,16 @@ async function deleteSubmission(submissionId) {
 // Inclui também todas as direcções inversas explicitamente; ELSE 0 fica como
 // rede de segurança para movement_types desconhecidos.
 async function getStock() {
-  const res = await query(`
+  const res = await query(
+    `
     SELECT i.id, i.name, i.category, i.unit, i.estimated_value,
       COALESCE(SUM(
         CASE
-          WHEN im.movement_type IN (${STOCK_INFLOW_TYPES.map(t => `'${t}'`).join(',')})
+          WHEN im.movement_type = ANY($1::text[])
             THEN im.quantity
-          WHEN im.movement_type IN (${STOCK_OUTFLOW_TYPES.map(t => `'${t}'`).join(',')})
+          WHEN im.movement_type = ANY($2::text[])
             THEN -im.quantity
-          WHEN im.movement_type = '${MOVEMENT_TYPE.AJUSTE_MANUAL}'
+          WHEN im.movement_type = $3
             THEN im.quantity
           ELSE 0
         END
@@ -263,7 +264,9 @@ async function getStock() {
     WHERE i.active = true
     GROUP BY i.id, i.name, i.category, i.unit, i.estimated_value
     ORDER BY i.category, i.name
-  `);
+  `,
+    [STOCK_INFLOW_TYPES, STOCK_OUTFLOW_TYPES, MOVEMENT_TYPE.AJUSTE_MANUAL]
+  );
   return res.rows;
 }
 
@@ -272,18 +275,18 @@ async function getStockForItem(itemId) {
     `
     SELECT COALESCE(SUM(
       CASE
-        WHEN movement_type IN (${STOCK_INFLOW_TYPES.map(t => `'${t}'`).join(',')})
+        WHEN movement_type = ANY($2::text[])
           THEN quantity
-        WHEN movement_type IN (${STOCK_OUTFLOW_TYPES.map(t => `'${t}'`).join(',')})
+        WHEN movement_type = ANY($3::text[])
           THEN -quantity
-        WHEN movement_type = '${MOVEMENT_TYPE.AJUSTE_MANUAL}'
+        WHEN movement_type = $4
           THEN quantity
         ELSE 0
       END
     ), 0) as balance
     FROM inventory_movements WHERE item_id = $1
   `,
-    [itemId]
+    [itemId, STOCK_INFLOW_TYPES, STOCK_OUTFLOW_TYPES, MOVEMENT_TYPE.AJUSTE_MANUAL]
   );
   return parseInt(res.rows[0]?.balance || 0);
 }

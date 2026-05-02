@@ -2,7 +2,7 @@
 const http = require('http');
 const metrics = require('../lib/metrics');
 const CONFIG = require('../config');
-const { log, warn } = require('../logger');
+const { log } = require('../logger');
 
 let _client = null;
 let _ready = false;
@@ -73,8 +73,8 @@ function createServer(port = 3000) {
       // Metrics snapshot para health dashboard
       let metricsSnapshot = {};
       try {
-        const metrics = require('../lib/metrics');
-        metricsSnapshot = metrics.toJson();
+        const metricsLib = require('../lib/metrics');
+        metricsSnapshot = metricsLib.toJson();
       } catch {
         /* metrics não disponível */
       }
@@ -139,9 +139,9 @@ function createServer(port = 3000) {
 
   server.on('error', err => {
     if (err.code === 'EADDRINUSE') {
-      warn(`[WEB] Port ${port} already in use, skipping health server.`);
+      throw new Error(`[WEB] Port ${port} already in use — health server cannot bind.`);
     } else {
-      warn(`[WEB] Server error: ${err.message}`);
+      throw new Error(`[WEB] Server error: ${err.message}`);
     }
   });
 

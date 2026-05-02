@@ -131,6 +131,12 @@ function validateConfig(config = CONFIG) {
   if (config.DAILY_SUMMARY_HOUR < 0 || config.DAILY_SUMMARY_HOUR > 23) {
     err('DAILY_SUMMARY_HOUR', `Valor (${config.DAILY_SUMMARY_HOUR}) fora do intervalo 0-23.`);
   }
+  if (config.BAIRRISTA_WEEKLY_PRIZE_DAY < 0 || config.BAIRRISTA_WEEKLY_PRIZE_DAY > 6) {
+    err('BAIRRISTA_WEEKLY_PRIZE_DAY', `Valor (${config.BAIRRISTA_WEEKLY_PRIZE_DAY}) fora do intervalo 0-6.`);
+  }
+  if (config.BAIRRISTA_WEEKLY_PRIZE_HOUR < 0 || config.BAIRRISTA_WEEKLY_PRIZE_HOUR > 23) {
+    err('BAIRRISTA_WEEKLY_PRIZE_HOUR', `Valor (${config.BAIRRISTA_WEEKLY_PRIZE_HOUR}) fora do intervalo 0-23.`);
+  }
 
   // ── Sticky ──
   const validStickyModes = new Set(['repost', 'update', 'none']);

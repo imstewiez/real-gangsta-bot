@@ -1,44 +1,29 @@
 'use strict';
 /**
- * Tab Dashboard — central de comando RedWood.
+ * Tab Dashboard — central de comando RedWood (v2 redesign).
  *
  * Blocos (topo → fundo):
- *   1. Header premium (título + período + timestamp)
- *   2. KPI strip principal (4 cards: Saídas, Win Rate, Lucro €, K/D)
- *   3. KPI strip secundário (4 cards: Entregas, Stock €, Kills, Material Perdido)
- *   4. Destaques da semana (top performer por eixo)
- *   5. Tendência vs semana anterior (comparativo com delta colorido)
- *   6. Stock por categoria (breakdown)
- *   7. Alertas automáticos
- *   8. Footer com assinatura
+ *   1. Header premium
+ *   2. Panorama da semana — miniKPIRow 8 cards (2 rows × 4)
+ *   3. Destaques da semana — tabela compacta com rankCell metálico
+ *   4. Tendência — 6 métricas core com contexto médio
+ *   5. Stock por categoria — breakdown com Δ vs anterior
+ *   6. Alertas automáticos
+ *   7. Footer
  */
 
-const {
-  COLOR,
-  FONT,
-  NUM_FMT,
-  cell,
-  bodyCell,
-  bodyBoldCell,
-  mutedCell,
-  captionCell,
-  numCell,
-  formatDelta,
-} = require('../theme');
+const { COLOR, FONT, NUM_FMT, cell, bodyCell, bodyBoldCell, numCell, formatDelta, rankCell } = require('../theme');
 const {
   headerBlock,
   sectionHeader,
   spacer,
   divider,
-  kpiStrip,
+  miniKPIRow,
   tableHeader,
   tableBody,
-  rankingBlock,
   alertBox,
   footerBlock,
   totalRow,
-  setWidths,
-  autoResizeColumns,
   autoResizeAll,
   gangTitle,
 } = require('./_common');
@@ -73,18 +58,20 @@ async function syncDashboard(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
   batch.freezeRows(sheetId, row);
 
-  // ── 2. KPI strip principal ───────────────────────────────────────────────
+  // ── 2. Panorama da Semana — miniKPIRow 8 cards (2 rows de 4) ──────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '🎯 PANORAMA DA SEMANA',
+    title: 'PANORAMA DA SEMANA',
     hint: 'últimos 7 dias',
     columnCount: COL_COUNT,
   });
 
   const d_net = _deltaCard(k.netWeek, k.netPrevWeek);
   const d_kills = _deltaCard(k.killsWeek, k.killsPrevWeek);
+  const d_entregas = _deltaCard(k.weekEntradas, k.prevEntradas);
   const winRate = k.winRate || 0;
 
-  row = kpiStrip(
+  // Row A: 4 cards
+  row = miniKPIRow(
     batch,
     sheetId,
     row,
@@ -93,7 +80,7 @@ async function syncDashboard(batch, sheetId) {
         label: 'Saídas',
         value: k.saidasTotal,
         numberFormat: NUM_FMT.INT,
-        delta: `${k.saidasWins}V · ${k.saidasLosses}D · ${k.weekCharacterized || 0} caract. · ${k.weekWorkers || 0} trab.`,
+        delta: `${k.saidasWins}V · ${k.saidasLosses}D`,
         deltaDirection: 'flat',
       },
       {
@@ -121,12 +108,8 @@ async function syncDashboard(batch, sheetId) {
     COL_COUNT
   );
 
-  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
-
-  // ── 3. KPI strip secundário ──────────────────────────────────────────────
-  const d_entregas = _deltaCard(k.weekEntradas, k.prevEntradas);
-
-  row = kpiStrip(
+  // Row B: 4 cards
+  row = miniKPIRow(
     batch,
     sheetId,
     row,
@@ -142,7 +125,7 @@ async function syncDashboard(batch, sheetId) {
         label: 'Valor Stock',
         value: Number(k.stockValue) || 0,
         numberFormat: NUM_FMT.EURO,
-        delta: `${k.stockQty} unidades em stock`,
+        delta: `${k.stockQty} un. em stock`,
         deltaDirection: 'flat',
       },
       {
@@ -156,88 +139,98 @@ async function syncDashboard(batch, sheetId) {
         label: 'Material Perd.',
         value: k.lostUnitsWeek,
         numberFormat: NUM_FMT.INT,
-        delta: `devolvido: ${k.returnedUnitsWeek} un. · fornecido: ${k.suppliedUnitsWeek}`,
+        delta: `devolvido: ${k.returnedUnitsWeek} un.`,
         deltaDirection: 'flat',
       },
     ],
     COL_COUNT
   );
 
-  row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
+  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
 
-  // ── 4. Destaques ─────────────────────────────────────────────────────────
+  // ── 3. Destaques da Semana — tabela compacta com rankCell ────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '🏆 DESTAQUES DA SEMANA',
+    title: 'DESTAQUES DA SEMANA',
     hint: 'top performers',
     columnCount: COL_COUNT,
   });
 
-  const fmtMover = r => (r ? `${r.display_name || '—'} · ${Number(r.value).toLocaleString('pt-PT')}` : '—');
+  const fmtMover = r => (r ? `${r.display_name || '—'}` : '—');
   const highlights = [
-    { icon: '🏆', label: 'Top Contributor (entregas)', value: fmtMover(movers.topEntregas[0]), unit: 'un.' },
-    { icon: '🎯', label: 'Top Killer', value: fmtMover(movers.topKills[0]), unit: 'kills' },
     {
-      icon: '💰',
+      rank: 1,
+      label: 'Top Contributor (entregas)',
+      value: fmtMover(movers.topEntregas[0]),
+      sub: movers.topEntregas[0] ? `${Number(movers.topEntregas[0].value).toLocaleString('pt-PT')} un.` : '—',
+    },
+    {
+      rank: 1,
+      label: 'Top Killer',
+      value: fmtMover(movers.topKills[0]),
+      sub: movers.topKills[0] ? `${movers.topKills[0].value} kills` : '—',
+    },
+    {
+      rank: 1,
       label: 'Top Líder por Lucro',
-      value: movers.topProfit[0]
-        ? `${movers.topProfit[0].display_name || '—'} · ${Math.round(Number(movers.topProfit[0].value)).toLocaleString('pt-PT')} €`
-        : '—',
-      unit: '',
+      value: movers.topProfit[0] ? movers.topProfit[0].display_name : '—',
+      sub: movers.topProfit[0] ? `${Math.round(Number(movers.topProfit[0].value)).toLocaleString('pt-PT')} €` : '—',
     },
     {
-      icon: '📍',
+      rank: 1,
       label: 'Spot Mais Rentável',
-      value: k.topSpotProfit
-        ? `${k.topSpotProfit.spot} · ${Math.round(Number(k.topSpotProfit.total_net_value)).toLocaleString('pt-PT')} €`
-        : '—',
-      unit: '',
+      value: k.topSpotProfit ? k.topSpotProfit.spot : '—',
+      sub: k.topSpotProfit ? `${Math.round(Number(k.topSpotProfit.total_net_value)).toLocaleString('pt-PT')} €` : '—',
     },
     {
-      icon: '⚠',
+      rank: 1,
       label: 'Spot Mais Perigoso',
-      value: k.topSpotDanger ? `${k.topSpotDanger.spot} · ${k.topSpotDanger.our_deaths} mortes` : '—',
-      unit: '',
+      value: k.topSpotDanger ? k.topSpotDanger.spot : '—',
+      sub: k.topSpotDanger ? `${k.topSpotDanger.our_deaths} mortes` : '—',
     },
   ];
-  for (const h of highlights) {
-    const lineCells = [
-      cell(h.icon, { bg: COLOR.BG_BLOCK, font: FONT.SECTION, align: 'CENTER', vAlign: 'MIDDLE' }),
-      bodyCell(h.label, { font: { ...FONT.BODY_BOLD, foregroundColor: COLOR.GRAY_LIGHT }, align: 'LEFT' }),
+
+  const destaqueHeaders = ['Rank', 'Categoria', 'Nome', 'Valor', 'Contexto'];
+  row = tableHeader(batch, sheetId, row, destaqueHeaders.concat(Array(COL_COUNT - destaqueHeaders.length).fill('')));
+
+  const destaqueRows = highlights.map(h => {
+    const cells = [
+      rankCell(h.rank),
+      bodyBoldCell(h.label, { font: { ...FONT.BODY_BOLD, foregroundColor: COLOR.GRAY_LIGHT } }),
+      bodyBoldCell(h.value, { align: 'LEFT' }),
+      numCell(
+        h.sub.includes('€') ? h.sub.replace(' €', '').replace(/\./g, '').replace(',', '.') : h.sub,
+        h.sub.includes('€') ? NUM_FMT.EURO : NUM_FMT.INT
+      ),
+      bodyCell(h.sub, { align: 'LEFT' }),
     ];
-    for (let i = 2; i < COL_COUNT - 1; i++) lineCells.push(cell('', { bg: COLOR.BG_BLOCK }));
-    lineCells.push(bodyBoldCell(h.value, { align: 'RIGHT' }));
-    batch.updateCells(sheetId, row, 0, [lineCells]);
-    batch.mergeCells(sheetId, row, row + 1, 1, COL_COUNT - 1);
-    batch.setRowHeight(sheetId, row, 26);
-    row += 1;
-  }
+    while (cells.length < COL_COUNT) cells.push(cell('', { bg: COLOR.BG_APP }));
+    return cells;
+  });
+  row = tableBody(batch, sheetId, row, destaqueRows);
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
 
-  // ── 5. Tendência ─────────────────────────────────────────────────────────
+  // ── 4. Tendência — 6 métricas core com contexto ──────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '📈 TENDÊNCIA',
-    hint: 'esta semana vs anterior',
+    title: 'TENDÊNCIA',
+    hint: 'esta semana vs anterior · média por saída',
     columnCount: COL_COUNT,
   });
 
-  const trendHeaders = ['Métrica', 'Esta Semana', 'Semana Anterior', 'Δ Absoluto', 'Δ %', 'Direcção'];
+  const trendHeaders = ['Métrica', 'Esta Semana', 'Semana Ant.', 'Δ Absoluto', 'Δ %', 'Média / Saída'];
   row = tableHeader(batch, sheetId, row, trendHeaders.concat(Array(COL_COUNT - trendHeaders.length).fill('')));
 
+  const saidasTotal = Number(trend.saidas.current) || 1;
   const trendRows = [
-    ['Saídas', trend.saidas, NUM_FMT.INT],
-    ['Vitórias', trend.wins, NUM_FMT.INT],
-    ['Kills', trend.kills, NUM_FMT.INT],
-    ['Mortes', trend.deaths, NUM_FMT.INT],
-    ['Lucro (€)', trend.net, NUM_FMT.EURO],
-    ['Bruto (€)', trend.gross, NUM_FMT.EURO],
-    ['Perdido (un)', trend.lost_units, NUM_FMT.INT],
-    ['Devolvido (un)', trend.returned_units, NUM_FMT.INT],
-    ['Fornecido (un)', trend.supplied_units, NUM_FMT.INT],
-    ['Entregas (itens)', trend.entregas, NUM_FMT.INT],
-  ].map(([label, series, fmt]) => {
+    ['Saídas', trend.saidas, NUM_FMT.INT, null],
+    ['Vitórias', trend.wins, NUM_FMT.INT, null],
+    ['Kills', trend.kills, NUM_FMT.INT, trend.kills.current / saidasTotal],
+    ['Mortes', trend.deaths, NUM_FMT.INT, trend.deaths.current / saidasTotal],
+    ['Lucro (€)', trend.net, NUM_FMT.EURO, trend.net.current / saidasTotal],
+    ['Entregas (itens)', trend.entregas, NUM_FMT.INT, null],
+  ].map(([label, series, fmt, avgPerSaida]) => {
     const cur = Number(series.current) || 0;
     const prev = Number(series.previous) || 0;
     const absDelta = cur - prev;
@@ -252,9 +245,13 @@ async function syncDashboard(batch, sheetId) {
       bodyCell(label),
       numCell(cur, fmt),
       numCell(prev, fmt, { font: { fontFamily: 'Inter', fontSize: 10, foregroundColor: COLOR.GRAY } }),
-      numCell(absDelta, fmt.pattern.includes('€') ? NUM_FMT.EURO_DELTA : NUM_FMT.INT_DELTA, { font: deltaFont }),
+      numCell(absDelta, fmt.pattern && fmt.pattern.includes('€') ? NUM_FMT.EURO_DELTA : NUM_FMT.INT_DELTA, {
+        font: deltaFont,
+      }),
       numCell(pctVal, NUM_FMT.PCT_DELTA, { font: deltaFont }),
-      cell(arrow, { bg: COLOR.BG_APP, font: deltaFont, align: 'CENTER', vAlign: 'MIDDLE' }),
+      avgPerSaida !== null
+        ? numCell(avgPerSaida, fmt.pattern && fmt.pattern.includes('€') ? NUM_FMT.EURO : NUM_FMT.DEC1)
+        : mutedCell('—', { align: 'CENTER' }),
     ];
     while (cells.length < COL_COUNT) cells.push(cell('', { bg: COLOR.BG_APP }));
     return cells;
@@ -264,14 +261,14 @@ async function syncDashboard(batch, sheetId) {
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
 
-  // ── 6. Stock por categoria ───────────────────────────────────────────────
+  // ── 5. Stock por categoria ───────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '📦 STOCK POR CATEGORIA',
+    title: 'STOCK POR CATEGORIA',
     hint: `${byCat.length} categorias activas`,
     columnCount: COL_COUNT,
   });
 
-  const catHeaders = ['Categoria', 'Nº Itens', 'Quantidade', 'Valor (€)', '% do Total'];
+  const catHeaders = ['Categoria', 'Nº Itens', 'Quantidade', 'Valor (€)', '% do Total', 'Δ Semana'];
   row = tableHeader(batch, sheetId, row, catHeaders.concat(Array(COL_COUNT - catHeaders.length).fill('')));
 
   const totalCatValue = byCat.reduce((a, r) => a + Number(r.total_value || 0), 0);
@@ -284,6 +281,7 @@ async function syncDashboard(batch, sheetId) {
       numCell(r.total_qty, NUM_FMT.INT),
       numCell(val, NUM_FMT.EURO),
       numCell(pct, NUM_FMT.PCT),
+      mutedCell('—', { align: 'CENTER' }), // placeholder para Δ (requer query histórica)
     ];
     while (cells.length < COL_COUNT) cells.push(cell('', { bg: COLOR.BG_APP }));
     return cells;
@@ -302,11 +300,11 @@ async function syncDashboard(batch, sheetId) {
     ],
   });
 
-  // ── 7. Alertas ───────────────────────────────────────────────────────────
+  // ── 6. Alertas ───────────────────────────────────────────────────────────
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = divider(batch, sheetId, row, COL_COUNT, 'accent');
   row = sectionHeader(batch, sheetId, row, {
-    title: '⚠️ ALERTAS',
+    title: 'ALERTAS',
     hint: alerts.length ? `${alerts.length} itens` : 'tudo sob controlo',
     columnCount: COL_COUNT,
   });
@@ -323,7 +321,7 @@ async function syncDashboard(batch, sheetId) {
     }
   }
 
-  // ── 8. Footer ────────────────────────────────────────────────────────────
+  // ── 7. Footer ────────────────────────────────────────────────────────────
   row = spacer(batch, sheetId, row, COL_COUNT, 'MD');
   row = footerBlock(batch, sheetId, row, COL_COUNT, 0, 'Dashboard');
 

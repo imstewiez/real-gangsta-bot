@@ -6,8 +6,10 @@
 const { MessageFlags } = require('discord.js');
 const { safeReply } = require('../shared/interactionHelpers');
 const { EMOJI } = require('../content');
+const { requirePermission } = require('../shared/requirePermission');
 
 async function handle(interaction) {
+  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const sm = require('../inventory/stockManager');
   const itemName = interaction.options.getString('item');

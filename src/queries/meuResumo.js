@@ -34,10 +34,9 @@ async function handle(interaction) {
       "SELECT COUNT(*)::int as n FROM inventory_delivery_requests WHERE requester_member_id=$1 AND status='pending'",
       [m.id]
     ),
-    query(
-      "SELECT COUNT(*)::int as n FROM orders WHERE member_id=$1 AND status IN ('pending','received','under_review')",
-      [m.id]
-    ),
+    query("SELECT COUNT(*)::int as n FROM orders WHERE member_id=$1 AND status IN ('pending','in_progress','ready')", [
+      m.id,
+    ]),
     query(
       "SELECT COUNT(*)::int as n FROM operation_participants sp JOIN operations s ON s.id=sp.operation_id WHERE sp.member_id=$1 AND s.status NOT IN ('concluida','cancelada')",
       [m.id]
@@ -78,7 +77,7 @@ async function handle(interaction) {
   if (progress) {
     const tierField = { name: '🎯 Tier Actual', value: `**${progress.currentTierName}**`, inline: true };
     const materialField = {
-      name: `${EMOJI.MATERIAL} Material total`,
+      name: `${EMOJI.MATERIAL} XP total`,
       value: `**${fmt(progress.totalQty)}**`,
       inline: true,
     };

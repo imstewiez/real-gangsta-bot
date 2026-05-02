@@ -32,7 +32,6 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
   MessageFlags,
 } = require('discord.js');
@@ -40,11 +39,11 @@ const { saidaRepo, memberRepo, inventoryRepo } = require('../repositories');
 const saidaEngine = require('./saidaEngine');
 const { safeReply, safeUpdate, isDuplicate, scheduleDeleteInteractionReply } = require('../shared/interactionHelpers');
 const { buildSearchableSelect } = require('../shared/selectSearch');
-const { brandEmbed, applyLogo, rankBadge, COLOR, headerLine, progressBar } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR, headerLine, progressBar } = require('../shared/embedBuilders');
 const { EMOJI, SAIDA_TYPE } = require('../content');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
-const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
+const { formatPtDateOnly } = require('../shared/formatPtDate');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BUILD SESSION EMBED + COMPONENTS
@@ -878,7 +877,7 @@ async function handleSessionIniciar(interaction) {
               content:
                 `${EMOJI.INFO} Saída #${saidaId} iniciada — ficas como **trabalhador** (havia mais de ${maxChar} inscritos).\n` +
                 `Bot escolheu os ${maxChar} melhores por KDA/MVP/arma/material (chefia + patrão di zona têm lugar reservado).\n` +
-                `A chefia pode trocar manualmente no painel se precisar.`,
+                'A chefia pode trocar manualmente no painel se precisar.',
             })
             .catch(() => {});
         } catch {
@@ -892,7 +891,7 @@ async function handleSessionIniciar(interaction) {
     trabalhadores.length > 0
       ? `${EMOJI.OK} **Sessão #${saidaId} iniciada.** ${inscritos.length} inscritos, ${maxChar} slots para caract:\n` +
         `${EMOJI.ARMA} **${caracterizados.length}** caracterizados (chefia + patrão têm lugar reservado) · ${EMOJI.TRABALHADOR} **${trabalhadores.length}** trabalhadores (auto-pick por KDA).\n` +
-        `_Trabalhadores receberam DM. Podes trocar manualmente no painel._`
+        '_Trabalhadores receberam DM. Podes trocar manualmente no painel._'
       : `${EMOJI.OK} **Sessão #${saidaId} iniciada.** ${caracterizados.length} caracterizados (todos cabem).`;
 
   return safeReply(interaction, { content: summary }, { messageClass: 'BANAL' });
@@ -973,7 +972,7 @@ async function handleSessionPedirJuntar(interaction) {
             content:
               `${EMOJI.WARN} Saída **#${saidaId}** — **${member.display_name}** pediu para juntar-se e ` +
               `tem score superior a **${deslocado?.display_name || 'um caracterizado actual'}**.\n` +
-              `Podes considerar aprovar e fazer swap manualmente pelo painel (**"Trocar Caract ↔ Trab"**).`,
+              'Podes considerar aprovar e fazer swap manualmente pelo painel (**"Trocar Caract ↔ Trab"**).',
           })
           .catch(() => {});
       } catch (e) {
@@ -986,7 +985,7 @@ async function handleSessionPedirJuntar(interaction) {
       {
         content:
           `${EMOJI.OK} Pedido enviado à chefia.\n` +
-          `Se for aprovado, entras como **trabalhador** (chefia pode trocar para caracterizado).`,
+          'Se for aprovado, entras como **trabalhador** (chefia pode trocar para caracterizado).',
       },
       { messageClass: 'BANAL' }
     );

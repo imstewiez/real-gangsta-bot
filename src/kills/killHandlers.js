@@ -1,7 +1,7 @@
 'use strict';
 const { MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
-const { successEmbed, brandEmbed, rankBadge, streakBadge } = require('../shared/embedBuilders');
+const { brandEmbed, rankBadge, streakBadge } = require('../shared/embedBuilders');
 const { canRegisterKill } = require('../permissions/permissionEngine');
 const { EMOJI, MODALS, KILLS, ERRORS } = require('../content');
 const engine = require('./killEngine');
@@ -152,8 +152,9 @@ async function handleLeaderboardButton(interaction) {
   const lines = top.map((r, i) => {
     const badge = rankBadge(i + 1);
     const extra = [];
-    if (r.kd != null) extra.push(`K/D **${Number(r.kd).toFixed(2)}**`);
-    if (r.streak != null && r.streak >= 3) extra.push(`${streakBadge(r.streak)} ${r.streak}`);
+    if (r.kd !== null && r.kd !== undefined) extra.push(`K/D **${Number(r.kd).toFixed(2)}**`);
+    if (r.streak !== null && r.streak !== undefined && r.streak >= 3)
+      extra.push(`${streakBadge(r.streak)} ${r.streak}`);
     return KILLS.LEADERBOARD_PLACE(badge, r.discord_id, r.kills, extra.join(' · '));
   });
 

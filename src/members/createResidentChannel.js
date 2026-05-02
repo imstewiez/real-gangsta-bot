@@ -37,7 +37,7 @@ async function _allCandidateCategories() {
   let dbAuto = [];
   try {
     const r = await query(
-      `SELECT category_id FROM managed_topic_categories WHERE role = 'overflow-auto' ORDER BY created_at ASC`
+      "SELECT category_id FROM managed_topic_categories WHERE role = 'overflow-auto' ORDER BY created_at ASC"
     );
     dbAuto = r.rows.map(row => row.category_id);
   } catch (e) {
@@ -77,7 +77,7 @@ async function _nextAutoOverflowName(guild) {
     const cat = await guild.channels.fetch(primary).catch(() => null);
     if (cat?.name) baseName = cat.name.replace(/\s*#\d+$/, ''); // strip sufixo se já tiver
   }
-  const r = await query(`SELECT COUNT(*)::int AS n FROM managed_topic_categories WHERE role = 'overflow-auto'`).catch(
+  const r = await query("SELECT COUNT(*)::int AS n FROM managed_topic_categories WHERE role = 'overflow-auto'").catch(
     () => ({ rows: [{ n: 0 }] })
   );
   const nextIdx = (r.rows[0]?.n || 0) + 2; // #2 é o primeiro overflow (#1 é o primary)
@@ -120,14 +120,14 @@ async function createResidentChannel(guild, createOpts) {
   }
 
   // Tenta cada categoria conhecida.
-  let lastErr = null;
+  // let lastErr = null;
   for (const categoryId of categories) {
     try {
       const channel = await queueChannelOp(() => guild.channels.create({ ...createOpts, parent: categoryId }));
       return { channel, categoryId };
     } catch (e) {
       if (_isCategoryFull(e)) {
-        lastErr = e;
+        // lastErr = e;
         continue;
       }
       throw e;
@@ -150,14 +150,14 @@ async function createResidentChannel(guild, createOpts) {
  */
 async function moveChannelToManagedCategory(guild, channel) {
   const categories = await _allCandidateCategories();
-  let lastErr = null;
+  // let lastErr = null;
   for (const categoryId of categories) {
     try {
       await queueChannelOp(() => channel.setParent(categoryId, { lockPermissions: false }));
       return { categoryId };
     } catch (e) {
       if (_isCategoryFull(e)) {
-        lastErr = e;
+        // lastErr = e;
         continue;
       }
       throw e;

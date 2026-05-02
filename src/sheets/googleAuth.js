@@ -1,7 +1,7 @@
 'use strict';
 const { google } = require('googleapis');
 const CONFIG = require('../config');
-const { log, warn } = require('../logger');
+const { warn } = require('../logger');
 
 let _sheets = null;
 

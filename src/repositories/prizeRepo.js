@@ -1,5 +1,5 @@
 'use strict';
-const { query, queryWithTransaction } = require('../db');
+const { query } = require('../db');
 
 async function create({ weekStart, weekEnd, winnerMemberId, hybridScore, metricsJson = {} }) {
   const res = await query(
@@ -81,7 +81,7 @@ async function markDelivered(weekStart, { deliveredBy, notes = '' }) {
   return res.rows[0] || null;
 }
 
-async function cancelPrize(weekStart, { reason, cancelledBy }) {
+async function cancelPrize(weekStart, { reason, _cancelledBy }) {
   const res = await query(
     `UPDATE weekly_prizes
      SET prize_status = 'cancelado', notes = COALESCE(notes, '') || E'\nCancelado: ' || $1,

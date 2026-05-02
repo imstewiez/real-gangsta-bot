@@ -128,7 +128,7 @@ const BAIRRISTAS = {
     NEXT_TIER: 'Próximo tier',
     REMAINING: 'Falta',
     MAXED: 'Estás no topo automático. Subida manual pela chefia.',
-    UNITS: 'itens',
+    UNITS: 'XP',
   },
 };
 

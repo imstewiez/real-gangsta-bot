@@ -119,7 +119,7 @@ function buildCartEmbed(cart, { extraNote } = {}) {
       const l = cart.lines[i];
       const lineValue = l.quantity * (l.unitPrice ?? l.basePrice);
       const priceTag =
-        isVenda && l.unitPrice != null && l.unitPrice !== l.basePrice
+        isVenda && l.unitPrice !== null && l.unitPrice !== undefined && l.unitPrice !== l.basePrice
           ? ` ⚡ **${l.unitPrice}€**/un _(base ${l.basePrice}€)_`
           : l.basePrice > 0
             ? ` · ${l.basePrice}€/un`
@@ -259,9 +259,11 @@ function buildCartPreview(cart, context = {}) {
     if (context.promotion.threshold) {
       const remaining = Math.max(0, context.promotion.threshold - newTotal);
       if (remaining > 0) {
-        lines.push(`🎯 **${context.promotion.nextTierName}**: faltam ${remaining.toLocaleString('pt-PT')} para subir`);
+        lines.push(
+          `🎯 **${context.promotion.nextTierName}**: faltam ${remaining.toLocaleString('pt-PT')} XP para subir`
+        );
       } else {
-        lines.push(`🎯 **${context.promotion.nextTierName}**: atingido após submeter!`);
+        lines.push(`🎯 **${context.promotion.nextTierName}**: meta atingida após submeter!`);
       }
     }
   }

@@ -39,14 +39,4 @@ describe('eventBus + projections', () => {
     await assert.doesNotReject(bus.emitAsync('__test_err__', {}));
   });
 
-  it('DomainErrors têm campos esperados', () => {
-    const { DomainError, ValidationError, NotFoundError } = require('../src/core/errors');
-    const e = new ValidationError('x');
-    assert.ok(e instanceof DomainError);
-    assert.equal(e.code, 'VALIDATION');
-    const nf = new NotFoundError('saida', 42);
-    assert.match(nf.message, /saida/);
-    assert.equal(nf.code, 'NOT_FOUND');
-    assert.equal(nf.entity, 'saida');
-  });
 });

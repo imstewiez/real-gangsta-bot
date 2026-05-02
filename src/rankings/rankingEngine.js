@@ -10,7 +10,7 @@
  * (Pesos intencionalmente explícitos. Afináveis em caso de mudança cultural.)
  */
 
-const { inventoryRepo, saidaRepo, rankingRepo, memberRepo, killRepo } = require('../repositories');
+const { inventoryRepo, rankingRepo, memberRepo, killRepo } = require('../repositories');
 const { query } = require('../db');
 const { weekBounds } = require('../util');
 const { log, warn } = require('../logger');

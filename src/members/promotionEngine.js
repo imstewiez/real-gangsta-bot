@@ -3,7 +3,7 @@ const { memberRepo, memberLifecycleRepo } = require('../repositories');
 const { handlePromotionToOficial } = require('../onboarding/onboardingEngine');
 const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
 const { queueMemberOp, queueChannelOp } = require('../discordQueue');
-const { log, warn } = require('../logger');
+const { warn } = require('../logger');
 const eventBus = require('../core/eventBus');
 const CONFIG = require('../config');
 
@@ -58,7 +58,7 @@ async function _updateDiscordRoles(guildMember, newDbRole, oldDbRole, tier) {
   }
 }
 
-async function _archiveBairristaChannel(guildMember, dbMember, client) {
+async function _archiveBairristaChannel(guildMember, dbMember, _client) {
   if (!dbMember.channel_id) return;
   const guild = guildMember.guild;
   const discordId = guildMember.id;
@@ -190,15 +190,15 @@ async function _ensureBairristaChannel(guildMember, dbMember) {
   }
 }
 
-async function promoteToOficial(guildMember, client, promotedBy) {
+async function promoteToOficial(guildMember, _client, _promotedBy) {
   const discordId = guildMember.id;
   const dbMember = await memberRepo.findByDiscordId(discordId);
   if (!dbMember) return null;
 
   if (dbMember.role === 'oficial') return dbMember;
 
-  await handlePromotionToOficial(guildMember, client);
-  return await memberRepo.findByDiscordId(discordId);
+  await handlePromotionToOficial(guildMember, _client);
+  return memberRepo.findByDiscordId(discordId);
 }
 
 async function promoteMember(memberId, newRole, opts = {}) {

@@ -11,11 +11,11 @@
 
 const { bairristaStatsRepo } = require('../repositories');
 const { publishSummary } = require('../inventory/bairristaNotifier');
-const { brandEmbed, rankBadge, streakBadge, COLOR } = require('../shared/embedBuilders');
+const { brandEmbed, rankBadge, COLOR } = require('../shared/embedBuilders');
 const { BAIRRISTAS, EMOJI } = require('../content');
 const { weekBounds } = require('../util');
 const { log, warn } = require('../logger');
-const CONFIG = require('../config');
+// const CONFIG = require('../config');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RESUMO DIÁRIO

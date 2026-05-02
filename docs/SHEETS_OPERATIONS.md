@@ -136,7 +136,7 @@ Colunas-chave:
 4. Se last_synced_at > 15 min E `last_result=error` com `consecutive_errors ≥ 3`
    → bug persistente. Vê `last_error`, corrige, depois `/sync-sheets acao:tab`.
 5. Se last_synced_at > 15 min E `last_result=ok` mas a sheet parece stale
-   → o evento não foi emitido. Procurar em `src/core/events.js` se o
+   → o evento não foi emitido. Verificar `src/sheets/projections.js` se o
    evento está mapeado em `EVENT_TO_TABS`.
 
 ### Sintoma: "syncs estão todos a falhar"

@@ -70,15 +70,6 @@ const ERRORS = {
 
   // Sticky
   STICKY_NOT_FOUND: () => `${E.NOT_FOUND} Sticky não existe ou está inactiva.`,
-
-  // ── Legacy aliases (não tens de usar; só para callers antigos) ──────────
-  // Migrar para os nomes directamente quando tocares no handler.
-  get OPERATION_NOT_FOUND() {
-    return this.SAIDA_NOT_FOUND;
-  },
-  get OPERATION_CLOSED() {
-    return this.SAIDA_CLOSED;
-  },
 };
 
 module.exports = ERRORS;

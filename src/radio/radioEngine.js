@@ -11,7 +11,7 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const CONFIG = require('../config');
 const { radioRepo } = require('../repositories');
 const { logAudit } = require('../audit/auditEngine');
-const { brandEmbed, applyLogo, COLOR, headerLine, metricCard } = require('../shared/embedBuilders');
+const { brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { log, warn } = require('../logger');
 
@@ -96,22 +96,11 @@ function buildEmbed(states) {
   const when = principal?.updated_at ? `<t:${Math.floor(new Date(principal.updated_at).getTime() / 1000)}:R>` : '—';
   const by = principal?.updated_by ? `<@${principal.updated_by}>` : '—';
   const modeTag = principal?.mode === 'random' ? '🎲 Aleatória' : '✋ Manual';
-  const modeEmoji = principal?.mode === 'random' ? EMOJI.REFRESH : '✋';
 
   const embed = brandEmbed('MOVEMENT')
     .setColor(COLOR.DANGER)
     .setTitle(`${EMOJI.RADIO} Frequência da Firma`)
-    .setDescription(
-      '**A rua fala nesta onda.**\n' +
-        headerLine(EMOJI.FREQUENCIA, 'Onda Actual') +
-        `\`\`\`fix\n${val}\n\`\`\`\n` +
-        `${modeEmoji} ${modeTag} · por ${by} · ${when}`
-    )
-    .addFields(
-      metricCard('Última Alteração', when, { icon: '⏱️', inline: true }),
-      metricCard('Definido por', by, { icon: '👤', inline: true }),
-      metricCard('Modo', modeTag, { icon: modeEmoji, inline: true })
-    );
+    .setDescription(`\`\`\`fix\n${val}\n\`\`\`\n` + `> ${modeTag} · ${by} · ${when}`);
 
   return applyLogo(embed);
 }

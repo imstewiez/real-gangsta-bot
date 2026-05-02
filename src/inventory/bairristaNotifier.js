@@ -24,8 +24,8 @@ const {
   setFooterText,
 } = require('../shared/embedBuilders');
 const { BAIRRISTAS, EMOJI } = require('../content');
-const { weekBounds } = require('../util');
-const { log, warn } = require('../logger');
+// const { weekBounds } = require('../util');
+const { warn } = require('../logger');
 
 let _client = null;
 let _channelId = null;
@@ -179,7 +179,7 @@ async function notifyBairristaBatch(opts) {
     const desc = [headerLine(isVenda ? EMOJI.LUCRO : EMOJI.MATERIAL, isVenda ? 'ITENS' : 'ITENS')];
     const itemLines = opts.lines.slice(0, 20).map(l => {
       const valTag = l.lineValue > 0 ? ` · **${l.lineValue.toLocaleString('pt-PT')}€**` : '';
-      const priceTag = isVenda && l.unitPrice != null ? ` ⚡@${l.unitPrice}€` : '';
+      const priceTag = isVenda && l.unitPrice !== null && l.unitPrice !== undefined ? ` ⚡@${l.unitPrice}€` : '';
       return `**${l.quantity}×** ${l.itemName}${priceTag}${valTag}`;
     });
     if (opts.lines.length > 20) itemLines.push(`… +${opts.lines.length - 20} itens`);

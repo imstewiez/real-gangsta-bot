@@ -46,7 +46,7 @@ async function applyIncrement({
   profit,
   returnedValue,
   suppliedValue,
-  survived,
+  _survived,
   mvp,
 }) {
   if (!memberId) return null;

@@ -22,7 +22,6 @@
 
 const {
   ActionRowBuilder,
-  StringSelectMenuBuilder,
   ButtonBuilder,
   ButtonStyle,
   ModalBuilder,
@@ -30,9 +29,9 @@ const {
   TextInputStyle,
   MessageFlags,
 } = require('discord.js');
-const { saidaRepo, killRepo, memberRepo } = require('../repositories');
+const { saidaRepo, memberRepo } = require('../repositories');
 const { query } = require('../db');
-const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
 const { buildSearchableSelect } = require('../shared/selectSearch');
 const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { SAIDAS, EMOJI } = require('../content');
@@ -251,7 +250,7 @@ async function handleSettleModal(interaction) {
   // Se morreu e tinha material da org, assume perda total. Se morreu sem
   // material, não há perda (weaponDecision='died_auto' mas sem issued).
   // Se sobreviveu: returned → sem perda; not_returned/lost → perda total.
-  const diedWithMat = died;
+  // const diedWithMat = died;
   const notes = getModalField(interaction, 'notes') || '';
 
   const member = await memberRepo.findByDiscordId(discordId);

@@ -9,12 +9,12 @@ async function handle(interaction) {
   await requirePermission(interaction, { minRole: 'OG' });
 
   const [deliveries, orders, prizes, saidas, stockLow] = await Promise.all([
-    query(`SELECT COUNT(*)::int AS n FROM inventory_delivery_requests WHERE status = 'pending'`),
-    query(`SELECT COUNT(*)::int AS n FROM orders WHERE status IN ('pending','received','under_review')`),
-    query(`SELECT COUNT(*)::int AS n FROM weekly_prizes WHERE prize_status = 'por_definir'`),
-    query(`SELECT COUNT(*)::int AS n FROM operations WHERE status NOT IN ('concluida','cancelada')`),
+    query("SELECT COUNT(*)::int AS n FROM inventory_delivery_requests WHERE status = 'pending'"),
+    query("SELECT COUNT(*)::int AS n FROM orders WHERE status IN ('pending','in_progress','ready')"),
+    query("SELECT COUNT(*)::int AS n FROM weekly_prizes WHERE prize_status = 'por_definir'"),
+    query("SELECT COUNT(*)::int AS n FROM operations WHERE status NOT IN ('concluida','cancelada')"),
     query(
-      `SELECT i.name, s.quantity FROM stock s JOIN items i ON i.id = s.item_id WHERE s.quantity < i.target_stock AND i.target_stock > 0 LIMIT 5`
+      'SELECT i.name, s.quantity FROM stock s JOIN items i ON i.id = s.item_id WHERE s.quantity < i.target_stock AND i.target_stock > 0 LIMIT 5'
     ),
   ]);
 

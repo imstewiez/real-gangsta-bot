@@ -36,7 +36,7 @@ async function transition({ memberId, newState, changedBy, reason }) {
     }
 
     await client.query(
-      `UPDATE members SET lifecycle_state = $1, lifecycle_changed_at = NOW(), lifecycle_changed_by = $2, lifecycle_notes = $3 WHERE id = $4`,
+      'UPDATE members SET lifecycle_state = $1, lifecycle_changed_at = NOW(), lifecycle_changed_by = $2, lifecycle_notes = $3 WHERE id = $4',
       [newState, changedBy, reason || '', memberId]
     );
     await client.query(
@@ -50,7 +50,7 @@ async function transition({ memberId, newState, changedBy, reason }) {
 
 async function getHistory(memberId, { limit = 20 } = {}) {
   const res = await query(
-    `SELECT * FROM member_lifecycle_history WHERE member_id = $1 ORDER BY changed_at DESC LIMIT $2`,
+    'SELECT * FROM member_lifecycle_history WHERE member_id = $1 ORDER BY changed_at DESC LIMIT $2',
     [memberId, limit]
   );
   return res.rows;

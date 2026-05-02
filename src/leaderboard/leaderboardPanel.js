@@ -198,9 +198,9 @@ function buildDetailsEmbed(periodData) {
 
   for (const cat of ['activity', 'mvp', 'kda', 'delivered', 'sold']) {
     const icon = CATEGORY_ICON[cat];
-    const label = CATEGORY_LABEL[cat];
+    const catLabel = CATEGORY_LABEL[cat];
     const value = _formatTop5ForCategory(cat, categories[cat].top);
-    embed.addFields({ name: `${icon} ${label}`, value, inline: false });
+    embed.addFields({ name: `${icon} ${catLabel}`, value, inline: false });
   }
 
   setFooterText(embed, 'details leaderboard · usa ← → para navegar no tempo');

@@ -1,23 +1,28 @@
 'use strict';
 const CONFIG = require('../config');
-const { memberRepo, inventoryRepo } = require('../repositories');
+const { memberRepo } = require('../repositories');
 const { sqlIn, CONTRIBUTION_TYPES } = require('../shared/movementTypes');
+const { buildItemPointsCase } = require('./itemPoints');
 const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
 const { queueMemberOp, queueChannelOp } = require('../discordQueue');
 const { log, warn } = require('../logger');
 const eventBus = require('../core/eventBus');
 const { COLOR } = require('../shared/embedBuilders');
 
-// ── Thresholds (entrega/venda acumulada — UNIDADES de material) ─────────────
-// Young Blood (entry) → O Gunão:        25.000 itens
-// O Gunão → Gangster Fodido:            50.000 itens
+// ── Thresholds (XP acumulado — pontos por item entregue/vendido) ────────────
+// Young Blood (entry) → O Gunão:        50.000 XP
+// O Gunão → Gangster Fodido:            100.000 XP
 // Gangster Fodido → cima:               manual (Patrão di Zona, Real Gangster, OG, etc.)
 //
-// Nota: o valor conta apenas QUANTIDADE (soma de quantity), nunca valor em €.
-// O preço estimado dos itens é usado só para cálculos económicos em saídas.
+// Pontos por item:
+//   4 pts — Moldes, Corpos, Prints
+//   3 pts — Plástico velho/reciclado, Lixo eletrónico, Cobre, Pólvora, Peças
+//   2 pts — Sucata, Ferro, Telemóveis Estragados, Rádios Estragados, Carvão, Borracha
+//   1 pt  — Restantes materiais
+//   0 pts — Itens de mercado/droga (quimicos_droga, dinheiro)
+//
 // Promoções excepcionais (fora do threshold) continuam a ser feitas por
-// atribuição manual de role via Discord — o GuildMemberUpdate listener detecta
-// adições de roles oficiais e arquiva canal individual quando aplicável.
+// atribuição manual de role via Discord.
 
 const TIERS = [
   { tier: 'young_blood', roleIdKey: 'YOUNG_BLOOD_ROLE_ID', dbRole: 'bairrista', level: 1 },
@@ -43,28 +48,28 @@ const PROMOTIONS = [
 ];
 
 /**
- * Calcula a QUANTIDADE total de material (unidades) entregue/vendido por um
- * membro. Não usa preço — só soma quantity. É esta métrica que conta para
- * promoções automáticas.
+ * Calcula o XP total de material entregue/vendido por um membro.
+ * Cada item dá uma quantidade de pontos consoante o tipo.
+ * É esta métrica que conta para promoções automáticas.
  */
-async function getMemberMaterialQty(memberId) {
+async function getMemberMaterialPoints(memberId) {
   const { query } = require('../db');
+  const pointsCase = buildItemPointsCase();
   const res = await query(
     `
-    SELECT COALESCE(SUM(im.quantity), 0) as total_qty
+    SELECT COALESCE(SUM(im.quantity * ${pointsCase}), 0)::bigint as total_points
     FROM inventory_movements im
+    JOIN items i ON i.id = im.item_id
     WHERE im.member_id = $1
-      AND im.movement_type IN (
-        'entrega_bairrista', 'venda_bairrista', 'entrega_oficial'
-      )
+      AND im.movement_type = ANY($2::text[])
   `,
-    [memberId]
+    [memberId, CONTRIBUTION_TYPES]
   );
-  return parseInt(res.rows[0]?.total_qty || 0, 10);
+  return Number(res.rows[0]?.total_points || 0);
 }
-// Alias legado — quem ainda importar pelo nome antigo continua a funcionar,
-// mas recebe quantidade (não valor). Nome antigo deprecated.
-const getMemberMaterialValue = getMemberMaterialQty;
+// Alias legado — manter compatibilidade com callers antigos.
+const getMemberMaterialQty = getMemberMaterialPoints;
+const getMemberMaterialValue = getMemberMaterialPoints;
 
 /**
  * Verifica se um membro merece promoção automática e aplica-a.
@@ -127,16 +132,18 @@ async function checkAndPromote(discordId, guild, client) {
       return null;
     }
 
-    // Soma o material dentro da mesma transação — precisão total.
-    const qtyRes = await txClient.query(
-      `SELECT COALESCE(SUM(im.quantity), 0)::int AS total_qty
+    // Calcula XP dentro da mesma transação — precisão total.
+    const pointsCase = buildItemPointsCase();
+    const ptsRes = await txClient.query(
+      `SELECT COALESCE(SUM(im.quantity * ${pointsCase}), 0)::bigint AS total_points
          FROM inventory_movements im
+         JOIN items i ON i.id = im.item_id
         WHERE im.member_id = $1
           AND im.movement_type IN (${sqlIn(CONTRIBUTION_TYPES)})`,
       [liveMember.id]
     );
-    const totalQty = Number(qtyRes.rows[0].total_qty) || 0;
-    if (totalQty < threshold) return null;
+    const totalPoints = Number(ptsRes.rows[0].total_points) || 0;
+    if (totalPoints < threshold) return null;
 
     // Decidiu promover — UPDATE com WHERE tier=from para CAS-style safety.
     const upd = await txClient.query(
@@ -150,7 +157,7 @@ async function checkAndPromote(discordId, guild, client) {
       displayName: liveMember.display_name,
       nickname: liveMember.nickname,
       channelId: liveMember.channel_id,
-      totalQty,
+      totalPoints,
     };
   });
 
@@ -164,7 +171,7 @@ async function checkAndPromote(discordId, guild, client) {
       warn(
         `[AUTO-PROMO] DB promoveu ${dbMember.display_name} mas guildMember não existe; roles/canal ficam para invariants.`
       );
-      return { promoted: true, from: promotion.from, to: promotion.to, qty: decision.totalQty };
+      return { promoted: true, from: promotion.from, to: promotion.to, points: decision.totalPoints };
     }
 
     // Remover role anterior e adicionar novo
@@ -174,7 +181,7 @@ async function checkAndPromote(discordId, guild, client) {
       );
     }
     await queueMemberOp(() =>
-      guildMember.roles.add(toRoleId, `Auto-promoção: atingiu ${threshold.toLocaleString('pt-PT')} itens entregues`)
+      guildMember.roles.add(toRoleId, `Auto-promoção: atingiu ${threshold.toLocaleString('pt-PT')} XP`)
     );
 
     // Renomear canal individual para reflectir novo tier (se existir)
@@ -207,16 +214,16 @@ async function checkAndPromote(discordId, guild, client) {
       actorName: CONFIG.BOT_DISPLAY_NAME,
       beforeState: { tier: promotion.from, totalQty: decision.totalQty },
       afterState: { tier: promotion.to, threshold },
-      context: `Material acumulado: ${decision.totalQty.toLocaleString('pt-PT')} itens (meta: ${threshold.toLocaleString('pt-PT')} itens)`,
+      context: `XP acumulado: ${decision.totalPoints.toLocaleString('pt-PT')} (meta: ${threshold.toLocaleString('pt-PT')} XP)`,
     });
 
     await sendAuditToChannel(client, {
       title: 'Promoção Automática!',
-      description: `<@${discordId}> subiu de **${formatTierName(promotion.from)}** para **${formatTierName(promotion.to)}**!\n\nMaterial acumulado: **${decision.totalQty.toLocaleString('pt-PT')} itens** (meta: ${threshold.toLocaleString('pt-PT')} itens)`,
+      description: `<@${discordId}> subiu de **${formatTierName(promotion.from)}** para **${formatTierName(promotion.to)}**!\n\nXP acumulado: **${decision.totalPoints.toLocaleString('pt-PT')}** (meta: ${threshold.toLocaleString('pt-PT')} XP)`,
       color: COLOR.PROMOTION_GOLD,
     });
 
-    log(`[AUTO-PROMO] ${decision.displayName}: ${promotion.from} → ${promotion.to} (${decision.totalQty} itens)`);
+    log(`[AUTO-PROMO] ${decision.displayName}: ${promotion.from} → ${promotion.to} (${decision.totalPoints} XP)`);
 
     // Event — dispara projecção sheets (membros + dashboard + resumo).
     eventBus
@@ -226,12 +233,12 @@ async function checkAndPromote(discordId, guild, client) {
         displayName: decision.displayName,
         from: promotion.from,
         to: promotion.to,
-        qty: decision.totalQty,
+        points: decision.totalPoints,
         at: new Date(),
       })
       .catch(() => {});
 
-    return { promoted: true, from: promotion.from, to: promotion.to, qty: decision.totalQty };
+    return { promoted: true, from: promotion.from, to: promotion.to, points: decision.totalPoints };
   } catch (e) {
     warn(`[AUTO-PROMO] Falha no side-effect de ${decision.displayName}: ${e.message}`);
     // Não reverte DB — role_invariants job corrige desalinhamento Discord↔DB.
@@ -263,15 +270,16 @@ async function getPromotionProgress(discordId) {
   const currentTier = dbMember.tier || CONFIG.BAIRRISTA_DEFAULT_TIER;
   const promotion = PROMOTIONS.find(p => p.from === currentTier);
 
-  const totalQty = await getMemberMaterialQty(dbMember.id);
+  const totalPoints = await getMemberMaterialPoints(dbMember.id);
 
   if (!promotion) {
     return {
       currentTier,
       currentTierName: formatTierName(currentTier),
-      totalQty,
-      // Campo legado — aponta para totalQty agora; alguns callers ainda leem.
-      totalValue: totalQty,
+      totalPoints,
+      // Campos legados
+      totalQty: totalPoints,
+      totalValue: totalPoints,
       nextTier: null,
       nextTierName: null,
       threshold: null,
@@ -282,14 +290,16 @@ async function getPromotionProgress(discordId) {
   }
 
   const threshold = CONFIG[promotion.thresholdKey];
-  const remaining = Math.max(0, threshold - totalQty);
-  const progress = Math.min(100, (totalQty / threshold) * 100);
+  const remaining = Math.max(0, threshold - totalPoints);
+  const progress = Math.min(100, (totalPoints / threshold) * 100);
 
   return {
     currentTier,
     currentTierName: formatTierName(currentTier),
-    totalQty,
-    totalValue: totalQty, // legado
+    totalPoints,
+    // Campos legados
+    totalQty: totalPoints,
+    totalValue: totalPoints,
     nextTier: promotion.to,
     nextTierName: formatTierName(promotion.to),
     threshold,
@@ -302,8 +312,9 @@ async function getPromotionProgress(discordId) {
 module.exports = {
   checkAndPromote,
   getPromotionProgress,
-  getMemberMaterialQty,
-  getMemberMaterialValue,
+  getMemberMaterialPoints,
+  getMemberMaterialQty, // alias legado
+  getMemberMaterialValue, // alias legado
   formatTierName,
   TIERS,
   PROMOTIONS,

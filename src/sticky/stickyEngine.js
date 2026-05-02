@@ -35,7 +35,7 @@ function listRenderers() {
 
 async function renderPayload(client, sticky) {
   const renderer = renderers.get(sticky.source_key);
-  if (renderer) return await renderer(client, sticky.payload || {});
+  if (renderer) return renderer(client, sticky.payload || {});
   return sticky.payload || {}; // estático
 }
 

@@ -14,7 +14,7 @@
  *   - scheduler (actualiza gauges Prometheus)
  */
 
-const CONFIG = require('../config');
+// const CONFIG = require('../config');
 const { query } = require('../db');
 const metrics = require('./metrics');
 

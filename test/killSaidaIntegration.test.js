@@ -60,7 +60,7 @@ const stubKillRepo = {
       .sort((a, b) => b[1] - a[1])
       .slice(0, limit)
       .map(([killerId, kills]) => {
-        const m = [...state.members.values()].find(m => m.id === killerId);
+        const m = [...state.members.values()].find(member => member.id === killerId);
         return { killer_id: killerId, kills, display_name: m?.display_name, discord_id: m?.discord_id };
       });
   },

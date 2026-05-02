@@ -86,8 +86,8 @@ async function main() {
     const ids = r.rows.map(row => row.id);
 
     if (dryRun) {
-      console.log(`(DRY_RUN=true — não apaguei nada. Corre sem DRY_RUN para aplicar.)`);
-      console.log(`\nComando para aplicar:`);
+      console.log('(DRY_RUN=true — não apaguei nada. Corre sem DRY_RUN para aplicar.)');
+      console.log('\nComando para aplicar:');
       console.log(`  railway run SOLO_DISCORD_ID=${soloDiscordId} node scripts/manual/cleanSoloSaidas.js`);
       await pool.end();
       return;
@@ -96,18 +96,18 @@ async function main() {
     await client.query('BEGIN');
 
     const spotsAffected = await client.query(
-      `SELECT DISTINCT spot FROM operations WHERE id = ANY($1::int[]) AND spot IS NOT NULL AND spot != ''`,
+      "SELECT DISTINCT spot FROM operations WHERE id = ANY($1::int[]) AND spot IS NOT NULL AND spot != ''",
       [ids]
     );
     const spotsList = spotsAffected.rows.map(row => row.spot);
 
-    const r1 = await client.query(`DELETE FROM inventory_movements WHERE saida_id = ANY($1::int[])`, [ids]);
+    const r1 = await client.query('DELETE FROM inventory_movements WHERE saida_id = ANY($1::int[])', [ids]);
     console.log(`inventory_movements (saida_id):    ${r1.rowCount} apagados`);
 
-    const r2 = await client.query(`DELETE FROM operation_materials WHERE operation_id = ANY($1::int[])`, [ids]);
+    const r2 = await client.query('DELETE FROM operation_materials WHERE operation_id = ANY($1::int[])', [ids]);
     console.log(`operation_materials:               ${r2.rowCount} apagados`);
 
-    const r3 = await client.query(`DELETE FROM operation_participants WHERE operation_id = ANY($1::int[])`, [ids]);
+    const r3 = await client.query('DELETE FROM operation_participants WHERE operation_id = ANY($1::int[])', [ids]);
     console.log(`operation_participants:            ${r3.rowCount} apagados`);
 
     // kill_logs — verifica se a tabela tem saida_id/operation_id
@@ -149,15 +149,15 @@ async function main() {
     );
     console.log(`audit_logs:                        ${r5.rowCount} apagados`);
 
-    const r6 = await client.query(`DELETE FROM operations WHERE id = ANY($1::int[])`, [ids]);
+    const r6 = await client.query('DELETE FROM operations WHERE id = ANY($1::int[])', [ids]);
     console.log(`operations:                        ${r6.rowCount} apagadas`);
 
     // Reset stats do member e spots afectados — recompoe incremental no futuro
-    const rReset = await client.query(`DELETE FROM member_saida_stats WHERE member_id = $1`, [member.id]);
+    const rReset = await client.query('DELETE FROM member_saida_stats WHERE member_id = $1', [member.id]);
     console.log(`member_saida_stats (target) reset: ${rReset.rowCount} rows`);
 
     if (spotsList.length) {
-      const rSpot = await client.query(`DELETE FROM spot_stats WHERE spot = ANY($1::text[])`, [spotsList]);
+      const rSpot = await client.query('DELETE FROM spot_stats WHERE spot = ANY($1::text[])', [spotsList]);
       console.log(`spot_stats reset (${spotsList.length} spots):  ${rSpot.rowCount} rows`);
     }
 

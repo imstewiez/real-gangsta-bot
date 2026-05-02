@@ -18,7 +18,6 @@ const {
 } = require('../../../onboarding/onboardingHandlers');
 const { handleMeuPedido } = require('../../../onboarding/meuPedido');
 const {
-  handleMemberHistoryButton,
   handleMemberTotalsButton,
   handleProgressButton,
   handleTopSemanalButton,
@@ -85,6 +84,7 @@ const perfilPvp = require('../../../perfil/perfilPvp');
 const perfilEncomendas = require('../../../perfil/perfilEncomendas');
 const perfilHistorico = require('../../../perfil/perfilHistorico');
 const perfilProgressao = require('../../../perfil/perfilProgressao');
+const orderManagement = require('../../../orders/orderManagement');
 
 // ── Match helpers ──────────────────────────────────────────────────────────
 const exact = (id, handler) => ({ match: x => x === id, handler });
@@ -217,6 +217,7 @@ const BUTTON_ROUTES = [
   exact('chefia::sync_sheets', buttonAdapters.handleSyncSheetsButton),
   exact('chefia::republicar_paineis', chefiaActions.republicarTodosPaineis),
   exact('chefia::promover', buttonAdapters.handlePromoverButton),
+  exact('chefia::gerir_encomendas', orderManagement.handleGerirEncomendas),
 
   // Painel da sessão (staff actions)
   prefix('saida::session_close_direct::', handleCloseSessionDirect),

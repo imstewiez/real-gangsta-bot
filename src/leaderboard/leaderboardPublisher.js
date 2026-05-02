@@ -33,7 +33,7 @@ function setClient(client) {
 
 async function _loadState(channelId) {
   const r = await query(
-    `SELECT channel_id, message_id, last_refreshed_at FROM leaderboard_messages WHERE channel_id = $1`,
+    'SELECT channel_id, message_id, last_refreshed_at FROM leaderboard_messages WHERE channel_id = $1',
     [channelId]
   );
   return r.rows[0] || null;
@@ -52,7 +52,7 @@ async function _upsertState(channelId, messageId) {
 }
 
 async function _touchState(channelId) {
-  await query(`UPDATE leaderboard_messages SET last_refreshed_at = NOW(), updated_at = NOW() WHERE channel_id = $1`, [
+  await query('UPDATE leaderboard_messages SET last_refreshed_at = NOW(), updated_at = NOW() WHERE channel_id = $1', [
     channelId,
   ]);
 }

@@ -20,7 +20,9 @@ const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
 const STATUS_EMOJI = {
   pending: '⏳',
   approved: '✅',
-  fulfilled: '📦',
+  in_progress: '🔧',
+  ready: '📦',
+  fulfilled: '✅',
   denied: '⛔',
   cancelled: '🚫',
 };
@@ -28,6 +30,8 @@ const STATUS_EMOJI = {
 const STATUS_LABEL = {
   pending: 'Pendente',
   approved: 'Aprovada',
+  in_progress: 'Em Processo',
+  ready: 'Pronta',
   fulfilled: 'Entregue',
   denied: 'Recusada',
   cancelled: 'Cancelada',
@@ -61,23 +65,23 @@ async function handle(interaction) {
       return a;
     }, {});
     const kpiParts = [];
-    for (const s of ['pending', 'approved', 'fulfilled', 'denied', 'cancelled']) {
+    for (const s of ['pending', 'in_progress', 'ready', 'fulfilled', 'denied', 'cancelled']) {
       if (byStatus[s]) kpiParts.push(`${STATUS_EMOJI[s]} ${byStatus[s]}`);
     }
     embed.setDescription(kpiParts.join(' · ') + `  ·  últimas **${rows.length}**`);
 
-    // Pendentes primeiro (mais urgente)
-    const pendentes = rows.filter(o => o.status === 'pending');
-    const outras = rows.filter(o => o.status !== 'pending');
+    // Activas primeiro (pendentes + em processo + prontas)
+    const activas = rows.filter(o => ['pending', 'in_progress', 'ready'].includes(o.status));
+    const outras = rows.filter(o => !['pending', 'in_progress', 'ready'].includes(o.status));
 
-    if (pendentes.length) {
-      const lines = pendentes.map(o => {
+    if (activas.length) {
+      const lines = activas.map(o => {
         const age = ageLabel(o.created_at);
         const modeEmoji = o.payment_mode === 'money_only' ? '💵' : '📦';
         const price = o.total_price ? ` (${fmt(o.total_price)}€)` : '';
         return `⏳ **${o.quantity}× ${o.item_name}**${price} ${modeEmoji} · aberta há ${age}`;
       });
-      embed.addFields({ name: '⏳ Pendentes', value: lines.join('\n'), inline: false });
+      embed.addFields({ name: '🔧 Activas', value: lines.join('\n'), inline: false });
     }
 
     if (outras.length) {

@@ -62,7 +62,6 @@ require.cache[resolved('inventory/stockNotifier.js')] = {
 const {
   startSaida,
   closeSaida,
-  cancelSaida,
   _assertTransition,
   ALLOWED_TRANSITIONS,
 } = require('../src/saidas/saidaEngine');

@@ -10,7 +10,6 @@ module.exports = {
   memberAnalyticsRepo: require('./memberAnalytics'),
   rankingRepo: require('./ranking'),
   monthlyRankingRepo: require('./monthlyRanking'),
-  auditRepo: require('./audit'),
   jobRepo: require('./job'),
   availabilityRepo: require('./availability'),
   radioRepo: require('./radio'),
@@ -22,10 +21,6 @@ module.exports = {
   prizeRepo: require('./prizeRepo'),
   itemAdminRepo: require('./itemAdmin'),
   memberLifecycleRepo: require('./memberLifecycle'),
-  dataQualityRepo: require('./dataQuality'),
-  maintenanceRepo: require('./maintenance'),
   incidentRepo: require('./incident'),
-  taskRepo: require('./task'),
-  reputationRepo: require('./reputation'),
   absenceRepo: require('./absence'),
 };

@@ -18,11 +18,11 @@ const { isCommand } = require('../permissions/permissionEngine');
 const { RADIO, EMOJI, MODALS } = require('../content');
 const { warn } = require('../logger');
 
-// OG+ = Comando (Kingpin, Manda-Chuva) ou OG.
+// Quem pode alterar a rádio: Comando (Kingpin, Manda-Chuva), OG, ou Patrão di Zona.
 // Exclui Real Gangster.
 function _canManageRadio(member) {
-  const { memberRoleIds } = require('../permissions/permissionEngine');
-  return isCommand(member) || memberRoleIds(member).has(CONFIG.OG_ROLE_ID);
+  const { memberRoleIds, isPatraoDiZona } = require('../permissions/permissionEngine');
+  return isCommand(member) || memberRoleIds(member).has(CONFIG.OG_ROLE_ID) || isPatraoDiZona(member);
 }
 
 async function _denyIfNotOG(interaction) {
@@ -30,7 +30,7 @@ async function _denyIfNotOG(interaction) {
   await safeReply(
     interaction,
     {
-      content: `${EMOJI.BLOQUEADO} Apenas OG+ (Kingpin, Manda-Chuva ou OG) pode alterar a rádio.`,
+      content: `${EMOJI.BLOQUEADO} Apenas Patrão di Zona, OG, Kingpin ou Manda-Chuva pode alterar a rádio.`,
       flags: MessageFlags.Ephemeral,
     },
     { messageClass: 'BANAL' }

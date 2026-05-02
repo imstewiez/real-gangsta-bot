@@ -4,7 +4,7 @@ const { memberRepo, inventoryRepo } = require('../repositories');
 const { safeReply } = require('../shared/interactionHelpers');
 const { memberProfileEmbed, brandEmbed, progressBar, rankBadge } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS, RANKINGS } = require('../content');
-const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
+const { formatPtDate } = require('../shared/formatPtDate');
 
 // Mapping canónico de tipos de movimento → label para histórico/totais.
 const MOVEMENT_LABELS = {
@@ -174,7 +174,7 @@ async function handleProgressButton(interaction) {
     .setTitle(`${EMOJI.TOPO} Progresso — ${member.display_name || member.full_name}`)
     .addFields(
       { name: 'Rank actual', value: `**${progress.currentTierName}**`, inline: true },
-      { name: 'Material total', value: `**${(progress.totalQty || 0).toLocaleString('pt-PT')}**`, inline: true }
+      { name: 'XP total', value: `**${(progress.totalQty || 0).toLocaleString('pt-PT')}**`, inline: true }
     );
 
   if (!progress.maxedOut) {

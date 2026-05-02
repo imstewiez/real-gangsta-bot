@@ -16,18 +16,8 @@ const { MessageClass, ttlForClass, autoDeletes, classFromLegacyOpts } = require(
 // dura 20s — equivalente a BANAL. Handlers novos devem passar messageClass.
 const EPHEMERAL_AUTO_DELETE_MS = 20_000;
 
-function isEphemeralPayload(interaction, payload) {
-  if (payload?.flags === 64 || payload?.flags === MessageFlags.Ephemeral) return true;
-  if (payload?.ephemeral === true) return true;
-  if (interaction?.ephemeral === true) return true;
-  return false;
-}
-
-function hasInteractiveComponents(payload) {
-  return Array.isArray(payload?.components) && payload.components.length > 0;
-}
-
 /**
+ * isSingleSelectInteraction — detecta se a interação é um StringSelectMenu
  * isSingleSelectInteraction — detecta se a interação é um StringSelectMenu
  * de seleção única. Usado para auto-limpar componentes após escolha.
  */

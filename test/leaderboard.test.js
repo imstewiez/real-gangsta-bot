@@ -10,7 +10,7 @@
  */
 
 const path = require('path');
-const { describe, it, beforeEach } = require('node:test');
+const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DISCORD_BOT_TOKEN ||= 'test-token';
@@ -39,7 +39,6 @@ const {
   buildDetailsEmbed,
   buildDetailsComponents,
   CATEGORY_ICON,
-  PERIOD_LABEL,
 } = require('../src/leaderboard/leaderboardPanel');
 
 const { canUserRefresh, markUserRefresh, REFRESH_COOLDOWN_MS } = require('../src/leaderboard/leaderboardPublisher');

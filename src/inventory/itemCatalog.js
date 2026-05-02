@@ -1,6 +1,6 @@
 'use strict';
 const { query } = require('../db');
-const { log, warn } = require('../logger');
+const { log } = require('../logger');
 const path = require('path');
 const fs = require('fs');
 

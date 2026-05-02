@@ -25,7 +25,7 @@ function resolvedPath(rel) {
 
 // Capturador de queries — regista todas as chamadas para podermos
 // inspeccionar o SQL final.
-let _captured = [];
+const _captured = [];
 require.cache[resolvedPath('db.js')] = {
   exports: {
     pool: { connect: async () => ({ query: async () => ({ rows: [] }), release: () => {} }) },

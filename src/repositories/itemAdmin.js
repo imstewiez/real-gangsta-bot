@@ -42,7 +42,7 @@ async function create({
   maxSalePrice,
   targetStock,
   supplier,
-  createdBy,
+  _createdBy,
 }) {
   const res = await query(
     `INSERT INTO items (name, category, unit, estimated_value, active, orderable, counts_for_stock, counts_for_rankings, purchase_price, min_sale_price, max_sale_price, target_stock, supplier)
@@ -115,7 +115,7 @@ async function toggleActive(id, active) {
 }
 
 async function getPriceHistory(itemId, { limit = 20 } = {}) {
-  const res = await query(`SELECT * FROM item_price_history WHERE item_id = $1 ORDER BY changed_at DESC LIMIT $2`, [
+  const res = await query('SELECT * FROM item_price_history WHERE item_id = $1 ORDER BY changed_at DESC LIMIT $2', [
     itemId,
     limit,
   ]);

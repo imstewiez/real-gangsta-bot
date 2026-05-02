@@ -26,9 +26,6 @@ function hasBairristasBase(guildMember) {
   const baseId = CONFIG.BAIRRISTAS_BASE_ROLE_ID;
   return baseId ? guildMember.roles.cache.has(baseId) : true;
 }
-/** @deprecated usa hasBairristasBase */
-const hasBaseMoradores = hasBairristasBase;
-
 /**
  * Verifica e corrige invariantes num único membro.
  *
@@ -150,7 +147,6 @@ async function reconcileAllMembers(guild, opts = {}) {
 module.exports = {
   hasAnyTier,
   hasBairristasBase,
-  hasBaseMoradores, // legacy alias
   ensureInvariants,
   reconcileAllMembers,
 };

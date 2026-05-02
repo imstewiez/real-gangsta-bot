@@ -77,8 +77,8 @@ async function _statusHandler(interaction) {
     const emoji = _resultEmoji(r.last_result, r.consecutive_errors || 0);
     if (r.last_result === 'error') degradedCount += 1;
     const age = _formatAge(r.last_synced_at);
-    const ops = r.last_ops != null ? `${r.last_ops} ops` : '—';
-    const ms = r.last_ms != null ? `${r.last_ms}ms` : '—';
+    const ops = r.last_ops !== null && r.last_ops !== undefined ? `${r.last_ops} ops` : '—';
+    const ms = r.last_ms !== null && r.last_ms !== undefined ? `${r.last_ms}ms` : '—';
     const extra = [];
     if ((r.consecutive_errors || 0) > 0) extra.push(`⚠ ${r.consecutive_errors}× seguidas`);
     if (r.last_result === 'error' && r.last_error) extra.push(`_${String(r.last_error).slice(0, 200)}_`);

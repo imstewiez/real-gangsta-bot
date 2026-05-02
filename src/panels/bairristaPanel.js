@@ -42,16 +42,15 @@ async function buildBairristaPanel() {
     brandEmbed('HOUSE')
       .setColor(COLOR.GOLD)
       .setTitle(`${EMOJI.CASA} Painel do Bairrista | Firma RedWood`)
-      .setDescription('**Trás pedra ao bairro. O bairro devolve-te nome.**')
+      .setDescription('**Peso é o que conta. O resto é conversa.**')
       .addFields(
         { name: `${EMOJI.MEDAL_1} Top Entregas (Semana)`, value: topText, inline: false },
         { name: `${EMOJI.PARTICIPANTE} Firma`, value: `**${members}** bairristas activos`, inline: true },
-        { name: `${EMOJI.SAIDA} Saídas`, value: `**${ops}** em curso`, inline: true },
-        { name: `${EMOJI.INFO} Cores dos botões`, value: '🟢 Registar · 🔵 Ver · 🟠 Pessoal', inline: false }
+        { name: `${EMOJI.SAIDA} Saídas`, value: `**${ops}** em curso`, inline: true }
       )
   );
 
-  // Row 1 — 🟢 REGISTAR
+  // Row 1 — REGISTAR
   const row1 = buttonRow(
     button({
       customId: 'bairrista::entregar_material',
@@ -64,13 +63,13 @@ async function buildBairristaPanel() {
     button({ customId: 'bairrista::ausencia', label: 'Ausência', style: 'Success', emoji: EMOJI.PENDENTE })
   );
 
-  // Row 2 — 🔵 VER
+  // Row 2 — VER
   const row2 = buttonRow(
     button({ customId: 'bairrista::ranking', label: 'Ver Ranking', style: 'Primary', emoji: EMOJI.MEDAL_1 }),
     button({ customId: 'bairrista::precarios', label: 'Preçários', style: 'Primary', emoji: EMOJI.DINHEIRO })
   );
 
-  // Row 3 — 🟠 PESSOAL
+  // Row 3 — PESSOAL
   const row3 = buttonRow(
     button({ customId: 'bairrista::meu_resumo', label: 'Meu Resumo', style: 'Secondary', emoji: EMOJI.INFO }),
     button({ customId: 'bairrista::top_semanal', label: 'Top Semanal', style: 'Secondary', emoji: EMOJI.TOPO })

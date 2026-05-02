@@ -72,7 +72,7 @@ async function render(interaction, filter) {
   } else if (filter === 'sales') {
     filtered = movements.filter(m => /^venda_/.test(m.movement_type));
   } else if (filter === 'saida') {
-    filtered = movements.filter(m => m.saida_id != null);
+    filtered = movements.filter(m => m.saida_id !== null && m.saida_id !== undefined);
   }
   filtered = filtered.slice(0, 20);
 

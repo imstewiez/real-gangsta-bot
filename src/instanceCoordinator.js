@@ -76,7 +76,7 @@ async function registerInstance() {
 
 function getCurrentInstance() {
   if (!_state) return null;
-  const { heartbeatTimer, ...rest } = _state;
+  const { heartbeatTimer: _heartbeatTimer, ...rest } = _state;
   return rest;
 }
 

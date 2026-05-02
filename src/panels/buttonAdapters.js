@@ -264,41 +264,43 @@ async function handleEntregarMaterialButton(interaction) {
 
 async function handleVenderModalSubmit(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const { SANITY_MAX_QTY } = require('../shared/constants');
   const item = interaction.fields.getTextInputValue('item');
   const qty = parseInt(interaction.fields.getTextInputValue('quantidade'), 10);
   const preco = interaction.fields.getTextInputValue('preco') || null;
   const nota = interaction.fields.getTextInputValue('nota') || null;
 
-  if (!item || !qty || qty < 1) {
+  if (!item || !qty || qty < 1 || qty > SANITY_MAX_QTY) {
     return safeReply(
       interaction,
-      { content: `${EMOJI.INDISPONIVEL} Item e quantidade são obrigatórios.` },
+      { content: `${EMOJI.INDISPONIVEL} Quantidade inválida. Máximo: ${SANITY_MAX_QTY.toLocaleString('pt-PT')}.` },
       { messageClass: 'BANAL' }
     );
   }
 
   // Reutiliza a lógica de /venda via inventoryEngine
   const { inventoryEngine } = require('../inventory/inventoryEngine');
-  const result = await inventoryEngine.registerSale({
-    memberId: interaction.user.id,
-    itemName: item,
-    quantity: qty,
-    price: preco ? parseFloat(preco) : null,
-    note: nota,
-  });
+  try {
+    await inventoryEngine.registerSale({
+      memberId: interaction.user.id,
+      itemName: item,
+      quantity: qty,
+      price: preco ? parseFloat(preco) : null,
+      note: nota,
+    });
 
-  if (result.success) {
     return safeReply(
       interaction,
       { content: `${EMOJI.OK} Venda registada: **${qty}x ${item}**` },
       { messageClass: 'BANAL' }
     );
+  } catch (e) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.INDISPONIVEL} ${e.message || 'Erro ao registar venda.'}` },
+      { messageClass: 'BANAL' }
+    );
   }
-  return safeReply(
-    interaction,
-    { content: `${EMOJI.INDISPONIVEL} ${result.error || 'Erro ao registar venda.'}` },
-    { messageClass: 'BANAL' }
-  );
 }
 
 async function handleAusenciaModalSubmit(interaction) {
@@ -347,32 +349,42 @@ async function handleCriarIncidenteModalSubmit(interaction) {
 
 async function handleTransferirModalSubmit(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const { SANITY_MAX_QTY } = require('../shared/constants');
   const item = interaction.fields.getTextInputValue('item');
   const qty = parseInt(interaction.fields.getTextInputValue('quantidade'), 10);
   const origem = interaction.fields.getTextInputValue('origem');
   const destino = interaction.fields.getTextInputValue('destino');
 
-  const { inventoryEngine } = require('../inventory/inventoryEngine');
-  const result = await inventoryEngine.transferStock({
-    itemName: item,
-    quantity: qty,
-    from: origem,
-    to: destino,
-    actorId: interaction.user.id,
-  });
+  if (!item || !qty || qty < 1 || qty > SANITY_MAX_QTY) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.INDISPONIVEL} Quantidade inválida. Máximo: ${SANITY_MAX_QTY.toLocaleString('pt-PT')}.` },
+      { messageClass: 'BANAL' }
+    );
+  }
 
-  if (result.success) {
+  const { inventoryEngine } = require('../inventory/inventoryEngine');
+  try {
+    await inventoryEngine.transferStock({
+      itemName: item,
+      quantity: qty,
+      from: origem,
+      to: destino,
+      actorId: interaction.user.id,
+    });
+
     return safeReply(
       interaction,
       { content: `${EMOJI.OK} Transferido **${qty}x ${item}** de **${origem}** → **${destino}**.` },
       { messageClass: 'BANAL' }
     );
+  } catch (e) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.INDISPONIVEL} ${e.message || 'Erro na transferência.'}` },
+      { messageClass: 'BANAL' }
+    );
   }
-  return safeReply(
-    interaction,
-    { content: `${EMOJI.INDISPONIVEL} ${result.error || 'Erro na transferência.'}` },
-    { messageClass: 'BANAL' }
-  );
 }
 
 async function handlePromoverButton(interaction) {

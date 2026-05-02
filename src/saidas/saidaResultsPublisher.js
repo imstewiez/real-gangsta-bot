@@ -6,10 +6,10 @@
  * faz fallback para AUDIT_LOG_CHANNEL_ID. Sem canal, no-op silencioso.
  */
 
-const { EmbedBuilder } = require('discord.js');
+// const { EmbedBuilder } = require('discord.js');
 const CONFIG = require('../config');
 const { saidaRepo, killRepo, spotStatsRepo, memberSaidaStatsRepo, memberRepo } = require('../repositories');
-const { brandEmbed, COLOR, headerLine, progressBar, metricCard, rankBadge } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR, progressBar, metricCard, rankBadge } = require('../shared/embedBuilders');
 const { SAIDAS, EMOJI, SAIDA_TYPE } = require('../content');
 const { formatPtDateOnly } = require('../shared/formatPtDate');
 const { log, warn } = require('../logger');

@@ -34,7 +34,7 @@ function _assertTable(table) {
 /** Marca um registo como soft-deleted. Preserva histórico; queries SELECT
  *  normais continuam a devolver o row — clients têm de filtrar deleted_at IS NULL
  *  explicitamente, ou usar activeOnly() helper. */
-async function softDelete(table, id, deletedBy, reason = '') {
+async function softDelete(table, id, deletedBy, _reason = '') {
   _assertTable(table);
   const col = table === 'resident_channels' ? 'deleted_at' : 'deleted_at';
   const r = await query(

@@ -73,8 +73,8 @@ src/
 ├── radio/         │ radioEngine + handlers
 ├── sticky/        │ stickyEngine + renderers
 ├── reconcile/     │ drift detection (library — usado por jobs)
-├── discord/       │ structureSync, channelInvariants, layoutCheck
-├── jobs/          │ scheduler + retentionJob + catalogPricesJob
+├── discord/       │ structureTemplate, channelInvariants, layoutCheck
+├── jobs/          │ scheduler + retentionJob
 ├── permissions/   │ permissionEngine (isChefia, canManage*)
 ├── repositories/  │ thin data-access (memberRepo, saidaRepo, …)
 ├── sheets/
@@ -159,7 +159,6 @@ bootstrap antes do Discord login). Debounce de 5s agrupa rajadas.
 | `retention`                  | 24 h       | Limpa audit_logs, job_runs, radio_history |
 | `stock_alerts`               | 1 h        | Alerta canal quando stock < threshold    |
 | `monthly_rankings`           | 6 h        | Recalcula mês + all-time stats           |
-| `catalog_prices`             | 7 d        | Sincroniza `config/prices-catalog.json`  |
 | `data_health_collect`        | 5 min      | Gauges Prometheus                        |
 | `sticky_time_refresh`        | 1 min      | Refresh time-based das stickys           |
 | `stock_summary`              | 4 h        | Snapshot periódico no canal resumo-stock |

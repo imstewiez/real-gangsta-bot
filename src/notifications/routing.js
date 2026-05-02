@@ -104,7 +104,7 @@ function _onSaidaMaterialIssued(_evt) {
 // Kills continuam a ter o seu publish rico próprio (publishKillToChannel)
 // em killEngine. Este subscriber publica uma versão compacta no cemitério
 // como fallback caso o publish directo falhe (defesa em profundidade).
-function _onKillRegistered(evt) {
+function _onKillRegistered(_evt) {
   // No-op aqui — killEngine.publishKillToChannel já faz o publish rico.
   // Deixamos o subscriber registado para futura evolução.
   return Promise.resolve();
@@ -130,6 +130,8 @@ function registerNotificationRouting() {
   // Orders (encomendas)
   eventBus.on('order.created', _onOrderEvent);
   eventBus.on('order.approved', _onOrderEvent);
+  eventBus.on('order.in_progress', _onOrderEvent);
+  eventBus.on('order.ready', _onOrderEvent);
   eventBus.on('order.fulfilled', _onOrderEvent);
   eventBus.on('order.denied', _onOrderEvent);
   eventBus.on('order.cancelled', _onOrderEvent);

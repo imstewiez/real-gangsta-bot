@@ -35,7 +35,12 @@ async function _handle(interaction, tipo) {
       { messageClass: 'ERROR' }
     );
   }
-  if (tipo === 'venda' && precoCustom != null && (precoCustom < 0 || precoCustom > SANITY_MAX_PRICE)) {
+  if (
+    tipo === 'venda' &&
+    precoCustom !== null &&
+    precoCustom !== undefined &&
+    (precoCustom < 0 || precoCustom > SANITY_MAX_PRICE)
+  ) {
     return safeReply(
       interaction,
       { content: `${EMOJI.ERRO} Preço custom inválido. Máximo: ${SANITY_MAX_PRICE.toLocaleString('pt-PT')}€.` },
@@ -76,7 +81,7 @@ async function _handle(interaction, tipo) {
         {
           itemId: item.id,
           quantity,
-          unitPrice: tipo === 'venda' && precoCustom != null ? precoCustom : null,
+          unitPrice: tipo === 'venda' && precoCustom !== null && precoCustom !== undefined ? precoCustom : null,
         },
       ],
       globalNotes: nota,

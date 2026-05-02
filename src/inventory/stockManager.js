@@ -13,6 +13,7 @@
 const { query } = require('../db');
 const { logAudit } = require('../audit/auditEngine');
 const eventBus = require('../core/eventBus');
+const { MOVEMENT_TYPE, STOCK_INFLOW_TYPES, STOCK_OUTFLOW_TYPES } = require('../shared/movementTypes');
 
 const VALID_LOCATIONS = ['armazem', 'grupo'];
 
@@ -48,18 +49,18 @@ async function getCurrentStock(itemId, location = null) {
     `
     SELECT COALESCE(SUM(
       CASE
-        WHEN movement_type IN ('saldo_inicial','entrega_bairrista','venda_bairrista','entrega_oficial','devolucao_saida','apreendido','craftado')
+        WHEN movement_type = ANY($2::text[])
           THEN quantity
-        WHEN movement_type IN ('fornecimento_org','consumo_saida','perda_saida')
+        WHEN movement_type = ANY($3::text[])
           THEN -quantity
-        WHEN movement_type = 'ajuste_manual' THEN quantity
+        WHEN movement_type = $4 THEN quantity
         ELSE 0
       END
     ), 0)::int AS balance
     FROM inventory_movements
-    WHERE item_id = $1 ${location ? 'AND location = $2' : ''}
+    WHERE item_id = $1 AND ($5::text IS NULL OR location = $5)
   `,
-    location ? [itemId, location] : [itemId]
+    [itemId, STOCK_INFLOW_TYPES, STOCK_OUTFLOW_TYPES, MOVEMENT_TYPE.AJUSTE_MANUAL, location]
   );
   return r.rows[0]?.balance || 0;
 }
@@ -68,7 +69,14 @@ async function addStock({ itemId, quantity, location, type = 'apreendido', actor
   if (!VALID_LOCATIONS.includes(location))
     throw new Error(`Casa inválida: ${location} (deve ser 'armazem' ou 'grupo')`);
   if (!Number.isInteger(quantity) || quantity <= 0) throw new Error('Quantidade tem de ser inteiro positivo');
-  if (!['apreendido', 'craftado', 'entrega_bairrista', 'entrega_oficial', 'devolucao_saida'].includes(type)) {
+  const VALID_INFLOW_TYPES = [
+    MOVEMENT_TYPE.APREENDIDO,
+    MOVEMENT_TYPE.CRAFTADO,
+    MOVEMENT_TYPE.ENTREGA_BAIRRISTA,
+    MOVEMENT_TYPE.ENTREGA_OFICIAL,
+    MOVEMENT_TYPE.DEVOLUCAO_SAIDA,
+  ];
+  if (!VALID_INFLOW_TYPES.includes(type)) {
     throw new Error(`Tipo de entrada inválido: ${type}`);
   }
   const r = await query(
@@ -99,7 +107,13 @@ async function removeStock({
 }) {
   if (!VALID_LOCATIONS.includes(location)) throw new Error(`Casa inválida: ${location}`);
   if (!Number.isInteger(quantity) || quantity <= 0) throw new Error('Quantidade tem de ser inteiro positivo');
-  if (!['venda_bairrista', 'fornecimento_org', 'consumo_saida', 'perda_saida'].includes(type)) {
+  const VALID_OUTFLOW_TYPES = [
+    MOVEMENT_TYPE.VENDA_BAIRRISTA,
+    MOVEMENT_TYPE.FORNECIMENTO_ORG,
+    MOVEMENT_TYPE.CONSUMO_SAIDA,
+    MOVEMENT_TYPE.PERDA_SAIDA,
+  ];
+  if (!VALID_OUTFLOW_TYPES.includes(type)) {
     throw new Error(`Tipo de saída inválido: ${type}`);
   }
   // Aviso se vai a negativo

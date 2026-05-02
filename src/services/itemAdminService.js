@@ -1,6 +1,6 @@
 'use strict';
 const { itemAdminRepo } = require('../repositories');
-const { log, warn } = require('../logger');
+const { log } = require('../logger');
 
 async function listItems(filters) {
   return itemAdminRepo.listAll(filters);

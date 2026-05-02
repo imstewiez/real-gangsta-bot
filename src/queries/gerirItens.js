@@ -5,8 +5,6 @@ const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
 const { requirePermission } = require('../shared/requirePermission');
 
-const CATEGORIES = ['drogas', 'armas', 'munições', 'equipamento', 'veículos', 'outros'];
-
 async function handle(interaction) {
   await requirePermission(interaction, { minRole: 'OG' });
   const sub = interaction.options.getSubcommand();

@@ -5,7 +5,6 @@ const assert = require('node:assert/strict');
 const {
   MessageClass,
   TTL_MS,
-  AUTO_DELETE,
   ttlForClass,
   autoDeletes,
   locksOnExpire,

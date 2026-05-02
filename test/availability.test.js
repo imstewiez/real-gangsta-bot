@@ -161,12 +161,11 @@ describe('availabilityTemplates — slots', () => {
   it('buildSelectOptions gera opções dentro do limite de 25', () => {
     const opts = buildSelectOptions(slots);
     assert.ok(opts.length <= 25, `≤25 opções; foram ${opts.length}`);
-    // 3 slots × 3 estados + 1 limpar = 10
-    assert.equal(opts.length, 10, '3 slots × 3 estados + limpar = 10');
-    // Deve conter opções para cada slot + estado
+    // 3 slots + 1 limpar = 4 (simplificado: apenas disponível no dropdown)
+    assert.equal(opts.length, 4, '3 slots + limpar = 4');
     assert.ok(opts.some(o => o.value === 'Dia Todo:disponivel'));
-    assert.ok(opts.some(o => o.value === 'Tarde:talvez'));
-    assert.ok(opts.some(o => o.value === 'Noite:indisponivel'));
+    assert.ok(opts.some(o => o.value === 'Tarde:disponivel'));
+    assert.ok(opts.some(o => o.value === 'Noite:disponivel'));
     assert.ok(opts.some(o => o.value === 'limpar:limpar'));
   });
 

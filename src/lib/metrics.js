@@ -127,8 +127,6 @@ const inventoryMovements = counter('rg_inventory_movements_total', 'Inventory mo
 const operationsCreated = counter('rg_operations_created_total', 'Operations created');
 const operationsClosed = counter('rg_operations_closed_total', 'Operations closed');
 const membersOnboarded = counter('rg_members_onboarded_total', 'Members onboarded');
-const advisoryLockAcquired = counter('rg_advisory_lock_acquired_total', 'Advisory locks acquired');
-const advisoryLockTimeout = counter('rg_advisory_lock_timeout_total', 'Advisory lock timeouts');
 const interactionErrorsTotal = counter('rg_interaction_errors_total', 'Unhandled interaction handler errors');
 const logRotationsTotal = counter('rg_log_rotations_total', 'Log file rotations performed');
 const permDenialsTotal = counter('rg_perm_denials_total', 'Permission checks denied');
@@ -175,8 +173,6 @@ module.exports = {
   operationsCreated,
   operationsClosed,
   membersOnboarded,
-  advisoryLockAcquired,
-  advisoryLockTimeout,
   interactionErrorsTotal,
   logRotationsTotal,
   permDenialsTotal,

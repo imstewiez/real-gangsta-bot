@@ -55,7 +55,7 @@ async function handleMovimento(interaction) {
   const kpiParts = [];
   if (ranking.week) {
     let rk = `${rankBadge(ranking.week.position)} #${ranking.week.position}/${ranking.week.total}`;
-    if (evolution?.positionDelta != null) {
+    if (evolution?.positionDelta !== null && evolution?.positionDelta !== undefined) {
       if (evolution.positionDelta > 0) rk += ` ↑${evolution.positionDelta}`;
       else if (evolution.positionDelta < 0) rk += ` ↓${Math.abs(evolution.positionDelta)}`;
     }
@@ -78,8 +78,8 @@ async function handleMovimento(interaction) {
         name: `${EMOJI.PROGRESSO} Subida — ${progress.currentTierName} → ${progress.nextTierName}`,
         value:
           `${bar} **${progress.progress}%**\n` +
-          `${EMOJI.MATERIAL} **${fmtQty(progress.totalQty)}** / ${fmtQty(progress.threshold)} · ` +
-          `falta **${fmtQty(progress.remaining)}** para subir`,
+          `${EMOJI.MATERIAL} **${fmtQty(progress.totalQty)}** / ${fmtQty(progress.threshold)} XP · ` +
+          `falta **${fmtQty(progress.remaining)}** XP para subir`,
         inline: false,
       });
     } else {
@@ -113,7 +113,7 @@ async function handleMovimento(interaction) {
   const rankLines = [];
   if (ranking.week) {
     let weekRankStr = `${rankBadge(ranking.week.position)}/${ranking.week.total}`;
-    if (evolution?.positionDelta != null) {
+    if (evolution?.positionDelta !== null && evolution?.positionDelta !== undefined) {
       if (evolution.positionDelta > 0) weekRankStr += ` ↑${evolution.positionDelta}`;
       else if (evolution.positionDelta < 0) weekRankStr += ` ↓${Math.abs(evolution.positionDelta)}`;
       else weekRankStr += ' →';
@@ -156,7 +156,7 @@ async function handleMovimento(interaction) {
       { name: M.SURVIVAL, value: `**${saida.survivalRate.toFixed(1)}%**`, inline: true },
       { name: M.MVP, value: `**${saida.mvpCount}**`, inline: true },
     ];
-    if (saida.materialReturnRate != null && saida.materialReturnRate > 0) {
+    if (saida.materialReturnRate !== null && saida.materialReturnRate !== undefined && saida.materialReturnRate > 0) {
       combatFields.push({
         name: `${EMOJI.DEVOLVER} Devolução`,
         value: `**${saida.materialReturnRate.toFixed(0)}%**`,

@@ -9,7 +9,7 @@ const { brandEmbed } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { memberRepo } = require('../repositories');
 const { query } = require('../db');
-const { formatPtDate, formatPtDateOnly } = require('../shared/formatPtDate');
+const { formatPtDateOnly } = require('../shared/formatPtDate');
 
 async function handle(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });

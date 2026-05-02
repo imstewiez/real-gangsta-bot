@@ -1,5 +1,5 @@
 'use strict';
-const { ChannelType, PermissionFlagsBits } = require('discord.js');
+const { ChannelType } = require('discord.js');
 const CONFIG = require('../config');
 const { memberRepo } = require('../repositories');
 const { query } = require('../db');
@@ -210,7 +210,7 @@ async function processApproval(tagRequest, approverMember, client) {
     afterState: { fullName, nickname, channelId: result.channelId, rolesAdded: result.rolesAdded },
   });
 
-  const { EMOJI, ONBOARDING } = require('../content');
+  const { ONBOARDING } = require('../content');
   await sendAuditToChannel(client, {
     title: ONBOARDING.TAG_APPROVED_TITLE,
     description: `<@${discordId}> entra como **${TIER_LABEL[entryTier] || entryTier}** *(tier 1)*\nNome: **${fullName}** *(${nickname})*${result.channelCreated ? `\nCanal: <#${result.channelId}>` : ''}`,

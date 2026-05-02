@@ -30,17 +30,17 @@ async function createRecipe({ itemId, category = 'outros', tier = null, ingredie
 }
 
 async function findByItemId(itemId) {
-  const res = await query(`SELECT * FROM craft_recipes WHERE item_id = $1`, [itemId]);
+  const res = await query('SELECT * FROM craft_recipes WHERE item_id = $1', [itemId]);
   return res.rows[0] || null;
 }
 
 async function findByCategory(category) {
-  const res = await query(`SELECT * FROM craft_recipes WHERE category = $1 ORDER BY id`, [category]);
+  const res = await query('SELECT * FROM craft_recipes WHERE category = $1 ORDER BY id', [category]);
   return res.rows;
 }
 
 async function getAllRecipes() {
-  const res = await query(`SELECT * FROM craft_recipes ORDER BY category, tier, id`);
+  const res = await query('SELECT * FROM craft_recipes ORDER BY category, tier, id');
   return res.rows;
 }
 

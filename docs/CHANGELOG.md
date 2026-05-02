@@ -171,7 +171,6 @@ sticky), apertar reconciliação de operações, manter retro-compat.
 - `src/sticky/{stickyEngine,stickyRenderers}.js`
 - `src/repositories/{availability,radio,sticky}.js`
 - `src/members/tierFixCommand.js`
-- `src/shared/messageTemplates.js`
 
 ### Painéis
 - Chefia: nova row 3 com botões Disponibilidade Hoje / Painel Rádio / Stickys
@@ -255,8 +254,7 @@ Branch: `master`
   - modo dry-run e apply
   - job diário no `scheduler.js`
 - **`src/discord/structureTemplate.js`** — fonte única de verdade da estrutura desejada (categorias, canais, renames, moves, permissões). Dados declarativos.
-- **`src/discord/structureSync.js`** — engine idempotente com 7 fases (rename categories → move channels → rename channels → create channels → category perms → channel perms → reorder). Detecta e lista extras fora do template (nunca apaga).
-- **`src/inventory/stockBootstrap.js`** — importa `full-inventory.json` como ledger `saldo_inicial`. Protegido por flag `confirm`, flag `force` para reaplicar. Tabela `inventory_bootstrap` rastreia aplicações por source.
+- **`src/inventory/stockBootstrap.js`** — importa `full-inventory.json` como ledger `saldo_inicial`. Protegido por flag `confirm`, flag `force` para reaplicar.
 - **`src/cemetery/cemeteryEngine.js`** + **`cemeteryHandlers.js`** — registo de kills, leaderboard, auto-publish no canal cemitério.
 
 ### Operações (cadeia de custódia)
@@ -350,7 +348,6 @@ bot/
 │   ├── logger.js
 │   ├── panelBootstrap.js
 │   ├── slashCommands.js         ← + 5 comandos
-│   ├── state.js
 │   └── util.js                  ← truncate fix
 └── test/
     ├── permissions.test.js      ← reescrito

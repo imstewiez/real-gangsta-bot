@@ -5,7 +5,16 @@ const { button, buttonRow } = require('../shared/ui/buttons');
 const { query } = require('../db');
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Painel do Oficial — Operações e Saídas (SIMPLIFICADO)
+// Painel do Oficial — Operações e Saídas (v13)
+//
+// Botões:
+//   Abrir Saída  → chefia::criar_saida (só OG+ / Patrão di Zona / Comando)
+//   Top Bairro   → bairrista::top_semanal
+//   Entregar     → bairrista::entregar_material
+//   Vender       → bairrista::vender
+//   Preçários    → bairrista::precarios
+//   Encomendar   → bairrista::encomendar
+//   Meu Resumo   → bairrista::meu_resumo
 // ══════════════════════════════════════════════════════════════════════════════
 
 async function buildOficialPanel() {
@@ -36,20 +45,27 @@ async function buildOficialPanel() {
       )
   );
 
-  // Row 1 — Operações
+  // Row 1 — Operações + Registo
   const row1 = buttonRow(
     button({ customId: 'chefia::criar_saida', label: 'Abrir Saída', style: 'Success', emoji: EMOJI.NOVO }),
-    button({ customId: 'chefia::fechar_saida', label: 'Fechar Saída', style: 'Success', emoji: EMOJI.FECHAR }),
-    button({ customId: 'oficial::emitir_material', label: 'Emitir Material', style: 'Success', emoji: EMOJI.FORNECER }),
+    button({ customId: 'bairrista::top_semanal', label: 'Top Bairro', style: 'Primary', emoji: EMOJI.TOPO }),
     button({
-      customId: 'oficial::add_participante',
-      label: 'Add Participante',
+      customId: 'bairrista::entregar_material',
+      label: 'Entregar Material',
       style: 'Success',
-      emoji: EMOJI.PARTICIPANTE,
-    })
+      emoji: EMOJI.ENTREGA,
+    }),
+    button({ customId: 'bairrista::vender', label: 'Vender Material', style: 'Success', emoji: EMOJI.VENDA })
   );
 
-  return { embeds: [embed], components: [row1] };
+  // Row 2 — Consultas + Pessoal
+  const row2 = buttonRow(
+    button({ customId: 'bairrista::precarios', label: 'Preçários', style: 'Primary', emoji: EMOJI.DINHEIRO }),
+    button({ customId: 'bairrista::encomendar', label: 'Encomendas', style: 'Success', emoji: EMOJI.ENCOMENDA }),
+    button({ customId: 'bairrista::meu_resumo', label: 'Meu Resumo', style: 'Secondary', emoji: EMOJI.INFO })
+  );
+
+  return { embeds: [embed], components: [row1, row2] };
 }
 
 module.exports = { buildOficialPanel };

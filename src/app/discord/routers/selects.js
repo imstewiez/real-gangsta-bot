@@ -41,6 +41,7 @@ const { handleVoteSelect: availHandleVoteSelect } = require('../../../availabili
 const perfilMaterial = require('../../../perfil/perfilMaterial');
 const perfilHistorico = require('../../../perfil/perfilHistorico');
 const { handlePanelGerirSelect } = require('../../../panels/chefiaActions');
+const orderManagement = require('../../../orders/orderManagement');
 
 const exact = (id, handler) => ({ match: x => x === id, handler });
 const prefix = (p, handler) => ({ match: x => x.startsWith(p), handler });
@@ -110,6 +111,9 @@ const SELECT_ROUTES = [
   // Session management — admin swap + approve request picks
   prefix('saida::session_swap_pick::', saidaSession.handleSessionSwapPick),
   prefix('saida::session_approve_pick::', saidaSession.handleSessionApprovePick),
+
+  // Order management — chefia select actions
+  exact('order::manage_action', orderManagement.handleOrderManageSelect),
 ];
 
 async function handleSelect(interaction) {

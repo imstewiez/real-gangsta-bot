@@ -51,7 +51,7 @@ async function check() {
   return drift;
 }
 
-async function apply(_ignored, drift, { actor = 'system:reconcile' } = {}) {
+async function apply(_ignored, drift, { _actor = 'system:reconcile' } = {}) {
   // Corre syncOne por cada tab com drift. Evita re-sincronizar tabs OK.
   const { syncOne } = require('../../sheets/syncEngine');
   const t0 = Date.now();

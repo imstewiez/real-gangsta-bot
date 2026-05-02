@@ -8,7 +8,8 @@ async function handle(interaction) {
   const category = interaction.options.getString('categoria');
   const search = interaction.options.getString('pesquisa');
 
-  let sql = `SELECT id, name, category, unit, estimated_value, active, orderable, target_stock FROM items WHERE active = true`;
+  let sql =
+    'SELECT id, name, category, unit, estimated_value, active, orderable, target_stock FROM items WHERE active = true';
   const params = [];
   if (category) {
     params.push(category);
@@ -18,7 +19,7 @@ async function handle(interaction) {
     params.push(`%${search}%`);
     sql += ` AND name ILIKE $${params.length}`;
   }
-  sql += ` ORDER BY category, name LIMIT 25`;
+  sql += ' ORDER BY category, name LIMIT 25';
 
   const res = await query(sql, params);
   if (!res.rows.length) {

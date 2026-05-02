@@ -107,7 +107,11 @@ function canManageOperations(member) {
  * Ordem: Manda-Chuva (1) > Kingpin (2) > OG (3) > Real Gangster (4).
  */
 function canOpenSession(member) {
-  return isCommand(member) || memberRoleIds(member).has(CONFIG.OG_ROLE_ID);
+  return (
+    isCommand(member) ||
+    memberRoleIds(member).has(CONFIG.OG_ROLE_ID) ||
+    hasAny(memberRoleIds(member), CONFIG.PATRAO_DI_ZONA_ROLE_IDS)
+  );
 }
 function canManageBairro(member) {
   return isCommand(member) || isSupervisor(member) || hasAny(memberRoleIds(member), CONFIG.PATRAO_DI_ZONA_ROLE_IDS);

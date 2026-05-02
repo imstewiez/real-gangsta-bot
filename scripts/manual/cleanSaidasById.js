@@ -59,27 +59,27 @@ async function main() {
 
     // Material económico de cada participante — para reverter stats depois
     const participantsAffected = await client.query(
-      `SELECT DISTINCT member_id FROM operation_participants WHERE operation_id = ANY($1::int[])`,
+      'SELECT DISTINCT member_id FROM operation_participants WHERE operation_id = ANY($1::int[])',
       [ids]
     );
     const memberIdsAffected = participantsAffected.rows.map(r => r.member_id).filter(Boolean);
 
     const spotsAffected = await client.query(
-      `SELECT DISTINCT spot FROM operations WHERE id = ANY($1::int[]) AND spot IS NOT NULL AND spot != ''`,
+      "SELECT DISTINCT spot FROM operations WHERE id = ANY($1::int[]) AND spot IS NOT NULL AND spot != ''",
       [ids]
     );
     const spotsList = spotsAffected.rows.map(r => r.spot);
 
     // 1. inventory_movements com saida_id nas listadas
-    const r1 = await client.query(`DELETE FROM inventory_movements WHERE saida_id = ANY($1::int[])`, [ids]);
+    const r1 = await client.query('DELETE FROM inventory_movements WHERE saida_id = ANY($1::int[])', [ids]);
     console.log(`inventory_movements (saida_id):    ${r1.rowCount} apagados`);
 
     // 2. operation_materials
-    const r2 = await client.query(`DELETE FROM operation_materials WHERE operation_id = ANY($1::int[])`, [ids]);
+    const r2 = await client.query('DELETE FROM operation_materials WHERE operation_id = ANY($1::int[])', [ids]);
     console.log(`operation_materials:               ${r2.rowCount} apagados`);
 
     // 3. operation_participants
-    const r3 = await client.query(`DELETE FROM operation_participants WHERE operation_id = ANY($1::int[])`, [ids]);
+    const r3 = await client.query('DELETE FROM operation_participants WHERE operation_id = ANY($1::int[])', [ids]);
     console.log(`operation_participants:            ${r3.rowCount} apagados`);
 
     // 4. kill_logs ligadas às saídas (se a tabela tem operation_id/saida_id)
@@ -103,7 +103,7 @@ async function main() {
     console.log(`audit_logs:                        ${r5.rowCount} apagados`);
 
     // 6. operations
-    const r6 = await client.query(`DELETE FROM operations WHERE id = ANY($1::int[])`, [ids]);
+    const r6 = await client.query('DELETE FROM operations WHERE id = ANY($1::int[])', [ids]);
     console.log(`operations:                        ${r6.rowCount} apagadas`);
 
     // 7. Recompute stats agregadas (spot_stats, member_saida_stats, rankings)
@@ -117,13 +117,13 @@ async function main() {
       // finalizeSaida — sem recompute full. Reset dos membros/spots afectados
       // é a forma segura: a próxima saída recompoe incrementalmente.
       if (memberIdsAffected.length) {
-        const rReset = await client.query(`DELETE FROM member_saida_stats WHERE member_id = ANY($1::int[])`, [
+        const rReset = await client.query('DELETE FROM member_saida_stats WHERE member_id = ANY($1::int[])', [
           memberIdsAffected,
         ]);
         console.log(`member_saida_stats reset:          ${rReset.rowCount} rows (${memberIdsAffected.length} membros)`);
       }
       if (spotsList.length) {
-        const rSpot = await client.query(`DELETE FROM spot_stats WHERE spot = ANY($1::text[])`, [spotsList]);
+        const rSpot = await client.query('DELETE FROM spot_stats WHERE spot = ANY($1::text[])', [spotsList]);
         console.log(`spot_stats reset:                  ${rSpot.rowCount} rows (${spotsList.length} spots)`);
       }
     }

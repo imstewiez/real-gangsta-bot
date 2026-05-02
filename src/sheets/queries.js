@@ -11,15 +11,11 @@
  */
 
 const { query } = require('../db');
+const { weekBounds: _weekBounds } = require('../util');
 
 // ─── Helpers de datas ────────────────────────────────────────────────────────
 function weekBounds(ref = new Date()) {
-  const d = new Date(ref);
-  const day = d.getUTCDay(); // 0=Dom..6=Sáb
-  const mondayOffset = day === 0 ? -6 : 1 - day;
-  const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + mondayOffset));
-  const end = new Date(start);
-  end.setUTCDate(start.getUTCDate() + 6);
+  const { start, end } = _weekBounds(ref);
   return {
     start: start.toISOString().split('T')[0],
     end: end.toISOString().split('T')[0],
@@ -382,6 +378,7 @@ async function getMembersFull() {
         SUM(CASE WHEN movement_type IN ('entrega_bairrista','entrega_oficial') THEN quantity * COALESCE(sm.unit_price, i.estimated_value, 0) ELSE 0 END)::numeric AS weighted_entregas,
         SUM(CASE WHEN movement_type IN ('venda_bairrista') THEN quantity ELSE 0 END)::int AS vendas
       FROM inventory_movements sm
+      LEFT JOIN items i ON i.id = sm.item_id
       WHERE sm.member_id = m.id
     ) mv ON true
     LEFT JOIN member_saida_stats mss ON mss.member_id = m.id
@@ -699,21 +696,6 @@ async function getActiveItemsList() {
   return r.rows;
 }
 
-async function getAuditFull(limit = 1000) {
-  const r = await query(
-    `
-    SELECT a.id, a.action, a.entity_type, a.entity_id,
-           a.actor_id, a.before_state, a.after_state, a.context, a.created_at,
-           COALESCE(NULLIF(a.actor_name, ''), m.display_name) AS actor_name
-    FROM audit_logs a
-    LEFT JOIN members m ON m.discord_id = a.actor_id
-    ORDER BY a.created_at DESC
-    LIMIT $1`,
-    [limit]
-  );
-  return r.rows;
-}
-
 // ─── Top movers (top 3 por eixo, para o Dashboard) ───────────────────────────
 async function getTopMovers() {
   const w = weekBounds();
@@ -960,7 +942,7 @@ async function getBairristaRankings() {
   // Top 10 Bairristas semanal
   const weekly = await query(
     `
-    SELECT wr.*, ${DISPLAY_NAME_EXPR('m')} AS display_name, m.tier,
+    SELECT wr.*, m.discord_id, ${DISPLAY_NAME_EXPR('m')} AS display_name, m.tier,
            ROW_NUMBER() OVER (ORDER BY GREATEST(wr.hybrid_score, wr.weighted_value) DESC) AS pos
     FROM weekly_rankings wr
     JOIN members m ON m.id = wr.member_id
@@ -974,7 +956,7 @@ async function getBairristaRankings() {
   // Top 10 Bairristas mensal
   const monthly = await query(
     `
-    SELECT mr.*, ${DISPLAY_NAME_EXPR('m')} AS display_name, m.tier,
+    SELECT mr.*, m.discord_id, ${DISPLAY_NAME_EXPR('m')} AS display_name, m.tier,
            ROW_NUMBER() OVER (ORDER BY GREATEST(mr.hybrid_score, mr.weighted_value) DESC) AS pos
     FROM monthly_rankings mr
     JOIN members m ON m.id = mr.member_id
@@ -987,7 +969,8 @@ async function getBairristaRankings() {
 
   // Top 10 Bairristas all-time
   const allTime = await query(`
-    SELECT ats.*, ${DISPLAY_NAME_EXPR('m')} AS display_name, m.tier,
+    SELECT ats.*, m.discord_id, ats.saidas_total AS operations_count,
+           ${DISPLAY_NAME_EXPR('m')} AS display_name, m.tier,
            ROW_NUMBER() OVER (ORDER BY GREATEST(ats.hybrid_score, ats.weighted_value) DESC) AS pos
     FROM all_time_stats ats
     JOIN members m ON m.id = ats.member_id
@@ -1019,7 +1002,7 @@ async function getBairristaRankings() {
       )
       GROUP BY member_id
     )
-    SELECT s.member_id, s.streak_len, ${DISPLAY_NAME_EXPR('m')} AS display_name
+    SELECT m.discord_id, s.streak_len, ${DISPLAY_NAME_EXPR('m')} AS display_name
     FROM streaks s
     JOIN members m ON m.id = s.member_id
     ORDER BY s.streak_len DESC
@@ -1052,7 +1035,6 @@ module.exports = {
   getRankings,
   getInventoryFull,
   getMovementsFull,
-  getAuditFull,
   // Novos — Dashboard premium
   getTopMovers,
   getTrending,

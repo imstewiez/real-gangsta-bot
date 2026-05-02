@@ -105,7 +105,7 @@ async function startCooldown({ spot, saidaId, saidaType, leaderName, minutes } =
             .setColor(COLOR.DANGER)
             .setTitle(`${EMOJI.WARN} Spot Queimado — ${spot}`)
             .setDescription(
-              `A org acabou de abrir uma saída neste spot.\n` +
+              'A org acabou de abrir uma saída neste spot.\n' +
                 `**Ninguém da firma pode voltar a ${spot}** durante **${mins} min**.\n` +
                 '\n' +
                 `${EMOJI.SAIDA} Saída: **#${saidaId}**${saidaType ? ` · ${saidaType}` : ''}\n` +
@@ -121,7 +121,7 @@ async function startCooldown({ spot, saidaId, saidaType, leaderName, minutes } =
         });
         if (msg) {
           messageId = msg.id;
-          await query(`UPDATE spot_cooldowns SET notification_msg_id = $1 WHERE spot = $2`, [messageId, spot]);
+          await query('UPDATE spot_cooldowns SET notification_msg_id = $1 WHERE spot = $2', [messageId, spot]);
         }
       } else {
         warn(`[SPOT-COOLDOWN] SPOT_COOLDOWN_CHANNEL_ID (${channelId}) não acessível.`);

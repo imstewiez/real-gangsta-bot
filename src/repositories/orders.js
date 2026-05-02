@@ -51,7 +51,7 @@ async function findByMember(memberId, { limit = 20, status = null } = {}) {
     WHERE o.member_id = $1`;
   const params = [memberId];
   if (status) {
-    sql += ` AND o.status = $2`;
+    sql += ' AND o.status = $2';
     params.push(status);
   }
   sql += ` ORDER BY o.created_at DESC LIMIT $${params.length + 1}`;
@@ -74,25 +74,33 @@ async function findByStatus(status, { limit = 50 } = {}) {
   return res.rows;
 }
 
+const STATUS_META_COLS = {
+  approved: { col: 'approved_by', resolved: true },
+  fulfilled: { col: 'fulfilled_by', resolved: true },
+  denied: { resolved: true },
+  cancelled: { col: 'cancelled_by', resolved: true },
+};
+
 async function updateStatus(id, { status, actorDiscordId, notes = null }) {
   return queryWithTransaction(async client => {
-    // Lock row
     const current = await client.query('SELECT status FROM orders WHERE id = $1 FOR UPDATE', [id]);
     if (!current.rows[0]) throw new Error('Encomenda não encontrada.');
     const oldStatus = current.rows[0].status;
 
-    const res = await client.query(
-      `UPDATE orders
-       SET status = $1, updated_at = NOW(), updated_by = $2,
-           ${status === 'approved' ? 'approved_by = $2, resolved_at = NOW()' : ''}
-           ${status === 'fulfilled' ? 'fulfilled_by = $2, delivered_at = NOW(), resolved_at = NOW()' : ''}
-           ${status === 'denied' || status === 'cancelled' ? 'resolved_at = NOW()' : ''}
-       WHERE id = $3
-       RETURNING *`,
-      [status, actorDiscordId, id]
-    );
+    const meta = STATUS_META_COLS[status] || {};
+    const setParts = ['status = $1', 'updated_at = NOW()', 'updated_by = $2'];
+    const params = [status, actorDiscordId, id];
 
-    // Audit trail
+    if (meta.col) {
+      setParts.push(`${meta.col} = $2`);
+      if (meta.col === 'cancelled_by') setParts.push('cancelled_at = NOW()');
+    }
+    if (meta.resolved) {
+      setParts.push('resolved_at = NOW()');
+    }
+
+    const res = await client.query(`UPDATE orders SET ${setParts.join(', ')} WHERE id = $3 RETURNING *`, params);
+
     await client.query(
       `INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, notes)
        VALUES ($1, $2, $3, $4, $5)`,
@@ -100,7 +108,6 @@ async function updateStatus(id, { status, actorDiscordId, notes = null }) {
     );
 
     const order = res.rows[0];
-
     const eventName = `order.${status}`;
     eventBus
       .emitAsync(eventName, {
@@ -130,7 +137,7 @@ async function addNote(id, note, actorDiscordId) {
 }
 
 async function getStatusHistory(orderId) {
-  const res = await query(`SELECT * FROM order_status_history WHERE order_id = $1 ORDER BY created_at DESC`, [orderId]);
+  const res = await query('SELECT * FROM order_status_history WHERE order_id = $1 ORDER BY created_at DESC', [orderId]);
   return res.rows;
 }
 

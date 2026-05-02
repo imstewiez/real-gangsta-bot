@@ -27,7 +27,7 @@ async function list({ memberId, status } = {}) {
 }
 
 async function updateStatus(id, status, approvedBy) {
-  const res = await query(`UPDATE member_absences SET status = $1, approved_by = $2 WHERE id = $3 RETURNING *`, [
+  const res = await query('UPDATE member_absences SET status = $1, approved_by = $2 WHERE id = $3 RETURNING *', [
     status,
     approvedBy,
     id,

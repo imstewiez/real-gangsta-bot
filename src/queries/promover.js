@@ -14,12 +14,13 @@ async function handle(interaction) {
   if (sub === 'proximos') {
     const r = await query(
       `SELECT m.id, m.discord_id, m.display_name, m.role,
-        COALESCE(ms.total_delivered, 0) as delivered,
-        COALESCE(ms.total_sold, 0) as sold
+        COALESCE(SUM(CASE WHEN im.movement_type IN ('entrega_bairrista','entrega_oficial') THEN im.quantity ELSE 0 END), 0)::int as delivered,
+        COALESCE(SUM(CASE WHEN im.movement_type = 'venda_bairrista' THEN im.quantity ELSE 0 END), 0)::int as sold
        FROM members m
-       LEFT JOIN member_stats ms ON ms.member_id = m.id
+       LEFT JOIN inventory_movements im ON im.member_id = m.id
        WHERE m.status = 'ativo' AND m.role = 'bairrista'
-       ORDER BY (COALESCE(ms.total_delivered,0) + COALESCE(ms.total_sold,0)) DESC
+       GROUP BY m.id, m.discord_id, m.display_name, m.role
+       ORDER BY (delivered + sold) DESC
        LIMIT 10`
     );
     const lines = r.rows.map((row, i) => {

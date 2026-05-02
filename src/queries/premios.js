@@ -8,22 +8,14 @@
  *   entregar    → marca prémio como entregue
  */
 
-const {
-  MessageFlags,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
-} = require('discord.js');
+const { MessageFlags, ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const { safeReply, safeShowModal, getModalField } = require('../shared/interactionHelpers');
 const { requirePermission } = require('../shared/requirePermission');
 const { isChefia } = require('../permissions/permissionEngine');
-const { brandEmbed, COLOR } = require('../shared/embedBuilders');
+const { brandEmbed } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { prizeService } = require('../services');
-const { formatPtDateOnly } = require('../shared/formatPtDate');
+// const { formatPtDateOnly } = require('../shared/formatPtDate');
 
 async function handle(interaction) {
   const sub = interaction.options.getSubcommand(false) || 'listar';
@@ -95,7 +87,7 @@ async function handleEntregar(interaction) {
 
   const weekStart = interaction.options.getString('semana', true);
   try {
-    const prize = await prizeService.markDelivered({
+    await prizeService.markDelivered({
       weekStart,
       deliveredBy: interaction.user.id,
     });

@@ -13,17 +13,17 @@
  * ao votante é ephemeral.
  */
 
-const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const CONFIG = require('../config');
 const { availabilityRepo } = require('../repositories');
 const { logAudit } = require('../audit/auditEngine');
-const { brandEmbed, COLOR, headerLine, setFooterText } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR, setFooterText } = require('../shared/embedBuilders');
 const { formatPtDateOnly } = require('../shared/formatPtDate');
 const { EMOJI } = require('../content');
 const { buildSearchableSelect } = require('../shared/selectSearch');
 const {
   pickHeader,
-  stateMeta,
+  // stateMeta,
   STATE_ORDER,
   STATE_META,
   buildSelectOptions,

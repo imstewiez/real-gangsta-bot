@@ -578,7 +578,7 @@ async function expireStaleRequests(client) {
                   content:
                     `⏱️ O teu pedido para entrar na saída #${row.operation_id}${row.spot ? ` (${row.spot})` : ''} ` +
                     `expirou (> ${ttlMin} min sem resposta da chefia).\n` +
-                    `Se ainda queres juntar-te, clica **"Pedir para Juntar"** outra vez no painel.`,
+                    'Se ainda queres juntar-te, clica **"Pedir para Juntar"** outra vez no painel.',
                 })
                 .catch(() => {});
             }
@@ -707,7 +707,7 @@ async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
   return participant;
 }
 
-async function updateParticipantResult(saidaId, discordId, fields, actorId) {
+async function updateParticipantResult(saidaId, discordId, fields, _actorId) {
   const member = await memberRepo.findByDiscordId(discordId);
   if (!member) throw new Error('Membro não encontrado.');
   return saidaRepo.updateParticipant(saidaId, member.id, fields);

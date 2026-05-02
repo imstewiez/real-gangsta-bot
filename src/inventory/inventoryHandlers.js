@@ -21,7 +21,7 @@ const {
 const { inventoryRepo, memberRepo } = require('../repositories');
 const { isChefia, canOpenSession } = require('../permissions/permissionEngine');
 const { requirePermission } = require('../shared/requirePermission');
-const { EMOJI, ERRORS, MODALS, INVENTORY } = require('../content');
+const { EMOJI, ERRORS, INVENTORY } = require('../content');
 
 // Context efémero por user para fluxos multi-step de inventário.
 // TTL de 15 minutos — limpa entradas abandonadas automaticamente.
@@ -585,7 +585,7 @@ async function handleEncomendaModeSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const parts = interaction.customId.split('::');
   const paymentMode = parts[2];
-  const itemId = parseInt(parts[3]);
+  // const itemId = parseInt(parts[3]);
 
   const pending = pendingItemSelections.get(interaction.user.id);
   if (!pending || pending.action !== 'order') {
@@ -633,7 +633,8 @@ async function handleEncomendaModal(interaction) {
   const notes = getModalField(interaction, 'notes');
   const quantity = parseInt(quantityStr);
 
-  if (isNaN(quantity) || quantity <= 0)
+  const { SANITY_MAX_QTY } = require('../shared/constants');
+  if (isNaN(quantity) || quantity <= 0 || quantity > SANITY_MAX_QTY)
     return safeReply(interaction, { content: ERRORS.INVALID_QUANTITY() }, { messageClass: 'BANAL' });
 
   const member = await memberRepo.findByDiscordId(interaction.user.id);
@@ -704,7 +705,7 @@ async function handleEncomendaModal(interaction) {
   if (pricing.hasRecipe) {
     description += `Custo materiais: ${pricing.materialCost.toLocaleString('pt-PT')}€\n`;
   }
-  description += `Estado: Pendente\n`;
+  description += 'Estado: Pendente\n';
   if (notes) description += `Notas: ${notes}\n`;
   description += '\nA chefia será notificada.';
 
@@ -761,7 +762,7 @@ async function handleCartAdd(interaction) {
     modalTitle: 'Pesquisar categoria',
   });
   return safeUpdate(interaction, {
-    content: `Escolhe a categoria do item a adicionar:`,
+    content: 'Escolhe a categoria do item a adicionar:',
     embeds: [],
     components: rows,
   });
@@ -1103,7 +1104,7 @@ async function handleCartPreview(interaction) {
     bairristaStatsRepo.getRankingPosition(interaction.user.id, weekStartStr).catch(() => null),
     (async () => {
       const { getPromotionProgress } = require('../members/autoPromotionEngine');
-      return await getPromotionProgress(interaction.user.id).catch(() => null);
+      return getPromotionProgress(interaction.user.id).catch(() => null);
     })(),
   ]);
 

@@ -1,7 +1,7 @@
 'use strict';
 const { ChannelType } = require('discord.js');
 const { query } = require('../db');
-const CONFIG = require('../config');
+// CONFIG no longer needed — all config accessed via callers or defaults
 const { log, warn } = require('../logger');
 const { formatResidentChannelName } = require('../discord/structureTemplate');
 const { buildBairristaChannelOverwrites } = require('../members/channelInvariants');

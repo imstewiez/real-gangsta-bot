@@ -36,22 +36,21 @@ const STATE_ORDER = ['disponivel', 'talvez', 'indisponivel'];
  * Gera as opções do SelectMenu de voto.
  * Recebe os slots existentes da sessão e devolve array de { value, label, emoji, description }.
  * value = `<slotLabel>:<state>` exceto 'limpar' que é especial.
+ *
+ * Simplificado: apenas 1 opção por slot (marca como disponível).
+ * Para outros estados (talvez/indisponível) usar os botões de atalho.
  */
 function buildSelectOptions(slots) {
   const slotLabels = slots.map(s => s.slot_label);
   const opts = [];
 
-  // Slot individual × estado
   for (const label of slotLabels) {
-    for (const state of STATE_ORDER) {
-      const m = STATE_META[state];
-      opts.push({
-        label: `${m.emoji} ${label} — ${m.label}`,
-        description: `Marcar ${label} como ${m.label.toLowerCase()}`,
-        value: `${label}:${state}`,
-        emoji: m.emoji,
-      });
-    }
+    opts.push({
+      label: `${STATE_META.disponivel.emoji} ${label}`,
+      description: `Marcar ${label} como disponível`,
+      value: `${label}:disponivel`,
+      emoji: STATE_META.disponivel.emoji,
+    });
   }
 
   // Limpar

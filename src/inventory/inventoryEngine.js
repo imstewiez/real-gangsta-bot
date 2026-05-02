@@ -123,26 +123,6 @@ async function recordDelivery({
     })().catch(() => {});
   }
 
-  // Event bus — subscribers podem projectar para Sheets / dashboards.
-  eventBus
-    .emitAsync('material.registered', {
-      movementId: movement.id,
-      movementType,
-      itemId,
-      itemName: item.name,
-      itemValue: parseFloat(item.estimated_value) || 0,
-      quantity,
-      memberId: member.id,
-      memberDiscordId: member.discord_id,
-      memberRole: member.role,
-      operationId,
-      actorId: createdBy,
-      balanceAfter,
-      notes,
-      at: new Date(),
-    })
-    .catch(e => warn(`[EVENT] material.registered: ${e.message}`));
-
   return { movement, member, item, balanceAfter: Number(balanceAfter ?? 0) };
 }
 
@@ -244,7 +224,7 @@ async function afterBatchCommitted({
   }
 
   log(
-    `[BAIRRISTA-BATCH] ${member.display_name} (${tipo}) submetteu ${enrichedLines.length} linhas, ${totalQty} qty, ${totalValue}â‚¬ â€” submission=${submissionId}`
+    `[BAIRRISTA-BATCH] ${member.display_name} (${tipo}) submetteu ${enrichedLines.length} linhas, ${totalQty} qty, ${totalValue}€ — submission=${submissionId}`
   );
 
   (async () => {
@@ -790,6 +770,37 @@ async function getStockForItem(itemId) {
   return inventoryRepo.getStockForItem(itemId);
 }
 
+async function registerSale({ memberId, itemName, quantity, price = null, note = '' }) {
+  const stockManager = require('./stockManager');
+  const item = await stockManager.findItemByName(itemName);
+  if (!item) throw new Error(`Item não encontrado: ${itemName}`);
+
+  const result = await recordDelivery({
+    discordId: memberId,
+    itemId: item.id,
+    quantity,
+    movementType: 'venda_bairrista',
+    notes: note + (price ? ` | Preço: ${price}€` : ''),
+    createdBy: `discord:${memberId}`,
+  });
+  return { success: true, movement: result.movement };
+}
+
+async function transferStock({ itemName, quantity, from, to, actorId }) {
+  const stockManager = require('./stockManager');
+  const item = await stockManager.findItemByName(itemName);
+  if (!item) throw new Error(`Item não encontrado: ${itemName}`);
+
+  const result = await stockManager.transferStock({
+    itemId: item.id,
+    quantity,
+    fromLocation: from,
+    toLocation: to,
+    actor: `discord:${actorId}`,
+  });
+  return { success: true, ...result };
+}
+
 module.exports = {
   recordDelivery,
   recordDeliveryBatch,
@@ -799,5 +810,7 @@ module.exports = {
   adjustStock,
   getCurrentStock,
   getStockForItem,
+  registerSale,
+  transferStock,
   UNDO_WINDOW_MS,
 };

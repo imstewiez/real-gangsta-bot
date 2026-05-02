@@ -26,20 +26,20 @@ async function handle(interaction) {
 
   const [deliveries, sales, topMembers, saidas, pendingOrders, pendingPrizes] = await Promise.all([
     query(
-      `SELECT COALESCE(SUM(quantity),0)::int AS n, COALESCE(SUM(quantity*estimated_value),0)::numeric AS v FROM inventory_movements im JOIN items i ON i.id = im.item_id WHERE im.movement_type IN ('entrega_bairrista','entrega_oficial') AND im.created_at >= $1`,
+      "SELECT COALESCE(SUM(quantity),0)::int AS n, COALESCE(SUM(quantity*estimated_value),0)::numeric AS v FROM inventory_movements im JOIN items i ON i.id = im.item_id WHERE im.movement_type IN ('entrega_bairrista','entrega_oficial') AND im.created_at >= $1",
       [start]
     ),
     query(
-      `SELECT COALESCE(SUM(quantity),0)::int AS n, COALESCE(SUM(quantity*estimated_value),0)::numeric AS v FROM inventory_movements im JOIN items i ON i.id = im.item_id WHERE im.movement_type = 'venda_bairrista' AND im.created_at >= $1`,
+      "SELECT COALESCE(SUM(quantity),0)::int AS n, COALESCE(SUM(quantity*estimated_value),0)::numeric AS v FROM inventory_movements im JOIN items i ON i.id = im.item_id WHERE im.movement_type = 'venda_bairrista' AND im.created_at >= $1",
       [start]
     ),
     query(
-      `SELECT m.display_name, SUM(im.quantity)::int AS total FROM inventory_movements im JOIN members m ON m.id = im.member_id WHERE im.created_at >= $1 AND im.movement_type IN ('entrega_bairrista','venda_bairrista','entrega_oficial') GROUP BY m.display_name ORDER BY total DESC LIMIT 5`,
+      "SELECT m.display_name, SUM(im.quantity)::int AS total FROM inventory_movements im JOIN members m ON m.id = im.member_id WHERE im.created_at >= $1 AND im.movement_type IN ('entrega_bairrista','venda_bairrista','entrega_oficial') GROUP BY m.display_name ORDER BY total DESC LIMIT 5",
       [start]
     ),
-    query(`SELECT COUNT(*)::int AS n FROM operations WHERE status = 'concluida' AND created_at >= $1`, [start]),
-    query(`SELECT COUNT(*)::int AS n FROM orders WHERE status IN ('pending','received','under_review')`),
-    query(`SELECT COUNT(*)::int AS n FROM weekly_prizes WHERE prize_status = 'por_definir'`),
+    query("SELECT COUNT(*)::int AS n FROM operations WHERE status = 'concluida' AND created_at >= $1", [start]),
+    query("SELECT COUNT(*)::int AS n FROM orders WHERE status IN ('pending','in_progress','ready')"),
+    query("SELECT COUNT(*)::int AS n FROM weekly_prizes WHERE prize_status = 'por_definir'"),
   ]);
 
   const embed = brandEmbed('SHORT')

@@ -21,7 +21,7 @@ if (!haveDb()) {
   return;
 }
 
-const { pool, query } = require('../../src/db');
+const { query } = require('../../src/db');
 
 // Stub do guild / client — checkAndPromote tenta fetch members e enviar
 // mensagens; como aqui estamos num ambiente CI sem Discord real,
@@ -68,7 +68,8 @@ describe('integration/promotionRace', () => {
     );
     const m = await query("SELECT id FROM members WHERE discord_id = 'race-test-user'");
     _memberId = m.rows[0].id;
-    // Cria item + material que ultrapassa o threshold de 25000.
+    // Cria item + material que ultrapassa o threshold de 50000 XP.
+    // Item 'race-test-item' é da categoria 'outros' → 1 pt cada → 51000 unidades = 51000 XP.
     await query(
       `INSERT INTO items (name, category, unit, estimated_value, active)
        VALUES ('race-test-item', 'outros', 'unidade', 10, true)
@@ -78,7 +79,7 @@ describe('integration/promotionRace', () => {
     const itemId = i.rows[0].id;
     await query(
       `INSERT INTO inventory_movements (movement_type, item_id, quantity, member_id, created_by)
-       VALUES ('entrega_bairrista', $1, 26000, $2, 'test')`,
+       VALUES ('entrega_bairrista', $1, 51000, $2, 'test')`,
       [itemId, _memberId]
     );
   });
@@ -142,7 +143,7 @@ describe('integration/promotionRace', () => {
       const m = await query('SELECT id FROM members WHERE discord_id = $1', [id]);
       await query(
         `INSERT INTO inventory_movements (movement_type, item_id, quantity, member_id, created_by)
-         VALUES ('entrega_bairrista', $1, 26000, $2, 'test')`,
+         VALUES ('entrega_bairrista', $1, 51000, $2, 'test')`,
         [itemId, m.rows[0].id]
       );
     }

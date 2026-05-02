@@ -40,10 +40,8 @@ const CONFIG = {
   ...logging,
   GOOGLE_SERVICE_ACCOUNT_JSON: sheets.GOOGLE_SERVICE_ACCOUNT_JSON,
   SPREADSHEET_ID: sheets.SPREADSHEET_ID,
+  SHEETS_SYNC_INTERVAL_MIN: sheets.SHEETS_SYNC_INTERVAL_MIN,
   isSheetsEnabled: sheets.isSheetsEnabled,
-
-  // State file (usado pelo state.js para snapshots locais).
-  STATE_FILE: process.env.STATE_FILE || './state.json',
 };
 
 // ── Aliases semânticos (getters para avaliação lazy) ─────────────────────────

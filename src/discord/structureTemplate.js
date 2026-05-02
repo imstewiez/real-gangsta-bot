@@ -661,8 +661,8 @@ function _applyOgPlusWriteOverrides() {
     DISCOVERED.CH_RADIO_MOR, // rádio bairristas — frequências definidas por admin
     DISCOVERED.CH_PRECOS_PARCERIA, // preços-parceria — tabela admin-only
   ];
-  for (const id of ids) {
-    if (id) CHANNEL_PERM_OVERRIDES[id] = PERMS_READONLY_OG_PLUS_WRITE;
+  for (const channelId of ids) {
+    if (channelId) CHANNEL_PERM_OVERRIDES[channelId] = PERMS_READONLY_OG_PLUS_WRITE;
   }
 }
 
@@ -680,8 +680,8 @@ function _applyReadonlyConsultOverrides() {
     DISCOVERED.CH_WOOD_COMUN,
     DISCOVERED.CH_TOP_SEMANAL, // rankings — bot publica, todos consultam
   ];
-  for (const id of ids) {
-    if (id) CHANNEL_PERM_OVERRIDES[id] = PERMS_READONLY_BAIRRISTAS_VIEW;
+  for (const channelId of ids) {
+    if (channelId) CHANNEL_PERM_OVERRIDES[channelId] = PERMS_READONLY_BAIRRISTAS_VIEW;
   }
 }
 
@@ -941,7 +941,7 @@ _applyReadonlyConsultOverrides();
 _applyInventoryLogOverrides();
 
 // ── Categoria → perm config aplicado a TODOS os children (aggressive sweep) ─
-// Usado pelo structureSync.runPermsOnly para forçar perms em todos os canais
+// Usado pelo permission sync para forçar perms em todos os canais
 // de categorias críticas, bypassando o lockPermissions de section 5 que salta
 // canais com member-overwrites. Reserve para categorias onde NÃO deve existir
 // qualquer canal com overwrites user-specific (OPERACOES = spots/mapas: só
@@ -952,7 +952,7 @@ const CATEGORY_CHILD_FORCE_PERMS = {
 };
 
 // ── Map panel key → permission config ────────────────────────────────────────
-// Consumido pelo `runPermsOnly` (structureSync) — faz auto-discovery dos
+// Consumido pelo permission sync — faz auto-discovery dos
 // canais de painel (env var OU nome+categoria, espelha panelBootstrap) e
 // aplica estas perms em runtime. Resolve o caso em que os
 // `PANEL_*_CHANNEL_ID` não estão configurados no env e os nomes dos canais

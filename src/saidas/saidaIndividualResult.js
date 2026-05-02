@@ -37,7 +37,6 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
-  StringSelectMenuBuilder,
   MessageFlags,
 } = require('discord.js');
 
@@ -776,9 +775,6 @@ async function dmParticipantsForResults(client, saidaId, resultLabel) {
   if (!saida) return;
   const participants = await saidaRepo.getParticipants(saidaId);
   if (!participants.length) return;
-
-  const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-  const { brandEmbed } = require('../shared/embedBuilders');
 
   for (const p of participants) {
     if (!p.discord_id) continue;

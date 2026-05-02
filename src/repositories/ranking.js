@@ -109,6 +109,21 @@ async function getMemberHistory(memberId, limit = 12) {
   return res.rows;
 }
 
+async function getWeekTopBairristaByDeliveries(weekStart) {
+  const res = await query(
+    `
+    SELECT wr.*, m.discord_id, m.display_name, m.role, m.tier
+    FROM weekly_rankings wr
+    JOIN members m ON m.id = wr.member_id
+    WHERE wr.week_start = $1 AND m.role = 'bairrista'
+    ORDER BY wr.deliveries DESC
+    LIMIT 1
+  `,
+    [weekStart]
+  );
+  return res.rows[0] || null;
+}
+
 async function getWeekSummary(weekStart) {
   const res = await query(
     `
@@ -136,6 +151,7 @@ module.exports = {
   saveWeeklyRanking,
   getWeekRanking,
   getWeekRankingByRole,
+  getWeekTopBairristaByDeliveries,
   getMemberHistory,
   getWeekSummary,
 };

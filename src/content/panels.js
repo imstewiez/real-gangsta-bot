@@ -50,7 +50,7 @@ const PANELS = {
       `${E.MEDAL_1} **Ranking** — quem rende mais, sobe mais.\n` +
       `${E.ENCOMENDA} **Encomendas** — o que pediste à firma.\n` +
       '\n' +
-      '_Trás pedra ao bairro. O bairro devolve-te nome._\n' +
+      '_Peso é o que conta. O resto é conversa._\n' +
       '\n' +
       '— Firma RedWood',
     BUTTONS: {

@@ -23,7 +23,7 @@
  *     desde que tenha kills > 0 OU sobrevivido+disciplina≥70%
  */
 
-function computeSaidaScores({ participants, result, suppliedTotal }) {
+function computeSaidaScores({ participants, result, _suppliedTotal }) {
   const isWin = result === 'vitoria';
   const isLoss = result === 'derrota';
 

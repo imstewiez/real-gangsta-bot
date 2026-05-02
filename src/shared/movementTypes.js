@@ -27,13 +27,6 @@ const MOVEMENT_TYPE = Object.freeze({
   SALDO_INICIAL: 'saldo_inicial',
   APREENDIDO: 'apreendido',
   CRAFTADO: 'craftado',
-
-  // Legacy (read-only, não devem ser criados novos)
-  ENTREGA_MORADOR: 'entrega_morador',
-  VENDA_MORADOR: 'venda_morador',
-  CONSUMO_OPERACAO: 'consumo_operacao',
-  DEVOLUCAO_OPERACAO: 'devolucao_operacao',
-  PERDA_OPERACAO: 'perda_operacao',
 });
 
 // Movimentos que aumentam stock (receitas)

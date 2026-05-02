@@ -105,8 +105,8 @@ async function checkAndAlert({ dryRun = false, throttleHours = 24 } = {}) {
     .setDescription(`${breaches.length} item${breaches.length !== 1 ? 's' : ''} abaixo do threshold. Repor quando der.`)
     .setColor(COLOR.WARNING);
 
-  for (const [cat, items] of Object.entries(byCat)) {
-    const lines = items
+  for (const [cat, catItems] of Object.entries(byCat)) {
+    const lines = catItems
       .sort((a, b) => a.balance / a.alert_threshold - b.balance / b.alert_threshold)
       .map(b => {
         const pct = b.alert_threshold > 0 ? Math.round((b.balance / b.alert_threshold) * 100) : 0;

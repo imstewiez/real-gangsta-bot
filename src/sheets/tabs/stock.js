@@ -1,10 +1,10 @@
 'use strict';
 /**
- * Tab Stock — inventário + ledger de movimentos numa folha.
- *   Secção 1: Panorama stock (itens, qtd, valor, críticos)
- *   Secção 2: Breakdown por categoria
- *   Secção 3: Inventário detalhado (agrupado por categoria, com subtotais)
- *   Secção 4: Ledger de movimentos (últimos 500)
+ * Tab Stock v2 — inventário + ledger redesign.
+ *   Secção 1: Panorama stock (miniKPIRow 8 cards)
+ *   Secção 2: Breakdown por categoria (com valor médio/item)
+ *   Secção 3: Inventário detalhado (agrupado por categoria com sub-headers)
+ *   Secção 4: Ledger de movimentos (com delta stock)
  */
 
 const {
@@ -25,14 +25,12 @@ const {
   sectionHeader,
   spacer,
   divider,
-  kpiStrip,
+  miniKPIRow,
   tableHeader,
   tableBody,
   totalRow,
   footerBlock,
-  autoResizeColumns,
   autoResizeAll,
-  applyRowBanding,
   alertBox,
   gangTitle,
 } = require('./_common');
@@ -45,6 +43,7 @@ const MOVS_HEADERS = [
   'Item',
   'Categoria',
   'Qtd',
+  'Delta',
   'Valor Unit.',
   'Valor Total',
   'Actor',
@@ -53,7 +52,6 @@ const MOVS_HEADERS = [
   'Tier',
   'Saída',
   'Spot',
-  'Contexto',
   'Notas',
 ];
 const INV_HEADERS = [
@@ -65,8 +63,6 @@ const INV_HEADERS = [
   'Qtd Total',
   'Valor Unit.',
   'Valor Total',
-  'Entradas',
-  'Saídas',
   'Última Mov.',
   'Estado',
 ];
@@ -78,7 +74,6 @@ function casaBadge(loc) {
   return mutedCell('—', { align: 'CENTER' });
 }
 
-// Display names por categoria (chave DB → rótulo humano premium)
 const CAT_DISPLAY = {
   armas: 'Armas',
   armas_fogo: 'Armas de Fogo',
@@ -125,15 +120,17 @@ function typeBadge(type) {
   return m ? badgeCell(m.label, m.bg) : bodyCell(type || '—');
 }
 
-function stateBadge(balance, item) {
-  // Items com alert_enabled=false não mostram state badge (jóias, armas
-  // estragadas, items de hobby — não fazem sentido monitorar esgotamento).
-  if (item && item.alert_enabled === false) return mutedCell('—', { align: 'CENTER' });
+function deltaStockBadge(quantity, type) {
+  if (['fornecimento_org', 'perda_saida', 'consumo_saida'].includes(type)) {
+    return numCell(-Math.abs(quantity), NUM_FMT.INT_DELTA);
+  }
+  return numCell(Math.abs(quantity), NUM_FMT.INT_DELTA);
+}
 
+function stateBadge(balance, item) {
+  if (item && item.alert_enabled === false) return mutedCell('—', { align: 'CENTER' });
   const b = Number(balance || 0);
   const threshold = item?.alert_threshold;
-
-  // Se tem threshold explícito, compara contra ele (mais preciso).
   if (threshold && threshold > 0) {
     if (b <= 0) return badgeCell('ESGOTADO', COLOR.RED_DEEP);
     if (b < threshold * 0.2) return badgeCell('CRÍTICO', COLOR.RED_BLOOD);
@@ -141,8 +138,6 @@ function stateBadge(balance, item) {
     if (b >= threshold * 3) return badgeCell('ALTO', COLOR.GREEN_DEEP);
     return badgeCell('NORMAL', COLOR.GRAPHITE);
   }
-
-  // Fallback: thresholds genéricos legacy.
   if (b <= 0) return badgeCell('ESGOTADO', COLOR.RED_DEEP);
   if (b <= 3) return badgeCell('CRÍTICO', COLOR.RED_BLOOD);
   if (b <= 10) return badgeCell('BAIXO', COLOR.YELLOW_DEEP);
@@ -180,16 +175,13 @@ async function syncStock(batch, sheetId) {
     .filter(r => r.movement_type === 'perda_saida')
     .reduce((a, r) => a + Number(r.total_value || 0), 0);
 
-  // Grow é feito pelo syncEngine via pre-flight API separada (PRE_SYNC_MIN_ROWS).
-  // Não chamar growSheet aqui — encolheria a grid pre-flight.
-
   let row = headerBlock(batch, sheetId, {
     title: gangTitle('Stock'),
     subtitle: `${inv.length} itens · ${critical} críticos · ${qtyArmazem} un. armazém + ${qtyGrupo} un. grupo`,
     columnCount: COL_COUNT,
   });
 
-  // Alerta crítico no topo se houver itens esgotados
+  // Alerta crítico no topo
   if (zeros > 0) {
     row = alertBox(batch, sheetId, row, {
       kind: 'danger',
@@ -205,13 +197,13 @@ async function syncStock(batch, sheetId) {
   }
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
 
-  // ── Panorama global ──────────────────────────────────────────────────────
+  // ── Panorama global — miniKPIRow 8 cards (2×4) ───────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '📦 PANORAMA DO STOCK',
+    title: 'PANORAMA DO STOCK',
     hint: 'totais consolidados',
     columnCount: COL_COUNT,
   });
-  row = kpiStrip(
+  row = miniKPIRow(
     batch,
     sheetId,
     row,
@@ -247,16 +239,7 @@ async function syncStock(batch, sheetId) {
     ],
     COL_COUNT
   );
-
-  row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
-
-  // ── Por casa ─────────────────────────────────────────────────────────────
-  row = sectionHeader(batch, sheetId, row, {
-    title: '🏠 STOCK POR CASA',
-    hint: 'armazém (chefes) vs grupo (oficiais)',
-    columnCount: COL_COUNT,
-  });
-  row = kpiStrip(
+  row = miniKPIRow(
     batch,
     sheetId,
     row,
@@ -265,30 +248,32 @@ async function syncStock(batch, sheetId) {
         label: 'Armazém Qtd',
         value: qtyArmazem,
         numberFormat: NUM_FMT.INT,
+        delta: `${((valueArmazem / Math.max(totalValue, 1)) * 100).toFixed(0)}% do valor`,
+        deltaDirection: 'flat',
+      },
+      {
+        label: 'Armazém €',
+        value: valueArmazem,
+        numberFormat: NUM_FMT.EURO,
         delta: 'só chefes',
         deltaDirection: 'flat',
       },
       {
-        label: 'Armazém Valor',
-        value: valueArmazem,
-        numberFormat: NUM_FMT.EURO,
-        delta: `${((valueArmazem / Math.max(totalValue, 1)) * 100).toFixed(0)}% do total`,
+        label: 'Grupo Qtd',
+        value: qtyGrupo,
+        numberFormat: NUM_FMT.INT,
+        delta: `${((valueGrupo / Math.max(totalValue, 1)) * 100).toFixed(0)}% do valor`,
         deltaDirection: 'flat',
       },
-      { label: 'Grupo Qtd', value: qtyGrupo, numberFormat: NUM_FMT.INT, delta: 'oficiais', deltaDirection: 'flat' },
-      {
-        label: 'Grupo Valor',
-        value: valueGrupo,
-        numberFormat: NUM_FMT.EURO,
-        delta: `${((valueGrupo / Math.max(totalValue, 1)) * 100).toFixed(0)}% do total`,
-        deltaDirection: 'flat',
-      },
+      { label: 'Grupo €', value: valueGrupo, numberFormat: NUM_FMT.EURO, delta: 'oficiais', deltaDirection: 'flat' },
     ],
     COL_COUNT
   );
 
   row = spacer(batch, sheetId, row, COL_COUNT, 'SM');
-  row = kpiStrip(
+
+  // ── Movimentos recentes — miniKPIRow ─────────────────────────────────────
+  row = miniKPIRow(
     batch,
     sheetId,
     row,
@@ -330,8 +315,8 @@ async function syncStock(batch, sheetId) {
 
   // ── Breakdown por categoria ──────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '📊 BREAKDOWN POR CATEGORIA',
-    hint: 'qtd + valor por categoria',
+    title: 'BREAKDOWN POR CATEGORIA',
+    hint: 'qtd + valor + densidade',
     columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, [
@@ -342,10 +327,14 @@ async function syncStock(batch, sheetId) {
     'Qtd Total',
     'Valor (€)',
     '% do Valor',
-    ...Array(COL_COUNT - 7).fill(''),
+    '€ / Item',
+    'Qtd / Item',
+    ...Array(COL_COUNT - 9).fill(''),
   ]);
   const catRows = byCat.map(c => {
     const pct = totalValue > 0 ? Number(c.total_value) / totalValue : 0;
+    const avgVal = c.items_count > 0 ? Number(c.total_value) / c.items_count : 0;
+    const avgQty = c.items_count > 0 ? Number(c.total_qty) / c.items_count : 0;
     const cells = [
       bodyBoldCell(CAT_DISPLAY[c.category] || c.category || '—'),
       numCell(c.items_count, NUM_FMT.INT),
@@ -354,6 +343,8 @@ async function syncStock(batch, sheetId) {
       numCell(c.total_qty, NUM_FMT.INT),
       numCell(Number(c.total_value), NUM_FMT.EURO),
       numCell(pct, NUM_FMT.PCT),
+      numCell(avgVal, NUM_FMT.EURO_DEC),
+      numCell(avgQty, NUM_FMT.DEC1),
     ];
     while (cells.length < COL_COUNT) cells.push(cell('', { bg: COLOR.BG_APP }));
     return cells;
@@ -378,15 +369,11 @@ async function syncStock(batch, sheetId) {
 
   // ── Inventário detalhado agrupado por categoria ──────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '📋 INVENTÁRIO DETALHADO',
-    hint: 'agrupado por categoria',
+    title: 'INVENTÁRIO DETALHADO',
+    hint: 'agrupado por categoria · ordenado por valor',
     columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, INV_HEADERS.concat(Array(COL_COUNT - INV_HEADERS.length).fill('')));
-  // NÃO congelar aqui — freeze a row~46 torna a tab inutilizável em ecrãs
-  // onde o frozen pane é maior que a viewport (bloqueia scroll).
-  // O frozenRowCount=0 no sheetsEngine pre-sync já garante que não há freeze.
-  const invFirstRow = row;
 
   const groups = new Map();
   for (const it of inv) {
@@ -400,44 +387,46 @@ async function syncStock(batch, sheetId) {
     return vb - va;
   });
 
-  // MUDANÇA DE PADRÃO: flat table com TODOS os items ordenados por categoria
-  // (depois por nome). Usa tableBody — EXACTAMENTE o mesmo padrão do breakdown
-  // e dos membros/saidas que funcionam em prod. Abandona os cabeçalhos de
-  // categoria + subtotais inline porque o padrão "per-category mergeCells +
-  // per-item updateCells" estava a resultar em items invisíveis na sheet em
-  // prod (razão não identificada; tableBody é o fallback seguro).
-  //
-  // Os itens continuam ordenados por categoria (col "Categoria") portanto
-  // agrupam visualmente. Subtotais e panorama estão no topo da tab.
-  const sortedItems = [];
+  let invFirstRow = row;
   for (const cat of sortedCats) {
+    // Sub-header da categoria
+    const catTotalVal = groups.get(cat).reduce((s, i) => s + Number(i.value_total || 0), 0);
+    const catTotalQty = groups.get(cat).reduce((s, i) => s + Number(i.balance || 0), 0);
+    const catHeaderCells = Array(COL_COUNT).fill(cell('', { bg: COLOR.GRAPHITE }));
+    catHeaderCells[0] = cell(catLabel(cat), {
+      bg: COLOR.GRAPHITE,
+      font: { fontFamily: 'Inter', fontSize: 9, bold: true, foregroundColor: COLOR.GRAY_LIGHT },
+      align: 'LEFT',
+      vAlign: 'MIDDLE',
+    });
+    catHeaderCells[5] = numCell(catTotalQty, NUM_FMT.INT);
+    catHeaderCells[7] = numCell(catTotalVal, NUM_FMT.EURO);
+    batch.updateCells(sheetId, row, 0, [catHeaderCells]);
+    batch.setRowHeight(sheetId, row, 20);
+    row += 1;
+
     const items = groups
       .get(cat)
       .slice()
       .sort((a, b) => Number(b.value_total || 0) - Number(a.value_total || 0));
-    sortedItems.push(...items);
-  }
 
-  const itemRows = sortedItems.map(i => [
-    bodyCell(i.name),
-    captionCell(catLabel(i.category || '—')),
-    captionCell(i.unit || 'un'),
-    numCell(i.balance_armazem || 0, NUM_FMT.INT),
-    numCell(i.balance_grupo || 0, NUM_FMT.INT),
-    numCell(i.balance, NUM_FMT.INT),
-    numCell(Number(i.estimated_value), NUM_FMT.EURO_DEC),
-    numCell(Number(i.value_total), NUM_FMT.EURO),
-    numCell(i.total_in || 0, NUM_FMT.INT),
-    numCell(i.total_out || 0, NUM_FMT.INT),
-    captionCell(fmtDT(i.last_movement)),
-    stateBadge(i.balance, i),
-  ]);
-  // Pad cada row para COL_COUNT
-  for (const r of itemRows) {
-    while (r.length < COL_COUNT) r.push(cell('', { bg: COLOR.BG_APP }));
+    const itemRows = items.map(i => [
+      bodyCell(i.name),
+      captionCell(catLabel(i.category || '—')),
+      captionCell(i.unit || 'un'),
+      numCell(i.balance_armazem || 0, NUM_FMT.INT),
+      numCell(i.balance_grupo || 0, NUM_FMT.INT),
+      numCell(i.balance, NUM_FMT.INT),
+      numCell(Number(i.estimated_value), NUM_FMT.EURO_DEC),
+      numCell(Number(i.value_total), NUM_FMT.EURO),
+      captionCell(fmtDT(i.last_movement)),
+      stateBadge(i.balance, i),
+    ]);
+    for (const r of itemRows) {
+      while (r.length < COL_COUNT) r.push(cell('', { bg: COLOR.BG_APP }));
+    }
+    row = tableBody(batch, sheetId, row, itemRows);
   }
-  // basicFilter fica na secção de movimentos (tab só suporta 1 basicFilter).
-  row = tableBody(batch, sheetId, row, itemRows);
 
   // Grand total do inventário
   row = totalRow(batch, sheetId, row, {
@@ -452,7 +441,6 @@ async function syncStock(batch, sheetId) {
   });
 
   if (inv.length) {
-    // Heatmap em Qtd Total (col 5)
     batch.addRule(conditionalLessThan(sheetId, invFirstRow, 5, row, 6, 4, COLOR.RED_SIGNAL_SOFT));
     batch.addRule(conditionalGreaterThan(sheetId, invFirstRow, 5, row, 6, 50, COLOR.GREEN_SOFT));
   }
@@ -462,7 +450,7 @@ async function syncStock(batch, sheetId) {
 
   // ── Ledger de movimentos ─────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: '🔄 LEDGER DE MOVIMENTOS',
+    title: 'LEDGER DE MOVIMENTOS',
     hint: `últimos ${movs.length} · filtros activos`,
     columnCount: COL_COUNT,
   });
@@ -474,6 +462,7 @@ async function syncStock(batch, sheetId) {
     bodyBoldCell(m.item),
     captionCell(m.categoria || '—'),
     numCell(m.quantity, NUM_FMT.INT),
+    deltaStockBadge(m.quantity, m.movement_type),
     numCell(Number(m.unit_value), NUM_FMT.EURO_DEC),
     numCell(Number(m.total_value), NUM_FMT.EURO),
     captionCell(m.actor_id || '—'),
@@ -482,7 +471,6 @@ async function syncStock(batch, sheetId) {
     captionCell(m.member_tier || '—'),
     m.saida_id ? bodyCell(`#${m.saida_id}`) : mutedCell('—'),
     bodyCell(m.saida_spot || '—'),
-    captionCell(m.context || '—'),
     bodyCell(m.notes || '', { wrap: true }),
   ]);
   row = tableBody(batch, sheetId, row, movRows, { basicFilter: true, columnCount: COL_COUNT });

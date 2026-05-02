@@ -12,7 +12,6 @@
  *   - buildSubmissionFeedback: undo button com submissionId
  */
 
-const path = require('path');
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -226,7 +225,7 @@ describe('bairristaCart — buildCartComponents', () => {
     const c = bairristaCart.createCart('U5', 'entrega');
     const rows = bairristaCart.buildCartComponents(c, { canRepeat: false });
     // Row 2 é Submit/Cancel
-    const submitBtn = rows[1].components.find(c => c.data.custom_id.startsWith('invcart::submit'));
+    const submitBtn = rows[1].components.find(btn => btn.data.custom_id.startsWith('invcart::submit'));
     assert.equal(submitBtn.data.disabled, true);
     bairristaCart.clearCart('U5');
   });
@@ -235,7 +234,7 @@ describe('bairristaCart — buildCartComponents', () => {
     const c = bairristaCart.createCart('U6', 'entrega');
     bairristaCart.addLine(c, { itemId: 1, itemName: 'A', category: 'x', quantity: 1, basePrice: 1 });
     const rows = bairristaCart.buildCartComponents(c, { canRepeat: false });
-    const submitBtn = rows[1].components.find(c => c.data.custom_id.startsWith('invcart::submit'));
+    const submitBtn = rows[1].components.find(btn => btn.data.custom_id.startsWith('invcart::submit'));
     assert.equal(submitBtn.data.disabled, false);
     bairristaCart.clearCart('U6');
   });
@@ -243,11 +242,11 @@ describe('bairristaCart — buildCartComponents', () => {
   it('repeat button só aparece se canRepeat=true', () => {
     const c = bairristaCart.createCart('U7', 'entrega');
     const noRepeat = bairristaCart.buildCartComponents(c, { canRepeat: false });
-    const hasRepeat1 = noRepeat[0].components.some(c => c.data.custom_id?.startsWith('invcart::repeat'));
+    const hasRepeat1 = noRepeat[0].components.some(btn => btn.data.custom_id?.startsWith('invcart::repeat'));
     assert.equal(hasRepeat1, false);
 
     const withRepeat = bairristaCart.buildCartComponents(c, { canRepeat: true });
-    const hasRepeat2 = withRepeat[0].components.some(c => c.data.custom_id?.startsWith('invcart::repeat'));
+    const hasRepeat2 = withRepeat[0].components.some(btn => btn.data.custom_id?.startsWith('invcart::repeat'));
     assert.equal(hasRepeat2, true);
     bairristaCart.clearCart('U7');
   });
