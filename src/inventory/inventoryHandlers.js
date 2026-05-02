@@ -584,8 +584,8 @@ async function handleEncomendaSelect(interaction) {
 async function handleEncomendaModeSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const parts = interaction.customId.split('::');
-  const paymentMode = parts[3];
-  const itemId = parseInt(parts[4]);
+  const paymentMode = parts[2];
+  const itemId = parseInt(parts[3]);
 
   const pending = pendingItemSelections.get(interaction.user.id);
   if (!pending || pending.action !== 'order') {

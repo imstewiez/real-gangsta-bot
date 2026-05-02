@@ -15,86 +15,108 @@ const { MessageFlags } = require('discord.js');
 const { inventoryRepo } = require('../repositories');
 const craftRecipeRepo = require('../repositories/craftRecipe');
 const { getRankMultiplier } = require('../orders/orderPricingEngine');
-const { brandEmbed, applyLogo, COLOR, headerLine } = require('../shared/embedBuilders');
+const { brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { safeReply } = require('../shared/interactionHelpers');
 const { query } = require('../db');
 
-// ══════════════════════════════════════════════════════════════════════════════
-// Categorias e apresentação
-// ══════════════════════════════════════════════════════════════════════════════
+// ── Nome → categoria de exibição (baseado no JSON original de preços) ───────
+// Usado para separar armas orange/red e classificar prints/corpos correctamente.
 
-const PRICE_CATEGORIES = [
-  { key: 'lixo', label: '♻️ Lixo & Reciclagem', emoji: '♻️' },
-  { key: 'madeiras', label: '🪵 Madeiras', emoji: '🪵' },
-  { key: 'materias_primas', label: '🔧 Matérias-Primas', emoji: '🔧' },
-  { key: 'minerios', label: '⛏️ Minérios', emoji: '⛏️' },
-  { key: 'corpos', label: '🔩 Corpos de Arma', emoji: '🔩' },
-  { key: 'prints', label: '📜 Prints', emoji: '📜' },
-  { key: 'armas_orange', label: '🔫 Armas Orange', emoji: '🔫' },
-  { key: 'armas_red', label: '🔴 Armas Red', emoji: '🔴' },
-  { key: 'armas_extra', label: '⭐ Armas Extra', emoji: '⭐' },
-  { key: 'armas_brancas', label: '🔪 Armas Brancas', emoji: '🔪' },
-  { key: 'carregadores', label: '🔋 Carregadores', emoji: '🔋' },
-  { key: 'coletes', label: '🛡️ Coletes', emoji: '🛡️' },
-  { key: 'acessorios', label: '🎒 Acessórios', emoji: '🎒' },
-  { key: 'drogas', label: '💊 Drogas', emoji: '💊' },
-];
+const ARMAS_ORANGE_NAMES = new Set([
+  'Taser',
+  'SNS Pistol',
+  'SNS Pistol MK2',
+  'Pistol',
+  'Pistol MK2',
+  'Heavy Pistol',
+  'Ceramic Pistol',
+  'Vintage Pistol',
+  'Mini SMG',
+  'Pistol XM3',
+  'Micro SMG',
+  'Machine Pistol',
+  'TEC Pistol',
+  'AP Pistol',
+  'Compact Rifle',
+  'SMG',
+  'SMG MK2',
+  'Assault Shotgun',
+  'Heavy Shotgun',
+  'Gusenberg',
+]);
 
-const CATEGORY_GROUPS = [
-  {
-    title: '📋 Matérias-Primas & Recursos',
-    color: COLOR.INFO,
-    cats: ['lixo', 'madeiras', 'materias_primas', 'minerios'],
-  },
-  {
-    title: '📋 Componentes & Equipamento',
-    color: COLOR.SUCCESS,
-    cats: ['corpos', 'prints', 'carregadores', 'coletes', 'acessorios'],
-  },
-  { title: '📋 Armas', color: COLOR.DANGER, cats: ['armas_orange', 'armas_red', 'armas_extra', 'armas_brancas'] },
-  { title: '📋 Drogas', color: COLOR.PURPLE, cats: ['drogas'] },
-];
+const ARMAS_RED_NAMES = new Set([
+  'Heavy',
+  '.50',
+  'Revolver',
+  'Gadget Pistol',
+  'P90',
+  'PDW',
+  'Assault Rifle',
+  'Advanced Rifle',
+  'Military',
+  'Tactical Rifle',
+  'Bullpup',
+  'Bullpup MK2',
+  'Carabina Especial',
+  'Carabina Especial MK2',
+]);
 
-function fmtShortPrice(n) {
-  const num = Number(n) || 0;
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M€';
-  if (num >= 1000) return (num / 1000).toFixed(0) + 'k€';
-  return num + '€';
-}
+function classifyDisplayCategory(item) {
+  const name = item.name || '';
+  const cat = item.category || '';
 
-// ══════════════════════════════════════════════════════════════════════════════
-// Build price line para um item
-// ══════════════════════════════════════════════════════════════════════════════
-
-function buildItemLine(item, { buyMult, sellMult, recipeMap }) {
-  const base = parseFloat(item.estimated_value) || 0;
-  const sellPrice = base * (1 + sellMult);
-  const buyPrice = base * (1 + buyMult);
-
-  const recipe = recipeMap.get(item.id);
-  let line = '';
-
-  if (recipe) {
-    // Item craftável: mostra Venda, Compra sem material, Compra c/ material
-    const materialCost = recipe.ingredients.reduce((sum, ing) => {
-      const unit = parseFloat(ing.unit_price) || parseFloat(ing.ingredient_price) || 0;
-      return sum + unit * ing.quantity;
-    }, 0);
-    const buyWithMat = materialCost * (1 + buyMult);
-
-    line = `\`V:${fmtShortPrice(sellPrice)}\` \`C:${fmtShortPrice(buyPrice)}\` \`🛠️:${fmtShortPrice(buyWithMat)}\` **${item.name}**`;
-  } else {
-    // Item simples: Venda e Compra
-    line = `\`V:${fmtShortPrice(sellPrice)}\` \`C:${fmtShortPrice(buyPrice)}\` **${item.name}**`;
+  if (name.startsWith('Corpo')) return 'corpos';
+  if (name.includes('Print')) return 'prints';
+  if (cat === 'armas_brancas') return 'armas_brancas';
+  if (cat === 'armas_fogo') {
+    if (ARMAS_RED_NAMES.has(name)) return 'armas_red';
+    if (ARMAS_ORANGE_NAMES.has(name)) return 'armas_orange';
+    return 'armas_extra';
   }
-
-  return line;
+  if (cat === 'municoes') return 'carregadores';
+  if (cat === 'equipamento') return 'coletes';
+  if (cat === 'acessorios') return 'acessorios';
+  if (cat === 'droga') return 'drogas';
+  if (cat === 'madeiras') return 'madeiras';
+  if (cat === 'metais') return 'minerios';
+  if (cat === 'reciclagem') return 'lixo';
+  if (cat === 'componentes') {
+    if (name.startsWith('Corpo')) return 'corpos';
+    if (name.includes('Print')) return 'prints';
+    return 'materias_primas';
+  }
+  if (cat === 'dinheiro') return 'dinheiro';
+  return 'outros';
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// Build embeds
-// ══════════════════════════════════════════════════════════════════════════════
+// ── Formatação ──────────────────────────────────────────────────────────────
+
+function fmtPrice(n) {
+  return (Number(n) || 0).toLocaleString('pt-PT') + '€';
+}
+
+// ── Build embeds ────────────────────────────────────────────────────────────
+
+const DISPLAY_CATEGORIES = [
+  { key: 'lixo', label: '♻️ Lixo & Reciclagem', color: COLOR.MUTED },
+  { key: 'madeiras', label: '🪵 Madeiras', color: COLOR.INFO },
+  { key: 'materias_primas', label: '🔧 Matérias-Primas', color: COLOR.INFO },
+  { key: 'minerios', label: '⛏️ Minérios', color: COLOR.INFO },
+  { key: 'corpos', label: '🔩 Corpos de Arma', color: COLOR.WARNING_SOFT },
+  { key: 'prints', label: '📜 Prints', color: COLOR.WARNING_SOFT },
+  { key: 'armas_orange', label: '🔫 Armas Orange', color: COLOR.GOLD },
+  { key: 'armas_red', label: '🔴 Armas Red', color: COLOR.DANGER },
+  { key: 'armas_extra', label: '⭐ Armas Extra', color: COLOR.PURPLE },
+  { key: 'armas_brancas', label: '🔪 Armas Brancas', color: COLOR.DARK },
+  { key: 'carregadores', label: '🔋 Carregadores', color: COLOR.TEAL },
+  { key: 'coletes', label: '🛡️ Coletes', color: COLOR.TEAL },
+  { key: 'acessorios', label: '🎒 Acessórios', color: COLOR.TEAL },
+  { key: 'drogas', label: '💊 Drogas', color: COLOR.PURPLE },
+  { key: 'dinheiro', label: '💵 Dinheiro', color: COLOR.SUCCESS },
+  { key: 'outros', label: '📦 Outros', color: COLOR.MUTED },
+];
 
 async function buildPriceEmbedsForMember(memberRole) {
   const [items, recipes] = await Promise.all([inventoryRepo.getItems(true), craftRecipeRepo.getAllRecipes()]);
@@ -108,55 +130,69 @@ async function buildPriceEmbedsForMember(memberRole) {
 
   const buyMult = getRankMultiplier(memberRole, 'buy');
   const sellMult = getRankMultiplier(memberRole, 'sell');
-  const multCtx = { buyMult, sellMult, recipeMap };
+
+  // Agrupar items por categoria de exibição
+  const byCat = new Map();
+  for (const item of items) {
+    const dc = classifyDisplayCategory(item);
+    if (!byCat.has(dc)) byCat.set(dc, []);
+    byCat.get(dc).push(item);
+  }
 
   const embeds = [];
 
-  // ── Preços por categoria ──────────────────────────────────────────────────
-  for (const group of CATEGORY_GROUPS) {
-    const embed = applyLogo(
-      brandEmbed('MOVEMENT')
-        .setColor(group.color)
-        .setTitle(group.title)
-        .setDescription(`Preços para o teu rank: **${memberRole}**` + headerLine('', 'Legenda'))
-    );
+  for (const catDef of DISPLAY_CATEGORIES) {
+    const catItems = byCat.get(catDef.key) || [];
+    if (!catItems.length) continue;
+    catItems.sort((a, b) => a.name.localeCompare(b.name));
 
-    let hasAny = false;
-    for (const catKey of group.cats) {
-      const catItems = items.filter(i => i.category === catKey).sort((a, b) => a.name.localeCompare(b.name));
-      if (!catItems.length) continue;
-      hasAny = true;
+    const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(catDef.label));
 
-      const catDef = PRICE_CATEGORIES.find(c => c.key === catKey);
-      const lines = catItems.map(i => buildItemLine(i, multCtx));
+    const lines = catItems.map(item => {
+      const base = parseFloat(item.estimated_value) || 0;
+      const sellPrice = base * (1 + sellMult);
+      const buyPrice = base * (1 + buyMult);
+      const recipe = recipeMap.get(item.id);
 
-      // Divide em chunks se necessário (max 1024 chars por field)
-      let chunk = [];
-      let chunkLen = 0;
-      for (const line of lines) {
-        if (chunkLen + line.length + 1 > 1024) {
-          embed.addFields({ name: catDef?.label || catKey, value: chunk.join('\n'), inline: false });
-          chunk = [line];
-          chunkLen = line.length;
-        } else {
-          chunk.push(line);
-          chunkLen += line.length + 1;
-        }
+      let text = `**${item.name}**\n`;
+      text += `\`Base ${fmtPrice(base)}\`  \`V ${fmtPrice(sellPrice)}\`  \`C ${fmtPrice(buyPrice)}\``;
+
+      if (recipe) {
+        const materialCost = recipe.ingredients.reduce((sum, ing) => {
+          const unit = parseFloat(ing.unit_price) || parseFloat(ing.ingredient_price) || 0;
+          return sum + unit * ing.quantity;
+        }, 0);
+        const buyWithMat = materialCost * (1 + buyMult);
+        text += `  \`🛠️ ${fmtPrice(buyWithMat)}\``;
       }
-      if (chunk.length) {
-        embed.addFields({ name: catDef?.label || catKey, value: chunk.join('\n'), inline: false });
+      return text;
+    });
+
+    // Discord limita field value a 1024 chars. Agrupar linhas em fields.
+    let chunk = [];
+    let chunkLen = 0;
+    for (const line of lines) {
+      const lineLen = line.length + 1;
+      if (chunkLen + lineLen > 950) {
+        embed.addFields({ name: '\u200b', value: chunk.join('\n\n'), inline: false });
+        chunk = [line];
+        chunkLen = lineLen;
+      } else {
+        chunk.push(line);
+        chunkLen += lineLen;
       }
     }
-
-    if (hasAny) {
-      embed.setFooter({
-        text: `V = Venda à Firma | C = Compra à Firma | 🛠️ = Compra c/ material entregue | Rank: ${memberRole} (Compra +${(buyMult * 100).toFixed(0)}%, Venda +${(sellMult * 100).toFixed(0)}%)`,
-      });
-      embeds.push(embed);
+    if (chunk.length) {
+      embed.addFields({ name: '\u200b', value: chunk.join('\n\n'), inline: false });
     }
+
+    embed.setFooter({
+      text: `V=Venda à Firma | C=Compra à Firma | 🛠️=Compra c/ material | Rank: ${memberRole} (Compra +${(buyMult * 100).toFixed(0)}%, Venda +${(sellMult * 100).toFixed(0)}%)`,
+    });
+    embeds.push(embed);
   }
 
-  // ── Embed de Fórmulas de Craft ────────────────────────────────────────────
+  // ── Embed de Fórmulas de Craft ───────────────────────────────────────────
   const craftEmbed = applyLogo(
     brandEmbed('MOVEMENT')
       .setColor(COLOR.MUTED)
@@ -164,10 +200,10 @@ async function buildPriceEmbedsForMember(memberRole) {
       .setDescription('Ingredientes necessários para craftar cada item.')
   );
 
-  const byCategory = new Map();
+  const byCraftCat = new Map();
   for (const r of recipes) {
-    if (!byCategory.has(r.category)) byCategory.set(r.category, []);
-    byCategory.get(r.category).push(r);
+    if (!byCraftCat.has(r.category)) byCraftCat.set(r.category, []);
+    byCraftCat.get(r.category).push(r);
   }
 
   const CRAFT_LABELS = {
@@ -177,7 +213,7 @@ async function buildPriceEmbedsForMember(memberRole) {
     craft_corpos: 'Corpos de Arma',
   };
 
-  for (const [cat, catRecipes] of byCategory) {
+  for (const [cat, catRecipes] of byCraftCat) {
     const lines = [];
     for (const r of catRecipes.sort((a, b) => a.item_id - b.item_id)) {
       const recipe = recipeMap.get(r.item_id);
@@ -209,7 +245,6 @@ async function handlePrecariosButton(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
-    // Resolve rank do membro
     const memberRes = await query('SELECT role FROM members WHERE discord_id = $1', [interaction.user.id]);
     const memberRole = memberRes.rows[0]?.role || 'bairrista';
 
