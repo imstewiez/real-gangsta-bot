@@ -254,68 +254,6 @@ const commands = [
         .addIntegerOption(o => o.setName('id').setDescription('ID do item').setRequired(true))
     ),
 
-  // ── Qualidade dos dados ──
-  new SlashCommandBuilder()
-    .setName('qualidade-dados')
-    .setDescription('Painel de qualidade dos dados (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-
-  // ── Lifecycle do membro ──
-  new SlashCommandBuilder()
-    .setName('lifecycle')
-    .setDescription('Gerir lifecycle de membros (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .addSubcommand(sc =>
-      sc
-        .setName('ver')
-        .setDescription('Ver estado')
-        .addUserOption(o => o.setName('membro').setDescription('Membro').setRequired(false))
-    )
-    .addSubcommand(sc =>
-      sc
-        .setName('mudar')
-        .setDescription('Mudar estado')
-        .addUserOption(o => o.setName('membro').setDescription('Membro').setRequired(true))
-        .addStringOption(o =>
-          o
-            .setName('estado')
-            .setDescription('Novo estado')
-            .setRequired(true)
-            .addChoices(
-              { name: 'Pendente', value: 'pending' },
-              { name: 'Activo', value: 'active' },
-              { name: 'Ausente', value: 'away' },
-              { name: 'Em Avaliação', value: 'on_review' },
-              { name: 'Promovido', value: 'promoted' },
-              { name: 'Rebaixado', value: 'demoted' },
-              { name: 'Removido', value: 'removed' },
-              { name: 'Saiu do Discord', value: 'left_discord' }
-            )
-        )
-        .addStringOption(o => o.setName('motivo').setDescription('Motivo').setRequired(false))
-    )
-    .addSubcommand(sc =>
-      sc
-        .setName('listar')
-        .setDescription('Listar por estado')
-        .addStringOption(o =>
-          o
-            .setName('estado')
-            .setDescription('Estado')
-            .setRequired(true)
-            .addChoices(
-              { name: 'Pendente', value: 'pending' },
-              { name: 'Activo', value: 'active' },
-              { name: 'Ausente', value: 'away' },
-              { name: 'Em Avaliação', value: 'on_review' },
-              { name: 'Promovido', value: 'promoted' },
-              { name: 'Rebaixado', value: 'demoted' },
-              { name: 'Removido', value: 'removed' },
-              { name: 'Saiu do Discord', value: 'left_discord' }
-            )
-        )
-    ),
-
   // ── Promoções / Rebaixamentos ──
   new SlashCommandBuilder()
     .setName('promover')
