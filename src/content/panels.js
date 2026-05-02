@@ -119,7 +119,7 @@ const PANELS = {
       `${E.PARTICIPANTE} **Listar Bairristas** — quem anda activo.\n` +
       `${E.ENTREGA} **Entregas** — quem trás mais pedra.\n` +
       `${E.VENDA} **Vendas** — quem roda mais na rua.\n` +
-      `${E.TOPO} **Topo da Zona** — os que fazem nome contigo.\n` +
+      `${E.TOPO} **Top da Zona** — os que fazem nome contigo.\n` +
       '\n' +
       '_O bairro é teu. Fá-lo pesar._\n' +
       '\n' +
@@ -128,7 +128,7 @@ const PANELS = {
       LISTAR: 'Listar Bairristas',
       ENTREGAS: 'Entregas da Zona',
       VENDAS: 'Vendas da Zona',
-      TOPOS: 'Topo da Zona',
+      TOPOS: 'Top da Zona',
     },
   },
 

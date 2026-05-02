@@ -40,7 +40,7 @@ const BUTTONS = {
     LISTAR: { label: 'Listar Bairristas', emoji: E.PARTICIPANTE, style: STYLE.PRIMARY },
     ENTREGAS: { label: 'Entregas da Zona', emoji: E.MATERIAL, style: STYLE.SECONDARY },
     VENDAS: { label: 'Vendas da Zona', emoji: E.LUCRO, style: STYLE.SECONDARY },
-    TOPOS: { label: 'Topo da Zona', emoji: E.TOPO, style: STYLE.SECONDARY },
+    TOPOS: { label: 'Top da Zona', emoji: E.TOPO, style: STYLE.SECONDARY },
   },
 
   OFICIAL: {
