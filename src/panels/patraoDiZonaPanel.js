@@ -7,12 +7,10 @@ const { query } = require('../db');
 // ══════════════════════════════════════════════════════════════════════════════
 // Painel do Patrão di Zona — Visão da Zona (SIMPLIFICADO)
 // ══════════════════════════════════════════════════════════════════════════════
-// Visão operacional da zona: bairristas, entregas, vendas, top.
-// Sem stock, dashboards, relatórios, audit — isso está nos painéis chefia.
 
 async function buildPatraoDiZonaPanel() {
   const [activeMembers, weekDeliveries, weekSales, topZone] = await Promise.all([
-    query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
+    query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'ativo'"),
     query(
       "SELECT COALESCE(SUM(quantity),0)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_bairrista','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
     ),
@@ -64,7 +62,7 @@ async function buildPatraoDiZonaPanel() {
     }),
     button({ customId: 'patrao::ver_entregas', label: 'Ver Entregas', style: 'Success', emoji: EMOJI.ENTREGA }),
     button({ customId: 'patrao::ver_vendas', label: 'Ver Vendas', style: 'Success', emoji: EMOJI.VENDA }),
-    button({ customId: 'patrao::ver_tops', label: 'Topo da Zona', style: 'Success', emoji: EMOJI.TOPO })
+    button({ customId: 'patrao::ver_tops', label: 'Top da Zona', style: 'Success', emoji: EMOJI.TOPO })
   );
 
   return { embeds: [embed], components: [row1] };

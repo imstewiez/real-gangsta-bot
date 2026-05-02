@@ -8,7 +8,6 @@ const { query } = require('../db');
 // ══════════════════════════════════════════════════════════════════════════════
 // Painel da Chefia — Comando e Gestão (SIMPLIFICADO)
 // ══════════════════════════════════════════════════════════════════════════════
-// Gestão da firma: metas, incidentes, stock, membros, relatórios.
 
 async function buildChefiaPanel() {
   const [openOps, topWeek, openIncidents, activeMembers, weekKills, weekDeliveries] = await Promise.all([
@@ -24,7 +23,7 @@ async function buildChefiaPanel() {
       LIMIT 1
     `),
     query("SELECT COUNT(*)::int AS c FROM incidents WHERE status = 'open'"),
-    query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
+    query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'ativo'"),
     query("SELECT COUNT(*)::int AS c FROM kill_logs WHERE created_at >= date_trunc('week', NOW())"),
     query(
       "SELECT COUNT(*)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_bairrista','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
@@ -62,19 +61,13 @@ async function buildChefiaPanel() {
       )
   );
 
-  // Row 1 — Criar
+  // Row 1 — Acções rápidas
   const row1 = buttonRow(
     button({ customId: 'chefia::criar_incidente', label: 'Criar Incidente', style: 'Success', emoji: EMOJI.ERRO }),
-    button({
-      customId: 'chefia::transferir_stock',
-      label: 'Transferir Stock',
-      style: 'Success',
-      emoji: EMOJI.MOVIMENTO,
-    }),
     button({ customId: 'chefia::ausencias', label: 'Ausências', style: 'Success', emoji: EMOJI.PENDENTE })
   );
 
-  // Row 2 — Ver
+  // Row 2 — Consultas
   const row2 = buttonRow(
     button({
       customId: 'chefia::painel_pendencias',

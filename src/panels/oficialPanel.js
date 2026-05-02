@@ -7,7 +7,6 @@ const { query } = require('../db');
 // ══════════════════════════════════════════════════════════════════════════════
 // Painel do Oficial — Operações e Saídas (SIMPLIFICADO)
 // ══════════════════════════════════════════════════════════════════════════════
-// Abrir/fechar saídas, emitir material, gerir participantes, ver operações.
 
 async function buildOficialPanel() {
   const [openOps, weekKills, weekDeliveries, memberCount] = await Promise.all([
@@ -16,7 +15,7 @@ async function buildOficialPanel() {
     query(
       "SELECT COUNT(*)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_bairrista','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
     ),
-    query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
+    query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'ativo'"),
   ]);
 
   const ops = openOps.rows[0]?.c ?? 0;
@@ -50,15 +49,7 @@ async function buildOficialPanel() {
     })
   );
 
-  // Row 2 — Ver
-  const row2 = buttonRow(
-    button({ customId: 'chefia::ver_stock', label: 'Ver Stock', style: 'Primary', emoji: EMOJI.STOCK }),
-    button({ customId: 'oficial::ver_saidas', label: 'Ver Saídas', style: 'Primary', emoji: EMOJI.SAIDA }),
-    button({ customId: 'chefia::stats_open', label: 'Estatísticas', style: 'Primary', emoji: EMOJI.GRAFICO }),
-    button({ customId: 'chefia::ver_logs', label: 'Logs', style: 'Primary', emoji: EMOJI.AUDIT })
-  );
-
-  return { embeds: [embed], components: [row1, row2] };
+  return { embeds: [embed], components: [row1] };
 }
 
 module.exports = { buildOficialPanel };
