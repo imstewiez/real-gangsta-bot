@@ -67,7 +67,6 @@ const MODAL_ROUTES = [
   // Button adapters — modais de painel (v12)
   exact('adapter::modal_vender', buttonAdapters.handleVenderModalSubmit),
   exact('adapter::modal_ausencia', buttonAdapters.handleAusenciaModalSubmit),
-  exact('adapter::modal_criar_meta', buttonAdapters.handleCriarMetaModalSubmit),
   exact('adapter::modal_criar_incidente', buttonAdapters.handleCriarIncidenteModalSubmit),
   exact('adapter::modal_transferir', buttonAdapters.handleTransferirModalSubmit),
 ];

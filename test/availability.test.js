@@ -93,7 +93,7 @@ describe('availabilityEngine — UI builders', () => {
     assert.match(todayDateString(), /^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it('buildEmbed tem título, slots na description e total de votantes', () => {
+  it('buildEmbed tem título, slots em fields e total de votantes', () => {
     const tallies = [
       { slotId: 1, label: '12:00', position: 0, counts: { disponivel: 3, indisponivel: 1 } },
       { slotId: 2, label: '14:00', position: 1, counts: { talvez: 2 } },
@@ -102,24 +102,27 @@ describe('availabilityEngine — UI builders', () => {
     const embed = buildEmbed(fakeSession, tallies, 4);
     const json = embed.toJSON();
     assert.ok(json.title.includes('Presença'));
-    // Novo design: slots aparecem na description, não em fields
-    assert.ok(json.description.includes('12:00'));
-    assert.ok(json.description.includes('14:00'));
-    assert.ok(json.description.includes('20:00'));
+    // Slots aparecem em fields (um por período)
+    const fieldValues = json.fields.map(f => f.value).join('\n');
+    assert.ok(fieldValues.includes('12:00'));
+    assert.ok(fieldValues.includes('14:00'));
+    assert.ok(fieldValues.includes('20:00'));
     assert.ok(json.description.includes('4'));
     assert.ok(json.description.includes('votaram'));
     assert.ok(json.footer.text.includes(`sessão #${fakeSession.id}`));
     // Pico destacado
     assert.ok(json.description.includes('Pico:'));
-    assert.ok(json.description.includes('🔥'));
+    assert.ok(fieldValues.includes('🔥'));
   });
 
-  it('buildEmbed fecha sem fields (slots todos na description)', () => {
+  it('buildEmbed fecha com fields (slots por período)', () => {
     const tallies = [{ slotId: 1, label: '12:00', position: 0, counts: {} }];
-    const embed = buildEmbed(fakeSession, tallies, 0);
+    const embed = buildEmbed({ ...fakeSession, status: 'closed' }, tallies, 0);
     const json = embed.toJSON();
-    // Sem votos — description deve ter "ninguém ainda"
-    assert.ok(json.description.includes('ninguém ainda'));
+    assert.ok(json.description.includes('fechada'));
+    const fieldValues = json.fields.map(f => f.value).join('\n');
+    assert.ok(fieldValues.includes('12:00'));
+    assert.ok(json.fields.length > 0);
   });
 
   it('buildComponents respeita os limites do Discord (≤5 rows, ≤25 options no select)', () => {

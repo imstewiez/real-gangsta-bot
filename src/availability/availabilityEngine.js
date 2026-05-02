@@ -90,7 +90,7 @@ function buildEmbed(session, tallies, totalVoters) {
   // Agrupar slots por período do dia
   const groups = _groupSlotsByPeriod(tallies);
 
-  const lines = [
+  const desc = [
     `**${weekday.charAt(0).toUpperCase() + weekday.slice(1)}**, ${dateStr}`,
     '',
     peakLine,
@@ -99,10 +99,15 @@ function buildEmbed(session, tallies, totalVoters) {
     statusLine,
   ];
 
+  const embed = brandEmbed('HOUSE', { skipLogo: true })
+    .setColor(isClosed ? COLOR.MUTED : COLOR.INFO)
+    .setTitle(`${EMOJI.PRESENCA} Presença do Bairro`)
+    .setDescription(desc.join('\n'));
+
+  // Slots por período — 1 field por grupo (manhã/tarde/noite).
   for (const group of groups) {
-    lines.push('', `**${group.icon} ${group.name}**`);
-    for (const t of group.slots) {
-      const bar = _stackedBar(t.counts, 10);
+    const slotLines = group.slots.map(t => {
+      const bar = _stackedBar(t.counts, 8);
       const y = t.counts.disponivel || 0;
       const m = t.counts.talvez || 0;
       const n = t.counts.indisponivel || 0;
@@ -110,16 +115,16 @@ function buildEmbed(session, tallies, totalVoters) {
       const isPeak = peak && peak.label === t.label;
       const breakdown =
         total > 0
-          ? `${EMOJI.DISPONIVEL} ${y}   ${EMOJI.TALVEZ} ${m}   ${EMOJI.INDISPONIVEL} ${n}${isPeak ? '  🔥' : ''}`
+          ? `${EMOJI.DISPONIVEL} ${y}  ${EMOJI.TALVEZ} ${m}  ${EMOJI.INDISPONIVEL} ${n}${isPeak ? '  🔥' : ''}`
           : '_sem votos_';
-      lines.push(`\`🕐 ${t.label.padEnd(5)}\` ${bar}  ${breakdown}`);
-    }
+      return `\`🕒 ${t.label.padEnd(5)}\` ${bar}  ${breakdown}`;
+    });
+    embed.addFields({
+      name: `${group.icon} ${group.name}`,
+      value: slotLines.join('\n').slice(0, 1024) || '_sem dados_',
+      inline: false,
+    });
   }
-
-  const embed = brandEmbed('HOUSE')
-    .setColor(isClosed ? COLOR.MUTED : COLOR.INFO)
-    .setTitle(`${EMOJI.PRESENCA} Presença do Bairro`)
-    .setDescription(lines.join('\n'));
 
   setFooterText(embed, `sessão #${session.id}${isClosed ? ' · fechada' : ' · reset amanhã às 07:00'}`);
   return embed;

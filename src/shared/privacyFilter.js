@@ -36,7 +36,6 @@ const PRIVATE_COMMANDS = new Set([
   'inactivos-bairristas',
   'sync-sheets',
   'gerir-itens',
-  'metas',
   'qualidade-dados',
   'lifecycle',
   'promover',

@@ -11,20 +11,18 @@ const { query } = require('../db');
 // Cores globais: 🟢 Criar/Registar | 🔵 Ver/Consultar | 🟠 Pessoal/Gerir
 
 async function buildOficialPanel() {
-  const [openOps, weekKills, weekDeliveries, activeGoals, memberCount] = await Promise.all([
+  const [openOps, weekKills, weekDeliveries, memberCount] = await Promise.all([
     query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
     query("SELECT COUNT(*)::int AS c FROM kill_logs WHERE created_at >= date_trunc('week', NOW())"),
     query(
       "SELECT COUNT(*)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_morador','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
     ),
-    query("SELECT COUNT(*)::int AS c FROM weekly_goals WHERE status = 'active'"),
     query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
   ]);
 
   const ops = openOps.rows[0]?.c ?? 0;
   const kills = weekKills.rows[0]?.c ?? 0;
   const deliv = weekDeliveries.rows[0]?.c ?? 0;
-  const goals = activeGoals.rows[0]?.c ?? 0;
   const members = memberCount.rows[0]?.c ?? 0;
 
   const embed = applyLogo(
@@ -37,7 +35,6 @@ async function buildOficialPanel() {
         { name: `${EMOJI.KILL} Kills (Semana)`, value: `**${kills}** registadas`, inline: true },
         { name: `${EMOJI.ENTREGA} Entregas (Semana)`, value: `**${deliv}** registadas`, inline: true },
         { name: `${EMOJI.PARTICIPANTE} Firma`, value: `**${members}** activos`, inline: true },
-        { name: `${EMOJI.OK} Metas`, value: `**${goals}** activas`, inline: true },
         { name: `${EMOJI.INFO} Cores`, value: '🟢 Registar · 🔵 Ver · 🟠 Pessoal', inline: true }
       )
   );
@@ -79,7 +76,6 @@ async function buildOficialPanel() {
   // Row 4 — 🔵 VER + CATALOGO
   const row4 = buttonRow(
     button({ customId: 'bairrista::catalogo', label: 'Ver Catálogo', style: 'Primary', emoji: EMOJI.MATERIAL }),
-    button({ customId: 'bairrista::metas', label: 'Ver Metas', style: 'Primary', emoji: EMOJI.OK }),
     button({ customId: 'bairrista::saidas', label: 'As minhas Saídas', style: 'Primary', emoji: EMOJI.MOVIMENTO }),
     button({ customId: 'bairrista::meu_resumo', label: 'Meu Resumo', style: 'Primary', emoji: EMOJI.INFO })
   );

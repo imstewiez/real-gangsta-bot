@@ -11,13 +11,12 @@ const { query } = require('../db');
 // Cores globais: 🟢 Criar/Registar | 🔵 Ver/Consultar | 🟠 Pessoal/Gerir
 
 async function buildChefiaPanel() {
-  const [openOps, stockAgg, topWeek, openIncidents, activeMembers, weekKills, weekDeliveries, activeGoals] =
-    await Promise.all([
-      query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
-      query(
-        'SELECT COUNT(DISTINCT item_id)::int AS items, COALESCE(SUM(balance),0)::int AS units FROM inventory_stock_snapshot'
-      ),
-      query(`
+  const [openOps, stockAgg, topWeek, openIncidents, activeMembers, weekKills, weekDeliveries] = await Promise.all([
+    query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
+    query(
+      'SELECT COUNT(DISTINCT item_id)::int AS items, COALESCE(SUM(balance),0)::int AS units FROM inventory_stock_snapshot'
+    ),
+    query(`
       SELECT m.display_name, SUM(im.qty) AS total_qty
       FROM inventory_movements im
       JOIN members m ON m.id = im.member_id
@@ -27,14 +26,13 @@ async function buildChefiaPanel() {
       ORDER BY total_qty DESC
       LIMIT 1
     `),
-      query("SELECT COUNT(*)::int AS c FROM incidents WHERE estado = 'open'"),
-      query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
-      query("SELECT COUNT(*)::int AS c FROM kill_logs WHERE created_at >= date_trunc('week', NOW())"),
-      query(
-        "SELECT COUNT(*)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_morador','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
-      ),
-      query("SELECT COUNT(*)::int AS c FROM weekly_goals WHERE status = 'active'"),
-    ]);
+    query("SELECT COUNT(*)::int AS c FROM incidents WHERE estado = 'open'"),
+    query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
+    query("SELECT COUNT(*)::int AS c FROM kill_logs WHERE created_at >= date_trunc('week', NOW())"),
+    query(
+      "SELECT COUNT(*)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_morador','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
+    ),
+  ]);
 
   const ops = openOps.rows[0]?.c ?? 0;
   const items = stockAgg.rows[0]?.items ?? 0;
@@ -45,7 +43,6 @@ async function buildChefiaPanel() {
   const members = activeMembers.rows[0]?.c ?? 0;
   const kills = weekKills.rows[0]?.c ?? 0;
   const deliv = weekDeliveries.rows[0]?.c ?? 0;
-  const goals = activeGoals.rows[0]?.c ?? 0;
 
   const embed = applyLogo(
     brandEmbed('MOVEMENT')
@@ -67,7 +64,6 @@ async function buildChefiaPanel() {
         },
         { name: `${EMOJI.KILL} Kills (Semana)`, value: `**${kills}** registadas`, inline: true },
         { name: `${EMOJI.ENTREGA} Entregas (Semana)`, value: `**${deliv}** registadas`, inline: true },
-        { name: `${EMOJI.OK} Metas`, value: `**${goals}** activas`, inline: true },
         {
           name: `${EMOJI.ERRO} Incidentes`,
           value: inc > 0 ? `**${inc}** abertos ${EMOJI.WARN}` : `**0** abertos ${EMOJI.OK}`,
@@ -105,7 +101,6 @@ async function buildChefiaPanel() {
 
   // Row 3 — 🟢 CHEFIA (gestão)
   const row3 = buttonRow(
-    button({ customId: 'chefia::criar_meta', label: 'Criar Meta', style: 'Success', emoji: EMOJI.OK }),
     button({ customId: 'chefia::criar_incidente', label: 'Criar Incidente', style: 'Success', emoji: EMOJI.ERRO }),
     button({
       customId: 'chefia::transferir_stock',
@@ -140,7 +135,6 @@ async function buildChefiaPanel() {
   // Row 6 — 🔵 VER + LOGS
   const row6 = buttonRow(
     button({ customId: 'bairrista::catalogo', label: 'Ver Catálogo', style: 'Primary', emoji: EMOJI.MATERIAL }),
-    button({ customId: 'bairrista::metas', label: 'Ver Metas', style: 'Primary', emoji: EMOJI.OK }),
     button({ customId: 'chefia::ver_logs', label: 'Logs', style: 'Primary', emoji: EMOJI.AUDIT }),
     button({ customId: 'chefia::listar_stickys', label: 'Stickys', style: 'Primary', emoji: EMOJI.STICKY })
   );

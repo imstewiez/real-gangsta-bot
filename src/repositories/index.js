@@ -21,7 +21,6 @@ module.exports = {
   prizeRepo: require('./prizeRepo'),
   itemAdminRepo: require('./itemAdmin'),
   memberLifecycleRepo: require('./memberLifecycle'),
-  weeklyGoalsRepo: require('./weeklyGoals'),
   dataQualityRepo: require('./dataQuality'),
   maintenanceRepo: require('./maintenance'),
   incidentRepo: require('./incident'),

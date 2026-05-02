@@ -174,7 +174,6 @@ const BUTTON_ROUTES = [
   exact('bairrista::ranking', handleRanking),
   exact('bairrista::progresso_tier', perfilProgressao.handle),
   exact('bairrista::catalogo', buttonAdapters.handleCatalogoButton),
-  exact('bairrista::metas', buttonAdapters.handleMetasButton),
   exact('bairrista::saidas', buttonAdapters.handleMinhasSaidasButton),
   exact('bairrista::meu_resumo', buttonAdapters.handleMeuResumoButton),
 
@@ -201,7 +200,6 @@ const BUTTON_ROUTES = [
   exact('chefia::listar_stickys', chefiaActions.listarStickys),
   exact('chefia::ver_tops', chefiaActions.verTops),
   exact('chefia::ver_logs', chefiaActions.verLogs),
-  exact('chefia::criar_meta', buttonAdapters.handleCriarMetaButton),
   exact('chefia::criar_incidente', buttonAdapters.handleCriarIncidenteButton),
   exact('chefia::transferir_stock', buttonAdapters.handleTransferirStockButton),
   exact('chefia::ausencias', buttonAdapters.handleAusenciaButton),

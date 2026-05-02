@@ -16,13 +16,6 @@ async function handleCatalogoButton(interaction) {
   return handle(interaction);
 }
 
-async function handleMetasButton(interaction) {
-  const { handle } = require('../queries/metas');
-  // Simula subcommand 'listar'
-  interaction.options = { getSubcommand: () => 'listar' };
-  return handle(interaction);
-}
-
 async function handleMinhasSaidasButton(interaction) {
   const { handle } = require('../queries/saidasMinhas');
   interaction.options = { getInteger: () => null, getSubcommand: () => null };
@@ -228,32 +221,6 @@ async function handleAusenciaButton(interaction) {
   return safeShowModal(interaction, modal);
 }
 
-async function handleCriarMetaButton(interaction) {
-  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
-  const modal = new ModalBuilder()
-    .setCustomId('adapter::modal_criar_meta')
-    .setTitle('Criar Meta')
-    .addComponents(
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('descricao')
-          .setLabel('Descrição da meta')
-          .setStyle(TextInputStyle.Short)
-          .setPlaceholder('Ex: 100 entregas esta semana')
-          .setRequired(true)
-      ),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('valor')
-          .setLabel('Valor alvo (número)')
-          .setStyle(TextInputStyle.Short)
-          .setPlaceholder('100')
-          .setRequired(true)
-      )
-    );
-  return safeShowModal(interaction, modal);
-}
-
 async function handleCriarIncidenteButton(interaction) {
   if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
   const modal = new ModalBuilder()
@@ -407,30 +374,6 @@ async function handleAusenciaModalSubmit(interaction) {
   );
 }
 
-async function handleCriarMetaModalSubmit(interaction) {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  const descricao = interaction.fields.getTextInputValue('descricao');
-  const valor = parseFloat(interaction.fields.getTextInputValue('valor'));
-
-  const { weeklyGoalService } = require('../services');
-  const { weekStart } = weeklyGoalService.getWeekBounds();
-  const goal = await weeklyGoalService.createGoal({
-    scope: 'org',
-    targetId: null,
-    metric: 'deliveries_qty',
-    targetValue: valor,
-    description: descricao,
-    createdBy: interaction.user.tag,
-    weekStart,
-  });
-
-  return safeReply(
-    interaction,
-    { content: `${EMOJI.OK} Meta \`#${goal.id}\` criada: **${descricao}**` },
-    { messageClass: 'BANAL' }
-  );
-}
-
 async function handleCriarIncidenteModalSubmit(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const titulo = interaction.fields.getTextInputValue('titulo');
@@ -486,7 +429,6 @@ async function handleTransferirModalSubmit(interaction) {
 module.exports = {
   // Consultas
   handleCatalogoButton,
-  handleMetasButton,
   handleMinhasSaidasButton,
   handleMeuResumoButton,
   handlePainelPendenciasButton,
@@ -505,7 +447,6 @@ module.exports = {
   handleVenderButton,
   handleKillButton,
   handleAusenciaButton,
-  handleCriarMetaButton,
   handleCriarIncidenteButton,
   handleTransferirStockButton,
   // Delegação
@@ -516,7 +457,6 @@ module.exports = {
   // Modal submits
   handleVenderModalSubmit,
   handleAusenciaModalSubmit,
-  handleCriarMetaModalSubmit,
   handleCriarIncidenteModalSubmit,
   handleTransferirModalSubmit,
 };

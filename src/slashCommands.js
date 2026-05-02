@@ -254,47 +254,6 @@ const commands = [
         .addIntegerOption(o => o.setName('id').setDescription('ID do item').setRequired(true))
     ),
 
-  // ── Metas semanais ──
-  new SlashCommandBuilder()
-    .setName('metas')
-    .setDescription('Metas da semana')
-    .addSubcommand(sc => sc.setName('listar').setDescription('Ver metas actuais'))
-    .addSubcommand(sc =>
-      sc
-        .setName('criar')
-        .setDescription('Criar meta (OG+)')
-        .addStringOption(o =>
-          o
-            .setName('scope')
-            .setDescription('Âmbito')
-            .setRequired(true)
-            .addChoices(
-              { name: 'Org', value: 'org' },
-              { name: 'Membro', value: 'member' },
-              { name: 'Role', value: 'role' }
-            )
-        )
-        .addStringOption(o =>
-          o
-            .setName('metric')
-            .setDescription('Métrica')
-            .setRequired(true)
-            .addChoices(
-              { name: 'Entregas (qty)', value: 'deliveries_qty' },
-              { name: 'Entregas (€)', value: 'deliveries_value' },
-              { name: 'Vendas (qty)', value: 'sales_qty' },
-              { name: 'Vendas (€)', value: 'sales_value' },
-              { name: 'Saídas', value: 'saidas_count' },
-              { name: 'Kills', value: 'kills_count' }
-            )
-        )
-        .addNumberOption(o => o.setName('valor').setDescription('Valor alvo').setRequired(true))
-        .addStringOption(o =>
-          o.setName('target').setDescription('Alvo (membro/role ou vazio para org)').setRequired(false)
-        )
-        .addStringOption(o => o.setName('descricao').setDescription('Descrição').setRequired(false))
-    ),
-
   // ── Qualidade dos dados ──
   new SlashCommandBuilder()
     .setName('qualidade-dados')

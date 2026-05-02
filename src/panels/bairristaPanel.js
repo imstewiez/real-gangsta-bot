@@ -11,7 +11,7 @@ const { query } = require('../db');
 // Cores globais: 🟢 Criar/Registar | 🔵 Ver/Consultar | 🟠 Pessoal/Gerir
 
 async function buildBairristaPanel() {
-  const [weeklyTop, activeGoals, memberCount, openOps] = await Promise.all([
+  const [weeklyTop, memberCount, openOps] = await Promise.all([
     query(`
       SELECT m.display_name, SUM(im.qty) AS total_qty
       FROM inventory_movements im
@@ -22,13 +22,11 @@ async function buildBairristaPanel() {
       ORDER BY total_qty DESC
       LIMIT 3
     `),
-    query("SELECT COUNT(*)::int AS c FROM weekly_goals WHERE status = 'active'"),
     query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'active'"),
     query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
   ]);
 
   const top3 = weeklyTop.rows;
-  const goals = activeGoals.rows[0]?.c ?? 0;
   const members = memberCount.rows[0]?.c ?? 0;
   const ops = openOps.rows[0]?.c ?? 0;
 
@@ -50,7 +48,6 @@ async function buildBairristaPanel() {
       .addFields(
         { name: `${EMOJI.MEDAL_1} Top Entregas (Semana)`, value: topText, inline: false },
         { name: `${EMOJI.PARTICIPANTE} Firma`, value: `**${members}** bairristas activos`, inline: true },
-        { name: `${EMOJI.OK} Metas`, value: `**${goals}** activas`, inline: true },
         { name: `${EMOJI.SAIDA} Saídas`, value: `**${ops}** em curso`, inline: true },
         { name: `${EMOJI.INFO} Cores dos botões`, value: '🟢 Registar · 🔵 Ver · 🟠 Pessoal', inline: false }
       )
@@ -84,7 +81,6 @@ async function buildBairristaPanel() {
 
   // Row 4 — 🔵 MINHAS (consultas pessoais)
   const row4 = buttonRow(
-    button({ customId: 'bairrista::metas', label: 'Ver Metas', style: 'Primary', emoji: EMOJI.OK }),
     button({ customId: 'bairrista::saidas', label: 'As minhas Saídas', style: 'Primary', emoji: EMOJI.MOVIMENTO }),
     button({ customId: 'bairrista::meu_resumo', label: 'Meu Resumo', style: 'Primary', emoji: EMOJI.INFO })
   );
