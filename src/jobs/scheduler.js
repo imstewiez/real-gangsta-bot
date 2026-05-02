@@ -286,16 +286,18 @@ function startAll(client) {
     { runOnStart: true }
   );
 
-  // Price list embed refresh — 30 min. Atualiza o embed de preços e fórmulas.
-  registerJob(
-    'price_list_refresh',
-    30 * 60 * 1000,
-    async client => {
-      const { publishPriceListEmbed } = require('../prices/priceListPublisher');
-      return await publishPriceListEmbed(client);
-    },
-    { runOnStart: true }
-  );
+  // Price list embed refresh — DESACTIVADO.
+  // Os preços são agora consultados de forma interativa (botão "Preçários & Fórmulas"
+  // no painel do bairrista), para não expor preços sensíveis que variam por rank.
+  // registerJob(
+  //   'price_list_refresh',
+  //   30 * 60 * 1000,
+  //   async client => {
+  //     const { publishPriceListEmbed } = require('../prices/priceListPublisher');
+  //     return await publishPriceListEmbed(client);
+  //   },
+  //   { runOnStart: true }
+  // );
 
   for (const job of jobs) {
     job.timer = setInterval(() => runJob(job), job.intervalMs);

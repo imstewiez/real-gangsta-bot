@@ -71,12 +71,13 @@ async function buildBairristaPanel() {
     button({ customId: 'bairrista::ausencia', label: 'Submeter Ausência', style: 'Success', emoji: EMOJI.PENDENTE })
   );
 
-  // Row 3 — 🔵 VER (consultas públicas)
+  // Row 3 — 🔵 VER (consultas públicas + preçários pessoal)
   const row3 = buttonRow(
     button({ customId: 'chefia::ver_stock', label: 'Ver Stock', style: 'Primary', emoji: EMOJI.STOCK }),
     button({ customId: 'oficial::ver_saidas', label: 'Ver Saídas', style: 'Primary', emoji: EMOJI.SAIDA }),
     button({ customId: 'bairrista::ranking', label: 'Ver Ranking', style: 'Primary', emoji: EMOJI.MEDAL_1 }),
-    button({ customId: 'bairrista::catalogo', label: 'Ver Catálogo', style: 'Primary', emoji: EMOJI.MATERIAL })
+    button({ customId: 'bairrista::catalogo', label: 'Ver Catálogo', style: 'Primary', emoji: EMOJI.MATERIAL }),
+    button({ customId: 'bairrista::precarios', label: 'Preçários', style: 'Primary', emoji: EMOJI.DINHEIRO })
   );
 
   // Row 4 — 🔵 MINHAS (consultas pessoais)

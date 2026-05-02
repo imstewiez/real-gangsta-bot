@@ -16,6 +16,11 @@ async function handleCatalogoButton(interaction) {
   return handle(interaction);
 }
 
+async function handlePrecariosButton(interaction) {
+  const { handlePrecariosButton: handler } = require('../prices/priceListInteractive');
+  return handler(interaction);
+}
+
 async function handleMinhasSaidasButton(interaction) {
   const { handle } = require('../queries/saidasMinhas');
   interaction.options = { getInteger: () => null, getSubcommand: () => null };
@@ -454,6 +459,7 @@ async function handlePromoverModalSubmit(interaction) {
 module.exports = {
   // Consultas
   handleCatalogoButton,
+  handlePrecariosButton,
   handleMinhasSaidasButton,
   handleMeuResumoButton,
   handlePainelPendenciasButton,

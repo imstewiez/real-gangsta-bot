@@ -181,6 +181,7 @@ const BUTTON_ROUTES = [
   exact('bairrista::ranking', handleRanking),
   exact('bairrista::progresso_tier', perfilProgressao.handle),
   exact('bairrista::catalogo', buttonAdapters.handleCatalogoButton),
+  exact('bairrista::precarios', buttonAdapters.handlePrecariosButton),
   exact('bairrista::saidas', buttonAdapters.handleMinhasSaidasButton),
   exact('bairrista::meu_resumo', buttonAdapters.handleMeuResumoButton),
 
