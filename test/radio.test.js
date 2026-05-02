@@ -10,6 +10,9 @@ const assert = require('node:assert/strict');
 process.env.DISCORD_BOT_TOKEN ||= 'test-token';
 process.env.DISCORD_GUILD_ID ||= 'test-guild';
 process.env.DATABASE_URL ||= 'postgresql://test:test@localhost:5432/test_db';
+process.env.RADIO_RANDOM_MIN = '30';
+process.env.RADIO_RANDOM_MAX = '4500';
+process.env.RADIO_ALLOW_ZERO = 'false';
 
 function resolvedPath(rel) {
   return require.resolve(path.join(__dirname, '..', 'src', rel));
@@ -41,6 +44,10 @@ require.cache[resolvedPath('repositories/index.js')] = {
 require.cache[resolvedPath('audit/auditEngine.js')] = {
   exports: { logAudit: async () => {} },
 };
+
+// Garante que o radioEngine lê os valores de teste, não o .env local
+delete require.cache[resolvedPath('config/index.js')];
+delete require.cache[resolvedPath('radio/radioEngine.js')];
 
 const { isValidValue, generateRandom, buildEmbed, buildComponents, TYPE_META } = require('../src/radio/radioEngine');
 

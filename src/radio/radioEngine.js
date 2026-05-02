@@ -120,11 +120,6 @@ function buildComponents() {
   return [
     new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId('radio::set::principal')
-        .setStyle(ButtonStyle.Primary)
-        .setLabel('Definir Frequência')
-        .setEmoji('✏️'),
-      new ButtonBuilder()
         .setCustomId('radio::random::principal')
         .setStyle(ButtonStyle.Danger)
         .setLabel('Nova Frequência')
