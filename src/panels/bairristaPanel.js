@@ -13,7 +13,7 @@ const { query } = require('../db');
 async function buildBairristaPanel() {
   const [weeklyTop, memberCount, openOps] = await Promise.all([
     query(`
-      SELECT m.display_name, SUM(im.qty) AS total_qty
+      SELECT m.display_name, SUM(im.quantity) AS total_qty
       FROM inventory_movements im
       JOIN members m ON m.id = im.member_id
       WHERE im.movement_type IN ('entrega_bairrista','entrega_oficial')
