@@ -9,8 +9,8 @@ const { query } = require('../db');
 //
 // Botões:
 //   Abrir Saída  → chefia::criar_saida (só OG+ / Patrão di Zona / Comando)
-//   Top Bairro   → bairrista::top_semanal
-//   Entregar     → bairrista::entregar_material
+//   Topo Semanal → bairrista::top_semanal
+//   Registar Material → bairrista::entregar_material
 //   Vender       → bairrista::vender
 //   Preçários    → bairrista::precarios
 //   Encomendar   → bairrista::encomendar
@@ -48,20 +48,20 @@ async function buildOficialPanel() {
   // Row 1 — Operações + Registo
   const row1 = buttonRow(
     button({ customId: 'chefia::criar_saida', label: 'Abrir Saída', style: 'Success', emoji: EMOJI.NOVO }),
-    button({ customId: 'bairrista::top_semanal', label: 'Top Bairro', style: 'Primary', emoji: EMOJI.TOPO }),
+    button({ customId: 'bairrista::top_semanal', label: 'Topo Semanal', style: 'Primary', emoji: EMOJI.TOPO }),
     button({
       customId: 'bairrista::entregar_material',
-      label: 'Entregar Material',
+      label: 'Registar Material',
       style: 'Success',
       emoji: EMOJI.ENTREGA,
     }),
-    button({ customId: 'bairrista::vender', label: 'Vender Material', style: 'Success', emoji: EMOJI.VENDA })
+    button({ customId: 'bairrista::vender', label: 'Vender', style: 'Success', emoji: EMOJI.VENDA })
   );
 
   // Row 2 — Consultas + Pessoal
   const row2 = buttonRow(
     button({ customId: 'bairrista::precarios', label: 'Preçários', style: 'Primary', emoji: EMOJI.DINHEIRO }),
-    button({ customId: 'bairrista::encomendar', label: 'Encomendas', style: 'Success', emoji: EMOJI.ENCOMENDA }),
+    button({ customId: 'bairrista::encomendar', label: 'Encomendar', style: 'Success', emoji: EMOJI.ENCOMENDA }),
     button({ customId: 'bairrista::meu_resumo', label: 'Meu Resumo', style: 'Secondary', emoji: EMOJI.INFO })
   );
 

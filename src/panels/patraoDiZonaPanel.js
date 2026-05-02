@@ -62,7 +62,7 @@ async function buildPatraoDiZonaPanel() {
     }),
     button({ customId: 'patrao::ver_entregas', label: 'Ver Entregas', style: 'Success', emoji: EMOJI.ENTREGA }),
     button({ customId: 'patrao::ver_vendas', label: 'Ver Vendas', style: 'Success', emoji: EMOJI.VENDA }),
-    button({ customId: 'patrao::ver_tops', label: 'Top da Zona', style: 'Success', emoji: EMOJI.TOPO })
+    button({ customId: 'patrao::ver_tops', label: 'Topo da Zona', style: 'Success', emoji: EMOJI.TOPO })
   );
 
   return { embeds: [embed], components: [row1] };
