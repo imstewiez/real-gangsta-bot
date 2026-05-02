@@ -1,46 +1,36 @@
 'use strict';
 /**
- * Handlers para botões/modais do painel de rádio.
+ * Handlers para botões do painel de rádio.
  *
  * customIds:
  *   radio::random::<type>    botão — gera aleatória para <type>
- *   radio::set::<type>       botão — abre modal para inserir valor
- *   radio::modal_set         modal — submete o valor (carrega type do title)
- *   radio::swap              botão — troca principal ↔ parceria
- *   radio::history           botão — ephemeral com últimas alterações
- *   radio::refresh           botão — re-edita a mensagem com estado actual
+ *   radio::set::<type>       botão — abre modal para definir <type>
+ *   radio::modal_set::<type> modal submit — define valor manual
  */
 
-const { ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle, MessageFlags } = require('discord.js');
+const { MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
+const CONFIG = require('../config');
 const { radioRepo } = require('../repositories');
-const {
-  setRadio,
-  setRandom,
-  swapRadios,
-  buildEmbed,
-  buildComponents,
-  historyText,
-  TYPE_META,
-  notifyStickyChange,
-} = require('./radioEngine');
-const { safeReply } = require('../shared/interactionHelpers');
-const { successEmbed, brandEmbed } = require('../shared/embedBuilders');
-const { isOficial, isChefia } = require('../permissions/permissionEngine');
+const { setRandom, setRadio, buildEmbed, buildComponents, TYPE_META, notifyStickyChange } = require('./radioEngine');
+const { safeReply, safeShowModal, getModalField } = require('../shared/interactionHelpers');
+const { successEmbed, brandEmbed, COLOR, metricCard } = require('../shared/embedBuilders');
+const { isCommand } = require('../permissions/permissionEngine');
 const { RADIO, EMOJI, MODALS } = require('../content');
 const { warn } = require('../logger');
 
-// OG+ = Oficial (OG, Real Gangster) ou Chefia (Kingpin, Manda-Chuva).
+// OG+ = Comando (Kingpin, Manda-Chuva) ou OG.
+// Exclui Real Gangster.
 function _canManageRadio(member) {
-  return isOficial(member) || isChefia(member);
+  const { memberRoleIds } = require('../permissions/permissionEngine');
+  return isCommand(member) || memberRoleIds(member).has(CONFIG.OG_ROLE_ID);
 }
 
 async function _denyIfNotOG(interaction) {
   if (_canManageRadio(interaction.member)) return false;
-  const { MessageFlags } = require('discord.js');
   await safeReply(
     interaction,
     {
-      content: `${EMOJI.BLOQUEADO} Apenas OG+ pode alterar a rádio.`,
+      content: `${EMOJI.BLOQUEADO} Apenas OG+ (Kingpin, Manda-Chuva ou OG) pode alterar a rádio.`,
       flags: MessageFlags.Ephemeral,
     },
     { messageClass: 'BANAL' }
@@ -53,7 +43,6 @@ function parseId(customId) {
 }
 
 async function refreshMessage(interaction) {
-  // Re-edita a própria mensagem do botão (mantemos o painel actualizado).
   try {
     const states = await radioRepo.getAllStates();
     await interaction.message.edit({
@@ -65,31 +54,54 @@ async function refreshMessage(interaction) {
   }
 }
 
-async function handleRandom(interaction) {
-  if (await _denyIfNotOG(interaction)) return;
-  const [, , type] = parseId(interaction.customId);
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  try {
-    const result = await setRandom({ type, actorId: interaction.user.id });
-    await refreshMessage(interaction);
-    notifyStickyChange(interaction.client).catch(() => {});
-    const meta = TYPE_META[type];
-    const embed = successEmbed(
-      RADIO.RANDOM_TITLE,
-      `**${meta.label}**\n${RADIO.LABELS.ANTES}: \`${result.previous || '—'}\`\n${RADIO.LABELS.AGORA}: \`${result.value}\``
+/**
+ * Envia notificação embed no canal, mencionando @redwood e @bairristas.
+ * Usado tanto por handleRandom como por handleSetModal.
+ */
+async function notifyRadioChange(channel, { type, value, previous, mode, actorId }) {
+  const meta = TYPE_META[type];
+  const modeLabel = mode === 'random' ? '🎲 Aleatória' : '✋ Manual';
+  const modeEmoji = mode === 'random' ? EMOJI.REFRESH : '✏️';
+
+  const embed = brandEmbed('MOVEMENT')
+    .setColor(COLOR.DANGER)
+    .setTitle(`${EMOJI.RADIO} Frequência Actualizada`)
+    .setDescription(
+      `**${meta.label}** — nova onda definida.\n\n` +
+        `\`\`\`fix\n${value}\n\`\`\`\n` +
+        `${modeEmoji} ${modeLabel} · por <@${actorId}>`
+    )
+    .addFields(
+      metricCard('Anterior', previous || '—', { icon: '⬅️', inline: true }),
+      metricCard('Actual', value, { icon: EMOJI.FREQUENCIA, inline: true }),
+      metricCard('Modo', modeLabel, { icon: modeEmoji, inline: true })
     );
-    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
+
+  const mentions = [];
+  if (CONFIG.REDWOOD_ROLE_ID) mentions.push(`<@&${CONFIG.REDWOOD_ROLE_ID}>`);
+  if (CONFIG.BAIRRISTAS_ROLE_ID) mentions.push(`<@&${CONFIG.BAIRRISTAS_ROLE_ID}>`);
+
+  try {
+    if (mentions.length) {
+      await channel.send({
+        content: mentions.join(' '),
+        embeds: [embed],
+        allowedMentions: { parse: [] }, // força só mentions explícitas (<@&id>)
+      });
+    } else {
+      await channel.send({ embeds: [embed] });
+    }
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'RESULT' });
+    warn(`[RADIO] notifyRadioChange falhou: ${e.message}`);
   }
 }
 
 async function handleSet(interaction) {
   if (await _denyIfNotOG(interaction)) return;
   const [, , type] = parseId(interaction.customId);
-  if (!TYPE_META[type]) return;
   const meta = TYPE_META[type];
-  const M = MODALS.RADIO_SET;
+  const M = MODALS.RADIO_SET(meta.label);
+
   const modal = new ModalBuilder()
     .setCustomId(`radio::modal_set::${type}`)
     .setTitle(M.TITLE(meta.label))
@@ -102,30 +114,36 @@ async function handleSet(interaction) {
           .setRequired(M.FIELDS.value.required)
           .setMaxLength(M.FIELDS.value.maxLength)
           .setPlaceholder(M.FIELDS.value.placeholder)
-      ),
-      new ActionRowBuilder().addComponents(
-        new TextInputBuilder()
-          .setCustomId('note')
-          .setLabel('Nota (opcional)')
-          .setStyle(TextInputStyle.Short)
-          .setRequired(false)
-          .setMaxLength(120)
       )
     );
-  return interaction.showModal(modal);
+
+  await safeShowModal(interaction, modal);
 }
 
 async function handleSetModal(interaction) {
   if (await _denyIfNotOG(interaction)) return;
   const [, , type] = parseId(interaction.customId);
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  const value = interaction.fields.getTextInputValue('value');
-  const note = interaction.fields.getTextInputValue('note') || '';
+
   try {
-    const result = await setRadio({ type, value, mode: 'manual', actorId: interaction.user.id, note });
-    // Sticky radio:current refresca-se via notifyStickyChange — o painel-fonte
-    // é actualizado pelo refresh button.
+    const rawValue = getModalField(interaction, 'value').trim();
+    const result = await setRadio({
+      type,
+      value: rawValue,
+      mode: 'manual',
+      actorId: interaction.user.id,
+    });
+
+    await refreshMessage(interaction);
     notifyStickyChange(interaction.client).catch(() => {});
+    await notifyRadioChange(interaction.channel, {
+      type,
+      value: result.value,
+      previous: result.previous,
+      mode: 'manual',
+      actorId: interaction.user.id,
+    });
+
     const meta = TYPE_META[type];
     const embed = successEmbed(
       RADIO.SET_TITLE,
@@ -137,16 +155,26 @@ async function handleSetModal(interaction) {
   }
 }
 
-async function handleSwap(interaction) {
+async function handleRandom(interaction) {
   if (await _denyIfNotOG(interaction)) return;
+  const [, , type] = parseId(interaction.customId);
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   try {
-    const swapped = await swapRadios({ actorId: interaction.user.id });
+    const result = await setRandom({ type, actorId: interaction.user.id });
     await refreshMessage(interaction);
     notifyStickyChange(interaction.client).catch(() => {});
+    await notifyRadioChange(interaction.channel, {
+      type,
+      value: result.value,
+      previous: result.previous,
+      mode: 'random',
+      actorId: interaction.user.id,
+    });
+
+    const meta = TYPE_META[type];
     const embed = successEmbed(
-      RADIO.SWAP_TITLE,
-      `${RADIO.LABELS.PRINCIPAL}: \`${swapped.principal}\`\n${RADIO.LABELS.PARCERIA}: \`${swapped.parceria}\``
+      RADIO.RANDOM_TITLE,
+      `**${meta.label}**\n${RADIO.LABELS.ANTES}: \`${result.previous || '—'}\`\n${RADIO.LABELS.AGORA}: \`${result.value}\``
     );
     return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
@@ -154,23 +182,8 @@ async function handleSwap(interaction) {
   }
 }
 
-async function handleHistory(interaction) {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  const text = await historyText(15);
-  return safeReply(interaction, { content: text.slice(0, 1900) }, { messageClass: 'ERROR' });
-}
-
-async function handleRefresh(interaction) {
-  await refreshMessage(interaction);
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  return safeReply(interaction, { content: `${EMOJI.REFRESH} Actualizado.` }, { messageClass: 'BANAL' });
-}
-
 module.exports = {
-  handleRandom,
   handleSet,
   handleSetModal,
-  handleSwap,
-  handleHistory,
-  handleRefresh,
+  handleRandom,
 };

@@ -40,6 +40,7 @@ const { handleRankingSelect } = require('../../../members/bairristaHandlers');
 const { handleVoteSelect: availHandleVoteSelect } = require('../../../availability/availabilityHandlers');
 const perfilMaterial = require('../../../perfil/perfilMaterial');
 const perfilHistorico = require('../../../perfil/perfilHistorico');
+const { handlePanelGerirSelect } = require('../../../panels/chefiaActions');
 
 const exact = (id, handler) => ({ match: x => x === id, handler });
 const prefix = (p, handler) => ({ match: x => x.startsWith(p), handler });
@@ -98,6 +99,10 @@ const SELECT_ROUTES = [
 
   // Weapon return — staff escolhe participante
   prefix('saida::weapon_confirm_pick::', saidaIndividual.handleWeaponConfirmPick),
+
+  // Painéis — select menus GERIR (Chefia / Patrão di Zona)
+  exact('panel::chefia_gerir', handlePanelGerirSelect),
+  exact('panel::patrao_gerir', handlePanelGerirSelect),
 
   // Caracterizado self-serve — weapon pick (step 3 do fluxo)
   prefix('saida::weapon_pick::', saidaSession.handleCaracterizadoWeaponPick),

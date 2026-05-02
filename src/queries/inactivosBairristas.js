@@ -98,10 +98,7 @@ async function handle(interaction) {
   } catch (e) {
     warn(`[INACTIVOS] Erro: ${e.message}\n${e.stack}`);
     const msg = `${EMOJI.ERRO} Falha: ${String(e.message).slice(0, 200)}`;
-    if (interaction.deferred || interaction.replied) {
-      return interaction.editReply({ content: msg }).catch(() => {});
-    }
-    return interaction.reply({ content: msg, flags: MessageFlags.Ephemeral }).catch(() => {});
+    return safeReply(interaction, { content: msg, flags: MessageFlags.Ephemeral }, { messageClass: 'ERROR' });
   }
 }
 

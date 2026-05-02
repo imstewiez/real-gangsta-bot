@@ -16,8 +16,13 @@
 const { query } = require('../db');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
-const { getAllPeriodsLeaders, getPeriodLeaders } = require('./leaderboardEngine');
-const { buildLeaderboardEmbed, buildLeaderboardComponents, buildDetailsEmbed } = require('./leaderboardPanel');
+const { getAllPeriodsLeaders, getPeriodLeaders, navigatePeriod } = require('./leaderboardEngine');
+const {
+  buildLeaderboardEmbed,
+  buildLeaderboardComponents,
+  buildDetailsEmbed,
+  buildDetailsComponents,
+} = require('./leaderboardPanel');
 
 let _client = null;
 function setClient(client) {
@@ -157,9 +162,33 @@ function markUserRefresh(discordId) {
 // DETAILS (ephemeral) — usado pelos handlers dos botões
 // ═══════════════════════════════════════════════════════════════════════════
 
-async function buildDetailsForPeriod(period) {
-  const data = await getPeriodLeaders(period);
-  return buildDetailsEmbed(data);
+async function buildDetailsForPeriod(period, offset = 0) {
+  const refDate = offset === 0 ? new Date() : navigatePeriod(period, offset);
+  const data = await getPeriodLeaders(period, refDate);
+  return { embed: buildDetailsEmbed(data), components: buildDetailsComponents(period, offset) };
+}
+
+async function buildDetailsForCustomRange(startStr, endStr) {
+  const start = new Date(startStr + 'T00:00:00');
+  const end = new Date(endStr + 'T23:59:59.999');
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) {
+    throw new Error('Datas inválidas ou intervalo incorrecto.');
+  }
+
+  const [activity, mvp, kda, delivered, sold] = await Promise.all([
+    require('./leaderboardEngine').getActivityLeaders(start, end, 5),
+    require('./leaderboardEngine').getMvpLeaders(start, end, 5),
+    require('./leaderboardEngine').getKdaLeaders(start, end, 5),
+    require('./leaderboardEngine').getMaterialDeliveredLeaders(start, end, 5),
+    require('./leaderboardEngine').getMaterialSoldLeaders(start, end, 5),
+  ]);
+
+  const data = {
+    period: 'custom',
+    label: `${start.toLocaleDateString('pt-PT')} – ${end.toLocaleDateString('pt-PT')}`,
+    categories: { activity, mvp, kda, delivered, sold },
+  };
+  return { embed: buildDetailsEmbed(data), components: [] };
 }
 
 module.exports = {
@@ -168,5 +197,6 @@ module.exports = {
   canUserRefresh,
   markUserRefresh,
   buildDetailsForPeriod,
+  buildDetailsForCustomRange,
   REFRESH_COOLDOWN_MS,
 };

@@ -8,13 +8,25 @@
  */
 
 const { query, queryWithTransaction } = require('../db');
+const eventBus = require('../core/eventBus');
+const { warn } = require('../logger');
 
-async function create({ memberId, itemId, quantity, unitPrice, totalPrice, notes = '' }) {
+async function create({
+  memberId,
+  itemId,
+  quantity,
+  unitPrice,
+  totalPrice,
+  notes = '',
+  paymentMode = 'materials_money',
+  materialCost = null,
+  moneyCost = null,
+}) {
   const res = await query(
-    `INSERT INTO orders (member_id, item_id, quantity, unit_price, total_price, status, notes)
-     VALUES ($1, $2, $3, $4, $5, 'pending', $6)
+    `INSERT INTO orders (member_id, item_id, quantity, unit_price, total_price, status, notes, payment_mode, material_cost, money_cost)
+     VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9)
      RETURNING *`,
-    [memberId, itemId, quantity, unitPrice, totalPrice, notes]
+    [memberId, itemId, quantity, unitPrice, totalPrice, notes, paymentMode, materialCost, moneyCost]
   );
   return res.rows[0];
 }
@@ -87,7 +99,24 @@ async function updateStatus(id, { status, actorDiscordId, notes = null }) {
       [id, oldStatus, status, actorDiscordId, notes]
     );
 
-    return res.rows[0];
+    const order = res.rows[0];
+
+    const eventName = `order.${status}`;
+    eventBus
+      .emitAsync(eventName, {
+        orderId: id,
+        oldStatus,
+        newStatus: status,
+        memberId: order.member_id,
+        itemId: order.item_id,
+        quantity: order.quantity,
+        actorDiscordId,
+        notes,
+        at: new Date(),
+      })
+      .catch(e => warn(`[EVENT] ${eventName}: ${e.message}`));
+
+    return order;
   });
 }
 

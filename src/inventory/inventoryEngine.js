@@ -79,6 +79,26 @@ async function recordDelivery({
     context: notes,
   }).catch(() => {});
 
+  // Emit event for Google Sheets projections
+  eventBus
+    .emitAsync('material.registered', {
+      movementId: movement.id,
+      movementType,
+      itemId,
+      itemName: item.name,
+      itemValue: parseFloat(item.estimated_value) || 0,
+      quantity,
+      memberId: member.id,
+      memberDiscordId: member.discord_id,
+      memberRole: member.role,
+      operationId,
+      actorId: createdBy,
+      balanceAfter,
+      notes,
+      at: new Date(),
+    })
+    .catch(e => warn(`[EVENT] material.registered: ${e.message}`));
+
   // Fire-and-forget: log dedicado dos Bairristas (entregas + vendas)
   const isBairristaMovement = /entrega_bairrista|venda_bairrista/.test(movementType);
   if (isBairristaMovement) {

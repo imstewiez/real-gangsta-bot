@@ -151,9 +151,12 @@ async function processApproval(tagRequest, approverMember, client) {
         // canal existe, user pode ver o painel no próximo boot via backfill).
         const welcomeEmbed = welcomeChannelEmbed(fullName);
         const panelRows = buildBairristaChannelPanel();
-        await channel
-          .send({ embeds: [welcomeEmbed], components: panelRows })
-          .catch(e => warn(`[ONBOARDING] Welcome embed falhou em ${channel.id}: ${e.message}`));
+        try {
+          const panelMsg = await channel.send({ embeds: [welcomeEmbed], components: panelRows });
+          await panelMsg.pin().catch(() => {});
+        } catch (e) {
+          warn(`[ONBOARDING] Welcome embed falhou em ${channel.id}: ${e.message}`);
+        }
 
         result.channelCreated = true;
         result.channelId = channel.id;

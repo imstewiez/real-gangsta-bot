@@ -26,5 +26,7 @@ module.exports = {
   TROPINHAS_DO_GUETTO_ROLE_ID: guildId('TROPINHAS_DO_GUETTO_ROLE_ID'),
   PATRULHA_PATA_ROLE_ID: guildId('PATRULHA_PATA_ROLE_ID'),
   BOT_ROLE_ID: guildId('BOT_ROLE_ID'),
+  REDWOOD_ROLE_ID: optId('REDWOOD_ROLE_ID'),
+  BAIRRISTAS_ROLE_ID: optId('BAIRRISTAS_ROLE_ID'),
   // Nota: CONFIGURADOR_ROLE_ID foi removido — role órfão, zero referências no código.
 };

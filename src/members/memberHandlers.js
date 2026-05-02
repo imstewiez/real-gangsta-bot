@@ -219,7 +219,14 @@ async function handleTopSemanalButton(interaction) {
   const { start, end } = weekBounds();
   const weekStart = start.toISOString().split('T')[0];
   const { rankingRepo } = require('../repositories');
-  const rankings = await rankingRepo.getWeekRanking(weekStart, 10);
+  let rankings = await rankingRepo.getWeekRanking(weekStart, 10);
+
+  // Se ainda não há dados para esta semana, computa em tempo real.
+  if (!rankings.length) {
+    const { computeWeeklyRankings } = require('../rankings/rankingEngine');
+    await computeWeeklyRankings();
+    rankings = await rankingRepo.getWeekRanking(weekStart, 10);
+  }
 
   if (!rankings.length)
     return safeReply(

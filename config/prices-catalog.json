@@ -1,76 +1,13 @@
 {
   "_meta": {
-    "description": "Precário oficial de materiais e produtos da Firma RedWood.",
+    "description": "OBSOLETO — Precário oficial agora é gerido via lista_precos_corrigida.json + scripts/manual/importPriceList.js",
     "priceUnit": "EUR",
     "version": 1,
     "notes": [
-      "Preços de armas/carregadores/coletes/acessórios são 'sem material' (venda full).",
-      "Preços de drogas são 'preço bairristas' (já descontados).",
-      "Para armas Orange o preço é com material incluído (valor em €)."
+      "Este ficheiro foi substituído pelo sistema de importação automática.",
+      "Para atualizar preços, usa: node scripts/manual/importPriceList.js",
+      "A fonte única de verdade é: lista_precos_corrigida.json"
     ]
   },
-  "items": [
-    { "name": "Rádio Estragado", "category": "residuos_sucata", "unit": "unidade", "price": 30 },
-    { "name": "Telemóvel Estragado", "category": "residuos_sucata", "unit": "unidade", "price": 30 },
-    { "name": "Sucata", "category": "residuos_sucata", "unit": "unidade", "price": 40 },
-    { "name": "Serradura", "category": "residuos_sucata", "unit": "unidade", "price": 40 },
-    { "name": "Carvão", "category": "residuos_sucata", "unit": "unidade", "price": 40 },
-    { "name": "Lixo Eletrónico", "category": "residuos_sucata", "unit": "unidade", "price": 60 },
-
-    { "name": "Peças Estragadas", "category": "pecas", "unit": "unidade", "price": 250 },
-    { "name": "Peças", "category": "pecas", "unit": "unidade", "price": 1400 },
-
-    { "name": "Tábua Pinho", "category": "madeiras", "unit": "unidade", "price": 40 },
-    { "name": "Tábua Carvalho", "category": "madeiras", "unit": "unidade", "price": 50 },
-    { "name": "Tábua Cerejeira", "category": "madeiras", "unit": "unidade", "price": 60 },
-    { "name": "Tábua Ébano", "category": "madeiras", "unit": "unidade", "price": 200 },
-
-    { "name": "Plástico Reciclado", "category": "materias_primas", "unit": "unidade", "price": 40 },
-    { "name": "Borracha", "category": "materias_primas", "unit": "unidade", "price": 70 },
-    { "name": "Tecido", "category": "materias_primas", "unit": "unidade", "price": 70 },
-    { "name": "Papel", "category": "materias_primas", "unit": "unidade", "price": 100 },
-    { "name": "Couro", "category": "materias_primas", "unit": "unidade", "price": 1500 },
-    { "name": "Taninos", "category": "materias_primas", "unit": "unidade", "price": 20 },
-
-    { "name": "Ferro", "category": "metais_especiais", "unit": "unidade", "price": 70 },
-    { "name": "Cobre", "category": "metais_especiais", "unit": "unidade", "price": 70 },
-    { "name": "Pólvora", "category": "metais_especiais", "unit": "unidade", "price": 100 },
-    { "name": "Aço", "category": "metais_especiais", "unit": "unidade", "price": 1000 },
-    { "name": "Kevlar", "category": "metais_especiais", "unit": "unidade", "price": 600 },
-
-    { "name": "Pistol XM3", "category": "armas_orange", "unit": "unidade", "price": 70000 },
-    { "name": "UZI", "category": "armas_orange", "unit": "unidade", "price": 85000 },
-    { "name": "TEC 9", "category": "armas_orange", "unit": "unidade", "price": 90000 },
-    { "name": "TEC Pistol", "category": "armas_orange", "unit": "unidade", "price": 110000 },
-    { "name": "AP Pistol", "category": "armas_orange", "unit": "unidade", "price": 115000 },
-
-    { "name": "Heavy", "category": "armas_red", "unit": "unidade", "price": 100000 },
-    { "name": ".50", "category": "armas_red", "unit": "unidade", "price": 240000 },
-    { "name": "P90", "category": "armas_red", "unit": "unidade", "price": 240000 },
-    { "name": "PDW", "category": "armas_red", "unit": "unidade", "price": 240000 },
-    { "name": "Bullpup", "category": "armas_red", "unit": "unidade", "price": 320000 },
-    { "name": "Carabina", "category": "armas_red", "unit": "unidade", "price": 340000 },
-
-    { "name": "Carregador Orange", "category": "carregadores", "unit": "unidade", "price": 2500 },
-    { "name": "Carregador Red", "category": "carregadores", "unit": "unidade", "price": 3000 },
-    { "name": "Carregador Especial", "category": "carregadores", "unit": "unidade", "price": 3500 },
-
-    { "name": "Colete Tático", "category": "coletes", "unit": "unidade", "price": 1800 },
-
-    { "name": "Silenciador", "category": "acessorios", "unit": "unidade", "price": 1500 },
-    { "name": "Mira", "category": "acessorios", "unit": "unidade", "price": 1500 },
-    { "name": "Grip", "category": "acessorios", "unit": "unidade", "price": 1500 },
-    { "name": "Lanterna", "category": "acessorios", "unit": "unidade", "price": 1500 },
-    { "name": "Muzzle", "category": "acessorios", "unit": "unidade", "price": 1500 },
-    { "name": "Barrel", "category": "acessorios", "unit": "unidade", "price": 1500 },
-    { "name": "Extensivo", "category": "acessorios", "unit": "unidade", "price": 3500 },
-    { "name": "Mag Expandido", "category": "acessorios", "unit": "unidade", "price": 5000 },
-
-    { "name": "Cabeços 100u", "category": "drogas", "unit": "pack100", "price": 30000 },
-    { "name": "Haxixe 100u", "category": "drogas", "unit": "pack100", "price": 35000 },
-    { "name": "Folhas Erva 100u", "category": "drogas", "unit": "pack100", "price": 35000 },
-    { "name": "Erva 100u", "category": "drogas", "unit": "pack100", "price": 30000 },
-    { "name": "Meth 100u", "category": "drogas", "unit": "pack100", "price": 20000 },
-    { "name": "Ópio 100u", "category": "drogas", "unit": "pack100", "price": 40000 }
-  ]
+  "items": []
 }

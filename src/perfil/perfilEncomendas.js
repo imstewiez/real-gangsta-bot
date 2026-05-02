@@ -73,8 +73,9 @@ async function handle(interaction) {
     if (pendentes.length) {
       const lines = pendentes.map(o => {
         const age = ageLabel(o.created_at);
-        const val = o.estimated_value ? ` (~${fmt(o.quantity * Number(o.estimated_value))}€)` : '';
-        return `⏳ **${o.quantity}× ${o.item_name}**${val} · aberta há ${age}`;
+        const modeEmoji = o.payment_mode === 'money_only' ? '💵' : '📦';
+        const price = o.total_price ? ` (${fmt(o.total_price)}€)` : '';
+        return `⏳ **${o.quantity}× ${o.item_name}**${price} ${modeEmoji} · aberta há ${age}`;
       });
       embed.addFields({ name: '⏳ Pendentes', value: lines.join('\n'), inline: false });
     }
@@ -84,7 +85,9 @@ async function handle(interaction) {
         const emj = STATUS_EMOJI[o.status] || '•';
         const lbl = STATUS_LABEL[o.status] || o.status;
         const when = formatPtDate(o.resolved_at || o.created_at);
-        return `${emj} \`${when}\` **${o.quantity}× ${o.item_name}** — ${lbl}`;
+        const modeEmoji = o.payment_mode === 'money_only' ? '💵' : '📦';
+        const price = o.total_price ? ` (${fmt(o.total_price)}€)` : '';
+        return `${emj} \`${when}\` **${o.quantity}× ${o.item_name}**${price} ${modeEmoji} — ${lbl}`;
       });
       embed.addFields({ name: '📜 Histórico recente', value: lines.join('\n'), inline: false });
     }

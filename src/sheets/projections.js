@@ -24,6 +24,7 @@ const EVENT_TO_TABS = {
   'saida.closed': ['saidas', 'resumo', 'dashboard', 'membros', 'rankings'],
   'saida.material_issued': ['saidas', 'stock'],
   'saida.participant_added': ['saidas'],
+  'saida.individual_result': ['saidas', 'membros', 'dashboard'],
 
   // ── Inventário ─────────────────────────────────────────────────────────
   'material.registered': ['stock', 'resumo', 'dashboard', 'membros', 'rankings'],

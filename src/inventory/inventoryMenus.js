@@ -8,6 +8,7 @@ const {
 } = require('discord.js');
 const { inventoryRepo } = require('../repositories');
 const { MODALS, INVENTORY } = require('../content');
+const { buildSearchableSelect } = require('../shared/selectSearch');
 
 // Emoji por categoria de material — consistente em todo o bot
 const CATEGORY_EMOJI = {
@@ -66,7 +67,7 @@ const CATEGORY_LABEL = {
  * Mostra todas as categorias com itens activos + contagem.
  * O customId leva o prefixo para que o handler saiba para onde ir no passo 2.
  */
-async function buildCategorySelectMenu(customIdPrefix, placeholder) {
+async function buildCategorySelectMenu(customIdPrefix, placeholder, { searchKey, modalTitle } = {}) {
   const items = await inventoryRepo.getItems(true);
 
   const byCat = {};
@@ -86,6 +87,17 @@ async function buildCategorySelectMenu(customIdPrefix, placeholder) {
       emoji: CATEGORY_EMOJI[cat] || '📦',
     }));
 
+  if (searchKey) {
+    return buildSearchableSelect({
+      customId: customIdPrefix,
+      placeholder: placeholder || 'Seleciona a categoria',
+      options: options.length ? options : [{ label: 'Sem categorias', value: 'none' }],
+      searchKey,
+      modalTitle: modalTitle || 'Pesquisar categoria',
+      messageClass: 'FLOW',
+    });
+  }
+
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId(customIdPrefix)
@@ -100,7 +112,7 @@ async function buildCategorySelectMenu(customIdPrefix, placeholder) {
  * PASSO 2 — Select menu de itens dentro de uma categoria.
  * Mostra até 25 itens da categoria seleccionada com preço + stock.
  */
-async function buildItemSelectMenuForCategory(customIdPrefix, placeholder, category) {
+async function buildItemSelectMenuForCategory(customIdPrefix, placeholder, category, { searchKey, modalTitle } = {}) {
   const items = await inventoryRepo.getItems(true);
   const filtered = items.filter(i => (i.category || 'outros') === category);
 
@@ -123,6 +135,17 @@ async function buildItemSelectMenuForCategory(customIdPrefix, placeholder, categ
       emoji,
     };
   });
+
+  if (searchKey) {
+    return buildSearchableSelect({
+      customId: customIdPrefix,
+      placeholder: placeholder || INVENTORY.SELECTS.MATERIAL,
+      options: options.length ? options : [{ label: 'Sem itens nesta categoria', value: 'none' }],
+      searchKey,
+      modalTitle: modalTitle || 'Pesquisar item',
+      messageClass: 'FLOW',
+    });
+  }
 
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()

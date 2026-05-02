@@ -27,6 +27,7 @@ const { handleMovimento, handleRanking } = require('../../../members/bairristaHa
 const {
   handleRegistarMaterialButton,
   handleEncomendasButton,
+  handleEncomendaModeSelect,
   handleStockCommand,
   handleAdjustStockButton,
   handleGerirMateriaisButton,
@@ -59,22 +60,24 @@ const {
   handleSummary: availHandleSummary,
   handleRefresh: availHandleRefresh,
 } = require('../../../availability/availabilityHandlers');
-const {
-  handleRandom: radioHandleRandom,
-  handleSet: radioHandleSet,
-  handleSwap: radioHandleSwap,
-  handleHistory: radioHandleHistory,
-  handleRefresh: radioHandleRefresh,
-} = require('../../../radio/radioHandlers');
+const { handleSet: radioHandleSet, handleRandom: radioHandleRandom } = require('../../../radio/radioHandlers');
 const chefiaActions = require('../../../panels/chefiaActions');
 const patraoDiZonaActions = require('../../../panels/patraoDiZonaActions');
 const buttonAdapters = require('../../../panels/buttonAdapters');
 
 // ── Leaderboard live panel ─────────────────────────────────────────────────
-const { handleLeaderboardDetails, handleLeaderboardRefresh } = require('../../../leaderboard/leaderboardHandlers');
+const {
+  handleLeaderboardDetails,
+  handleLeaderboardNav,
+  handleLeaderboardCustomOpen,
+  handleLeaderboardRefresh,
+} = require('../../../leaderboard/leaderboardHandlers');
 
 // ── Searchable item picker (itemsearch::open::<purpose>) ───────────────────
 const itemSearch = require('../../../inventory/itemSearch');
+
+// ── Global searchable select ───────────────────────────────────────────────
+const { handleSearchOpen, handleSearchClear } = require('../../../shared/selectSearch');
 
 // ── Perfil Operacional (drill-downs) ───────────────────────────────────────
 const perfilMaterial = require('../../../perfil/perfilMaterial');
@@ -99,9 +102,15 @@ const BUTTON_ROUTES = [
   prefix('avail::summary::', availHandleSummary),
   prefix('avail::refresh::', availHandleRefresh),
 
-  // Leaderboard live panel — details ephemeral + refresh manual
+  // Leaderboard live panel — details ephemeral + refresh manual + nav
   prefix('lb::details::', handleLeaderboardDetails),
+  prefix('lb::nav::', handleLeaderboardNav),
+  exact('lb::custom::open', handleLeaderboardCustomOpen),
   exact('lb::refresh', handleLeaderboardRefresh),
+
+  // Global searchable select — pesquisa em dropdowns
+  prefix('search::open::', handleSearchOpen),
+  prefix('search::clear::', handleSearchClear),
 
   // Searchable item picker — botão abre modal com text input
   prefix('itemsearch::open::', itemSearch.handleOpenButton),
@@ -135,11 +144,8 @@ const BUTTON_ROUTES = [
   exact('chefia::stats_open', saidaStats.handleStatsOpen),
 
   // Radio
-  prefix('radio::random::', radioHandleRandom),
   prefix('radio::set::', radioHandleSet),
-  exact('radio::swap', radioHandleSwap),
-  exact('radio::history', radioHandleHistory),
-  exact('radio::refresh', radioHandleRefresh),
+  prefix('radio::random::', radioHandleRandom),
 
   // Onboarding
   exact('onboard::pedir_tag', handlePedirTagButton),
@@ -163,6 +169,7 @@ const BUTTON_ROUTES = [
   exact('bairrista::entregar_material', buttonAdapters.handleEntregarMaterialButton),
   exact('bairrista::registar_material', handleRegistarMaterialButton), // legacy fallback
   exact('bairrista::encomendar', handleEncomendasButton),
+  prefix('inv::encomenda_mode::', handleEncomendaModeSelect),
   exact('bairrista::vender', buttonAdapters.handleVenderButton),
   exact('bairrista::registar_kill', buttonAdapters.handleKillButton),
   exact('bairrista::ausencia', buttonAdapters.handleAusenciaButton),
@@ -197,7 +204,6 @@ const BUTTON_ROUTES = [
   exact('chefia::ver_stock', handleStockCommand),
   exact('chefia::ajustar_stock', handleAdjustStockButton),
   exact('chefia::gerir_materiais', handleGerirMateriaisButton),
-  exact('chefia::listar_stickys', chefiaActions.listarStickys),
   exact('chefia::ver_tops', chefiaActions.verTops),
   exact('chefia::ver_logs', chefiaActions.verLogs),
   exact('chefia::criar_incidente', buttonAdapters.handleCriarIncidenteButton),
@@ -207,11 +213,9 @@ const BUTTON_ROUTES = [
   exact('chefia::relatorio', buttonAdapters.handleRelatorioButton),
   exact('chefia::dashboard', buttonAdapters.handleDashboardButton),
   exact('chefia::inactivos', buttonAdapters.handleInactivosButton),
-  exact('chefia::qualidade_dados', buttonAdapters.handleQualidadeDadosButton),
-  exact('chefia::exportar', buttonAdapters.handleExportarButton),
   exact('chefia::sync_sheets', buttonAdapters.handleSyncSheetsButton),
-  exact('chefia::republicar_disponibilidade', chefiaActions.republicarDisponibilidade),
   exact('chefia::republicar_paineis', chefiaActions.republicarTodosPaineis),
+  exact('chefia::promover', buttonAdapters.handlePromoverButton),
 
   // Painel da sessão (staff actions)
   prefix('saida::session_close_direct::', handleCloseSessionDirect),
@@ -225,11 +229,6 @@ const BUTTON_ROUTES = [
   exact('patrao::ver_entregas', patraoDiZonaActions.verEntregasOuVendas),
   exact('patrao::ver_vendas', patraoDiZonaActions.verEntregasOuVendas),
   exact('patrao::ver_tops', patraoDiZonaActions.verTopsBairristas),
-  exact('patrao::reputacao', buttonAdapters.handleReputacaoButton),
-  exact('patrao::tarefas', buttonAdapters.handleTarefasButton),
-  exact('patrao::manutencao', buttonAdapters.handleManutencaoButton),
-  exact('patrao::simular_permissoes', buttonAdapters.handleSimularPermissoesButton),
-  exact('patrao::audit_trail', buttonAdapters.handleAuditTrailButton),
 ];
 
 async function handleButton(interaction) {

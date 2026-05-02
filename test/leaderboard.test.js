@@ -30,13 +30,14 @@ require.cache[resolved('db.js')] = {
   },
 };
 
-const { dayBounds, monthBounds, periodBounds } = require('../src/leaderboard/leaderboardEngine');
+const { dayBounds, monthBounds, periodBounds, navigatePeriod } = require('../src/leaderboard/leaderboardEngine');
 
 const {
   formatLeaderLine,
   buildLeaderboardEmbed,
   buildLeaderboardComponents,
   buildDetailsEmbed,
+  buildDetailsComponents,
   CATEGORY_ICON,
   PERIOD_LABEL,
 } = require('../src/leaderboard/leaderboardPanel');
@@ -91,7 +92,7 @@ describe('leaderboardPanel — formatLeaderLine', () => {
   it('empty state quando leader é null', () => {
     for (const cat of ['activity', 'mvp', 'kda', 'delivered', 'sold']) {
       const line = formatLeaderLine(cat, null);
-      assert.match(line, /sem actividade ainda/);
+      assert.match(line, /sem actividade/);
       assert.ok(line.includes(CATEGORY_ICON[cat]));
     }
   });
@@ -222,16 +223,17 @@ describe('leaderboardPanel — buildLeaderboardEmbed', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 
 describe('leaderboardPanel — buildLeaderboardComponents', () => {
-  it('2 rows: 3 botões details + 1 refresh', () => {
+  it('2 rows: 3 botões details + refresh + escolher datas', () => {
     const rows = buildLeaderboardComponents();
     assert.equal(rows.length, 2);
     assert.equal(rows[0].components.length, 3);
-    assert.equal(rows[1].components.length, 1);
+    assert.equal(rows[1].components.length, 2);
 
     // Custom IDs
     const detailIds = rows[0].components.map(c => c.data.custom_id);
     assert.deepEqual(detailIds, ['lb::details::daily', 'lb::details::weekly', 'lb::details::monthly']);
     assert.equal(rows[1].components[0].data.custom_id, 'lb::refresh');
+    assert.equal(rows[1].components[1].data.custom_id, 'lb::custom::open');
   });
 });
 
@@ -346,5 +348,55 @@ describe('leaderboardPublisher — rate limit', () => {
 
   it('REFRESH_COOLDOWN_MS = 30s', () => {
     assert.equal(REFRESH_COOLDOWN_MS, 30_000);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// navigatePeriod
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('leaderboardEngine — navigatePeriod', () => {
+  it('daily: avança 1 dia', () => {
+    const base = new Date('2026-04-15T12:00:00');
+    const d = navigatePeriod('daily', 1, base);
+    assert.equal(d.getDate(), 16);
+  });
+
+  it('daily: recua 1 dia', () => {
+    const base = new Date('2026-04-15T12:00:00');
+    const d = navigatePeriod('daily', -1, base);
+    assert.equal(d.getDate(), 14);
+  });
+
+  it('weekly: avança 7 dias', () => {
+    const base = new Date('2026-04-15T12:00:00');
+    const d = navigatePeriod('weekly', 1, base);
+    assert.equal(d.getDate(), 22);
+  });
+
+  it('monthly: avança 1 mês', () => {
+    const base = new Date('2026-04-15T12:00:00');
+    const d = navigatePeriod('monthly', 1, base);
+    assert.equal(d.getMonth(), 4); // May = 4
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// buildDetailsComponents
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('leaderboardPanel — buildDetailsComponents', () => {
+  it('devolve row de navegação com anterior e seguinte', () => {
+    const rows = buildDetailsComponents('weekly', 0);
+    assert.equal(rows.length, 2);
+    const navRow = rows[0].toJSON();
+    assert.equal(navRow.components.length, 2);
+    assert.ok(navRow.components[0].custom_id.includes('lb::nav::weekly::-1'));
+    assert.ok(navRow.components[1].custom_id.includes('lb::nav::weekly::1'));
+  });
+
+  it('isCustom=true omite botão de datas', () => {
+    const rows = buildDetailsComponents('daily', 0, true);
+    assert.equal(rows.length, 1);
   });
 });

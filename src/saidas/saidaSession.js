@@ -39,7 +39,8 @@ const {
 const { saidaRepo, memberRepo, inventoryRepo } = require('../repositories');
 const saidaEngine = require('./saidaEngine');
 const { safeReply, safeUpdate, isDuplicate, scheduleDeleteInteractionReply } = require('../shared/interactionHelpers');
-const { brandEmbed, applyLogo, rankBadge, COLOR } = require('../shared/embedBuilders');
+const { buildSearchableSelect } = require('../shared/selectSearch');
+const { brandEmbed, applyLogo, rankBadge, COLOR, headerLine, progressBar } = require('../shared/embedBuilders');
 const { EMOJI, SAIDA_TYPE } = require('../content');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
@@ -157,26 +158,26 @@ async function buildSessionEmbed(saidaId) {
   };
 
   if (characterized.length) {
-    lines.push('', '**── Caracterizados ──**');
+    lines.push('', headerLine(EMOJI.ARMA, `Caracterizados  ${characterized.length}/${maxChar}`));
     for (const p of characterized) {
       const weaponName = p.weapon_item_id ? weaponMap.get(p.weapon_item_id) : null;
       const srcIcon = p.own_weapon ? EMOJI.ARMA : p.received_org_material ? EMOJI.MATERIAL : EMOJI.PENDENTE;
       const srcLabel = p.own_weapon ? 'própria' : p.received_org_material ? 'org' : 'sem arma';
       const weaponFull = weaponName ? `${srcIcon} ${weaponName} (${srcLabel})` : `${srcIcon} ${srcLabel}`;
-      lines.push(`• <@${p.discord_id}> · ${weaponFull}${formatResultMark(p)}`);
+      lines.push(`• <@${p.discord_id}>  ·  ${weaponFull}${formatResultMark(p)}`);
     }
   }
   if (workers.length) {
-    lines.push('', '**── Trabalhadores ──**');
+    lines.push('', headerLine(EMOJI.TRABALHADOR, `Trabalhadores  ${workers.length}`));
     for (const p of workers) {
       lines.push(`• <@${p.discord_id}>${formatResultMark(p)}`);
     }
   }
   // Pedidos de entrada em sessão activa (post-start) — visíveis para admin.
   if (requested.length) {
-    lines.push('', `**── Pedidos pendentes (${requested.length}) ──**`);
+    lines.push('', headerLine(EMOJI.PENDENTE, `Pedidos pendentes  ${requested.length}`));
     for (const p of requested) {
-      lines.push(`• <@${p.discord_id}> — aguarda aprovação`);
+      lines.push(`• <@${p.discord_id}>  — aguarda aprovação`);
     }
   }
 
@@ -193,23 +194,22 @@ async function buildSessionEmbed(saidaId) {
       ] || saida.result;
 
     lines.push('');
-    lines.push(`${EMOJI.LIQUIDACAO} **Em liquidação** — resultado: **${resultLabel}**`);
+    lines.push(headerLine(EMOJI.LIQUIDACAO, 'Em liquidação'));
+    lines.push(`${EMOJI.COMBATE} Resultado: **${resultLabel}**`);
     if (saida.enemy_name) lines.push(`${EMOJI.COMBATE} Contra: **${saida.enemy_name}**`);
-    lines.push(`${EMOJI.PENDENTE} **${submittedCount}/${totalCount}** resultado(s) preenchido(s)`);
+
+    // Progress bar de preenchimento
+    const pct = totalCount > 0 ? Math.round((submittedCount / totalCount) * 100) : 0;
+    lines.push(
+      `${EMOJI.PENDENTE} Preenchimento: ${progressBar(submittedCount, totalCount, { width: 10 })}  **${submittedCount}/${totalCount}** (${pct}%)`
+    );
 
     if (submittedCount >= totalCount && totalCount > 0) {
       if (pendingWeapon > 0) {
-        // Bloqueio explícito: auto-finalize NÃO corre enquanto houver armas
-        // em declared_returned. Chefia/oficiais têm de confirmar via
-        // "Confirmar Armas" primeiro. Torna claro que a sessão está à
-        // espera deles, não preso.
         lines.push(
           `${EMOJI.WARN} **Todos preencheram, mas faltam ${pendingWeapon} arma(s) a confirmar** — chefia/oficial clica **"Confirmar Armas"** ↓`
         );
       } else {
-        // Auto-finalize fallback: se passaram > 5min desde o último submit e
-        // a saída ainda está em_liquidacao, provavelmente o auto-finalize
-        // falhou silenciosamente. Mensagem softer ("se estiver preso").
         const lastSubmitAt = participants
           .map(p => (p.individual_result_at ? new Date(p.individual_result_at).getTime() : 0))
           .reduce((a, b) => Math.max(a, b), 0);
@@ -224,8 +224,6 @@ async function buildSessionEmbed(saidaId) {
         }
       }
     } else {
-      // Cockpit: lista explícita de quem falta, para chefia ver rapidamente
-      // quem chatear sem ter de abrir DMs ou scroll pela lista.
       const aguarda = pendingList
         .slice(0, 10)
         .map(p => `<@${p.discord_id}>`)
@@ -244,13 +242,21 @@ async function buildSessionEmbed(saidaId) {
     const totalKills = participants.reduce((a, p) => a + (p.kills || 0), 0);
     const totalDeaths = participants.filter(p => p.died).length;
     const mvp = participants.find(p => p.mvp_flag);
+    const vivos = participants.length - totalDeaths;
 
     lines.push('');
-    lines.push(`${EMOJI.FECHAR} **Concluída** — resultado: **${resultLabel}**`);
+    lines.push(headerLine(EMOJI.FECHAR, 'Concluída'));
+    lines.push(`${EMOJI.COMBATE} Resultado: **${resultLabel}**`);
     lines.push(
-      `${EMOJI.KILL} **${totalKills}** kills · ${EMOJI.MORTE} **${totalDeaths}** mortes · ${EMOJI.OK} **${participants.length - totalDeaths}** vivos`
+      `${EMOJI.KILL} **${totalKills}** kills  ·  ${EMOJI.MORTE} **${totalDeaths}** mortes  ·  ${EMOJI.OK} **${vivos}** vivos`
     );
-    if (mvp) lines.push(`${EMOJI.MVP} MVP: **${mvp.display_name || 'Participante'}** (${mvp.kills || 0} kills)`);
+    if (mvp) {
+      const kScore = Math.round(mvp.performance_score || 0);
+      const dScore = Math.round(mvp.discipline_score || 0);
+      lines.push(
+        `${EMOJI.MVP} MVP: **${mvp.display_name || 'Participante'}**  ·  ${mvp.kills || 0}k  ·  peso ${kScore}  ·  disc. ${dScore}%`
+      );
+    }
     if (pendingWeapon > 0) lines.push(`${EMOJI.WARN} **${pendingWeapon}** devolução(ões) de arma pendente(s)`);
   }
 
@@ -557,12 +563,14 @@ async function handleCaracterizadoSource(interaction) {
       .setEmoji(EMOJI.ARMA);
   });
 
-  const select = new StringSelectMenuBuilder()
-    .setCustomId(`saida::weapon_pick::${saidaId}::${source}`)
-    .setPlaceholder(source === 'org' ? 'Escolhe a arma da org' : 'Escolhe a tua arma')
-    .addOptions(options);
-
-  const row = new ActionRowBuilder().addComponents(select);
+  const rows = buildSearchableSelect({
+    customId: `saida::weapon_pick::${saidaId}::${source}`,
+    placeholder: source === 'org' ? 'Escolhe a arma da org' : 'Escolhe a tua arma',
+    options,
+    searchKey: `weapon::${interaction.user.id}::${saidaId}`,
+    modalTitle: 'Pesquisar arma',
+    messageClass: 'FLOW',
+  });
   // safeUpdate substitui o ephemeral "como te armas?" (step 1) pelo select.
   // Antes era safeReply que criava um 2º ephemeral → stacking visível.
   return safeUpdate(
@@ -572,7 +580,7 @@ async function handleCaracterizadoSource(interaction) {
         source === 'org'
           ? `**Saída #${saidaId}** — escolhe a arma que queres da org.`
           : `**Saída #${saidaId}** — diz qual é a tua arma.`,
-      components: [row],
+      components: rows,
     },
     { messageClass: 'FLOW' }
   );
@@ -1024,16 +1032,20 @@ async function handleSessionSwapOpen(interaction) {
       .setValue(String(p.member_id));
   });
 
-  const select = new StringSelectMenuBuilder()
-    .setCustomId(`saida::session_swap_pick::${saidaId}`)
-    .setPlaceholder('Escolhe quem trocar')
-    .addOptions(options);
+  const rows = buildSearchableSelect({
+    customId: `saida::session_swap_pick::${saidaId}`,
+    placeholder: 'Escolhe quem trocar',
+    options,
+    searchKey: `swap::${interaction.user.id}::${saidaId}`,
+    modalTitle: 'Pesquisar participante',
+    messageClass: 'FLOW',
+  });
 
   return safeReply(
     interaction,
     {
       content: `**Saída #${saidaId}** — trocar caract ↔ trab.\nO tipo vai inverter para quem escolheres.`,
-      components: [new ActionRowBuilder().addComponents(select)],
+      components: rows,
       flags: MessageFlags.Ephemeral,
     },
     { messageClass: 'FLOW' }
@@ -1052,7 +1064,11 @@ async function handleSessionSwapPick(interaction) {
   const participants = await saidaRepo.getParticipants(saidaId);
   const p = participants.find(x => x.member_id === memberId);
   if (!p) {
-    return interaction.editReply({ content: `${EMOJI.ERRO} Participante não encontrado.`, components: [] });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} Participante não encontrado.`, components: [] },
+      { messageClass: 'WARN' }
+    );
   }
 
   const previousType = p.participant_type;
@@ -1119,16 +1135,20 @@ async function handleSessionApproveOpen(interaction) {
         .setValue(String(p.member_id))
     );
 
-  const select = new StringSelectMenuBuilder()
-    .setCustomId(`saida::session_approve_pick::${saidaId}`)
-    .setPlaceholder('Escolhe quem aprovar / rejeitar')
-    .addOptions(options);
+  const rows = buildSearchableSelect({
+    customId: `saida::session_approve_pick::${saidaId}`,
+    placeholder: 'Escolhe quem aprovar / rejeitar',
+    options,
+    searchKey: `approve::${interaction.user.id}::${saidaId}`,
+    modalTitle: 'Pesquisar pedido',
+    messageClass: 'FLOW',
+  });
 
   return safeReply(
     interaction,
     {
       content: `**Saída #${saidaId}** — ${requested.length} pedido(s) pendente(s). Escolhe um para decidir.`,
-      components: [new ActionRowBuilder().addComponents(select)],
+      components: rows,
       flags: MessageFlags.Ephemeral,
     },
     { messageClass: 'FLOW' }
@@ -1189,10 +1209,11 @@ async function handleSessionApproveDecide(interaction) {
   const participants = await saidaRepo.getParticipants(saidaId);
   const p = participants.find(x => x.member_id === memberId && x.participant_type === 'requested');
   if (!p) {
-    return interaction.editReply({
-      content: `${EMOJI.INFO} Pedido já tratado.`,
-      components: [],
-    });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.INFO} Pedido já tratado.`, components: [] },
+      { messageClass: 'BANAL' }
+    );
   }
 
   if (decision === 'approve') {

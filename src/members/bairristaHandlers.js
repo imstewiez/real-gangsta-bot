@@ -226,6 +226,12 @@ async function _showRanking(interaction, period) {
     header = R.HEADER_ALLTIME;
   } else {
     rankings = await bairristaStatsRepo.getTopBairristas(weekStartStr, 15);
+    // Se ainda não há dados para esta semana, computa em tempo real.
+    if (!rankings.length) {
+      const { computeWeeklyRankings } = require('../rankings/rankingEngine');
+      await computeWeeklyRankings();
+      rankings = await bairristaStatsRepo.getTopBairristas(weekStartStr, 15);
+    }
     const { end } = weekBounds();
     const weekLabel = `${formatPtDateOnly(start)} → ${formatPtDateOnly(end)}`;
     title = R.TITLE_WEEK(weekLabel);

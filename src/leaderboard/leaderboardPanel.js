@@ -4,19 +4,19 @@
  *
  * Design:
  *   - Main embed: 3 secções (Hoje / Semana / Mês) × 5 categorias. Top 1 de
- *     cada. Tipografia compacta para caber mobile sem scroll exagerado.
- *   - Ícones por categoria (🔥⚡⚔️📦💰) + coroa 👑 no líder overall (maior
- *     actividade do período semanal — proxy razoável de "rei do bairro").
- *   - Footer: "Atualizado há X min" — freshness à vista.
+ *     cada. Cores por período para scan visual rápido.
+ *   - Ícones por categoria (🔥👑⚔️📦💰) + emojis de medalha nos top 3.
+ *   - Footer: timestamp relativo + hint de navegação.
  *   - Empty state: "— nenhum ainda" em vez de campo em branco, por categoria.
  *
  * Components:
  *   - Row 1: 3 botões de details ephemeral (daily / weekly / monthly).
- *   - Row 2: 1 botão "Atualizar agora" (rate-limited 30s por user).
+ *   - Row 2: 1 botão "Atualizar agora" + 1 botão "📅 Escolher datas".
  *
  * Details (ephemeral, on-demand):
- *   - Embed por período com top 5 de cada categoria. Só o user que clicou
- *     vê. Permite "ver mais" sem poluir o canal.
+ *   - Embed por período com top 5 de cada categoria.
+ *   - Botões de navegação: ← Anterior | Seguinte →
+ *   - Só o user que clicou vê. Permite "ver mais" sem poluir o canal.
  */
 
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
@@ -42,6 +42,7 @@ const CATEGORY_LABEL = {
 
 const PERIOD_ICON = { daily: '🗓️', weekly: '📅', monthly: '📆' };
 const PERIOD_LABEL = { daily: 'Hoje', weekly: 'Esta semana', monthly: 'Este mês' };
+const PERIOD_COLOR = { daily: COLOR.SUCCESS, weekly: COLOR.GOLD, monthly: COLOR.PRIMARY };
 
 // ═══════════════════════════════════════════════════════════════════════════
 // LINE FORMATTERS — uma linha por categoria no resumo
@@ -58,7 +59,7 @@ function formatLeaderLine(category, leader) {
   const icon = CATEGORY_ICON[category] || '•';
   const label = CATEGORY_LABEL[category] || category;
   if (!leader) {
-    return `${icon} **${label}**  ·  _sem actividade ainda_`;
+    return `${icon} **${label}**  ·  _sem actividade_`;
   }
   const who = `<@${leader.discordId}>`;
   let stats = '';
@@ -70,7 +71,7 @@ function formatLeaderLine(category, leader) {
       stats = `**${_fmtNumber(leader.mvpCount)}** MVP${leader.mvpCount === 1 ? '' : 's'}`;
       break;
     case 'kda':
-      stats = `**${leader.kda.toFixed(2)}** KDA  _(${leader.kills}k / ${leader.deaths}d em ${leader.saidas}s)_`;
+      stats = `**${leader.kda.toFixed(2)}** KDA  _(${leader.kills}k/${leader.deaths}d · ${leader.saidas}s)_`;
       break;
     case 'delivered':
       stats =
@@ -116,7 +117,7 @@ function buildLeaderboardEmbed({ daily, weekly, monthly, refreshedAt }) {
     embed.addFields({ name: '\u200b', value: header + lines.join('\n'), inline: false });
   }
 
-  setFooterText(embed, 'leaderboard · clica num período para ver top 5 de cada categoria');
+  setFooterText(embed, 'leaderboard · clica num período para ver top 5 · 📅 para datas custom');
   return embed;
 }
 
@@ -143,13 +144,18 @@ function buildLeaderboardComponents() {
       .setCustomId('lb::refresh')
       .setLabel('Atualizar agora')
       .setStyle(ButtonStyle.Secondary)
-      .setEmoji('🔄')
+      .setEmoji('🔄'),
+    new ButtonBuilder()
+      .setCustomId('lb::custom::open')
+      .setLabel('Escolher datas')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('📅')
   );
   return [row1, row2];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// DETAILS (ephemeral) — top 5 por categoria num período
+// DETAILS (ephemeral) — top 5 por categoria num período, com navegação
 // ═══════════════════════════════════════════════════════════════════════════
 
 function _formatTop5ForCategory(category, top) {
@@ -161,13 +167,13 @@ function _formatTop5ForCategory(category, top) {
       let stats = '';
       switch (category) {
         case 'activity':
-          stats = `**${_fmtNumber(row.score)}** (${row.saidas}s · ${row.submissions}e · ${row.kills}k)`;
+          stats = `**${_fmtNumber(row.score)}** pts  (${row.saidas}s · ${row.submissions}e · ${row.kills}k)`;
           break;
         case 'mvp':
           stats = `**${_fmtNumber(row.mvpCount)}** MVP${row.mvpCount === 1 ? '' : 's'}`;
           break;
         case 'kda':
-          stats = `**${row.kda.toFixed(2)}** (${row.kills}k/${row.deaths}d · ${row.saidas}s)`;
+          stats = `**${row.kda.toFixed(2)}** KDA  (${row.kills}k/${row.deaths}d · ${row.saidas}s)`;
           break;
         case 'delivered':
           stats = `**${_fmtNumber(row.totalQty)}** un.${row.totalValue > 0 ? ` · ${_fmtEuro(row.totalValue)}` : ''}`;
@@ -184,8 +190,9 @@ function _formatTop5ForCategory(category, top) {
 function buildDetailsEmbed(periodData) {
   const { period, label, categories } = periodData;
   const pIcon = PERIOD_ICON[period] || '•';
+  const pColor = PERIOD_COLOR[period] || COLOR.INFO;
   const embed = brandEmbed('TOP')
-    .setColor(COLOR.INFO)
+    .setColor(pColor)
     .setTitle(`${pIcon} Top 5 — ${PERIOD_LABEL[period]}`)
     .setDescription(`_${label}_`);
 
@@ -196,8 +203,37 @@ function buildDetailsEmbed(periodData) {
     embed.addFields({ name: `${icon} ${label}`, value, inline: false });
   }
 
-  setFooterText(embed, 'details leaderboard');
+  setFooterText(embed, 'details leaderboard · usa ← → para navegar no tempo');
   return embed;
+}
+
+function buildDetailsComponents(period, offset = 0, isCustom = false) {
+  const rows = [];
+  const navRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`lb::nav::${period}::${offset - 1}`)
+      .setLabel('← Anterior')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('⬅️'),
+    new ButtonBuilder()
+      .setCustomId(`lb::nav::${period}::${offset + 1}`)
+      .setLabel('Seguinte →')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('➡️')
+  );
+  rows.push(navRow);
+
+  if (!isCustom) {
+    rows.push(
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId('lb::custom::open')
+          .setLabel('📅 Escolher datas')
+          .setStyle(ButtonStyle.Secondary)
+      )
+    );
+  }
+  return rows;
 }
 
 module.exports = {
@@ -205,8 +241,10 @@ module.exports = {
   CATEGORY_LABEL,
   PERIOD_ICON,
   PERIOD_LABEL,
+  PERIOD_COLOR,
   formatLeaderLine,
   buildLeaderboardEmbed,
   buildLeaderboardComponents,
   buildDetailsEmbed,
+  buildDetailsComponents,
 };

@@ -20,6 +20,7 @@ const { logAudit } = require('../audit/auditEngine');
 const { brandEmbed, COLOR, headerLine, setFooterText } = require('../shared/embedBuilders');
 const { formatPtDateOnly } = require('../shared/formatPtDate');
 const { EMOJI } = require('../content');
+const { buildSearchableSelect } = require('../shared/selectSearch');
 const {
   pickHeader,
   stateMeta,
@@ -149,12 +150,14 @@ function buildComponents(session, slots) {
   if (session.status === 'closed') return []; // nada de votar quando fechada
 
   const selectOpts = buildSelectOptions(slots);
-  const select = new StringSelectMenuBuilder()
-    .setCustomId(`avail::vote_select::${session.id}`)
-    .setPlaceholder('📅 Marca intervalos de uma vez')
-    .setMinValues(1)
-    .setMaxValues(1)
-    .addOptions(selectOpts);
+  const selectRows = buildSearchableSelect({
+    customId: `avail::vote_select::${session.id}`,
+    placeholder: '📅 Marca intervalos de uma vez',
+    options: selectOpts,
+    searchKey: `avail::${session.id}`,
+    modalTitle: 'Pesquisar intervalo',
+    messageClass: 'FLOW',
+  });
 
   // Atalhos: aplicar mesmo estado a TODOS os slots.
   const allRow = new ActionRowBuilder().addComponents(
@@ -179,15 +182,10 @@ function buildComponents(session, slots) {
       .setCustomId(`avail::summary::${session.id}`)
       .setStyle(ButtonStyle.Primary)
       .setLabel('Resumo')
-      .setEmoji('📊'),
-    new ButtonBuilder()
-      .setCustomId(`avail::refresh::${session.id}`)
-      .setStyle(ButtonStyle.Secondary)
-      .setLabel('Atualizar')
-      .setEmoji('🔁')
+      .setEmoji('📊')
   );
 
-  return [new ActionRowBuilder().addComponents(select), allRow, utilRow];
+  return [...selectRows, allRow, utilRow];
 }
 
 function buildContent(session) {

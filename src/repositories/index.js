@@ -18,6 +18,7 @@ module.exports = {
   bairristaStatsRepo: require('./bairristaStats'),
   deliveryRequestRepo: require('./deliveryRequest'),
   ordersRepo: require('./orders'),
+  craftRecipeRepo: require('./craftRecipe'),
   prizeRepo: require('./prizeRepo'),
   itemAdminRepo: require('./itemAdmin'),
   memberLifecycleRepo: require('./memberLifecycle'),

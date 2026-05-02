@@ -13,7 +13,8 @@
 const { inventoryRepo, saidaRepo, rankingRepo, memberRepo, killRepo } = require('../repositories');
 const { query } = require('../db');
 const { weekBounds } = require('../util');
-const { log } = require('../logger');
+const { log, warn } = require('../logger');
+const eventBus = require('../core/eventBus');
 
 // Pesos dos 3 eixos do hybrid_score
 const WEIGHTS = { contribuicao: 0.4, performance: 0.4, fiabilidade: 0.2 };
@@ -126,6 +127,18 @@ async function computeWeeklyRankings(weekDate = new Date()) {
 
   rankings.sort((a, b) => (b.hybrid_score || b.weighted_value) - (a.hybrid_score || a.weighted_value));
   log(`[RANKINGS] ${rankings.length} rankings computados para semana ${weekStart}.`);
+
+  eventBus
+    .emitAsync('ranking.updated', {
+      weekStart,
+      weekEnd,
+      count: rankings.length,
+      topMemberId: rankings[0]?.member_id || null,
+      topScore: rankings[0]?.hybrid_score || null,
+      at: new Date(),
+    })
+    .catch(e => warn(`[EVENT] ranking.updated: ${e.message}`));
+
   return rankings;
 }
 

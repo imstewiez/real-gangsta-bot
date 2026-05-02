@@ -40,7 +40,7 @@ const TTL_MS = Object.freeze({
   ERROR: 60_000,
   RESULT: 60_000,
   COCKPIT: 120_000,
-  FLOW: null, // sem TTL — gerido pelo fluxo (expira quando acabar)
+  FLOW: 300_000, // 5 min — tempo suficiente para interagir, depois limpa
   PERSISTENT: null, // sem TTL — nunca auto-dismiss
 });
 

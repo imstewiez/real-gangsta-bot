@@ -4,7 +4,7 @@ const { query } = require('../db');
 const { brandEmbed, progressBar } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
 const { requirePermission } = require('../shared/requirePermission');
-const { promoteMember } = require('../members/promotionEngine');
+const { promoteMember, demoteMember } = require('../members/promotionEngine');
 
 async function handle(interaction) {
   await requirePermission(interaction, { minRole: 'OG' });
@@ -18,7 +18,7 @@ async function handle(interaction) {
         COALESCE(ms.total_sold, 0) as sold
        FROM members m
        LEFT JOIN member_stats ms ON ms.member_id = m.id
-       WHERE m.active = true AND m.role IN ('bairrista', 'young_blood')
+       WHERE m.status = 'ativo' AND m.role = 'bairrista'
        ORDER BY (COALESCE(ms.total_delivered,0) + COALESCE(ms.total_sold,0)) DESC
        LIMIT 10`
     );
@@ -39,7 +39,14 @@ async function handle(interaction) {
     if (!mr.rows.length)
       return safeReply(interaction, { content: '❌ Membro não encontrado.', flags: MessageFlags.Ephemeral });
     const memberRecord = mr.rows[0];
-    await promoteMember(memberRecord.id, newRole, { reason, actorTag: userTag });
+    await promoteMember(memberRecord.id, newRole, {
+      guildMember: member,
+      client: interaction.client,
+      reason,
+      actorTag: userTag,
+      actorId: interaction.user.id,
+      changedBy: interaction.user.id,
+    });
     return safeReply(interaction, {
       content: `✅ **${member.displayName}** promovido para **${newRole}**${reason ? ` — ${reason}` : ''}`,
       flags: MessageFlags.Ephemeral,
@@ -50,19 +57,17 @@ async function handle(interaction) {
     const member = interaction.options.getMember('membro');
     const newRole = interaction.options.getString('cargo');
     const reason = interaction.options.getString('motivo') || '';
-    const mr = await query('SELECT id FROM members WHERE discord_id = $1', [member.id]);
+    const mr = await query('SELECT id, role FROM members WHERE discord_id = $1', [member.id]);
     if (!mr.rows.length)
       return safeReply(interaction, { content: '❌ Membro não encontrado.', flags: MessageFlags.Ephemeral });
-    const memberId = mr.rows[0].id;
-    await query('UPDATE members SET role = $1 WHERE id = $2', [newRole, memberId]);
-    const { auditRepo } = require('../repositories');
-    await auditRepo.log({
-      action: 'demote',
-      entityType: 'member',
-      entityId: String(memberId),
-      actorId: interaction.user.id,
+    const memberRecord = mr.rows[0];
+    await demoteMember(memberRecord.id, newRole, {
+      guildMember: member,
+      client: interaction.client,
+      reason,
       actorTag: userTag,
-      context: { newRole, reason },
+      actorId: interaction.user.id,
+      changedBy: interaction.user.id,
     });
     return safeReply(interaction, {
       content: `⬇️ **${member.displayName}** rebaixado para **${newRole}**${reason ? ` — ${reason}` : ''}`,

@@ -72,7 +72,8 @@ async function _createOne(guild, botId, dbMember) {
   // Welcome embed + painel — non-fatal se falhar.
   try {
     const panelRows = buildBairristaChannelPanel();
-    await channel.send({ embeds: [welcomeChannelEmbed(fullName)], components: panelRows });
+    const panelMsg = await channel.send({ embeds: [welcomeChannelEmbed(fullName)], components: panelRows });
+    await panelMsg.pin().catch(() => {});
   } catch (e) {
     warn(`[BACKFILL-TOPICOS] Welcome em ${channel.id} falhou (non-fatal): ${e.message}`);
   }
@@ -86,10 +87,7 @@ async function handle(interaction) {
   } catch (e) {
     warn(`[BACKFILL-TOPICOS] Erro em handler: ${e.message}\n${e.stack}`);
     const msg = `${EMOJI.ERRO} Falha: ${String(e.message).slice(0, 200)}`;
-    if (interaction.deferred || interaction.replied) {
-      return interaction.editReply({ content: msg }).catch(() => {});
-    }
-    return interaction.reply({ content: msg, flags: MessageFlags.Ephemeral }).catch(() => {});
+    return safeReply(interaction, { content: msg, flags: MessageFlags.Ephemeral }, { messageClass: 'ERROR' });
   }
 }
 

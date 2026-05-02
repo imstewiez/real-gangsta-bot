@@ -45,15 +45,15 @@ require.cache[resolvedPath('audit/auditEngine.js')] = {
 const { isValidValue, generateRandom, buildEmbed, buildComponents, TYPE_META } = require('../src/radio/radioEngine');
 
 describe('radioEngine — validação', () => {
-  it('aceita valores no range default 1000-9999', () => {
-    assert.equal(isValidValue('1000'), true);
-    assert.equal(isValidValue('9999'), true);
-    assert.equal(isValidValue('5432'), true);
+  it('aceita valores no range 30-4500', () => {
+    assert.equal(isValidValue('30'), true);
+    assert.equal(isValidValue('4500'), true);
+    assert.equal(isValidValue('1234'), true);
   });
 
   it('rejeita valores fora do range', () => {
-    assert.equal(isValidValue('999'), false);
-    assert.equal(isValidValue('10000'), false);
+    assert.equal(isValidValue('29'), false);
+    assert.equal(isValidValue('4501'), false);
     assert.equal(isValidValue('-5'), false);
   });
 
@@ -74,7 +74,7 @@ describe('radioEngine — generateRandom', () => {
   it('está no range [MIN, MAX]', () => {
     for (let i = 0; i < 50; i++) {
       const v = parseInt(generateRandom(), 10);
-      assert.ok(v >= 1000 && v <= 9999, `${v} fora do range`);
+      assert.ok(v >= 30 && v <= 4500, `${v} fora do range`);
     }
   });
 
@@ -91,7 +91,7 @@ describe('radioEngine — UI', () => {
   it('buildEmbed mostra dash quando não há valor', () => {
     const embed = buildEmbed([]);
     const json = embed.toJSON();
-    assert.ok(json.title.includes('Frequências'));
+    assert.ok(json.title.includes('Frequência da Firma'));
     assert.ok(json.description.includes('—'));
   });
 
@@ -104,25 +104,21 @@ describe('radioEngine — UI', () => {
         updated_by: 'u1',
         updated_at: new Date().toISOString(),
       },
-      { radio_type: 'parceria', value: '5678', mode: 'manual', updated_by: 'u2', updated_at: new Date().toISOString() },
     ];
     const json = buildEmbed(states).toJSON();
     assert.ok(json.description.includes('1234'));
-    assert.ok(json.description.includes('5678'));
   });
 
-  it('buildComponents devolve 3 rows com botões válidos', () => {
+  it('buildComponents devolve 1 row com 1 botão', () => {
     const rows = buildComponents();
-    assert.equal(rows.length, 3);
-    for (const r of rows) {
-      const json = r.toJSON();
-      assert.ok(json.components.length >= 2);
-      assert.ok(json.components.length <= 5);
-    }
+    assert.equal(rows.length, 1);
+    const json = rows[0].toJSON();
+    assert.equal(json.components.length, 1);
+    assert.ok(json.components[0].custom_id.startsWith('radio::random::'));
   });
 
-  it('TYPE_META tem principal e parceria', () => {
+  it('TYPE_META tem apenas principal', () => {
     assert.ok(TYPE_META.principal);
-    assert.ok(TYPE_META.parceria);
+    assert.equal(TYPE_META.parceria, undefined);
   });
 });

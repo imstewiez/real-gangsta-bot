@@ -137,18 +137,46 @@ function startAll(client) {
     { runOnStart: true }
   );
 
-  // Catalog prices — corre semanalmente (7 dias) E em cada boot
-  // (runOnStart) para garantir que prices-catalog.json fica imediatamente
-  // aplicado à DB após cada deploy. Substitui o antigo slash /precario.
+  // Backfill de tópicos — cria canais em falta para bairristas sem canal individual.
+  // Corre 1x por dia (idempotente).
   registerJob(
-    'catalog_prices',
-    7 * 24 * 60 * 60 * 1000,
-    async () => {
-      const { runCatalogPricesSync } = require('./catalogPricesJob');
-      return await runCatalogPricesSync();
+    'backfill_topicos',
+    24 * 60 * 60 * 1000,
+    async client => {
+      const guild = client?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
+      if (!guild) return { skipped: 'no_guild' };
+      const { backfill } = require('../topics/backfillTopicosJob');
+      return await backfill(guild, { dryRun: false });
     },
-    { runOnStart: true }
+    { runOnStart: false }
   );
+
+  // Cleanup de tópicos — arquiva canais de ex-bairristas (promovidos, saídos).
+  // Corre 1x por dia (idempotente).
+  registerJob(
+    'cleanup_topicos',
+    24 * 60 * 60 * 1000,
+    async client => {
+      const guild = client?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
+      if (!guild) return { skipped: 'no_guild' };
+      const { cleanup } = require('../topics/cleanupTopicosJob');
+      return await cleanup(guild, { dryRun: false });
+    },
+    { runOnStart: false }
+  );
+
+  // Catalog prices — DESACTIVADO. O precário agora é gerido via
+  // scripts/manual/importPriceList.js a partir de lista_precos_corrigida.json.
+  // Removido para evitar sobrescrever preços importados manualmente.
+  // registerJob(
+  //   'catalog_prices',
+  //   7 * 24 * 60 * 60 * 1000,
+  //   async () => {
+  //     const { runCatalogPricesSync } = require('./catalogPricesJob');
+  //     return await runCatalogPricesSync();
+  //   },
+  //   { runOnStart: true }
+  // );
 
   // Sticky messages — refresh time-based (modo repost com threshold_minutes)
   registerJob('sticky_time_refresh', 60 * 1000, async client => {
@@ -254,6 +282,17 @@ function startAll(client) {
       // force=true: scheduler sempre refresca no tick (ignora debounce
       // global que só protege path manual contra burst de N users).
       return await publishOrRefresh(client, { force: true });
+    },
+    { runOnStart: true }
+  );
+
+  // Price list embed refresh — 30 min. Atualiza o embed de preços e fórmulas.
+  registerJob(
+    'price_list_refresh',
+    30 * 60 * 1000,
+    async client => {
+      const { publishPriceListEmbed } = require('../prices/priceListPublisher');
+      return await publishPriceListEmbed(client);
     },
     { runOnStart: true }
   );

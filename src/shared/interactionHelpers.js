@@ -27,6 +27,26 @@ function hasInteractiveComponents(payload) {
   return Array.isArray(payload?.components) && payload.components.length > 0;
 }
 
+/**
+ * isSingleSelectInteraction — detecta se a interação é um StringSelectMenu
+ * de seleção única. Usado para auto-limpar componentes após escolha.
+ */
+function isSingleSelectInteraction(interaction) {
+  return interaction?.isStringSelectMenu?.() && interaction.maxValues === 1;
+}
+
+/**
+ * autoClearSelectComponents — se a interação vier de um single-select e o
+ * payload NÃO explicitar components, assume que o handler quer consumir o
+ * select e substitui por lista vazia (remove-o da mensagem).
+ * Multi-select NÃO é tocado — o user pode escolher vários antes de confirmar.
+ */
+function autoClearSelectComponents(interaction, payload) {
+  if (isSingleSelectInteraction(interaction) && payload && payload.components === undefined) {
+    payload.components = [];
+  }
+}
+
 function scheduleDeleteInteractionReply(interaction, ms = EPHEMERAL_AUTO_DELETE_MS) {
   setTimeout(() => {
     interaction.deleteReply().catch(() => {});
@@ -61,6 +81,8 @@ function scheduleDeleteMessage(message, ms = EPHEMERAL_AUTO_DELETE_MS) {
  *   ttlMs: override explícito em ms (usar apenas em casos especiais).
  */
 async function safeReply(interaction, payload, opts = {}) {
+  autoClearSelectComponents(interaction, payload);
+
   const cls =
     opts.messageClass ||
     classFromLegacyOpts({
@@ -88,6 +110,7 @@ async function safeReply(interaction, payload, opts = {}) {
  * Útil em cadeias de dropdowns: o velho desaparece, o próximo aparece no mesmo sítio.
  */
 async function safeUpdate(interaction, payload, opts = {}) {
+  autoClearSelectComponents(interaction, payload);
   if (typeof interaction.update !== 'function') return safeReply(interaction, payload, opts);
   try {
     await interaction.update(payload);

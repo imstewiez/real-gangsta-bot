@@ -23,7 +23,7 @@ describe('messagePolicy', () => {
     assert.ok(TTL_MS.BANAL < TTL_MS.WARN);
     assert.ok(TTL_MS.WARN < TTL_MS.COCKPIT);
     assert.ok(TTL_MS.RESULT === TTL_MS.ERROR);
-    assert.equal(TTL_MS.FLOW, null);
+    assert.equal(TTL_MS.FLOW, 300_000);
     assert.equal(TTL_MS.PERSISTENT, null);
   });
 

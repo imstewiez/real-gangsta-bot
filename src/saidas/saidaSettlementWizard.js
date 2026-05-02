@@ -33,6 +33,7 @@ const {
 const { saidaRepo, killRepo, memberRepo } = require('../repositories');
 const { query } = require('../db');
 const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { buildSearchableSelect } = require('../shared/selectSearch');
 const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { SAIDAS, EMOJI } = require('../content');
 const CONFIG = require('../config');
@@ -77,16 +78,15 @@ async function _renderWizardMessage(saidaId) {
         value: p.discord_id,
       };
     });
-    components.push(
-      new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId(`saida::wz_select::${saidaId}`)
-          .setPlaceholder(SAIDAS.WIZARD_SELECT_PLACEHOLDER(pending.length))
-          .setMinValues(1)
-          .setMaxValues(1)
-          .addOptions(options)
-      )
-    );
+    const searchRows = buildSearchableSelect({
+      customId: `saida::wz_select::${saidaId}`,
+      placeholder: SAIDAS.WIZARD_SELECT_PLACEHOLDER(pending.length),
+      options,
+      searchKey: `wizard::${saidaId}`,
+      modalTitle: 'Pesquisar participante',
+      messageClass: 'FLOW',
+    });
+    components.push(...searchRows);
   }
 
   components.push(

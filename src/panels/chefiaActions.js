@@ -166,10 +166,41 @@ async function republicarTodosPaineis(interaction) {
   );
 }
 
+/**
+ * Handler genérico para select menus de painel (Chefia / Patrão di Zona).
+ * O valor seleccionado é o customId do botão equivalente; procura-se o
+ * handler no BUTTON_ROUTES e delega-se directamente.
+ */
+async function handlePanelGerirSelect(interaction) {
+  const value = interaction.values[0];
+  if (!value) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} Nenhuma acção seleccionada.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
+  }
+
+  const { BUTTON_ROUTES } = require('../app/discord/routers/buttons');
+  const route = BUTTON_ROUTES.find(r => r.match(value));
+  if (!route) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.ERRO} Acção \`${value}\` não encontrada.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
+  }
+
+  // O handler espera interaction com customId correspondente
+  interaction.customId = value;
+  return route.handler(interaction);
+}
+
 module.exports = {
   listarStickys,
   verTops,
   verLogs,
   republicarDisponibilidade,
   republicarTodosPaineis,
+  handlePanelGerirSelect,
 };

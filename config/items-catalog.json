@@ -1,13 +1,5 @@
 {
-  "categories": [
-    "madeiras",
-    "metais",
-    "quimicos",
-    "reciclagem",
-    "texteis",
-    "componentes",
-    "outros"
-  ],
+  "categories": ["madeiras", "metais", "quimicos", "reciclagem", "texteis", "componentes", "outros"],
   "defaultItems": [
     { "name": "Rádio Estragado", "category": "reciclagem", "unit": "unidade", "estimatedValue": 30 },
     { "name": "Telemóvel Estragado", "category": "reciclagem", "unit": "unidade", "estimatedValue": 30 },

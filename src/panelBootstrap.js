@@ -127,21 +127,30 @@ async function bootstrapPanel(client, panelDef) {
     // Nunca editamos — sempre criamos mensagens novas. Assim cada deploy
     // mostra os painéis actualizados sem depender de state ou schema version.
     let deletedCount = 0;
+    let failedCount = 0;
     let lastId = null;
-    for (let i = 0; i < 10; i++) {
+    let more = true;
+    while (more) {
       const opts = lastId ? { limit: 100, before: lastId } : { limit: 100 };
       const batch = await channel.messages.fetch(opts).catch(() => null);
-      if (!batch || batch.size === 0) break;
+      if (!batch || batch.size === 0) {
+        more = false;
+        break;
+      }
       const botMsgs = [...batch.values()].filter(m => m.author.id === client.user.id);
       for (const msg of botMsgs) {
-        await msg.delete().catch(() => {});
-        deletedCount++;
+        try {
+          await msg.delete();
+          deletedCount++;
+        } catch {
+          failedCount++;
+        }
       }
       lastId = batch.last()?.id;
-      if (batch.size < 100) break;
+      if (batch.size < 100) more = false;
     }
-    if (deletedCount > 0) {
-      log(`[PANELS] ${deletedCount} mensagem(ns) antiga(s) do bot apagada(s) em #${channel.name}.`);
+    if (deletedCount > 0 || failedCount > 0) {
+      log(`[PANELS] ${deletedCount} mensagem(ns) apagada(s), ${failedCount} falha(s) em #${channel.name}.`);
     }
 
     const newMsg = await channel.send(payload);
@@ -197,7 +206,7 @@ async function upsertPanelSticky(panelDef, channelId, actorId = 'system:panel-bo
 //   - botões são renomeados/reorganizados
 // O estado anterior (panelMessages) é limpo e todos os painéis voltam
 // a seguir o caminho "sem mensagem existente" → delete old + create new.
-const PANELS_SCHEMA_VERSION = 13;
+const PANELS_SCHEMA_VERSION = 15;
 
 async function _maybeForceRebuild() {
   const stored = await getStateKey('panelsSchemaVersion', 0);
@@ -264,16 +273,22 @@ async function backfillResidentPanels(client) {
   // apanha apenas as mais recentes e falha. Aqui combina:
   //   (a) últimas 30 mensagens (caso o painel tenha sido reposted)
   //   (b) 100 mais antigas via after:'0' (canto oposto — habitual de painel)
-  async function _hasBairristaPanel(ch, botId) {
+  async function _findBairristaPanel(ch, botId) {
     const matches = m =>
       m.author?.id === botId &&
       m.components?.length &&
       m.components.some(row => row.components?.some(c => c.customId?.startsWith('bairrista::')));
     const recent = await ch.messages.fetch({ limit: 30 }).catch(() => null);
-    if (recent && [...recent.values()].some(matches)) return true;
+    if (recent) {
+      const found = [...recent.values()].find(matches);
+      if (found) return found;
+    }
     const oldest = await ch.messages.fetch({ limit: 100, after: '0' }).catch(() => null);
-    if (oldest && [...oldest.values()].some(matches)) return true;
-    return false;
+    if (oldest) {
+      const found = [...oldest.values()].find(matches);
+      if (found) return found;
+    }
+    return null;
   }
 
   let posted = 0,
@@ -287,16 +302,22 @@ async function backfillResidentPanels(client) {
         continue;
       }
 
-      if (await _hasBairristaPanel(ch, client.user.id)) {
+      const existingPanel = await _findBairristaPanel(ch, client.user.id);
+      if (existingPanel) {
+        // Garante que painéis existentes (mesmo antigos) ficam pinned.
+        if (!existingPanel.pinned) {
+          await existingPanel.pin().catch(() => {});
+        }
         skipped++;
         continue;
       }
 
       const name = row.full_name || row.display_name || row.nickname || 'bairrista';
-      await ch.send({
+      const panelMsg = await ch.send({
         embeds: [welcomeChannelEmbed(name)],
         components: buildBairristaChannelPanel(),
       });
+      await panelMsg.pin().catch(() => {});
       posted++;
       await new Promise(r => setTimeout(r, 300));
     } catch (e) {
