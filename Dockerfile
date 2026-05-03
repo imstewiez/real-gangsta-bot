@@ -3,7 +3,7 @@
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── Stage 1: deps ────────────────────────────────────────────────────────────
-FROM node:18-alpine AS deps
+FROM public.ecr.aws/docker/library/node:18-alpine AS deps
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 # ── Stage 2: runtime ─────────────────────────────────────────────────────────
-FROM node:18-alpine
+FROM public.ecr.aws/docker/library/node:18-alpine
 
 LABEL maintainer="Firma RedWood"
 LABEL description="Bot di Zona — Discord bot de gestão operacional"
