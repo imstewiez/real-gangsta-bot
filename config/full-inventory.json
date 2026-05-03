@@ -983,6 +983,13 @@
       "unit": "unidade",
       "price": 4000,
       "stock": 0
+    },
+    {
+      "name": "Pistol XM3",
+      "category": "armas_fogo",
+      "unit": "unidade",
+      "price": 53850,
+      "stock": 0
     }
   ]
 }
