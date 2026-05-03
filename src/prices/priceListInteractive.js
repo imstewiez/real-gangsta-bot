@@ -31,7 +31,9 @@ const ARMAS_RED_NAMES = new Set(['.50', 'P90', 'PDW', 'Revolver', 'Gadget Pistol
 const EXCLUDED_NAMES = new Set([
   'Lançador da Âncora',
   'Colete Tático',
-  // Carregadores específicos de arma — não vendemos separadamente
+  'Colete Leve',
+  'Colete Pesado',
+  // Carregadores específicos de arma
   'Micro Carregador',
   'TEC-9 Carregador',
   'TecPistol Carregador',
@@ -75,6 +77,38 @@ const BUY_WEAPON_NAMES = new Set([
   'Carabina Especial',
 ]);
 
+// Itens que o bairrista pode vender/entregar à firma
+const SELLABLE_ITEM_NAMES = new Set([
+  'Lixo Eletrónico',
+  'Sucata',
+  'Peças',
+  'Peças Estragadas',
+  'Plástico Reciclado',
+  'Plástico Velho',
+  'Telemóvel Estragado',
+  'Rádio Estragado',
+  'Tábua Cerejeira',
+  'Tábua Pinho',
+  'Tábua Ébano',
+  'Tábua Carvalho',
+  'Borracha',
+  'Papel',
+  'Molde de Arma',
+  'Cobre',
+  'Carvão',
+  'Pólvora',
+  'Ferro',
+  'Corpo Pistol XM3',
+  'Corpo UZI',
+  'Corpo TEC-9',
+  'Corpo TEC Pistol',
+  'Corpo AP Pistol',
+  'Print Laranja',
+  'Print Azul',
+  'Print Vermelha',
+  'Print Amarela',
+]);
+
 function classifyDisplayCategory(item) {
   const name = item.name || '';
   const cat = item.category || '';
@@ -90,7 +124,6 @@ function classifyDisplayCategory(item) {
     return 'armas_extra';
   }
 
-  // Carregadores genéricos
   if (name === 'Carregador Orange') return 'carregadores_orange';
   if (name === 'Carregador Red') return 'carregadores_red';
   if (name === 'Carregador Especial') return 'carregadores_special';
@@ -248,40 +281,25 @@ async function sendPaginatedEmbeds(interaction, embeds, titlePrefix) {
 
 // ── Build embeds ────────────────────────────────────────────────────────────
 
-const DISPLAY_CATEGORIES = [
-  { key: 'armas_brancas', label: '🔪 Armas Brancas', color: COLOR.DARK },
-  { key: 'armas_orange', label: '🟠 Armas Orange', color: COLOR.GOLD },
-  { key: 'carregadores_orange', label: '🟠 Carregadores', color: 0xff8c00 },
-  { key: 'armas_red', label: '🔴 Armas Red', color: COLOR.DANGER },
-  { key: 'carregadores_red', label: '🔴 Carregadores', color: 0xdc143c },
-  { key: 'carregadores_special', label: '⭐ Carregadores', color: 0x9370db },
-  { key: 'coletes', label: '🛡️ Coletes', color: COLOR.TEAL },
-  { key: 'acessorios', label: '🔧 Acessórios', color: COLOR.INFO },
-  // Chefia only
+const BUY_CATEGORIES = [
+  { key: 'armas_brancas', label: '🔪 Armas Brancas', color: COLOR.DARK, cols: 'price' },
+  { key: 'armas_orange', label: '🟠 Armas Orange', color: COLOR.GOLD, cols: 'craft' },
+  { key: 'armas_red', label: '🔴 Armas Red', color: COLOR.DANGER, cols: 'craft' },
+  { key: 'carregadores', label: '🔋 Carregadores', color: COLOR.TEAL, cols: 'craft' },
+  { key: 'coletes', label: '🛡️ Coletes', color: COLOR.INFO, cols: 'colete' },
+  { key: 'acessorios', label: '🔧 Acessórios', color: COLOR.INFO, cols: 'price' },
+];
+
+const SELL_CATEGORIES = [
   { key: 'lixo', label: '♻️ Lixo & Reciclagem', color: COLOR.MUTED },
   { key: 'madeiras', label: '🪵 Madeiras', color: COLOR.INFO },
   { key: 'materias_primas', label: '🔩 Matérias-Primas', color: COLOR.INFO },
   { key: 'minerios', label: '⛏️ Minérios', color: COLOR.INFO },
   { key: 'corpos', label: '🔫 Corpos de Arma', color: COLOR.WARNING_SOFT },
   { key: 'prints', label: '📜 Prints', color: COLOR.WARNING_SOFT },
-  { key: 'drogas', label: '💊 Drogas', color: COLOR.PURPLE },
-  { key: 'dinheiro', label: '💵 Dinheiro', color: COLOR.SUCCESS },
-  { key: 'outros', label: '📦 Outros', color: COLOR.MUTED },
 ];
 
-// Categorias disponíveis para compra
-const BUY_CATEGORIES = new Set([
-  'armas_brancas',
-  'armas_orange',
-  'armas_red',
-  'carregadores_orange',
-  'carregadores_red',
-  'carregadores_special',
-  'coletes',
-  'acessorios',
-]);
-
-// Ordem explícita dentro de cada categoria de arma
+// Ordem explícita
 const ORDER_ARMAS_BRANCAS = ['Canivete', 'Taco de Baseball', 'Taco de 8Ball'];
 const ORDER_ARMAS_ORANGE = [
   'SNS Pistol',
@@ -295,10 +313,10 @@ const ORDER_ARMAS_ORANGE = [
   'Gusenberg',
 ];
 const ORDER_ARMAS_RED = ['.50', 'Gadget Pistol', 'Revolver', 'P90', 'PDW', 'Bullpup', 'Carabina Especial'];
+const ORDER_CARREGADORES = ['Carregador Orange', 'Carregador Red', 'Carregador Especial'];
 
-// Ordem para fórmulas de craft (mesma ordem das armas + carregadores)
+// Ordem para fórmulas de craft
 const CRAFT_ORDER = new Map([
-  // Armas Orange
   ['SNS Pistol', 1],
   ['Pistol XM3', 2],
   ['Mini SMG', 3],
@@ -308,7 +326,6 @@ const CRAFT_ORDER = new Map([
   ['AP Pistol', 7],
   ['Compact Rifle', 8],
   ['Gusenberg', 9],
-  // Armas Red
   ['.50', 10],
   ['Gadget Pistol', 11],
   ['Revolver', 12],
@@ -316,7 +333,6 @@ const CRAFT_ORDER = new Map([
   ['PDW', 14],
   ['Bullpup', 15],
   ['Carabina Especial', 16],
-  // Carregadores
   ['Carregador Orange', 17],
   ['Carregador Red', 18],
   ['Carregador Especial', 19],
@@ -331,7 +347,6 @@ function sortByExplicitOrder(items, orderArray) {
   });
 }
 
-// Acessórios permitidos (filtrar duplicados e itens irrelevantes)
 const ALLOWED_ACESSORIOS = new Set([
   'Silenciador',
   'Mira',
@@ -342,6 +357,26 @@ const ALLOWED_ACESSORIOS = new Set([
   'Extensivo',
   'Mag Expandido',
 ]);
+
+// ── Helpers de tabela ───────────────────────────────────────────────────────
+
+function buildTable(prefix, suffix, lines, maxLen = 1000) {
+  const chunks = [];
+  let current = [];
+  let currentLen = prefix.length + suffix.length;
+  for (const line of lines) {
+    if (currentLen + line.length + 1 > maxLen) {
+      chunks.push(current);
+      current = [line];
+      currentLen = prefix.length + suffix.length + line.length + 1;
+    } else {
+      current.push(line);
+      currentLen += line.length + 1;
+    }
+  }
+  if (current.length) chunks.push(current);
+  return chunks;
+}
 
 async function buildPriceEmbedsForMember(memberRole, memberTier) {
   const [items, recipes] = await Promise.all([
@@ -355,6 +390,7 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
   const buyMult = getRankMultiplier(memberRole, 'buy', memberTier);
   const sellMult = getRankMultiplier(memberRole, 'sell', memberTier);
 
+  // Agrupar todos os items por categoria
   const byCat = new Map();
   for (const item of items) {
     const dc = classifyDisplayCategory(item);
@@ -372,72 +408,103 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       .setTitle(`${EMOJI.CRAFT} O Teu Preçário`)
       .setDescription(
         '**Como ler:**\n' +
-          '💵 **Vende** à Firma (eles compram-te)\n' +
-          '💰 **Compra** à Firma (tu compras, sem material)\n\n' +
-          `_Rank: ${memberRole} | Compra ${fmtPct(buyMult)} | Venda ${fmtPct(sellMult)}_`
+          '💰 **Preço** — preço final (já com markup do teu tier)\n' +
+          '🔧 **s/ Mat** — sem entregar materiais (só dinheiro)\n' +
+          '📦 **c/ Mat** — entregas os materiais de craft + dinheiro\n\n' +
+          `_Rank: ${memberRole} | Compra ${fmtPct(buyMult)}_`
       )
   );
   embeds.push(legend);
 
-  for (const catDef of DISPLAY_CATEGORIES) {
-    if (!BUY_CATEGORIES.has(catDef.key)) continue;
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECÇÃO COMPRA (o que a firma VENDE → bairrista COMPRA)
+  // ═══════════════════════════════════════════════════════════════════════════
 
-    let catItems = byCat.get(catDef.key) || [];
+  for (const catDef of BUY_CATEGORIES) {
+    let catItems;
+
+    if (catDef.key === 'carregadores') {
+      // Agrupar os 3 tipos de carregadores numa só secção
+      const orange = byCat.get('carregadores_orange') || [];
+      const red = byCat.get('carregadores_red') || [];
+      const special = byCat.get('carregadores_special') || [];
+      catItems = [...orange, ...red, ...special];
+      catItems = sortByExplicitOrder(catItems, ORDER_CARREGADORES);
+    } else {
+      catItems = byCat.get(catDef.key) || [];
+    }
+
     if (!catItems.length) continue;
 
-    // Filtrar armas: só as explicitamente permitidas
+    // Filtrar armas
     if (catDef.key.startsWith('armas_')) {
       catItems = catItems.filter(item => BUY_WEAPON_NAMES.has(item.name));
       if (!catItems.length) continue;
+      if (catDef.key === 'armas_brancas') catItems = sortByExplicitOrder(catItems, ORDER_ARMAS_BRANCAS);
+      else if (catDef.key === 'armas_orange') catItems = sortByExplicitOrder(catItems, ORDER_ARMAS_ORANGE);
+      else if (catDef.key === 'armas_red') catItems = sortByExplicitOrder(catItems, ORDER_ARMAS_RED);
     }
 
-    // Ordenação customizada por categoria
-    if (catDef.key === 'armas_brancas') {
-      catItems = sortByExplicitOrder(catItems, ORDER_ARMAS_BRANCAS);
-    } else if (catDef.key === 'armas_orange') {
-      catItems = sortByExplicitOrder(catItems, ORDER_ARMAS_ORANGE);
-    } else if (catDef.key === 'armas_red') {
-      catItems = sortByExplicitOrder(catItems, ORDER_ARMAS_RED);
-    } else if (catDef.key === 'acessorios') {
+    // Filtrar acessórios
+    if (catDef.key === 'acessorios') {
       catItems = catItems.filter(i => ALLOWED_ACESSORIOS.has(i.name));
       if (!catItems.length) continue;
       catItems.sort((a, b) => a.name.localeCompare(b.name));
-    } else {
-      catItems.sort((a, b) => a.name.localeCompare(b.name));
     }
 
+    // Filtrar coletes (só Colete Padrão)
+    if (catDef.key === 'coletes') {
+      catItems = catItems.filter(i => i.name === 'Colete Padrão');
+      if (!catItems.length) continue;
+    }
+
+    // ── Construir linhas da tabela conforme o tipo de colunas ───────────────
     const lines = catItems.map(item => {
-      const base = parseFloat(item.estimated_value) || 0;
-      const sellPrice = base * (1 + sellMult);
-      const buyPrice = base * (1 + buyMult);
-
       const name = padName(item.name, 22);
-      const baseStr = fmtPriceCompact(base).padStart(6);
-      const sellStr = fmtPriceCompact(sellPrice).padStart(6);
-      const buyStr = fmtPriceCompact(buyPrice).padStart(6);
 
-      return `${name}  ${baseStr}  ${sellStr}  ${buyStr}`;
+      if (catDef.cols === 'craft') {
+        const base = parseFloat(item.estimated_value) || 0;
+        const recipe = recipeMap.get(item.id);
+        const materialCost = recipe
+          ? recipe.ingredients.reduce(
+              (sum, ing) => sum + (parseFloat(ing.unit_price) || parseFloat(ing.ingredient_price) || 0) * ing.quantity,
+              0
+            )
+          : 0;
+        const semMat = base * (1 + buyMult);
+        const comMat = materialCost * (1 + buyMult);
+        return `${name}  ${fmtPriceCompact(semMat).padStart(6)}  ${fmtPriceCompact(comMat).padStart(6)}`;
+      }
+
+      if (catDef.cols === 'colete') {
+        // Colete Padrão: preços hardcoded
+        const limpo = 1600;
+        const sujo = 1800;
+        return `${name}  ${fmtPriceCompact(limpo).padStart(6)}  ${fmtPriceCompact(sujo).padStart(6)}`;
+      }
+
+      // cols === 'price'
+      const base = parseFloat(item.estimated_value) || 0;
+      const price = base * (1 + buyMult);
+      return `${name}  ${fmtPriceCompact(price).padStart(6)}`;
     });
 
-    const header = `${padName('Item', 22)}  ${'Base'.padStart(6)}  ${'Vende'.padStart(6)}  ${'Compra'.padStart(6)}`;
-    const sep = '────────────────────────────────────────────────────';
+    // ── Header conforme tipo de colunas ─────────────────────────────────────
+    let header, sep;
+    if (catDef.cols === 'craft') {
+      header = `${padName('Item', 22)}  ${'s/ Mat'.padStart(6)}  ${'c/ Mat'.padStart(6)}`;
+      sep = '──────────────────────────────────────────';
+    } else if (catDef.cols === 'colete') {
+      header = `${padName('Item', 22)}  ${'Limpo'.padStart(6)}  ${'Sujo'.padStart(6)}`;
+      sep = '──────────────────────────────────────────';
+    } else {
+      header = `${padName('Item', 22)}  ${'Preço'.padStart(6)}`;
+      sep = '──────────────────────────────────';
+    }
+
     const prefix = '```\n' + header + '\n' + sep + '\n';
     const suffix = '\n```';
-
-    const chunks = [];
-    let current = [];
-    let currentLen = prefix.length + suffix.length;
-    for (const line of lines) {
-      if (currentLen + line.length + 1 > 1000) {
-        chunks.push(current);
-        current = [line];
-        currentLen = prefix.length + suffix.length + line.length + 1;
-      } else {
-        current.push(line);
-        currentLen += line.length + 1;
-      }
-    }
-    if (current.length) chunks.push(current);
+    const chunks = buildTable(prefix, suffix, lines);
 
     const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(catDef.label));
     for (const chunk of chunks) {
@@ -446,11 +513,76 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
     embeds.push(embed);
   }
 
-  // ── Fórmulas de Craft ────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECÇÃO VENDA (o que a firma COMPRA → bairrista VENDE)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const sellItems = items.filter(item => SELLABLE_ITEM_NAMES.has(item.name));
+  if (sellItems.length) {
+    const sellByCat = new Map();
+    for (const item of sellItems) {
+      const dc = classifyDisplayCategory(item);
+      if (!dc) continue;
+      if (!sellByCat.has(dc)) sellByCat.set(dc, []);
+      sellByCat.get(dc).push(item);
+    }
+
+    // Embed separador
+    const sellHeader = applyLogo(
+      brandEmbed('MOVEMENT')
+        .setColor(COLOR.SUCCESS)
+        .setTitle('💵 Preços de Venda')
+        .setDescription('Preços que a **Firma paga** por cada material que entregas.')
+    );
+    embeds.push(sellHeader);
+
+    for (const catDef of SELL_CATEGORIES) {
+      const catItems = sellByCat.get(catDef.key) || [];
+      if (!catItems.length) continue;
+      catItems.sort((a, b) => a.name.localeCompare(b.name));
+
+      const lines = catItems.map(item => {
+        const base = parseFloat(item.estimated_value) || 0;
+        const price = base * (1 + sellMult);
+        const name = padName(item.name, 22);
+        return `${name}  ${fmtPriceCompact(price).padStart(6)}`;
+      });
+
+      const header = `${padName('Item', 22)}  ${'Preço'.padStart(6)}`;
+      const sep = '──────────────────────────────────';
+      const prefix = '```\n' + header + '\n' + sep + '\n';
+      const suffix = '\n```';
+      const chunks = buildTable(prefix, suffix, lines);
+
+      const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(catDef.label));
+      for (const chunk of chunks) {
+        embed.addFields({ name: '\u200b', value: prefix + chunk.join('\n') + suffix, inline: false });
+      }
+      embeds.push(embed);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FÓRMULAS DE CRAFT
+  // ═══════════════════════════════════════════════════════════════════════════
+
   const buyableItemIds = new Set();
   for (const item of items) {
     const dc = classifyDisplayCategory(item);
-    if (!dc || !BUY_CATEGORIES.has(dc)) continue;
+    if (
+      !dc ||
+      ![
+        'armas_brancas',
+        'armas_orange',
+        'armas_red',
+        'carregadores_orange',
+        'carregadores_red',
+        'carregadores_special',
+        'coletes',
+        'acessorios',
+      ].includes(dc)
+    )
+      continue;
     if (dc.startsWith('armas_') && !BUY_WEAPON_NAMES.has(item.name)) continue;
     buyableItemIds.add(item.id);
   }
@@ -471,7 +603,6 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       craft_corpos: { label: '🔩 Corpos de Arma', color: COLOR.INFO, emoji: '🔩' },
     };
 
-    // Embed de cabeçalho das fórmulas
     const craftHeader = applyLogo(
       brandEmbed('MOVEMENT')
         .setColor(COLOR.MUTED)
@@ -497,7 +628,6 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       }
 
       if (lines.length) {
-        // Chunking para não ultrapassar 1024 chars por field
         let current = [];
         let currentLen = 0;
         const chunks = [];
@@ -531,7 +661,6 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
 function normalizeCraftCategory(cat) {
   if (!cat) return 'outros';
   if (cat.startsWith('craft_')) return cat;
-  // Normalizar categorias legacy (ex: armas_fogo → craft_weapons)
   const map = {
     armas_fogo: 'craft_weapons',
     armas_brancas: 'craft_weapons',
@@ -631,7 +760,7 @@ async function buildPriceEmbedsForChefia() {
       byCat.get(dc).push(item);
     }
 
-    for (const catDef of DISPLAY_CATEGORIES) {
+    for (const catDef of BUY_CATEGORIES) {
       const catItems = byCat.get(catDef.key) || [];
       if (!catItems.length) continue;
       catItems.sort((a, b) => a.name.localeCompare(b.name));
