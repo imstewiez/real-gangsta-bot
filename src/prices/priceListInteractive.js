@@ -11,7 +11,7 @@
  * Tudo calculado em tempo real com base no rank/tier do membro.
  */
 
-const { MessageFlags, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
+const { MessageFlags, ButtonBuilder, ButtonStyle, ActionRowBuilder, EmbedBuilder } = require('discord.js');
 const { inventoryRepo } = require('../repositories');
 const craftRecipeRepo = require('../repositories/craftRecipe');
 const { getRankMultiplier } = require('../orders/orderPricingEngine');
@@ -97,9 +97,21 @@ function fmtPrice(n) {
   return (Number(n) || 0).toLocaleString('pt-PT') + '€';
 }
 
+function fmtPriceCompact(n) {
+  const num = Number(n) || 0;
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+  return num.toString();
+}
+
 function fmtPct(n) {
   const s = (n * 100).toFixed(0);
   return n >= 0 ? `+${s}%` : `${s}%`;
+}
+
+function padName(name, max = 18) {
+  const s = String(name);
+  return s.length > max ? s.slice(0, max - 1) + '…' : s.padEnd(max);
 }
 
 // ── Paginação ───────────────────────────────────────────────────────────────
@@ -123,36 +135,13 @@ function chunkEmbedsIntoPages(embeds) {
 
   for (const embed of embeds) {
     const len = embedJsonLength(embed);
-    // Se o embed sozinho já excede o limite, truncar a descrição/fields
-    if (len > MAX_EMBED_CHARS) {
-      // Tenta truncar a descrição
-      const json = embed.toJSON ? embed.toJSON() : { ...embed.data };
-      if (json.description && json.description.length > 2000) {
-        json.description = json.description.slice(0, 1997) + '...';
-      }
-      if (json.fields) {
-        let fieldsLen = 0;
-        const trimmedFields = [];
-        for (const f of json.fields) {
-          const fLen = (f.name?.length || 0) + (f.value?.length || 0);
-          if (fieldsLen + fLen > 3000) break; // margem segura
-          trimmedFields.push(f);
-          fieldsLen += fLen;
-        }
-        json.fields = trimmedFields;
-      }
-      embed.data = json;
-    }
-
-    const safeLen = embedJsonLength(embed);
-
-    if (currentPage.length >= MAX_EMBEDS_PER_MSG || currentLen + safeLen > MAX_EMBED_CHARS) {
+    if (currentPage.length >= MAX_EMBEDS_PER_MSG || currentLen + len > MAX_EMBED_CHARS) {
       if (currentPage.length) pages.push(currentPage);
       currentPage = [embed];
-      currentLen = safeLen;
+      currentLen = len;
     } else {
       currentPage.push(embed);
-      currentLen += safeLen;
+      currentLen += len;
     }
   }
   if (currentPage.length) pages.push(currentPage);
@@ -183,11 +172,15 @@ async function sendPaginatedEmbeds(interaction, embeds, titlePrefix) {
   }
 
   function buildReply() {
-    const pageEmbeds = pages[pageIndex];
-    // Adicionar footer com página
-    const lastEmbed = pageEmbeds[pageEmbeds.length - 1];
-    if (lastEmbed && lastEmbed.setFooter) {
-      lastEmbed.setFooter({ text: `Página ${pageIndex + 1}/${pages.length}` });
+    const pageEmbeds = pages[pageIndex].map(e => {
+      // Clonar o embed para não mutar o original
+      const clone = e.toJSON ? EmbedBuilder.from(e.toJSON()) : EmbedBuilder.from(e.data);
+      return clone;
+    });
+    // Adicionar footer ao último embed da página
+    const last = pageEmbeds[pageEmbeds.length - 1];
+    if (last) {
+      last.setFooter({ text: `Página ${pageIndex + 1}/${pages.length}` });
     }
     return { embeds: pageEmbeds, components: pages.length > 1 ? buildComponents() : [] };
   }
@@ -195,7 +188,13 @@ async function sendPaginatedEmbeds(interaction, embeds, titlePrefix) {
   const msg = await interaction.editReply(buildReply());
 
   // Se só há uma página, não precisamos de collector
-  if (pages.length <= 1) return msg;
+  if (pages.length <= 1) {
+    // Apagar após 5 minutos mesmo sem paginação
+    setTimeout(() => {
+      interaction.deleteReply().catch(() => {});
+    }, 300_000);
+    return msg;
+  }
 
   const collector = msg.createMessageComponentCollector({
     filter: i => i.user.id === interaction.user.id,
@@ -203,18 +202,29 @@ async function sendPaginatedEmbeds(interaction, embeds, titlePrefix) {
   });
 
   collector.on('collect', async i => {
-    if (i.customId === 'precarios_prev' && pageIndex > 0) pageIndex--;
-    else if (i.customId === 'precarios_next' && pageIndex < pages.length - 1) pageIndex++;
-    else if (i.customId === 'precarios_close') {
-      collector.stop();
-      return i.update({ content: 'Preçário fechado.', embeds: [], components: [] });
+    try {
+      if (i.customId === 'precarios_prev' && pageIndex > 0) pageIndex--;
+      else if (i.customId === 'precarios_next' && pageIndex < pages.length - 1) pageIndex++;
+      else if (i.customId === 'precarios_close') {
+        collector.stop();
+        return i.update({ content: 'Preçário fechado.', embeds: [], components: [] });
+      }
+      await i.update(buildReply());
+    } catch (err) {
+      console.error('[PRECARIOS] Erro na paginação:', err);
+      await i
+        .reply({ content: `${EMOJI.ERRO} Erro ao mudar de página.`, flags: MessageFlags.Ephemeral })
+        .catch(() => {});
     }
-    await i.update(buildReply());
   });
 
-  collector.on('end', async () => {
+  collector.on('end', async (_collected, reason) => {
     try {
-      await interaction.editReply({ components: [] });
+      if (reason === 'time') {
+        await interaction.editReply({ content: '⏱️ Preçário fechado (timeout 5min).', embeds: [], components: [] });
+      } else {
+        await interaction.editReply({ components: [] });
+      }
     } catch {
       /* mensagem pode já ter sido apagada */
     }
@@ -272,10 +282,10 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       .setColor(COLOR.INFO)
       .setTitle(`${EMOJI.CRAFT} O Teu Preçário`)
       .setDescription(
-        `**Como ler:**\n` +
-          `\`V\` = **Venda** à Firma (eles compram-te)\n` +
-          `\`C\` = **Compra** à Firma (tu compras, sem material)\n` +
-          `\`🛠️\` = **Compra c/ Material** (tu entregas ingredientes, pagas menos)\n\n` +
+        '**Como ler:**\n' +
+          '💵 **Vende** à Firma (eles compram-te)\n' +
+          '💰 **Compra** à Firma (tu compras, sem material)\n' +
+          '🛠️ **Compra c/ Material** (entregas ingredientes, pagas menos)\n\n' +
           `_Rank: ${memberRole} | Compra ${fmtPct(buyMult)} | Venda ${fmtPct(sellMult)}_`
       )
   );
@@ -286,16 +296,16 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
     if (!catItems.length) continue;
     catItems.sort((a, b) => a.name.localeCompare(b.name));
 
-    const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(catDef.label));
-
     const lines = catItems.map(item => {
       const base = parseFloat(item.estimated_value) || 0;
       const sellPrice = base * (1 + sellMult);
       const buyPrice = base * (1 + buyMult);
       const recipe = recipeMap.get(item.id);
 
-      let text = `**${item.name}**  `;
-      text += `\`V ${fmtPrice(sellPrice)}\`  \`C ${fmtPrice(buyPrice)}\``;
+      const name = padName(item.name, 18);
+      const baseStr = fmtPriceCompact(base).padStart(6);
+      const sellStr = fmtPriceCompact(sellPrice).padStart(6);
+      const buyStr = fmtPriceCompact(buyPrice).padStart(6);
 
       if (recipe) {
         const materialCost = recipe.ingredients.reduce((sum, ing) => {
@@ -303,28 +313,18 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
           return sum + unit * ing.quantity;
         }, 0);
         const buyWithMat = materialCost * (1 + buyMult);
-        text += `  \`🛠️ ${fmtPrice(buyWithMat)}\``;
+        const matStr = fmtPriceCompact(buyWithMat).padStart(6);
+        return `${name}  ${baseStr}  ${sellStr}  ${buyStr}  ${matStr}`;
       }
-      return text;
+      return `${name}  ${baseStr}  ${sellStr}  ${buyStr}       —`;
     });
 
-    // Discord limita field value a 1024 chars. Agrupar linhas em fields.
-    let chunk = [];
-    let chunkLen = 0;
-    for (const line of lines) {
-      const lineLen = line.length + 1;
-      if (chunkLen + lineLen > 950) {
-        embed.addFields({ name: '\u200b', value: chunk.join('\n'), inline: false });
-        chunk = [line];
-        chunkLen = lineLen;
-      } else {
-        chunk.push(line);
-        chunkLen += lineLen;
-      }
-    }
-    if (chunk.length) {
-      embed.addFields({ name: '\u200b', value: chunk.join('\n'), inline: false });
-    }
+    const header = `${padName('Item', 18)}   Base  Vende Compra  c/Mat`;
+    const sep = '─────────────────────────────────────────────';
+    const table = '```\n' + header + '\n' + sep + '\n' + lines.join('\n') + '\n```';
+
+    const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(catDef.label));
+    embed.addFields({ name: '\u200b', value: table, inline: false });
 
     embeds.push(embed);
   }
