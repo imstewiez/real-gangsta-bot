@@ -30,6 +30,7 @@ const ARMAS_RED_NAMES = new Set(['.50', 'P90', 'PDW', 'Revolver', 'Gadget Pistol
 
 const EXCLUDED_NAMES = new Set([
   'Lançador da Âncora',
+  'Colete Tático',
   // Carregadores específicos de arma — não vendemos separadamente
   'Micro Carregador',
   'TEC-9 Carregador',
@@ -430,13 +431,6 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
 
   const relevantRecipes = recipes.filter(r => buyableItemIds.has(r.item_id));
   if (relevantRecipes.length) {
-    const craftEmbed = applyLogo(
-      brandEmbed('MOVEMENT')
-        .setColor(COLOR.MUTED)
-        .setTitle(`${EMOJI.CRAFT} Fórmulas de Craft`)
-        .setDescription('Ingredientes necessários para craftar cada item.')
-    );
-
     const byCraftCat = new Map();
     for (const r of relevantRecipes) {
       const normCat = normalizeCraftCategory(r.category);
@@ -444,32 +438,60 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       byCraftCat.get(normCat).push(r);
     }
 
-    const CRAFT_LABELS = {
-      craft_weapons: '🔫 Armas',
-      craft_carregadores: '🔋 Carregadores',
-      craft_prints: '📜 Prints',
-      craft_corpos: '🔩 Corpos de Arma',
+    const CRAFT_META = {
+      craft_weapons: { label: '🔫 Armas', color: COLOR.GOLD, emoji: '🔫' },
+      craft_carregadores: { label: '🔋 Carregadores', color: COLOR.TEAL, emoji: '🔋' },
+      craft_prints: { label: '📜 Prints', color: COLOR.WARNING_SOFT, emoji: '📜' },
+      craft_corpos: { label: '🔩 Corpos de Arma', color: COLOR.INFO, emoji: '🔩' },
     };
 
+    // Embed de cabeçalho das fórmulas
+    const craftHeader = applyLogo(
+      brandEmbed('MOVEMENT')
+        .setColor(COLOR.MUTED)
+        .setTitle(`${EMOJI.CRAFT} Fórmulas de Craft`)
+        .setDescription('Ingredientes necessários para craftar cada item.')
+    );
+    embeds.push(craftHeader);
+
     for (const [cat, catRecipes] of byCraftCat) {
+      const meta = CRAFT_META[cat] || { label: cat, color: COLOR.MUTED, emoji: '🛠️' };
+      const catEmbed = applyLogo(brandEmbed('MOVEMENT').setColor(meta.color).setTitle(meta.label));
+
       const lines = [];
       for (const r of catRecipes.sort((a, b) => a.item_id - b.item_id)) {
         const recipe = recipeMap.get(r.item_id);
         if (!recipe) continue;
-        const ingStr = recipe.ingredients.map(ing => `${ing.quantity}× ${ing.ingredient_name}`).join(', ');
-        lines.push(`**${recipe.item_name}** — ${ingStr}`);
+        const ingStr = recipe.ingredients.map(ing => `  • ${ing.quantity}× ${ing.ingredient_name}`).join('\n');
+        lines.push(`**${meta.emoji} ${recipe.item_name}**\n${ingStr}`);
       }
-      if (lines.length) {
-        craftEmbed.addFields({
-          name: CRAFT_LABELS[cat] || cat,
-          value: lines.join('\n').slice(0, 1024),
-          inline: false,
-        });
-      }
-    }
 
-    if (craftEmbed.data.fields?.length) {
-      embeds.push(craftEmbed);
+      if (lines.length) {
+        // Chunking para não ultrapassar 1024 chars por field
+        let current = [];
+        let currentLen = 0;
+        const chunks = [];
+        for (const line of lines) {
+          if (currentLen + line.length + 1 > 1000) {
+            chunks.push(current);
+            current = [line];
+            currentLen = line.length + 1;
+          } else {
+            current.push(line);
+            currentLen += line.length + 1;
+          }
+        }
+        if (current.length) chunks.push(current);
+
+        for (const chunk of chunks) {
+          catEmbed.addFields({
+            name: '\u200b',
+            value: chunk.join('\n\n').slice(0, 1024),
+            inline: false,
+          });
+        }
+        embeds.push(catEmbed);
+      }
     }
   }
 
