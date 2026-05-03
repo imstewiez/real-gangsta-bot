@@ -90,12 +90,10 @@ async function calculateOrderPricing({ itemId, quantity, memberRole, memberTier,
 
   if (hasRecipe) {
     materialCost = ingredients.reduce((sum, ing) => sum + ing.subtotal, 0);
-    // Preço base = custo dos materiais (o utilizador entrega os materiais)
-    basePrice = materialCost;
-  } else {
-    // Item simples: preço base = estimated_value × quantidade
-    basePrice = unitPrice * quantity;
   }
+
+  // Preço base é sempre o estimated_value do item (independente de ter craft ou não)
+  basePrice = unitPrice * quantity;
 
   const multiplier = getRankMultiplier(memberRole, 'buy', memberTier);
   const finalPrice = basePrice * (1 + multiplier);

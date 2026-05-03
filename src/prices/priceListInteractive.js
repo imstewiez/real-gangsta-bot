@@ -254,6 +254,9 @@ const DISPLAY_CATEGORIES = [
   { key: 'outros', label: '📦 Outros', color: COLOR.MUTED },
 ];
 
+// Categorias que um bairrista pode comprar (encomendar)
+const BUY_CATEGORIES = new Set(['armas_brancas', 'armas_orange', 'armas_red', 'carregadores', 'coletes', 'acessorios']);
+
 async function buildPriceEmbedsForMember(memberRole, memberTier) {
   const [items, recipes] = await Promise.all([
     inventoryRepo.getItems(true),
@@ -284,14 +287,17 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       .setDescription(
         '**Como ler:**\n' +
           '💵 **Vende** à Firma (eles compram-te)\n' +
-          '💰 **Compra** à Firma (tu compras, sem material)\n' +
-          '🛠️ **Compra c/ Material** (entregas ingredientes, pagas menos)\n\n' +
+          '💰 **Compra** à Firma (tu compras, sem material)\n\n' +
+          '_Só podes comprar: Armas Brancas, Orange, Red, Carregadores, Coletes e Acessórios._\n\n' +
           `_Rank: ${memberRole} | Compra ${fmtPct(buyMult)} | Venda ${fmtPct(sellMult)}_`
       )
   );
   embeds.push(legend);
 
   for (const catDef of DISPLAY_CATEGORIES) {
+    // Só mostrar categorias compráveis no preçário de compra
+    if (!BUY_CATEGORIES.has(catDef.key)) continue;
+
     const catItems = byCat.get(catDef.key) || [];
     if (!catItems.length) continue;
     catItems.sort((a, b) => a.name.localeCompare(b.name));
@@ -300,27 +306,17 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       const base = parseFloat(item.estimated_value) || 0;
       const sellPrice = base * (1 + sellMult);
       const buyPrice = base * (1 + buyMult);
-      const recipe = recipeMap.get(item.id);
 
       const name = padName(item.name, 18);
       const baseStr = fmtPriceCompact(base).padStart(6);
       const sellStr = fmtPriceCompact(sellPrice).padStart(6);
       const buyStr = fmtPriceCompact(buyPrice).padStart(6);
 
-      if (recipe) {
-        const materialCost = recipe.ingredients.reduce((sum, ing) => {
-          const unit = parseFloat(ing.unit_price) || parseFloat(ing.ingredient_price) || 0;
-          return sum + unit * ing.quantity;
-        }, 0);
-        const buyWithMat = materialCost * (1 + buyMult);
-        const matStr = fmtPriceCompact(buyWithMat).padStart(6);
-        return `${name}  ${baseStr}  ${sellStr}  ${buyStr}  ${matStr}`;
-      }
-      return `${name}  ${baseStr}  ${sellStr}  ${buyStr}  ${'—'.padStart(6)}`;
+      return `${name}  ${baseStr}  ${sellStr}  ${buyStr}`;
     });
 
-    const header = `${padName('Item', 18)}  ${'Base'.padStart(6)}  ${'Vende'.padStart(6)}  ${'Compra'.padStart(6)}  ${'c/Mat'.padStart(6)}`;
-    const sep = '────────────────────────────────────────────────────';
+    const header = `${padName('Item', 18)}  ${'Base'.padStart(6)}  ${'Vende'.padStart(6)}  ${'Compra'.padStart(6)}`;
+    const sep = '────────────────────────────────────────────';
     const prefix = '```\n' + header + '\n' + sep + '\n';
     const suffix = '\n```';
 
@@ -349,46 +345,55 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
     embeds.push(embed);
   }
 
-  // ── Embed de Fórmulas de Craft ───────────────────────────────────────────
-  const craftEmbed = applyLogo(
-    brandEmbed('MOVEMENT')
-      .setColor(COLOR.MUTED)
-      .setTitle(`${EMOJI.CRAFT} Fórmulas de Craft`)
-      .setDescription('Ingredientes necessários para craftar cada item.')
-  );
-
-  const byCraftCat = new Map();
-  for (const r of recipes) {
-    if (!byCraftCat.has(r.category)) byCraftCat.set(r.category, []);
-    byCraftCat.get(r.category).push(r);
+  // ── Embed de Fórmulas de Craft (só para items compráveis) ────────────────
+  const buyableItemIds = new Set();
+  for (const item of items) {
+    const dc = classifyDisplayCategory(item);
+    if (BUY_CATEGORIES.has(dc)) buyableItemIds.add(item.id);
   }
 
-  const CRAFT_LABELS = {
-    craft_weapons: 'Armas',
-    craft_carregadores: 'Carregadores',
-    craft_prints: 'Prints',
-    craft_corpos: 'Corpos de Arma',
-  };
+  const relevantRecipes = recipes.filter(r => buyableItemIds.has(r.item_id));
+  if (relevantRecipes.length) {
+    const craftEmbed = applyLogo(
+      brandEmbed('MOVEMENT')
+        .setColor(COLOR.MUTED)
+        .setTitle(`${EMOJI.CRAFT} Fórmulas de Craft`)
+        .setDescription('Ingredientes necessários para craftar cada item.')
+    );
 
-  for (const [cat, catRecipes] of byCraftCat) {
-    const lines = [];
-    for (const r of catRecipes.sort((a, b) => a.item_id - b.item_id)) {
-      const recipe = recipeMap.get(r.item_id);
-      if (!recipe) continue;
-      const ingStr = recipe.ingredients.map(ing => `${ing.quantity}× ${ing.ingredient_name}`).join(', ');
-      lines.push(`**${recipe.item_name}** — ${ingStr}`);
+    const byCraftCat = new Map();
+    for (const r of relevantRecipes) {
+      if (!byCraftCat.has(r.category)) byCraftCat.set(r.category, []);
+      byCraftCat.get(r.category).push(r);
     }
-    if (lines.length) {
-      craftEmbed.addFields({
-        name: CRAFT_LABELS[cat] || cat,
-        value: lines.join('\n').slice(0, 1024),
-        inline: false,
-      });
-    }
-  }
 
-  if (craftEmbed.data.fields?.length) {
-    embeds.push(craftEmbed);
+    const CRAFT_LABELS = {
+      craft_weapons: 'Armas',
+      craft_carregadores: 'Carregadores',
+      craft_prints: 'Prints',
+      craft_corpos: 'Corpos de Arma',
+    };
+
+    for (const [cat, catRecipes] of byCraftCat) {
+      const lines = [];
+      for (const r of catRecipes.sort((a, b) => a.item_id - b.item_id)) {
+        const recipe = recipeMap.get(r.item_id);
+        if (!recipe) continue;
+        const ingStr = recipe.ingredients.map(ing => `${ing.quantity}× ${ing.ingredient_name}`).join(', ');
+        lines.push(`**${recipe.item_name}** — ${ingStr}`);
+      }
+      if (lines.length) {
+        craftEmbed.addFields({
+          name: CRAFT_LABELS[cat] || cat,
+          value: lines.join('\n').slice(0, 1024),
+          inline: false,
+        });
+      }
+    }
+
+    if (craftEmbed.data.fields?.length) {
+      embeds.push(craftEmbed);
+    }
   }
 
   return embeds;
