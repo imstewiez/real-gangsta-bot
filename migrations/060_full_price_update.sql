@@ -1,6 +1,11 @@
 -- Migração 060: Preços completos e crafts conforme tabela do utilizador
 BEGIN;
 
+-- Garantir constraint UNIQUE para ON CONFLICT em recipe_ingredients
+ALTER TABLE recipe_ingredients
+  ADD CONSTRAINT IF NOT EXISTS recipe_ingredients_unique_ingredient
+  UNIQUE (recipe_id, ingredient_item_id);
+
 -- ══════════════════════════════════════════════════════════════════════════════
 -- Items — INSERT ou UPDATE de estimated_value
 -- ══════════════════════════════════════════════════════════════════════════════
