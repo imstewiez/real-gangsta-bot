@@ -20,8 +20,7 @@ const { EMOJI } = require('../content');
 const { safeReply } = require('../shared/interactionHelpers');
 const { query } = require('../db');
 
-// ── Nome → categoria de exibição (baseado no JSON original de preços) ───────
-// Usado para separar armas orange/red e classificar prints/corpos correctamente.
+// ── Nome → categoria de exibição ────────────────────────────────────────────
 
 const ARMAS_ORANGE_NAMES = new Set([
   'Taser',
@@ -63,9 +62,41 @@ const ARMAS_RED_NAMES = new Set([
   'Carabina Especial MK2',
 ]);
 
+const CARREGADORES_ORANGE_NAMES = new Set([
+  'Micro Carregador',
+  'TEC-9 Carregador',
+  'TecPistol Carregador',
+  'HeavyPistol Carregador',
+  'Carregador Orange',
+]);
+
+const CARREGADORES_RED_NAMES = new Set([
+  'APPistol Carregador',
+  'Pistol50 Carregador',
+  'AssaultSMG Carregador',
+  'AssaultRifle Carregador',
+  'PDW Carregador',
+  'Carregador Red',
+]);
+
+const CARREGADORES_SPECIAL_NAMES = new Set([
+  'Bullpup Carregador',
+  'CompactRifle Carregador',
+  'SpecialCarbine Carregador',
+  'Tactical Carregador',
+  'BattleRifle Carregador',
+  'MilitaryRifle Carregador',
+  'Carregador Especial',
+]);
+
+const EXCLUDED_NAMES = new Set(['Lançador da Âncora']);
+
 function classifyDisplayCategory(item) {
   const name = item.name || '';
   const cat = item.category || '';
+
+  // Items que não fazem parte do preçário da firma
+  if (EXCLUDED_NAMES.has(name)) return null;
 
   if (name.startsWith('Corpo')) return 'corpos';
   if (name.includes('Print')) return 'prints';
@@ -75,7 +106,17 @@ function classifyDisplayCategory(item) {
     if (ARMAS_ORANGE_NAMES.has(name)) return 'armas_orange';
     return 'armas_extra';
   }
-  if (cat === 'municoes') return 'carregadores';
+
+  // Carregadores — classificar por nome independentemente da categoria DB
+  // (alguns ficaram em 'acessorios' no seeder antigo)
+  if (CARREGADORES_ORANGE_NAMES.has(name)) return 'carregadores_orange';
+  if (CARREGADORES_RED_NAMES.has(name)) return 'carregadores_red';
+  if (CARREGADORES_SPECIAL_NAMES.has(name)) return 'carregadores_special';
+  if (cat === 'municoes') {
+    // Fallback: se não bateu nos sets acima mas é munição, assume orange
+    return 'carregadores_orange';
+  }
+
   if (cat === 'equipamento') return 'coletes';
   if (cat === 'acessorios') return 'acessorios';
   if (cat === 'droga') return 'drogas';
@@ -99,8 +140,8 @@ function fmtPrice(n) {
 
 function fmtPriceCompact(n) {
   const num = Number(n) || 0;
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-  if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+  if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace('.', ',') + 'M';
+  if (num >= 1_000) return (num / 1_000).toFixed(1).replace('.', ',') + 'k';
   return num.toString();
 }
 
@@ -109,7 +150,7 @@ function fmtPct(n) {
   return n >= 0 ? `+${s}%` : `${s}%`;
 }
 
-function padName(name, max = 18) {
+function padName(name, max = 22) {
   const s = String(name);
   return s.length > max ? s.slice(0, max - 1) + '…' : s.padEnd(max);
 }
@@ -236,26 +277,41 @@ async function sendPaginatedEmbeds(interaction, embeds, titlePrefix) {
 // ── Build embeds ────────────────────────────────────────────────────────────
 
 const DISPLAY_CATEGORIES = [
-  { key: 'lixo', label: '♻️ Lixo & Reciclagem', color: COLOR.MUTED },
-  { key: 'madeiras', label: '🪵 Madeiras', color: COLOR.INFO },
-  { key: 'materias_primas', label: '🔧 Matérias-Primas', color: COLOR.INFO },
-  { key: 'minerios', label: '⛏️ Minérios', color: COLOR.INFO },
-  { key: 'corpos', label: '🔩 Corpos de Arma', color: COLOR.WARNING_SOFT },
-  { key: 'prints', label: '📜 Prints', color: COLOR.WARNING_SOFT },
-  { key: 'armas_orange', label: '🔫 Armas Orange', color: COLOR.GOLD },
+  // Armas
+  { key: 'armas_brancas', label: '🔪 Armas Brancas', color: COLOR.DARK },
+  { key: 'armas_orange', label: '🟠 Armas Orange', color: COLOR.GOLD },
   { key: 'armas_red', label: '🔴 Armas Red', color: COLOR.DANGER },
   { key: 'armas_extra', label: '⭐ Armas Extra', color: COLOR.PURPLE },
-  { key: 'armas_brancas', label: '🔪 Armas Brancas', color: COLOR.DARK },
-  { key: 'carregadores', label: '🔋 Carregadores', color: COLOR.TEAL },
+  // Carregadores
+  { key: 'carregadores_orange', label: '🟠 Carregadores Orange', color: 0xff8c00 },
+  { key: 'carregadores_red', label: '🔴 Carregadores Red', color: 0xdc143c },
+  { key: 'carregadores_special', label: '⭐ Carregadores Special', color: 0x9370db },
+  // Protecção & Acessórios
   { key: 'coletes', label: '🛡️ Coletes', color: COLOR.TEAL },
-  { key: 'acessorios', label: '🎒 Acessórios', color: COLOR.TEAL },
+  { key: 'acessorios', label: '🔧 Acessórios', color: COLOR.INFO },
+  // Outros (não aparecem no preçário de compra, mas mantemos para chefia)
+  { key: 'lixo', label: '♻️ Lixo & Reciclagem', color: COLOR.MUTED },
+  { key: 'madeiras', label: '🪵 Madeiras', color: COLOR.INFO },
+  { key: 'materias_primas', label: '🔩 Matérias-Primas', color: COLOR.INFO },
+  { key: 'minerios', label: '⛏️ Minérios', color: COLOR.INFO },
+  { key: 'corpos', label: '🔫 Corpos de Arma', color: COLOR.WARNING_SOFT },
+  { key: 'prints', label: '📜 Prints', color: COLOR.WARNING_SOFT },
   { key: 'drogas', label: '💊 Drogas', color: COLOR.PURPLE },
   { key: 'dinheiro', label: '💵 Dinheiro', color: COLOR.SUCCESS },
   { key: 'outros', label: '📦 Outros', color: COLOR.MUTED },
 ];
 
 // Categorias que um bairrista pode comprar (encomendar)
-const BUY_CATEGORIES = new Set(['armas_brancas', 'armas_orange', 'armas_red', 'carregadores', 'coletes', 'acessorios']);
+const BUY_CATEGORIES = new Set([
+  'armas_brancas',
+  'armas_orange',
+  'armas_red',
+  'carregadores_orange',
+  'carregadores_red',
+  'carregadores_special',
+  'coletes',
+  'acessorios',
+]);
 
 async function buildPriceEmbedsForMember(memberRole, memberTier) {
   const [items, recipes] = await Promise.all([
@@ -273,6 +329,7 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
   const byCat = new Map();
   for (const item of items) {
     const dc = classifyDisplayCategory(item);
+    if (dc === null) continue; // item excluído
     if (!byCat.has(dc)) byCat.set(dc, []);
     byCat.get(dc).push(item);
   }
@@ -288,7 +345,7 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
         '**Como ler:**\n' +
           '💵 **Vende** à Firma (eles compram-te)\n' +
           '💰 **Compra** à Firma (tu compras, sem material)\n\n' +
-          '_Só podes comprar: Armas Brancas, Orange, Red, Carregadores, Coletes e Acessórios._\n\n' +
+          '_Só podes comprar: Armas Brancas, Orange, Red, Carregadores e Acessórios._\n\n' +
           `_Rank: ${memberRole} | Compra ${fmtPct(buyMult)} | Venda ${fmtPct(sellMult)}_`
       )
   );
@@ -307,7 +364,7 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       const sellPrice = base * (1 + sellMult);
       const buyPrice = base * (1 + buyMult);
 
-      const name = padName(item.name, 18);
+      const name = padName(item.name, 22);
       const baseStr = fmtPriceCompact(base).padStart(6);
       const sellStr = fmtPriceCompact(sellPrice).padStart(6);
       const buyStr = fmtPriceCompact(buyPrice).padStart(6);
@@ -315,8 +372,8 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       return `${name}  ${baseStr}  ${sellStr}  ${buyStr}`;
     });
 
-    const header = `${padName('Item', 18)}  ${'Base'.padStart(6)}  ${'Vende'.padStart(6)}  ${'Compra'.padStart(6)}`;
-    const sep = '────────────────────────────────────────────';
+    const header = `${padName('Item', 22)}  ${'Base'.padStart(6)}  ${'Vende'.padStart(6)}  ${'Compra'.padStart(6)}`;
+    const sep = '────────────────────────────────────────────────────';
     const prefix = '```\n' + header + '\n' + sep + '\n';
     const suffix = '\n```';
 
@@ -349,7 +406,7 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
   const buyableItemIds = new Set();
   for (const item of items) {
     const dc = classifyDisplayCategory(item);
-    if (BUY_CATEGORIES.has(dc)) buyableItemIds.add(item.id);
+    if (dc && BUY_CATEGORIES.has(dc)) buyableItemIds.add(item.id);
   }
 
   const relevantRecipes = recipes.filter(r => buyableItemIds.has(r.item_id));
@@ -368,10 +425,10 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
     }
 
     const CRAFT_LABELS = {
-      craft_weapons: 'Armas',
-      craft_carregadores: 'Carregadores',
-      craft_prints: 'Prints',
-      craft_corpos: 'Corpos de Arma',
+      craft_weapons: '🔫 Armas',
+      craft_carregadores: '🔋 Carregadores',
+      craft_prints: '📜 Prints',
+      craft_corpos: '🔩 Corpos de Arma',
     };
 
     for (const [cat, catRecipes] of byCraftCat) {
@@ -424,6 +481,8 @@ async function buildPriceEmbedsForChefia() {
   const withRecipe = [];
   const withoutRecipe = [];
   for (const item of items) {
+    const dc = classifyDisplayCategory(item);
+    if (dc === null) continue; // item excluído
     const recipe = recipeMap.get(item.id);
     if (recipe) withRecipe.push({ item, recipe });
     else withoutRecipe.push(item);
@@ -497,6 +556,7 @@ async function buildPriceEmbedsForChefia() {
     const byCat = new Map();
     for (const item of withoutRecipe) {
       const dc = classifyDisplayCategory(item);
+      if (dc === null) continue;
       if (!byCat.has(dc)) byCat.set(dc, []);
       byCat.get(dc).push(item);
     }
