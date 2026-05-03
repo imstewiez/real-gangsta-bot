@@ -25,16 +25,16 @@ const mention = discordId => (discordId ? `<@${discordId}>` : '—');
 // ── Inventário ─────────────────────────────────────────────────────────────
 
 const MOVEMENT_LABELS = {
-  entrega_bairrista: { label: 'Entrega (Bairrista)', color: COLOR.GREEN_ALT, emoji: EMOJI.ENTREGA },
-  entrega_oficial: { label: 'Entrega (Oficial)', color: COLOR.GREEN_ALT, emoji: EMOJI.ENTREGA },
+  entrega_bairrista: { label: 'Entrega', color: COLOR.GREEN_ALT, emoji: EMOJI.ENTREGA },
+  entrega_oficial: { label: 'Entrega', color: COLOR.GREEN_ALT, emoji: EMOJI.ENTREGA },
   venda_bairrista: { label: 'Venda', color: COLOR.WARNING_SOFT, emoji: EMOJI.VENDA },
-  fornecimento_org: { label: 'Fornecimento (saída)', color: COLOR.INFO, emoji: EMOJI.FORNECER },
-  devolucao_saida: { label: 'Devolução de saída', color: COLOR.INFO, emoji: EMOJI.DEVOLVER },
-  perda_saida: { label: 'Perda em saída', color: COLOR.DANGER, emoji: EMOJI.PERDIDO },
-  consumo_saida: { label: 'Consumo em saída', color: COLOR.PURPLE, emoji: '🔥' },
-  ajuste_manual: { label: 'Ajuste manual', color: COLOR.MUTED, emoji: EMOJI.AJUSTAR },
+  fornecimento_org: { label: 'Fornecimento', color: COLOR.INFO, emoji: EMOJI.FORNECER },
+  devolucao_saida: { label: 'Devolução', color: COLOR.INFO, emoji: EMOJI.DEVOLVER },
+  perda_saida: { label: 'Perda', color: COLOR.DANGER, emoji: EMOJI.PERDIDO },
+  consumo_saida: { label: 'Consumo', color: COLOR.PURPLE, emoji: '🔥' },
+  ajuste_manual: { label: 'Ajuste', color: COLOR.MUTED, emoji: EMOJI.AJUSTAR },
   apreendido: { label: 'Apreendido', color: COLOR.WARNING, emoji: '🚔' },
-  craftado: { label: 'Craftado', color: COLOR.TEAL, emoji: EMOJI.CRAFT },
+  craftado: { label: 'Craft', color: COLOR.TEAL, emoji: EMOJI.CRAFT },
 };
 
 function inventoryMovementEmbed(p) {

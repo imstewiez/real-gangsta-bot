@@ -161,12 +161,20 @@ function dataGrid(pairs) {
   }));
 }
 
-/** Pill de estado com Discord markdown codeblock colorido.
- *  color = 'diff' (verde/vermelho), 'fix' (amarelo), 'yaml' (azul), 'css' (cinza)
+/** Badge de estado — emoji + bold, consistente em todos os painéis.
+ *  color = 'diff' (aprovado), 'warn' (pendente), 'info' (info), 'muted' (neutro)
  */
 function statusPill(text, color = 'diff') {
-  const lang = { diff: 'diff', warn: 'fix', info: 'yaml', muted: 'css' }[color] || color;
-  return `\`\`${lang}\n${text}\n\`\``;
+  const map = {
+    diff: { emoji: '✅', label: 'Aprovado' },
+    warn: { emoji: '⏳', label: 'Pendente' },
+    info: { emoji: 'ℹ️', label: 'Info' },
+    muted: { emoji: '⚪', label: 'Neutro' },
+  };
+  const m = map[color] || map.muted;
+  // Se o texto já contém a palavra-chave, usa-o directamente; senão usa o label do map
+  const cleanText = text.replace(/^[+\-!]\s*/, '').trim();
+  return `${m.emoji} **${cleanText}**`;
 }
 
 /** Lista numerada ou com bullets de itens. */

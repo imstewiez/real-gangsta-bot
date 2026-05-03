@@ -67,12 +67,18 @@ const CATEGORY_LABEL = {
  * Mostra todas as categorias com itens activos + contagem.
  * O customId leva o prefixo para que o handler saiba para onde ir no passo 2.
  */
-async function buildCategorySelectMenu(customIdPrefix, placeholder, { searchKey, modalTitle } = {}) {
+async function buildCategorySelectMenu(
+  customIdPrefix,
+  placeholder,
+  { searchKey, modalTitle, excludeCategories = [] } = {}
+) {
   const items = await inventoryRepo.getItems(true);
+  const excludeSet = new Set(excludeCategories);
 
   const byCat = {};
   for (const item of items) {
     const cat = item.category || 'outros';
+    if (excludeSet.has(cat)) continue;
     if (!byCat[cat]) byCat[cat] = [];
     byCat[cat].push(item);
   }

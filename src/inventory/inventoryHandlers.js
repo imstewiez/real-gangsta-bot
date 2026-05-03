@@ -762,6 +762,17 @@ async function handleCartAdd(interaction) {
   const rows = await buildCategorySelectMenu(`invcart::cat::${tipo}`, 'Escolhe a categoria', {
     searchKey: `cartcat::${interaction.user.id}::${tipo}`,
     modalTitle: 'Pesquisar categoria',
+    excludeCategories: [
+      'armas',
+      'armas_fogo',
+      'armas_brancas',
+      'municoes',
+      'dinheiro',
+      'droga',
+      'comida',
+      'pesca',
+      'comida_pesca',
+    ],
   });
   return safeUpdate(interaction, {
     content: 'Escolhe a categoria do item a adicionar:',

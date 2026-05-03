@@ -16,17 +16,17 @@ const E = require('../content/emojis');
 // ═══════════════════════════════════════════════════════════════════════════
 
 const MOVEMENT_TYPE = {
-  entrega_bairrista: { label: 'Entrega (Bairrista)', emoji: E.ENTREGA, color: 'green' },
-  entrega_oficial: { label: 'Entrega (Oficial)', emoji: E.ENTREGA, color: 'green' },
+  entrega_bairrista: { label: 'Entrega', emoji: E.ENTREGA, color: 'green' },
+  entrega_oficial: { label: 'Entrega', emoji: E.ENTREGA, color: 'green' },
   venda_bairrista: { label: 'Venda', emoji: E.VENDA, color: 'gold' },
   fornecimento_org: { label: 'Fornecimento', emoji: E.FORNECER, color: 'blue' },
-  devolucao_saida: { label: 'Devolução de saída', emoji: E.DEVOLVER, color: 'purple' },
-  perda_saida: { label: 'Perda em saída', emoji: E.PERDIDO, color: 'red' },
-  consumo_saida: { label: 'Consumo em saída', emoji: '🔥', color: 'orange' },
-  ajuste_manual: { label: 'Ajuste manual', emoji: E.AJUSTAR, color: 'grey' },
+  devolucao_saida: { label: 'Devolução', emoji: E.DEVOLVER, color: 'purple' },
+  perda_saida: { label: 'Perda', emoji: E.PERDIDO, color: 'red' },
+  consumo_saida: { label: 'Consumo', emoji: '🔥', color: 'orange' },
+  ajuste_manual: { label: 'Ajuste', emoji: E.AJUSTAR, color: 'grey' },
   apreendido: { label: 'Apreendido', emoji: '🚔', color: 'red' },
-  craftado: { label: 'Craftado', emoji: E.CRAFT, color: 'teal' },
-  saldo_inicial: { label: 'Saldo inicial', emoji: '📊', color: 'blue' },
+  craftado: { label: 'Craft', emoji: E.CRAFT, color: 'teal' },
+  saldo_inicial: { label: 'Saldo Inicial', emoji: '📊', color: 'blue' },
 };
 
 function fmtMovementType(raw) {
