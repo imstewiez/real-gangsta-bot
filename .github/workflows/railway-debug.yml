@@ -9,9 +9,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: npm install -g @railway/cli
-      - run: railway status --json
+      - name: Status
+        run: railway status --json
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      - run: railway logs --lines 50 --json
+      - name: Build logs (latest)
+        run: railway logs --service bot-di-zona --lines 100 --json
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: Runtime logs (latest)
+        run: railway logs --service bot-di-zona --lines 100 --json
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: List deployments
+        run: |
+          curl -s -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"query": "query { deployments(input: { serviceId: \"99b5ded5-7957-4899-ba92-36239ef28d60\" }) { edges { node { id status createdAt meta { branch commitHash commitMessage } } } } }"}' | jq .
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
