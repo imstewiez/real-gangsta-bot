@@ -46,29 +46,32 @@ const EXCLUDED_NAMES = new Set([
   'Tactical Carregador',
   'BattleRifle Carregador',
   'MilitaryRifle Carregador',
-  // Outros itens que não devem aparecer no preçário de compra
-  'Taser',
-  'SNS Pistol MK2',
-  'Pistol',
-  'Pistol MK2',
-  'Heavy Pistol',
-  'Ceramic Pistol',
-  'Vintage Pistol',
-  'SMG',
-  'SMG MK2',
-  'Assault Shotgun',
-  'Heavy Shotgun',
-  'Assault Rifle',
-  'Advanced Rifle',
-  'Military',
-  'Tactical Rifle',
-  'Bullpup MK2',
-  'Carabina Especial MK2',
-  'Musket',
-  'Marksman Pistol',
-  'Sniper',
-  'Espingarda de Cano Serrado',
-  'Bullpup Shotgun',
+]);
+
+// Apenas estas armas aparecem no preçário de compra
+const BUY_WEAPON_NAMES = new Set([
+  // Brancas
+  'Canivete',
+  'Taco de Baseball',
+  'Taco de 8Ball',
+  // Orange
+  'SNS Pistol',
+  'Pistol XM3',
+  'Mini SMG',
+  'Micro SMG',
+  'Machine Pistol',
+  'TEC Pistol',
+  'AP Pistol',
+  'Compact Rifle',
+  'Gusenberg',
+  // Red
+  '.50',
+  'P90',
+  'PDW',
+  'Revolver',
+  'Gadget Pistol',
+  'Bullpup',
+  'Carabina Especial',
 ]);
 
 function classifyDisplayCategory(item) {
@@ -86,12 +89,12 @@ function classifyDisplayCategory(item) {
     return 'armas_extra';
   }
 
-  // Carregadores genéricos — mapeados para secções de armas
+  // Carregadores genéricos
   if (name === 'Carregador Orange') return 'carregadores_orange';
   if (name === 'Carregador Red') return 'carregadores_red';
   if (name === 'Carregador Especial') return 'carregadores_special';
 
-  if (cat === 'municoes') return null; // carregadores específicos já excluídos acima
+  if (cat === 'municoes') return null;
   if (cat === 'equipamento') return 'coletes';
   if (cat === 'acessorios') return 'acessorios';
   if (cat === 'droga') return 'drogas';
@@ -355,6 +358,12 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
     let catItems = byCat.get(catDef.key) || [];
     if (!catItems.length) continue;
 
+    // Filtrar armas: só as explicitamente permitidas
+    if (catDef.key.startsWith('armas_')) {
+      catItems = catItems.filter(item => BUY_WEAPON_NAMES.has(item.name));
+      if (!catItems.length) continue;
+    }
+
     // Ordenação customizada por categoria
     if (catDef.key === 'armas_brancas') {
       catItems = sortByExplicitOrder(catItems, ORDER_ARMAS_BRANCAS);
@@ -415,6 +424,7 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
   for (const item of items) {
     const dc = classifyDisplayCategory(item);
     if (!dc || !BUY_CATEGORIES.has(dc)) continue;
+    if (dc.startsWith('armas_') && !BUY_WEAPON_NAMES.has(item.name)) continue;
     buyableItemIds.add(item.id);
   }
 
