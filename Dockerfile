@@ -2,11 +2,11 @@
 # Bot di Zona — Dockerfile multi-stage (substitui Nixpacks)
 #
 # Stage 1: instala dependências (cached se package*.json não mudar)
-# Stage 2: copia código e corre — imagem final ~180 MB
+# Stage 2: copia código e corre
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── Stage 1: deps ────────────────────────────────────────────────────────────
-FROM node:18-slim AS deps
+FROM registry.access.redhat.com/ubi9/nodejs-18 AS deps
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 # ── Stage 2: runtime ─────────────────────────────────────────────────────────
-FROM node:18-slim
+FROM registry.access.redhat.com/ubi9/nodejs-18
 
 # Metadata
 LABEL maintainer="Firma RedWood"
