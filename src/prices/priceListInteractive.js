@@ -296,6 +296,32 @@ const ORDER_ARMAS_ORANGE = [
 ];
 const ORDER_ARMAS_RED = ['.50', 'Gadget Pistol', 'Revolver', 'P90', 'PDW', 'Bullpup', 'Carabina Especial'];
 
+// Ordem para fórmulas de craft (mesma ordem das armas + carregadores)
+const CRAFT_ORDER = new Map([
+  // Armas Orange
+  ['SNS Pistol', 1],
+  ['Pistol XM3', 2],
+  ['Mini SMG', 3],
+  ['Micro SMG', 4],
+  ['Machine Pistol', 5],
+  ['TEC Pistol', 6],
+  ['AP Pistol', 7],
+  ['Compact Rifle', 8],
+  ['Gusenberg', 9],
+  // Armas Red
+  ['.50', 10],
+  ['Gadget Pistol', 11],
+  ['Revolver', 12],
+  ['P90', 13],
+  ['PDW', 14],
+  ['Bullpup', 15],
+  ['Carabina Especial', 16],
+  // Carregadores
+  ['Carregador Orange', 17],
+  ['Carregador Red', 18],
+  ['Carregador Especial', 19],
+]);
+
 function sortByExplicitOrder(items, orderArray) {
   const orderMap = new Map(orderArray.map((name, i) => [name, i]));
   return items.slice().sort((a, b) => {
@@ -459,7 +485,11 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       const catEmbed = applyLogo(brandEmbed('MOVEMENT').setColor(meta.color).setTitle(meta.label));
 
       const lines = [];
-      for (const r of catRecipes.sort((a, b) => a.item_id - b.item_id)) {
+      for (const r of catRecipes.sort((a, b) => {
+        const oa = CRAFT_ORDER.get(a.item_name) ?? Infinity;
+        const ob = CRAFT_ORDER.get(b.item_name) ?? Infinity;
+        return oa - ob;
+      })) {
         const recipe = recipeMap.get(r.item_id);
         if (!recipe) continue;
         const ingStr = recipe.ingredients.map(ing => `  • ${ing.quantity}× ${ing.ingredient_name}`).join('\n');

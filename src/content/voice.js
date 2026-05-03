@@ -20,10 +20,10 @@ const BRAND = 'Firma RedWood';
 // Assinaturas curtas para footers / fins de linha. Escolhe a que se adequar.
 const SIGNATURES = {
   SHORT: `— ${BRAND}`,
-  HOUSE: `— ${BRAND} · casa`,
-  STREET: `— ${BRAND} · rua`,
-  MOVEMENT: `— ${BRAND} · movimento`,
-  TOP: `— ${BRAND} · topo`,
+  HOUSE: `— ${BRAND}`,
+  STREET: `— ${BRAND}`,
+  MOVEMENT: `— ${BRAND}`,
+  TOP: `— ${BRAND}`,
 };
 
 // Dicionário da casa — termos a usar em vez dos genéricos.

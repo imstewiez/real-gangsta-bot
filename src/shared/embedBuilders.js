@@ -33,10 +33,7 @@ const COLOR = Object.freeze({
 // Todas as embeds do bot devem passar por aqui — garante consistência visual.
 // V13: logo aplicado automaticamente (skipLogo para excepções).
 function brandEmbed(variant = 'SHORT', opts = {}) {
-  const embed = new EmbedBuilder()
-    .setColor(CONFIG.BOT_COLOR)
-    .setFooter(footer(variant, CONFIG.BOT_LOGO_URL))
-    .setTimestamp();
+  const embed = new EmbedBuilder().setColor(CONFIG.BOT_COLOR).setFooter(footer(variant, CONFIG.BOT_LOGO_URL));
   if (!opts.skipLogo) applyLogo(embed);
   return embed;
 }
