@@ -1,4 +1,4 @@
-name: Railway Force Deploy (from source)
+name: Railway Force Deploy
 
 on:
   workflow_dispatch:
@@ -18,32 +18,12 @@ jobs:
       - name: Setup Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Cancel stuck deployments
+      - name: Deploy via railway up
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          echo "Listing deployments..."
-          railway deployment list --service "$RAILWAY_SERVICE" --json > deployments.json || true
-          IDS=$(cat deployments.json 2>/dev/null | jq -r '[.[] | select(.status != "SUCCESS") | .id] | .[]' 2>/dev/null || true)
-          if [ -z "$IDS" ]; then
-            echo "No stuck deployments to cancel."
-            exit 0
-          fi
-          for id in $IDS; do
-            echo "Cancelling deployment $id"
-            curl -s -X POST https://backboard.railway.app/graphql/v2 \
-              -H "Authorization: Bearer $RAILWAY_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "{\"query\": \"mutation { deploymentRemove(id: \\\"$id\\\") }\"}" || true
-            echo ""
-          done
-
-      - name: Force redeploy from source
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          echo "Triggering redeploy from source..."
-          railway redeploy --service "$RAILWAY_SERVICE" --yes --from-source
+          echo "Deploying via railway up..."
+          railway up --service "$RAILWAY_SERVICE" --detach
 
       - name: Wait and fetch build logs
         env:
