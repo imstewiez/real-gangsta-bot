@@ -53,7 +53,7 @@ ENV PORT=3000
 # 3. Correr migrações DB
 # 4. Bootstrap painéis
 HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
-  CMD wget -qO- http://localhost:${PORT}/health || exit 1
+  CMD node -e "require('http').get('http://localhost:' + (process.env.PORT || 3000) + '/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1)).on('error', () => process.exit(1))"
 
 EXPOSE ${PORT}
 
