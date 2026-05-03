@@ -1,14 +1,6 @@
 'use strict';
 /**
  * Preçário interativo — preços personalizados por rank/tier do membro.
- *
- * Ao carregar num botão, o membro recebe uma mensagem efémera com:
- *   - Preços de VENDA (a firma compra-lhe)
- *   - Preços de COMPRA (ele compra à firma, sem material)
- *   - Preços de COMPRA c/ MATERIAL (ele entrega ingredientes, paga markup)
- *   - Fórmulas de craft (ingredientes)
- *
- * Tudo calculado em tempo real com base no rank/tier do membro.
  */
 
 const { MessageFlags, ButtonBuilder, ButtonStyle, ActionRowBuilder, EmbedBuilder } = require('discord.js');
@@ -23,109 +15,70 @@ const { query } = require('../db');
 // ── Nome → categoria de exibição ────────────────────────────────────────────
 
 const ARMAS_ORANGE_NAMES = new Set([
-  'Taser',
   'SNS Pistol',
-  'SNS Pistol MK2',
-  'Pistol',
-  'Pistol MK2',
-  'Heavy Pistol',
-  'Ceramic Pistol',
-  'Vintage Pistol',
-  'Mini SMG',
   'Pistol XM3',
+  'Mini SMG',
   'Micro SMG',
   'Machine Pistol',
   'TEC Pistol',
   'AP Pistol',
   'Compact Rifle',
-  'SMG',
-  'SMG MK2',
-  'Assault Shotgun',
-  'Heavy Shotgun',
   'Gusenberg',
 ]);
 
-const ARMAS_RED_NAMES = new Set([
-  'Heavy',
-  '.50',
-  'Revolver',
-  'Gadget Pistol',
-  'P90',
-  'PDW',
-  'Assault Rifle',
-  'Advanced Rifle',
-  'Military',
-  'Tactical Rifle',
-  'Bullpup',
-  'Bullpup MK2',
-  'Carabina Especial',
-  'Carabina Especial MK2',
-]);
+const ARMAS_RED_NAMES = new Set(['.50', 'P90', 'PDW', 'Revolver', 'Gadget Pistol', 'Bullpup', 'Carabina Especial']);
 
-const CARREGADORES_ORANGE_NAMES = new Set([
+const EXCLUDED_NAMES = new Set([
+  'Lançador da Âncora',
+  // Carregadores específicos de arma — não vendemos separadamente
   'Micro Carregador',
   'TEC-9 Carregador',
   'TecPistol Carregador',
   'HeavyPistol Carregador',
-  'Carregador Orange',
-]);
-
-const CARREGADORES_RED_NAMES = new Set([
   'APPistol Carregador',
   'Pistol50 Carregador',
   'AssaultSMG Carregador',
   'AssaultRifle Carregador',
   'PDW Carregador',
-  'Carregador Red',
-]);
-
-const CARREGADORES_SPECIAL_NAMES = new Set([
   'Bullpup Carregador',
   'CompactRifle Carregador',
   'SpecialCarbine Carregador',
   'Tactical Carregador',
   'BattleRifle Carregador',
   'MilitaryRifle Carregador',
-  'Carregador Especial',
-]);
-
-const EXCLUDED_NAMES = new Set(['Lançador da Âncora']);
-
-// Items de arma específicos disponíveis para compra (o resto é filtrado)
-const BUY_WEAPON_NAMES = new Set([
-  // Armas Brancas
-  'Canivete',
-  'Taco de Baseball',
-  'Taco de 8Ball',
-  // Armas Orange
-  'SNS Pistol',
-  'Pistol XM3',
-  'Mini SMG',
-  'Micro SMG',
-  'Machine Pistol',
-  'TEC Pistol',
-  'AP Pistol',
-  'Compact Rifle',
-  'Gusenberg',
-  // Armas Red
-  '.50',
-  'P90',
-  'PDW',
-  'Revolver',
-  'Gadget Pistol',
-  'Bullpup',
-  'Carabina Especial',
+  // Outros itens que não devem aparecer no preçário de compra
+  'Taser',
+  'SNS Pistol MK2',
+  'Pistol',
+  'Pistol MK2',
+  'Heavy Pistol',
+  'Ceramic Pistol',
+  'Vintage Pistol',
+  'SMG',
+  'SMG MK2',
+  'Assault Shotgun',
+  'Heavy Shotgun',
+  'Assault Rifle',
+  'Advanced Rifle',
+  'Military',
+  'Tactical Rifle',
+  'Bullpup MK2',
+  'Carabina Especial MK2',
+  'Musket',
+  'Marksman Pistol',
+  'Sniper',
+  'Espingarda de Cano Serrado',
+  'Bullpup Shotgun',
 ]);
 
 function classifyDisplayCategory(item) {
   const name = item.name || '';
   const cat = item.category || '';
 
-  // Items que não fazem parte do preçário da firma
   if (EXCLUDED_NAMES.has(name)) return null;
-
   if (name.startsWith('Corpo')) return 'corpos';
   if (name.includes('Print')) return 'prints';
+
   if (cat === 'armas_brancas') return 'armas_brancas';
   if (cat === 'armas_fogo') {
     if (ARMAS_RED_NAMES.has(name)) return 'armas_red';
@@ -133,16 +86,12 @@ function classifyDisplayCategory(item) {
     return 'armas_extra';
   }
 
-  // Carregadores — classificar por nome independentemente da categoria DB
-  // (alguns ficaram em 'acessorios' no seeder antigo)
-  if (CARREGADORES_ORANGE_NAMES.has(name)) return 'carregadores_orange';
-  if (CARREGADORES_RED_NAMES.has(name)) return 'carregadores_red';
-  if (CARREGADORES_SPECIAL_NAMES.has(name)) return 'carregadores_special';
-  if (cat === 'municoes') {
-    // Fallback: se não bateu nos sets acima mas é munição, assume orange
-    return 'carregadores_orange';
-  }
+  // Carregadores genéricos — mapeados para secções de armas
+  if (name === 'Carregador Orange') return 'carregadores_orange';
+  if (name === 'Carregador Red') return 'carregadores_red';
+  if (name === 'Carregador Especial') return 'carregadores_special';
 
+  if (cat === 'municoes') return null; // carregadores específicos já excluídos acima
   if (cat === 'equipamento') return 'coletes';
   if (cat === 'acessorios') return 'acessorios';
   if (cat === 'droga') return 'drogas';
@@ -166,8 +115,14 @@ function fmtPrice(n) {
 
 function fmtPriceCompact(n) {
   const num = Number(n) || 0;
-  if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace('.', ',') + 'M';
-  if (num >= 1_000) return (num / 1_000).toFixed(1).replace('.', ',') + 'k';
+  if (num >= 1_000_000) {
+    const v = num / 1_000_000;
+    return Number.isInteger(v) ? v.toFixed(0) + 'M' : v.toFixed(1).replace('.', ',') + 'M';
+  }
+  if (num >= 1_000) {
+    const v = num / 1_000;
+    return Number.isInteger(v) ? v.toFixed(0) + 'k' : v.toFixed(1).replace('.', ',') + 'k';
+  }
   return num.toString();
 }
 
@@ -183,7 +138,7 @@ function padName(name, max = 22) {
 
 // ── Paginação ───────────────────────────────────────────────────────────────
 
-const MAX_EMBED_CHARS = 5800; // margem para JSON overhead
+const MAX_EMBED_CHARS = 5800;
 const MAX_EMBEDS_PER_MSG = 10;
 
 function embedJsonLength(embed) {
@@ -191,15 +146,10 @@ function embedJsonLength(embed) {
   return JSON.stringify(json || {}).length;
 }
 
-/**
- * Divide uma lista de embeds em páginas que respeitem os limites do Discord.
- * Cada página é um array de embeds.
- */
 function chunkEmbedsIntoPages(embeds) {
   const pages = [];
   let currentPage = [];
   let currentLen = 0;
-
   for (const embed of embeds) {
     const len = embedJsonLength(embed);
     if (currentPage.length >= MAX_EMBEDS_PER_MSG || currentLen + len > MAX_EMBED_CHARS) {
@@ -240,32 +190,24 @@ async function sendPaginatedEmbeds(interaction, embeds, titlePrefix) {
 
   function buildReply() {
     const pageEmbeds = pages[pageIndex].map(e => {
-      // Clonar o embed para não mutar o original
       const clone = e.toJSON ? EmbedBuilder.from(e.toJSON()) : EmbedBuilder.from(e.data);
       return clone;
     });
-    // Adicionar footer ao último embed da página
     const last = pageEmbeds[pageEmbeds.length - 1];
-    if (last) {
-      last.setFooter({ text: `Página ${pageIndex + 1}/${pages.length}` });
-    }
+    if (last) last.setFooter({ text: `Página ${pageIndex + 1}/${pages.length}` });
     return { embeds: pageEmbeds, components: pages.length > 1 ? buildComponents() : [] };
   }
 
   const msg = await interaction.editReply(buildReply());
 
-  // Se só há uma página, não precisamos de collector
   if (pages.length <= 1) {
-    // Apagar após 5 minutos mesmo sem paginação
-    setTimeout(() => {
-      interaction.deleteReply().catch(() => {});
-    }, 300_000);
+    setTimeout(() => interaction.deleteReply().catch(() => {}), 300_000);
     return msg;
   }
 
   const collector = msg.createMessageComponentCollector({
     filter: i => i.user.id === interaction.user.id,
-    time: 300_000, // 5 minutos
+    time: 300_000,
   });
 
   collector.on('collect', async i => {
@@ -303,19 +245,15 @@ async function sendPaginatedEmbeds(interaction, embeds, titlePrefix) {
 // ── Build embeds ────────────────────────────────────────────────────────────
 
 const DISPLAY_CATEGORIES = [
-  // Armas
   { key: 'armas_brancas', label: '🔪 Armas Brancas', color: COLOR.DARK },
   { key: 'armas_orange', label: '🟠 Armas Orange', color: COLOR.GOLD },
+  { key: 'carregadores_orange', label: '🟠 Carregadores', color: 0xff8c00 },
   { key: 'armas_red', label: '🔴 Armas Red', color: COLOR.DANGER },
-  { key: 'armas_extra', label: '⭐ Armas Extra', color: COLOR.PURPLE },
-  // Carregadores
-  { key: 'carregadores_orange', label: '🟠 Carregadores Orange', color: 0xff8c00 },
-  { key: 'carregadores_red', label: '🔴 Carregadores Red', color: 0xdc143c },
-  { key: 'carregadores_special', label: '⭐ Carregadores Special', color: 0x9370db },
-  // Protecção & Acessórios
+  { key: 'carregadores_red', label: '🔴 Carregadores', color: 0xdc143c },
+  { key: 'carregadores_special', label: '⭐ Carregadores', color: 0x9370db },
   { key: 'coletes', label: '🛡️ Coletes', color: COLOR.TEAL },
   { key: 'acessorios', label: '🔧 Acessórios', color: COLOR.INFO },
-  // Outros (não aparecem no preçário de compra, mas mantemos para chefia)
+  // Chefia only
   { key: 'lixo', label: '♻️ Lixo & Reciclagem', color: COLOR.MUTED },
   { key: 'madeiras', label: '🪵 Madeiras', color: COLOR.INFO },
   { key: 'materias_primas', label: '🔩 Matérias-Primas', color: COLOR.INFO },
@@ -327,7 +265,7 @@ const DISPLAY_CATEGORIES = [
   { key: 'outros', label: '📦 Outros', color: COLOR.MUTED },
 ];
 
-// Categorias que um bairrista pode comprar (encomendar)
+// Categorias disponíveis para compra
 const BUY_CATEGORIES = new Set([
   'armas_brancas',
   'armas_orange',
@@ -337,6 +275,42 @@ const BUY_CATEGORIES = new Set([
   'carregadores_special',
   'coletes',
   'acessorios',
+]);
+
+// Ordem explícita dentro de cada categoria de arma
+const ORDER_ARMAS_BRANCAS = ['Canivete', 'Taco de Baseball', 'Taco de 8Ball'];
+const ORDER_ARMAS_ORANGE = [
+  'SNS Pistol',
+  'Pistol XM3',
+  'Mini SMG',
+  'Micro SMG',
+  'Machine Pistol',
+  'TEC Pistol',
+  'AP Pistol',
+  'Compact Rifle',
+  'Gusenberg',
+];
+const ORDER_ARMAS_RED = ['.50', 'Gadget Pistol', 'Revolver', 'P90', 'PDW', 'Bullpup', 'Carabina Especial'];
+
+function sortByExplicitOrder(items, orderArray) {
+  const orderMap = new Map(orderArray.map((name, i) => [name, i]));
+  return items.slice().sort((a, b) => {
+    const ia = orderMap.get(a.name) ?? Infinity;
+    const ib = orderMap.get(b.name) ?? Infinity;
+    return ia - ib;
+  });
+}
+
+// Acessórios permitidos (filtrar duplicados e itens irrelevantes)
+const ALLOWED_ACESSORIOS = new Set([
+  'Silenciador',
+  'Mira',
+  'Grip',
+  'Lanterna',
+  'Muzzle',
+  'Barrel',
+  'Extensivo',
+  'Mag Expandido',
 ]);
 
 async function buildPriceEmbedsForMember(memberRole, memberTier) {
@@ -351,11 +325,10 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
   const buyMult = getRankMultiplier(memberRole, 'buy', memberTier);
   const sellMult = getRankMultiplier(memberRole, 'sell', memberTier);
 
-  // Agrupar items por categoria de exibição
   const byCat = new Map();
   for (const item of items) {
     const dc = classifyDisplayCategory(item);
-    if (dc === null) continue; // item excluído
+    if (dc === null) continue;
     if (!byCat.has(dc)) byCat.set(dc, []);
     byCat.get(dc).push(item);
   }
@@ -371,26 +344,31 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
         '**Como ler:**\n' +
           '💵 **Vende** à Firma (eles compram-te)\n' +
           '💰 **Compra** à Firma (tu compras, sem material)\n\n' +
-          '_Só podes comprar: Armas Brancas, Orange, Red, Carregadores e Acessórios._\n\n' +
           `_Rank: ${memberRole} | Compra ${fmtPct(buyMult)} | Venda ${fmtPct(sellMult)}_`
       )
   );
   embeds.push(legend);
 
   for (const catDef of DISPLAY_CATEGORIES) {
-    // Só mostrar categorias compráveis no preçário de compra
     if (!BUY_CATEGORIES.has(catDef.key)) continue;
 
     let catItems = byCat.get(catDef.key) || [];
     if (!catItems.length) continue;
 
-    // Filtrar armas: só os nomes explicitamente permitidos
-    if (catDef.key.startsWith('armas_')) {
-      catItems = catItems.filter(item => BUY_WEAPON_NAMES.has(item.name));
+    // Ordenação customizada por categoria
+    if (catDef.key === 'armas_brancas') {
+      catItems = sortByExplicitOrder(catItems, ORDER_ARMAS_BRANCAS);
+    } else if (catDef.key === 'armas_orange') {
+      catItems = sortByExplicitOrder(catItems, ORDER_ARMAS_ORANGE);
+    } else if (catDef.key === 'armas_red') {
+      catItems = sortByExplicitOrder(catItems, ORDER_ARMAS_RED);
+    } else if (catDef.key === 'acessorios') {
+      catItems = catItems.filter(i => ALLOWED_ACESSORIOS.has(i.name));
       if (!catItems.length) continue;
+      catItems.sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      catItems.sort((a, b) => a.name.localeCompare(b.name));
     }
-
-    catItems.sort((a, b) => a.name.localeCompare(b.name));
 
     const lines = catItems.map(item => {
       const base = parseFloat(item.estimated_value) || 0;
@@ -410,7 +388,6 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
     const prefix = '```\n' + header + '\n' + sep + '\n';
     const suffix = '\n```';
 
-    // Chunking: garantir que cada field não excede 1024 chars
     const chunks = [];
     let current = [];
     let currentLen = prefix.length + suffix.length;
@@ -428,20 +405,16 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
 
     const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(catDef.label));
     for (const chunk of chunks) {
-      const table = prefix + chunk.join('\n') + suffix;
-      embed.addFields({ name: '\u200b', value: table, inline: false });
+      embed.addFields({ name: '\u200b', value: prefix + chunk.join('\n') + suffix, inline: false });
     }
-
     embeds.push(embed);
   }
 
-  // ── Embed de Fórmulas de Craft (só para items compráveis) ────────────────
+  // ── Fórmulas de Craft ────────────────────────────────────────────────────
   const buyableItemIds = new Set();
   for (const item of items) {
     const dc = classifyDisplayCategory(item);
     if (!dc || !BUY_CATEGORIES.has(dc)) continue;
-    // Só incluir craft recipes de armas que estão na whitelist
-    if (dc.startsWith('armas_') && !BUY_WEAPON_NAMES.has(item.name)) continue;
     buyableItemIds.add(item.id);
   }
 
@@ -456,8 +429,9 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
 
     const byCraftCat = new Map();
     for (const r of relevantRecipes) {
-      if (!byCraftCat.has(r.category)) byCraftCat.set(r.category, []);
-      byCraftCat.get(r.category).push(r);
+      const normCat = normalizeCraftCategory(r.category);
+      if (!byCraftCat.has(normCat)) byCraftCat.set(normCat, []);
+      byCraftCat.get(normCat).push(r);
     }
 
     const CRAFT_LABELS = {
@@ -492,17 +466,26 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
   return embeds;
 }
 
+function normalizeCraftCategory(cat) {
+  if (!cat) return 'outros';
+  if (cat.startsWith('craft_')) return cat;
+  // Normalizar categorias legacy (ex: armas_fogo → craft_weapons)
+  const map = {
+    armas_fogo: 'craft_weapons',
+    armas_brancas: 'craft_weapons',
+    municoes: 'craft_carregadores',
+    componentes: 'craft_corpos',
+  };
+  return map[cat] || `craft_${cat}`;
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
-// Preçário da Chefia — análise de margem de lucro (compacto)
+// Preçário da Chefia
 // ══════════════════════════════════════════════════════════════════════════════
 
 const TIERS = ['young_blood', 'o_gunao', 'gangster_fodido'];
 const TIER_LABELS = { young_blood: 'YB', o_gunao: 'OG', gangster_fodido: 'GF' };
-const TIER_MULT_BUY = {
-  young_blood: 0.1,
-  o_gunao: 0.07,
-  gangster_fodido: 0.03,
-};
+const TIER_MULT_BUY = { young_blood: 0.1, o_gunao: 0.07, gangster_fodido: 0.03 };
 
 async function buildPriceEmbedsForChefia() {
   const [items, recipes] = await Promise.all([
@@ -513,12 +496,11 @@ async function buildPriceEmbedsForChefia() {
   const recipeMap = new Map();
   for (const r of recipes) recipeMap.set(r.item_id, r);
 
-  // Separar: com receita (craft) vs sem receita
   const withRecipe = [];
   const withoutRecipe = [];
   for (const item of items) {
     const dc = classifyDisplayCategory(item);
-    if (dc === null) continue; // item excluído
+    if (dc === null) continue;
     const recipe = recipeMap.get(item.id);
     if (recipe) withRecipe.push({ item, recipe });
     else withoutRecipe.push(item);
@@ -526,7 +508,6 @@ async function buildPriceEmbedsForChefia() {
 
   const embeds = [];
 
-  // ── Embed de legenda ──────────────────────────────────────────────────────
   const legend = applyLogo(
     brandEmbed('MOVEMENT')
       .setColor(COLOR.INFO)
@@ -542,7 +523,6 @@ async function buildPriceEmbedsForChefia() {
   );
   embeds.push(legend);
 
-  // ── Itens com receita — ordenados por margem ──────────────────────────────
   if (withRecipe.length) {
     const sorted = withRecipe
       .map(({ item, recipe }) => {
@@ -551,7 +531,6 @@ async function buildPriceEmbedsForChefia() {
           return sum + unit * ing.quantity;
         }, 0);
         const base = parseFloat(item.estimated_value) || 0;
-        // Usar o preço mais alto (YB) para calcular margem máxima
         const sellPrice = materialCost * (1 + TIER_MULT_BUY.young_blood);
         const profit = sellPrice - materialCost;
         const marginPct = materialCost > 0 ? (profit / materialCost) * 100 : 0;
@@ -559,7 +538,6 @@ async function buildPriceEmbedsForChefia() {
       })
       .sort((a, b) => b.marginPct - a.marginPct);
 
-    // Agrupar em chunks de ~15 itens por embed para não ultrapassar 1024 chars/field
     const CHUNK_SIZE = 15;
     for (let i = 0; i < sorted.length; i += CHUNK_SIZE) {
       const chunk = sorted.slice(i, i + CHUNK_SIZE);
@@ -577,17 +555,11 @@ async function buildPriceEmbedsForChefia() {
         return `\`${item.name.padEnd(22).slice(0, 22)}\` Custo ${fmtPrice(materialCost).padStart(8)} | ${prices.join(' | ')} | Margem ${marginPct.toFixed(0)}%`;
       });
 
-      embed.addFields({
-        name: `\u200b`,
-        value: '```\n' + lines.join('\n') + '\n```',
-        inline: false,
-      });
-
+      embed.addFields({ name: `\u200b`, value: '```\n' + lines.join('\n') + '\n```', inline: false });
       embeds.push(embed);
     }
   }
 
-  // ── Itens sem receita — preços por tier ───────────────────────────────────
   if (withoutRecipe.length) {
     const byCat = new Map();
     for (const item of withoutRecipe) {
@@ -608,7 +580,6 @@ async function buildPriceEmbedsForChefia() {
         return `\`${item.name.padEnd(22).slice(0, 22)}\` Base ${fmtPrice(base).padStart(8)} | ${prices.join(' | ')}`;
       });
 
-      // Agrupar em chunks de ~20 itens por embed
       const CHUNK_SIZE = 20;
       for (let i = 0; i < lines.length; i += CHUNK_SIZE) {
         const chunk = lines.slice(i, i + CHUNK_SIZE);
@@ -617,11 +588,7 @@ async function buildPriceEmbedsForChefia() {
             .setColor(catDef.color)
             .setTitle(`${catDef.label}${i > 0 ? ' (cont.)' : ''}`)
         );
-        embed.addFields({
-          name: '\u200b',
-          value: '```\n' + chunk.join('\n') + '\n```',
-          inline: false,
-        });
+        embed.addFields({ name: '\u200b', value: '```\n' + chunk.join('\n') + '\n```', inline: false });
         embeds.push(embed);
       }
     }
