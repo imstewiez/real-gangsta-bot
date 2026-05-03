@@ -321,10 +321,30 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
 
     const header = `${padName('Item', 18)}   Base  Vende Compra  c/Mat`;
     const sep = '─────────────────────────────────────────────';
-    const table = '```\n' + header + '\n' + sep + '\n' + lines.join('\n') + '\n```';
+    const prefix = '```\n' + header + '\n' + sep + '\n';
+    const suffix = '\n```';
+
+    // Chunking: garantir que cada field não excede 1024 chars
+    const chunks = [];
+    let current = [];
+    let currentLen = prefix.length + suffix.length;
+    for (const line of lines) {
+      if (currentLen + line.length + 1 > 1000) {
+        chunks.push(current);
+        current = [line];
+        currentLen = prefix.length + suffix.length + line.length + 1;
+      } else {
+        current.push(line);
+        currentLen += line.length + 1;
+      }
+    }
+    if (current.length) chunks.push(current);
 
     const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(catDef.label));
-    embed.addFields({ name: '\u200b', value: table, inline: false });
+    for (const chunk of chunks) {
+      const table = prefix + chunk.join('\n') + suffix;
+      embed.addFields({ name: '\u200b', value: table, inline: false });
+    }
 
     embeds.push(embed);
   }
