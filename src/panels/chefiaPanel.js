@@ -81,6 +81,11 @@ async function buildChefiaPanel() {
     button({ customId: 'chefia::dashboard', label: 'Dashboard', style: 'Primary', emoji: EMOJI.GRAFICO })
   );
 
+  // Row 2b — Preçários (chefia only)
+  const row2b = buttonRow(
+    button({ customId: 'chefia::precarios', label: 'Preçários', style: 'Secondary', emoji: EMOJI.CRAFT })
+  );
+
   // Row 3 — Gerir (compressão via select menu)
   const row3 = selectRow(
     selectMenu({
@@ -116,7 +121,7 @@ async function buildChefiaPanel() {
     })
   );
 
-  return { embeds: [embed], components: [row1, row2, row3] };
+  return { embeds: [embed], components: [row1, row2, row2b, row3] };
 }
 
 module.exports = { buildChefiaPanel };

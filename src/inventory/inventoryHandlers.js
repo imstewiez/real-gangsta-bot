@@ -512,6 +512,7 @@ async function handleEncomendaSelect(interaction) {
     itemId,
     quantity: 1,
     memberRole: member.role,
+    memberTier: member.tier,
     paymentMode: 'materials_money',
   });
 
@@ -648,6 +649,7 @@ async function handleEncomendaModal(interaction) {
     itemId: pending.itemId,
     quantity,
     memberRole: member.role,
+    memberTier: member.tier,
     paymentMode,
   });
 
@@ -798,7 +800,7 @@ async function _openCartQtyModal(interaction, tipo, item, { category = 'search' 
     const member = await memberRepo.findByDiscordId(interaction.user.id);
     if (member) {
       const { getRankMultiplier } = require('../orders/orderPricingEngine');
-      basePrice = Math.round(rawBasePrice * (1 + getRankMultiplier(member.role, 'sell')));
+      basePrice = Math.round(rawBasePrice * (1 + getRankMultiplier(member.role, 'sell', member.tier)));
     }
   }
 
@@ -905,7 +907,7 @@ async function handleCartQtyModal(interaction) {
     const member = await memberRepo.findByDiscordId(interaction.user.id);
     if (member) {
       const { getRankMultiplier } = require('../orders/orderPricingEngine');
-      basePrice = Math.round(rawBasePrice * (1 + getRankMultiplier(member.role, 'sell')));
+      basePrice = Math.round(rawBasePrice * (1 + getRankMultiplier(member.role, 'sell', member.tier)));
     }
   }
 

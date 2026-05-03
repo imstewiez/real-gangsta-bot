@@ -218,6 +218,7 @@ const BUTTON_ROUTES = [
   exact('chefia::republicar_paineis', chefiaActions.republicarTodosPaineis),
   exact('chefia::promover', buttonAdapters.handlePromoverButton),
   exact('chefia::gerir_encomendas', orderManagement.handleGerirEncomendas),
+  exact('chefia::precarios', buttonAdapters.handlePrecariosChefiaButton),
 
   // Botões de encomenda no canal dedicado
   prefix('order::aceitar::', orderManagement.handleOrderAceitarButton),

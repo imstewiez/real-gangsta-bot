@@ -68,6 +68,34 @@ async function getRecipeWithIngredients(itemId) {
   };
 }
 
+async function getAllRecipesWithIngredients() {
+  const recipesRes = await query(
+    `SELECT cr.*, i.name as item_name, i.estimated_value as item_price
+     FROM craft_recipes cr
+     JOIN items i ON i.id = cr.item_id
+     ORDER BY cr.id`
+  );
+  if (!recipesRes.rows.length) return [];
+
+  const ingredientsRes = await query(
+    `SELECT ri.*, i.name as ingredient_name, i.estimated_value as ingredient_price
+     FROM recipe_ingredients ri
+     JOIN items i ON i.id = ri.ingredient_item_id
+     ORDER BY ri.recipe_id, ri.id`
+  );
+
+  const byRecipe = new Map();
+  for (const ing of ingredientsRes.rows) {
+    if (!byRecipe.has(ing.recipe_id)) byRecipe.set(ing.recipe_id, []);
+    byRecipe.get(ing.recipe_id).push(ing);
+  }
+
+  return recipesRes.rows.map(r => ({
+    ...r,
+    ingredients: byRecipe.get(r.id) || [],
+  }));
+}
+
 async function deleteByItemId(itemId) {
   return queryWithTransaction(async client => {
     const recipeRes = await client.query('SELECT id FROM craft_recipes WHERE item_id = $1', [itemId]);
@@ -93,6 +121,7 @@ module.exports = {
   findByCategory,
   getAllRecipes,
   getRecipeWithIngredients,
+  getAllRecipesWithIngredients,
   deleteByItemId,
   clearAll,
 };

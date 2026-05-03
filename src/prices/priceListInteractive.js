@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Preçário interativo — preços personalizados por rank do membro.
+ * Preçário interativo — preços personalizados por rank/tier do membro.
  *
  * Ao carregar num botão, o membro recebe uma mensagem efémera com:
  *   - Preços de VENDA (a firma compra-lhe)
@@ -8,7 +8,7 @@
  *   - Preços de COMPRA c/ MATERIAL (ele entrega ingredientes, paga markup)
  *   - Fórmulas de craft (ingredientes)
  *
- * Tudo calculado em tempo real com base no rank do membro.
+ * Tudo calculado em tempo real com base no rank/tier do membro.
  */
 
 const { MessageFlags } = require('discord.js');
@@ -97,6 +97,11 @@ function fmtPrice(n) {
   return (Number(n) || 0).toLocaleString('pt-PT') + '€';
 }
 
+function fmtPct(n) {
+  const s = (n * 100).toFixed(0);
+  return n >= 0 ? `+${s}%` : `${s}%`;
+}
+
 // ── Build embeds ────────────────────────────────────────────────────────────
 
 const DISPLAY_CATEGORIES = [
@@ -118,18 +123,19 @@ const DISPLAY_CATEGORIES = [
   { key: 'outros', label: '📦 Outros', color: COLOR.MUTED },
 ];
 
-async function buildPriceEmbedsForMember(memberRole) {
-  const [items, recipes] = await Promise.all([inventoryRepo.getItems(true), craftRecipeRepo.getAllRecipes()]);
+async function buildPriceEmbedsForMember(memberRole, memberTier) {
+  const [items, recipes] = await Promise.all([
+    inventoryRepo.getItems(true),
+    craftRecipeRepo.getAllRecipesWithIngredients(),
+  ]);
 
-  // Pré-carregar recipes com ingredientes
   const recipeMap = new Map();
   for (const r of recipes) {
-    const full = await craftRecipeRepo.getRecipeWithIngredients(r.item_id);
-    if (full) recipeMap.set(r.item_id, full);
+    recipeMap.set(r.item_id, r);
   }
 
-  const buyMult = getRankMultiplier(memberRole, 'buy');
-  const sellMult = getRankMultiplier(memberRole, 'sell');
+  const buyMult = getRankMultiplier(memberRole, 'buy', memberTier);
+  const sellMult = getRankMultiplier(memberRole, 'sell', memberTier);
 
   // Agrupar items por categoria de exibição
   const byCat = new Map();
@@ -187,7 +193,7 @@ async function buildPriceEmbedsForMember(memberRole) {
     }
 
     embed.setFooter({
-      text: `V=Venda à Firma | C=Compra à Firma | 🛠️=Compra c/ material | Rank: ${memberRole} (Compra +${(buyMult * 100).toFixed(0)}%, Venda +${(sellMult * 100).toFixed(0)}%)`,
+      text: `V=Venda à Firma | C=Compra à Firma | 🛠️=Compra c/ material | ${memberRole} (Compra ${fmtPct(buyMult)}, Venda ${fmtPct(sellMult)})`,
     });
     embeds.push(embed);
   }
@@ -238,37 +244,170 @@ async function buildPriceEmbedsForMember(memberRole) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Handler
+// Preçário da Chefia — análise de margem de lucro
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function buildPriceEmbedsForChefia() {
+  const [items, recipes] = await Promise.all([
+    inventoryRepo.getItems(true),
+    craftRecipeRepo.getAllRecipesWithIngredients(),
+  ]);
+
+  const recipeMap = new Map();
+  for (const r of recipes) {
+    recipeMap.set(r.item_id, r);
+  }
+
+  // Tiers de bairrista para análise
+  const tiers = ['young_blood', 'o_gunao', 'gangster_fodido'];
+  const tierLabels = { young_blood: 'YB', o_gunao: 'OG', gangster_fodido: 'GF' };
+
+  // Agrupar items por categoria de exibição
+  const byCat = new Map();
+  for (const item of items) {
+    const dc = classifyDisplayCategory(item);
+    if (!byCat.has(dc)) byCat.set(dc, []);
+    byCat.get(dc).push(item);
+  }
+
+  const embeds = [];
+
+  for (const catDef of DISPLAY_CATEGORIES) {
+    const catItems = byCat.get(catDef.key) || [];
+    if (!catItems.length) continue;
+    catItems.sort((a, b) => a.name.localeCompare(b.name));
+
+    const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(`${catDef.label} — Margens`));
+
+    const lines = catItems.map(item => {
+      const base = parseFloat(item.estimated_value) || 0;
+      const recipe = recipeMap.get(item.id);
+      let materialCost = 0;
+      if (recipe) {
+        materialCost = recipe.ingredients.reduce((sum, ing) => {
+          const unit = parseFloat(ing.unit_price) || parseFloat(ing.ingredient_price) || 0;
+          return sum + unit * ing.quantity;
+        }, 0);
+      }
+
+      let text = `**${item.name}**  \`Base ${fmtPrice(base)}\``;
+      if (recipe) {
+        text += `  \`Custo ${fmtPrice(materialCost)}\``;
+        const profits = tiers.map(t => {
+          const mult = getRankMultiplier('bairrista', 'buy', t);
+          const sellPrice = materialCost * (1 + mult);
+          const profit = sellPrice - materialCost;
+          const margin = materialCost > 0 ? (profit / sellPrice) * 100 : 0;
+          return `${tierLabels[t]} ${fmtPrice(sellPrice)} (+${fmtPrice(profit)}, ${margin.toFixed(0)}%)`;
+        });
+        text += `\n${profits.join('  |  ')}`;
+      } else {
+        const prices = tiers.map(t => {
+          const mult = getRankMultiplier('bairrista', 'buy', t);
+          return `${tierLabels[t]} ${fmtPrice(base * (1 + mult))}`;
+        });
+        text += `\n${prices.join('  |  ')}`;
+      }
+      return text;
+    });
+
+    let chunk = [];
+    let chunkLen = 0;
+    for (const line of lines) {
+      const lineLen = line.length + 1;
+      if (chunkLen + lineLen > 950) {
+        embed.addFields({ name: '\u200b', value: chunk.join('\n\n'), inline: false });
+        chunk = [line];
+        chunkLen = lineLen;
+      } else {
+        chunk.push(line);
+        chunkLen += lineLen;
+      }
+    }
+    if (chunk.length) {
+      embed.addFields({ name: '\u200b', value: chunk.join('\n\n'), inline: false });
+    }
+
+    embed.setFooter({
+      text: 'Preçário da Chefia — Custo = materiais craft | Preço = valor pago pelo bairrista (c/ material)',
+    });
+    embeds.push(embed);
+  }
+
+  return embeds;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Handlers
 // ══════════════════════════════════════════════════════════════════════════════
 
 async function handlePrecariosButton(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
-    const memberRes = await query('SELECT role FROM members WHERE discord_id = $1', [interaction.user.id]);
+    const memberRes = await query('SELECT role, tier FROM members WHERE discord_id = $1', [interaction.user.id]);
     const memberRole = memberRes.rows[0]?.role || 'bairrista';
+    const memberTier = memberRes.rows[0]?.tier || 'young_blood';
 
-    const embeds = await buildPriceEmbedsForMember(memberRole);
+    const embeds = await buildPriceEmbedsForMember(memberRole, memberTier);
 
     if (!embeds.length) {
-      return safeReply(
-        interaction,
-        { content: `${EMOJI.ERRO} Não há preços disponíveis de momento.`, flags: MessageFlags.Ephemeral },
-        { messageClass: 'BANAL' }
-      );
+      return await interaction.editReply({ content: `${EMOJI.ERRO} Não há preços disponíveis de momento.` });
     }
 
-    // Discord limita a 10 embeds por mensagem
-    const toSend = embeds.slice(0, 10);
+    // Limitar a 10 embeds e respeitar o limite de 6000 chars total
+    const toSend = [];
+    let totalLen = 0;
+    for (const embed of embeds.slice(0, 10)) {
+      const json = embed.toJSON ? embed.toJSON() : embed.data;
+      const len = JSON.stringify(json || {}).length;
+      if (totalLen + len > 5500) break;
+      toSend.push(embed);
+      totalLen += len;
+    }
 
-    return safeReply(interaction, { embeds: toSend, flags: MessageFlags.Ephemeral }, { messageClass: 'RESULT' });
+    return await interaction.editReply({ embeds: toSend });
   } catch (e) {
-    return safeReply(
-      interaction,
-      { content: `${EMOJI.ERRO} Erro ao gerar preçário: ${e.message}`, flags: MessageFlags.Ephemeral },
-      { messageClass: 'RESULT' }
-    );
+    console.error('[PRECARIOS] Erro:', e);
+    return await interaction
+      .editReply({ content: `${EMOJI.ERRO} Erro ao gerar preçário: ${e.message}` })
+      .catch(() => {});
   }
 }
 
-module.exports = { handlePrecariosButton, buildPriceEmbedsForMember };
+async function handlePrecariosChefiaButton(interaction) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  try {
+    const embeds = await buildPriceEmbedsForChefia();
+
+    if (!embeds.length) {
+      return await interaction.editReply({ content: `${EMOJI.ERRO} Não há preços disponíveis de momento.` });
+    }
+
+    // Limitar a 10 embeds e respeitar o limite de 6000 chars total
+    const toSend = [];
+    let totalLen = 0;
+    for (const embed of embeds.slice(0, 10)) {
+      const json = embed.toJSON ? embed.toJSON() : embed.data;
+      const len = JSON.stringify(json || {}).length;
+      if (totalLen + len > 5500) break;
+      toSend.push(embed);
+      totalLen += len;
+    }
+
+    return await interaction.editReply({ embeds: toSend });
+  } catch (e) {
+    console.error('[PRECARIOS-CHEFIA] Erro:', e);
+    return await interaction
+      .editReply({ content: `${EMOJI.ERRO} Erro ao gerar preçário: ${e.message}` })
+      .catch(() => {});
+  }
+}
+
+module.exports = {
+  handlePrecariosButton,
+  handlePrecariosChefiaButton,
+  buildPriceEmbedsForMember,
+  buildPriceEmbedsForChefia,
+};

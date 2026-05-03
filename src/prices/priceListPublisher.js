@@ -47,16 +47,16 @@ function fmtPrice(n) {
 
 function buildMultiplierFooter() {
   const buy = [
-    `Bairrista ×${(1 + getRankMultiplier('bairrista', 'buy')).toFixed(1)}`,
-    `Patrão ×${(1 + getRankMultiplier('patrao_di_zona', 'buy')).toFixed(1)}`,
-    `Oficial ×${(1 + getRankMultiplier('oficial', 'buy')).toFixed(1)}`,
-    `Chefia ×${(1 + getRankMultiplier('chefia', 'buy')).toFixed(1)}`,
+    `YB +${(getRankMultiplier('bairrista', 'buy', 'young_blood') * 100).toFixed(0)}%`,
+    `OG +${(getRankMultiplier('bairrista', 'buy', 'o_gunao') * 100).toFixed(0)}%`,
+    `GF +${(getRankMultiplier('bairrista', 'buy', 'gangster_fodido') * 100).toFixed(0)}%`,
+    `Patrão/Oficial/Chefia 0%`,
   ].join(' | ');
   const sell = [
-    `Bairrista ×${(1 + getRankMultiplier('bairrista', 'sell')).toFixed(1)}`,
-    `Patrão ×${(1 + getRankMultiplier('patrao_di_zona', 'sell')).toFixed(1)}`,
-    `Oficial ×${(1 + getRankMultiplier('oficial', 'sell')).toFixed(1)}`,
-    `Chefia ×${(1 + getRankMultiplier('chefia', 'sell')).toFixed(1)}`,
+    `YB ${(getRankMultiplier('bairrista', 'sell', 'young_blood') * 100).toFixed(0)}%`,
+    `OG ${(getRankMultiplier('bairrista', 'sell', 'o_gunao') * 100).toFixed(0)}%`,
+    `GF +${(getRankMultiplier('bairrista', 'sell', 'gangster_fodido') * 100).toFixed(0)}%`,
+    `Patrão/Oficial/Chefia 0%`,
   ].join(' | ');
   return `💰 Compras: ${buy}\n💵 Vendas: ${sell}`;
 }
