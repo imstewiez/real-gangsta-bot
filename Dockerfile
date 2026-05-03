@@ -6,7 +6,7 @@
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── Stage 1: deps ────────────────────────────────────────────────────────────
-FROM node:22-slim AS deps
+FROM node:18-slim AS deps
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 # ── Stage 2: runtime ─────────────────────────────────────────────────────────
-FROM node:22-slim
+FROM node:18-slim
 
 # Metadata
 LABEL maintainer="Firma RedWood"
