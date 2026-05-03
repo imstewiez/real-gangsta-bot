@@ -4,6 +4,7 @@ const { query } = require('../db');
 const { brandEmbed, progressBar } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
 const { EMOJI } = require('../content');
+const { formatPtDateOnly } = require('../shared/formatPtDate');
 
 const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
 

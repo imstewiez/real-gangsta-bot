@@ -44,6 +44,7 @@ const { EMOJI, SAIDA_TYPE } = require('../content');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
 const { formatPtDateOnly } = require('../shared/formatPtDate');
+const { fmtSaidaStatus, fmtParticipantType } = require('../shared/labels');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // BUILD SESSION EMBED + COMPONENTS

@@ -34,7 +34,7 @@ const { query } = require('../db');
 const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
 const { buildSearchableSelect } = require('../shared/selectSearch');
 const { brandEmbed, COLOR } = require('../shared/embedBuilders');
-const { SAIDAS, EMOJI } = require('../content');
+const { SAIDAS, EMOJI, RESULT_LABEL } = require('../content');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
 
