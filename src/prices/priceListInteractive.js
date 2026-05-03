@@ -11,7 +11,7 @@
  * Tudo calculado em tempo real com base no rank/tier do membro.
  */
 
-const { MessageFlags } = require('discord.js');
+const { MessageFlags, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
 const { inventoryRepo } = require('../repositories');
 const craftRecipeRepo = require('../repositories/craftRecipe');
 const { getRankMultiplier } = require('../orders/orderPricingEngine');
@@ -100,6 +100,127 @@ function fmtPrice(n) {
 function fmtPct(n) {
   const s = (n * 100).toFixed(0);
   return n >= 0 ? `+${s}%` : `${s}%`;
+}
+
+// ── Paginação ───────────────────────────────────────────────────────────────
+
+const MAX_EMBED_CHARS = 5800; // margem para JSON overhead
+const MAX_EMBEDS_PER_MSG = 10;
+
+function embedJsonLength(embed) {
+  const json = embed.toJSON ? embed.toJSON() : embed.data;
+  return JSON.stringify(json || {}).length;
+}
+
+/**
+ * Divide uma lista de embeds em páginas que respeitem os limites do Discord.
+ * Cada página é um array de embeds.
+ */
+function chunkEmbedsIntoPages(embeds) {
+  const pages = [];
+  let currentPage = [];
+  let currentLen = 0;
+
+  for (const embed of embeds) {
+    const len = embedJsonLength(embed);
+    // Se o embed sozinho já excede o limite, truncar a descrição/fields
+    if (len > MAX_EMBED_CHARS) {
+      // Tenta truncar a descrição
+      const json = embed.toJSON ? embed.toJSON() : { ...embed.data };
+      if (json.description && json.description.length > 2000) {
+        json.description = json.description.slice(0, 1997) + '...';
+      }
+      if (json.fields) {
+        let fieldsLen = 0;
+        const trimmedFields = [];
+        for (const f of json.fields) {
+          const fLen = (f.name?.length || 0) + (f.value?.length || 0);
+          if (fieldsLen + fLen > 3000) break; // margem segura
+          trimmedFields.push(f);
+          fieldsLen += fLen;
+        }
+        json.fields = trimmedFields;
+      }
+      embed.data = json;
+    }
+
+    const safeLen = embedJsonLength(embed);
+
+    if (currentPage.length >= MAX_EMBEDS_PER_MSG || currentLen + safeLen > MAX_EMBED_CHARS) {
+      if (currentPage.length) pages.push(currentPage);
+      currentPage = [embed];
+      currentLen = safeLen;
+    } else {
+      currentPage.push(embed);
+      currentLen += safeLen;
+    }
+  }
+  if (currentPage.length) pages.push(currentPage);
+  return pages;
+}
+
+async function sendPaginatedEmbeds(interaction, embeds, titlePrefix) {
+  const pages = chunkEmbedsIntoPages(embeds);
+  if (!pages.length) {
+    return interaction.editReply({ content: `${EMOJI.ERRO} Não há preços disponíveis de momento.` });
+  }
+
+  let pageIndex = 0;
+
+  function buildComponents() {
+    const prev = new ButtonBuilder()
+      .setCustomId('precarios_prev')
+      .setLabel('◀ Anterior')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(pageIndex === 0);
+    const next = new ButtonBuilder()
+      .setCustomId('precarios_next')
+      .setLabel('Próxima ▶')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(pageIndex === pages.length - 1);
+    const close = new ButtonBuilder().setCustomId('precarios_close').setLabel('❌ Fechar').setStyle(ButtonStyle.Danger);
+    return [new ActionRowBuilder().addComponents(prev, next, close)];
+  }
+
+  function buildReply() {
+    const pageEmbeds = pages[pageIndex];
+    // Adicionar footer com página
+    const lastEmbed = pageEmbeds[pageEmbeds.length - 1];
+    if (lastEmbed && lastEmbed.setFooter) {
+      lastEmbed.setFooter({ text: `Página ${pageIndex + 1}/${pages.length}` });
+    }
+    return { embeds: pageEmbeds, components: pages.length > 1 ? buildComponents() : [] };
+  }
+
+  const msg = await interaction.editReply(buildReply());
+
+  // Se só há uma página, não precisamos de collector
+  if (pages.length <= 1) return msg;
+
+  const collector = msg.createMessageComponentCollector({
+    filter: i => i.user.id === interaction.user.id,
+    time: 300_000, // 5 minutos
+  });
+
+  collector.on('collect', async i => {
+    if (i.customId === 'precarios_prev' && pageIndex > 0) pageIndex--;
+    else if (i.customId === 'precarios_next' && pageIndex < pages.length - 1) pageIndex++;
+    else if (i.customId === 'precarios_close') {
+      collector.stop();
+      return i.update({ content: 'Preçário fechado.', embeds: [], components: [] });
+    }
+    await i.update(buildReply());
+  });
+
+  collector.on('end', async () => {
+    try {
+      await interaction.editReply({ components: [] });
+    } catch {
+      /* mensagem pode já ter sido apagada */
+    }
+  });
+
+  return msg;
 }
 
 // ── Build embeds ────────────────────────────────────────────────────────────
@@ -295,7 +416,8 @@ async function buildPriceEmbedsForChefia() {
           '`Custo` = valor total dos materiais de craft\n' +
           '`YB/OG/GF` = preço que o bairrista paga (c/ material) por tier\n' +
           '`Margem` = lucro da firma sobre o custo de produção\n\n' +
-          '_Ordenado por margem de lucro (maior primeiro)._'
+          '_Ordenado por margem de lucro (maior primeiro)._' +
+          '\n\n*Usa os botões ◀ ▶ para navegar entre páginas.*'
       )
   );
   embeds.push(legend);
@@ -400,23 +522,7 @@ async function handlePrecariosButton(interaction) {
     const memberTier = memberRes.rows[0]?.tier || 'young_blood';
 
     const embeds = await buildPriceEmbedsForMember(memberRole, memberTier);
-
-    if (!embeds.length) {
-      return await interaction.editReply({ content: `${EMOJI.ERRO} Não há preços disponíveis de momento.` });
-    }
-
-    // Limitar a 10 embeds e respeitar o limite de 6000 chars total
-    const toSend = [];
-    let totalLen = 0;
-    for (const embed of embeds.slice(0, 10)) {
-      const json = embed.toJSON ? embed.toJSON() : embed.data;
-      const len = JSON.stringify(json || {}).length;
-      if (totalLen + len > 5900) break;
-      totalLen += len;
-      toSend.push(embed);
-    }
-
-    return await interaction.editReply({ embeds: toSend });
+    return sendPaginatedEmbeds(interaction, embeds, 'Preçário');
   } catch (e) {
     console.error('[PRECARIOS] Erro:', e);
     return await interaction
@@ -430,23 +536,7 @@ async function handlePrecariosChefiaButton(interaction) {
 
   try {
     const embeds = await buildPriceEmbedsForChefia();
-
-    if (!embeds.length) {
-      return await interaction.editReply({ content: `${EMOJI.ERRO} Não há preços disponíveis de momento.` });
-    }
-
-    // Limitar a 10 embeds e respeitar o limite de 6000 chars total
-    const toSend = [];
-    let totalLen = 0;
-    for (const embed of embeds.slice(0, 10)) {
-      const json = embed.toJSON ? embed.toJSON() : embed.data;
-      const len = JSON.stringify(json || {}).length;
-      if (totalLen + len > 5900) break;
-      totalLen += len;
-      toSend.push(embed);
-    }
-
-    return await interaction.editReply({ embeds: toSend });
+    return sendPaginatedEmbeds(interaction, embeds, 'Preçário Chefia');
   } catch (e) {
     console.error('[PRECARIOS-CHEFIA] Erro:', e);
     return await interaction
