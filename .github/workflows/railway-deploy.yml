@@ -1,36 +1,81 @@
-name: Railway Force Deploy
+name: Railway Force Deploy (from source)
 
 on:
   workflow_dispatch:
 
+env:
+  RAILWAY_SERVICE: bot-di-zona
+  RAILWAY_SERVICE_ID: 99b5ded5-7957-4899-ba92-36239ef28d60
+
 jobs:
   deploy:
+    name: Force Redeploy
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - run: npm install -g @railway/cli
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Railway CLI
+        run: npm install -g @railway/cli
+
       - name: Cancel stuck deployments
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          # List deployments and cancel any that are WAITING
+          echo "Listing non-SUCCESS deployments for service $RAILWAY_SERVICE_ID..."
           curl -s -X POST https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"query": "query { deployments(input: { serviceId: \"99b5ded5-7957-4899-ba92-36239ef28d60\" }) { edges { node { id status } } } }"}' | jq -r '.data.deployments.edges[] | select(.node.status == "WAITING") | .node.id' | while read id; do
+            -d "{\"query\": \"query { deployments(input: { serviceId: \\\"$RAILWAY_SERVICE_ID\\\" }) { edges { node { id status deploymentStopped } } } }\"}" \
+            > deployments.json
+          cat deployments.json
+
+          IDS=$(cat deployments.json | jq -r '[.data.deployments.edges[] | select(.node.status != \"SUCCESS\") | .node.id] | .[]' 2>/dev/null || true)
+          if [ -z "$IDS" ]; then
+            echo "No stuck deployments to cancel."
+            exit 0
+          fi
+          for id in $IDS; do
             echo "Cancelling deployment $id"
             curl -s -X POST https://backboard.railway.app/graphql/v2 \
               -H "Authorization: Bearer $RAILWAY_TOKEN" \
               -H "Content-Type: application/json" \
               -d "{\"query\": \"mutation { deploymentRemove(id: \\\"$id\\\") }\"}"
+            echo ""
           done
+
+      - name: Force redeploy from source
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      - name: Force redeploy
-        run: railway redeploy --service bot-di-zona --environment production
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      - name: Watch deploy
         run: |
-          sleep 30
-          railway status --json | jq '.environments.edges[0].node.serviceInstances.edges[] | select(.node.serviceName == "bot-di-zona") | .node.latestDeployment | {id, status, createdAt}'
+          echo "Triggering redeploy from source..."
+          railway redeploy --service "$RAILWAY_SERVICE" --yes --from-source
+
+      - name: Watch deploy
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "Waiting for deployment to reach SUCCESS..."
+          for i in {1..60}; do
+            curl -s -X POST https://backboard.railway.app/graphql/v2 \
+              -H "Authorization: Bearer $RAILWAY_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"query\": \"query { deployments(input: { serviceId: \\\"$RAILWAY_SERVICE_ID\\\", limit: 1 }) { edges { node { id status deploymentStopped createdAt } } } }\"}" \
+              > status.json
+            cat status.json
+            STATUS=$(cat status.json | jq -r '.data.deployments.edges[0].node.status // \"UNKNOWN\"')
+            STOPPED=$(cat status.json | jq -r '.data.deployments.edges[0].node.deploymentStopped // false')
+            echo "Iteration $i: status=$STATUS, stopped=$STOPPED"
+            if [ "$STATUS" = "SUCCESS" ]; then
+              echo "Deployment reached SUCCESS!"
+              exit 0
+            fi
+            if [ "$STOPPED" = "true" ]; then
+              echo "Deployment was stopped! Check Railway dashboard."
+              exit 1
+            fi
+            sleep 15
+          done
+          echo "Timed out waiting for deployment to succeed."
+          exit 1
