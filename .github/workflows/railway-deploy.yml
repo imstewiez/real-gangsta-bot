@@ -5,7 +5,6 @@ on:
 
 env:
   RAILWAY_SERVICE: bot-di-zona
-  RAILWAY_SERVICE_ID: 99b5ded5-7957-4899-ba92-36239ef28d60
 
 jobs:
   deploy:
@@ -23,25 +22,22 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          echo "Listing non-SUCCESS deployments for service $RAILWAY_SERVICE_ID..."
-          curl -s -X POST https://backboard.railway.app/graphql/v2 \
-            -H "Authorization: Bearer $RAILWAY_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{\"query\": \"query { deployments(input: { serviceId: \\\"$RAILWAY_SERVICE_ID\\\" }) { edges { node { id status deploymentStopped } } } }\"}" \
-            > deployments.json
-          cat deployments.json
+          echo "Listing non-SUCCESS deployments..."
+          railway deployment list --service "$RAILWAY_SERVICE" --json > deployments.json || true
+          cat deployments.json || echo "No deployments list available"
 
-          IDS=$(cat deployments.json | jq -r '[.data.deployments.edges[] | select(.node.status != \"SUCCESS\") | .node.id] | .[]' 2>/dev/null || true)
+          IDS=$(cat deployments.json 2>/dev/null | jq -r '[.[] | select(.status != "SUCCESS") | .id] | .[]' 2>/dev/null || true)
           if [ -z "$IDS" ]; then
             echo "No stuck deployments to cancel."
             exit 0
           fi
           for id in $IDS; do
             echo "Cancelling deployment $id"
+            # Railway CLI doesn't have a direct cancel, but we can try to remove via API
             curl -s -X POST https://backboard.railway.app/graphql/v2 \
               -H "Authorization: Bearer $RAILWAY_TOKEN" \
               -H "Content-Type: application/json" \
-              -d "{\"query\": \"mutation { deploymentRemove(id: \\\"$id\\\") }\"}"
+              -d "{\"query\": \"mutation { deploymentRemove(id: \\\"$id\\\") }\"}" || true
             echo ""
           done
 
@@ -58,15 +54,13 @@ jobs:
         run: |
           echo "Waiting for deployment to reach SUCCESS..."
           for i in {1..60}; do
-            curl -s -X POST https://backboard.railway.app/graphql/v2 \
-              -H "Authorization: Bearer $RAILWAY_TOKEN" \
-              -H "Content-Type: application/json" \
-              -d "{\"query\": \"query { deployments(input: { serviceId: \\\"$RAILWAY_SERVICE_ID\\\", limit: 1 }) { edges { node { id status deploymentStopped createdAt } } } }\"}" \
-              > status.json
-            cat status.json
-            STATUS=$(cat status.json | jq -r '.data.deployments.edges[0].node.status // \"UNKNOWN\"')
-            STOPPED=$(cat status.json | jq -r '.data.deployments.edges[0].node.deploymentStopped // false')
+            railway deployment list --service "$RAILWAY_SERVICE" --json > status.json 2>/dev/null || true
+            cat status.json 2>/dev/null || echo "No status available"
+            
+            STATUS=$(cat status.json 2>/dev/null | jq -r '.[0].status // "UNKNOWN"' 2>/dev/null || echo "UNKNOWN")
+            STOPPED=$(cat status.json 2>/dev/null | jq -r '.[0].deploymentStopped // false' 2>/dev/null || echo "false")
             echo "Iteration $i: status=$STATUS, stopped=$STOPPED"
+            
             if [ "$STATUS" = "SUCCESS" ]; then
               echo "Deployment reached SUCCESS!"
               exit 0
