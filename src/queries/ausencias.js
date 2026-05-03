@@ -4,6 +4,7 @@ const { absenceRepo } = require('../repositories');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
 const { requirePermission } = require('../shared/requirePermission');
+const { fmtOrderStatus } = require('../shared/labels');
 
 async function handle(interaction) {
   const sub = interaction.options.getSubcommand();
@@ -14,7 +15,7 @@ async function handle(interaction) {
     const rows = await absenceRepo.list({ status });
     const lines = rows.map(
       a =>
-        `\`#${a.id}\` **${a.display_name}** — ${a.start_date.toISOString().slice(0, 10)} a ${a.end_date.toISOString().slice(0, 10)} | ${a.status}`
+        `\`#${a.id}\` **${a.display_name}** — ${a.start_date.toISOString().slice(0, 10)} a ${a.end_date.toISOString().slice(0, 10)} | ${fmtOrderStatus(a.status)}`
     );
     const embed = brandEmbed('SHORT')
       .setTitle('🏖️ Ausências')

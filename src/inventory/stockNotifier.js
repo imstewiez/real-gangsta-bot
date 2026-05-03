@@ -247,7 +247,7 @@ async function publishStockSummary() {
     const embed = brandEmbed()
       .setColor(COLOR.INFO)
       .setTitle(`📊 Resumo de Stock — ${formatPtDate(new Date())}`)
-      .setDescription(`Total estimado: **${totalValue.toLocaleString('pt-PT')} €**`);
+      .setDescription(`Total estimado: **${Math.round(totalValue).toLocaleString('pt-PT')}€**`);
 
     for (const [category, items] of Object.entries(grouped)) {
       const lines = items

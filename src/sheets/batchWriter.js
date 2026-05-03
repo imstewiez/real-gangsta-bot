@@ -20,14 +20,16 @@ class BatchWriter {
 
   /** Limpa todas as células de um range. */
   clearRange(sheetId, startRow = 0, startCol = 0, endRow = null, endCol = null) {
+    // Valores explícitos grandes em vez de null — garante que a API limpa
+    // tudo mesmo que não interprete null como "até ao fim da grid".
     this.requests.push({
       updateCells: {
         range: {
           sheetId,
           startRowIndex: startRow,
-          endRowIndex: endRow,
+          endRowIndex: endRow ?? 5000,
           startColumnIndex: startCol,
-          endColumnIndex: endCol,
+          endColumnIndex: endCol ?? 50,
         },
         fields: 'userEnteredValue,userEnteredFormat',
       },

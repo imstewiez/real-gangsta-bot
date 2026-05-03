@@ -185,13 +185,13 @@ async function syncDashboard(batch, sheetId) {
       rank: 1,
       label: 'Top Líder por Lucro',
       value: movers.topProfit[0] ? movers.topProfit[0].display_name : '—',
-      sub: movers.topProfit[0] ? `${Math.round(Number(movers.topProfit[0].value)).toLocaleString('pt-PT')} €` : '—',
+      sub: movers.topProfit[0] ? `${Math.round(Number(movers.topProfit[0].value)).toLocaleString('pt-PT')}€` : '—',
     },
     {
       rank: 1,
       label: 'Spot Mais Rentável',
       value: k.topSpotProfit ? k.topSpotProfit.spot : '—',
-      sub: k.topSpotProfit ? `${Math.round(Number(k.topSpotProfit.total_net_value)).toLocaleString('pt-PT')} €` : '—',
+      sub: k.topSpotProfit ? `${Math.round(Number(k.topSpotProfit.total_net_value)).toLocaleString('pt-PT')}€` : '—',
     },
     {
       rank: 1,
@@ -210,7 +210,7 @@ async function syncDashboard(batch, sheetId) {
       bodyBoldCell(h.label, { font: { ...FONT.BODY_BOLD, foregroundColor: COLOR.GRAY_LIGHT } }),
       bodyBoldCell(h.value, { align: 'LEFT' }),
       numCell(
-        h.sub.includes('€') ? h.sub.replace(' €', '').replace(/\./g, '').replace(',', '.') : h.sub,
+        h.sub.includes('€') ? Number(h.sub.replace(/[€\s]/g, '').replace(/\./g, '').replace(',', '.')) : h.sub,
         h.sub.includes('€') ? NUM_FMT.EURO : NUM_FMT.INT
       ),
       bodyCell(h.sub, { align: 'LEFT' }),

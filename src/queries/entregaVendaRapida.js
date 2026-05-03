@@ -43,7 +43,9 @@ async function _handle(interaction, tipo) {
   ) {
     return safeReply(
       interaction,
-      { content: `${EMOJI.ERRO} Preço custom inválido. Máximo: ${SANITY_MAX_PRICE.toLocaleString('pt-PT')}€.` },
+      {
+        content: `${EMOJI.ERRO} Preço custom inválido. Máximo: ${Math.round(SANITY_MAX_PRICE).toLocaleString('pt-PT')}€.`,
+      },
       { messageClass: 'ERROR' }
     );
   }

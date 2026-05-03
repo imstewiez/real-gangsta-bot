@@ -183,9 +183,10 @@ async function buildDetailsForCustomRange(startStr, endStr) {
     require('./leaderboardEngine').getMaterialSoldLeaders(start, end, 5),
   ]);
 
+  const { formatPtDateOnly } = require('../shared/formatPtDate');
   const data = {
     period: 'custom',
-    label: `${start.toLocaleDateString('pt-PT')} – ${end.toLocaleDateString('pt-PT')}`,
+    label: `${formatPtDateOnly(start)} – ${formatPtDateOnly(end)}`,
     categories: { activity, mvp, kda, delivered, sold },
   };
   return { embed: buildDetailsEmbed(data), components: [] };

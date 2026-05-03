@@ -47,7 +47,7 @@ async function _renderWizardMessage(saidaId) {
 
   const lines = [
     SAIDAS.WIZARD_DESC(saidaId),
-    saida?.result ? `Resultado: **${saida.result.toUpperCase()}**` : '',
+    saida?.result ? `Resultado: **${RESULT_LABEL[saida.result] || saida.result}**` : '',
     '',
     `Pendentes: **${pending.length}** · Liquidados: **${settled.length}**`,
   ].filter(Boolean);

@@ -8,7 +8,6 @@ const {
   handleTipoRegistoSelect,
   handleCategorySelect,
   handleAdjustSelect,
-  handleEncomendaSelect,
   handleGerirActionSelect,
   handleEditItemSelect,
   handleDeactivateItemSelect,
@@ -17,6 +16,7 @@ const {
   handleCartItemPick,
   handleCartLineAction,
 } = require('../../../inventory/inventoryHandlers');
+const orderHandlers = require('../../../orders/orderHandlers');
 const {
   handleCloseSaidaSelect,
   handleCloseResultSelect,
@@ -54,7 +54,9 @@ const SELECT_ROUTES = [
   exact('inv::select_tipo_registo', handleTipoRegistoSelect),
   prefix('inv::cat_', handleCategorySelect),
   exact('inv::select_ajuste', handleAdjustSelect),
-  exact('inv::select_encomenda', handleEncomendaSelect),
+  prefix('ordercat::', orderHandlers.handleOrderCategorySelect),
+  prefix('orderitem::', orderHandlers.handleOrderItemSelect),
+  exact('ordercart::remove', orderHandlers.handleOrderCartRemove),
 
   // Inventory — BAIRRISTA CART multi-item flow (migration 038)
   prefix('invcart::cat::', handleCartCategory),
@@ -115,9 +117,12 @@ const SELECT_ROUTES = [
   // Order management — chefia select actions
   exact('order::manage_action', orderManagement.handleOrderManageSelect),
 
-  // Promoção — chefia select flow
-  exact('adapter::select_promover_membro', require('../../../panels/buttonAdapters').handlePromoverMembroSelect),
-  prefix('adapter::select_promover_cargo::', require('../../../panels/buttonAdapters').handlePromoverCargoSelect),
+  // Stock v3
+  exact('stockv3::select_entrada_item', require('../../../inventory/v3/chefiaStockHandlers').handleEntradaItemSelect),
+  exact('stockv3::select_retirada_tipo', require('../../../inventory/v3/chefiaStockHandlers').handleRetiradaTipoSelect),
+  exact('stockv3::select_venda_item', require('../../../inventory/v3/chefiaStockHandlers').handleVendaItemSelect),
+  exact('stockv3::select_entrega_item', require('../../../inventory/v3/chefiaStockHandlers').handleEntregaItemSelect),
+  exact('stockv3::select_preco_item', require('../../../inventory/v3/chefiaStockHandlers').handlePrecoItemSelect),
 ];
 
 async function handleSelect(interaction) {

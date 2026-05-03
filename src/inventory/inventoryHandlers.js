@@ -236,7 +236,7 @@ async function handleGerirActionSelect(interaction) {
       for (const item of catItems) {
         const status = item.active ? '' : ' \u274C *desativado*';
         const price = item.estimated_value
-          ? `**${parseFloat(item.estimated_value).toLocaleString('pt-PT')}\u20AC**`
+          ? `**${Math.round(parseFloat(item.estimated_value)).toLocaleString('pt-PT')}€**`
           : '*sem preço*';
         lines.push(`  ${item.name} \u2014 ${price}${status}`);
       }
@@ -528,12 +528,12 @@ async function handleEncomendaSelect(interaction) {
     new EmbedBuilder()
       .setTitle(`📦 Encomendar: ${item.name}`)
       .setColor(COLOR.PRIMARY)
-      .setDescription(`Preço base: **${preview.unitPrice.toLocaleString('pt-PT')}€**`)
+      .setDescription(`Preço base: **${Math.round(preview.unitPrice).toLocaleString('pt-PT')}€**`)
   );
 
   if (preview.hasRecipe) {
     const ingLines = preview.ingredients.map(
-      ing => `• ${ing.name}: ${ing.qty}x (~${ing.subtotal.toLocaleString('pt-PT')}€)`
+      ing => `• ${ing.name}: ${ing.qty}x (~${Math.round(ing.subtotal).toLocaleString('pt-PT')}€)`
     );
     embed.addFields({
       name: '🛠️ Fórmula de Craft',
@@ -542,7 +542,7 @@ async function handleEncomendaSelect(interaction) {
     });
     embed.addFields({
       name: '💰 Custo dos Materiais',
-      value: `${preview.materialCost.toLocaleString('pt-PT')}€`,
+      value: `${Math.round(preview.materialCost).toLocaleString('pt-PT')}€`,
       inline: true,
     });
   }
@@ -550,7 +550,7 @@ async function handleEncomendaSelect(interaction) {
   embed.addFields(
     {
       name: '💳 Preço Final (com rank)',
-      value: `${preview.finalPrice.toLocaleString('pt-PT')}€ (${member.role})`,
+      value: `${Math.round(preview.finalPrice).toLocaleString('pt-PT')}€ (${member.role})`,
       inline: true,
     },
     {
@@ -703,9 +703,9 @@ async function handleEncomendaModal(interaction) {
 
   let description = `**${quantity}x** ${pending.itemName}\n`;
   description += `Modo: ${paymentMode === 'money_only' ? '💵 Apenas Dinheiro' : '📦 Materiais + Dinheiro'}\n`;
-  description += `Preço final: **${pricing.finalPrice.toLocaleString('pt-PT')}€**\n`;
+  description += `Preço final: **${Math.round(pricing.finalPrice).toLocaleString('pt-PT')}€**\n`;
   if (pricing.hasRecipe) {
-    description += `Custo materiais: ${pricing.materialCost.toLocaleString('pt-PT')}€\n`;
+    description += `Custo materiais: ${Math.round(pricing.materialCost).toLocaleString('pt-PT')}€\n`;
   }
   description += 'Estado: Pendente\n';
   if (notes) description += `Notas: ${notes}\n`;
@@ -1262,7 +1262,7 @@ async function handleCartSubmit(interaction) {
   const title = isVenda ? `${EMOJI.LUCRO} Venda submetida` : `${EMOJI.MATERIAL} Entrega submetida`;
   const desc = [
     `**${requestResult.lines.length}** linha(s) · **${requestResult.totalQty.toLocaleString('pt-PT')}** unidades`,
-    requestResult.totalValue > 0 ? `Valor: **${requestResult.totalValue.toLocaleString('pt-PT')}€**` : '',
+    requestResult.totalValue > 0 ? `Valor: **${Math.round(requestResult.totalValue).toLocaleString('pt-PT')}€**` : '',
     '',
     `${EMOJI.PENDENTE} **Aguarda aprovação da chefia.**`,
     'Só quando a chefia aprovar é que o stock será actualizado.',
@@ -1537,10 +1537,6 @@ module.exports = {
   handleEditPriceModal,
   handleDeactivateItemSelect,
   handleReactivateItemSelect,
-  handleEncomendasButton,
-  handleEncomendaSelect,
-  handleEncomendaModeSelect,
-  handleEncomendaModal,
   pendingItemSelections,
   // Cart handlers
   handleCartAdd,

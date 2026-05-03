@@ -181,7 +181,7 @@ async function buildSessionEmbed(saidaId) {
   }
 
   if (isClosed) {
-    lines.push('', `${EMOJI.FECHAR} _Saída ${saida.status}. Registo encerrado._`);
+    lines.push('', `${EMOJI.FECHAR} _Saída ${fmtSaidaStatus(saida.status)}. Registo encerrado._`);
   } else if (isInLiquidacao) {
     const submittedCount = participants.filter(p => p.individual_result_submitted).length;
     const totalCount = participants.length;
@@ -482,7 +482,7 @@ async function handleSessionCaracterizado(interaction) {
         interaction,
         {
           content:
-            `${EMOJI.BLOQUEADO} Já estás inscrito como **${existing.participant_type}** na saída #${saidaId}. ` +
+            `${EMOJI.BLOQUEADO} Já estás inscrito como **${fmtParticipantType(existing.participant_type)}** na saída #${saidaId}. ` +
             'Usa **"Cancelar Registo"** no painel da saída se queres mudar.',
           flags: MessageFlags.Ephemeral,
         },
@@ -651,7 +651,7 @@ async function handleSessionTrabalhador(interaction) {
         interaction,
         {
           content:
-            `${EMOJI.BLOQUEADO} Já estás inscrito como **${existing.participant_type}** na saída #${saidaId}. ` +
+            `${EMOJI.BLOQUEADO} Já estás inscrito como **${fmtParticipantType(existing.participant_type)}** na saída #${saidaId}. ` +
             'Usa **"Cancelar Registo"** se queres mudar.',
         },
         { messageClass: 'WARN' }
@@ -917,7 +917,7 @@ async function handleSessionPedirJuntar(interaction) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.BLOQUEADO} Já estás na saída como **${existing.participant_type}**.`,
+        content: `${EMOJI.BLOQUEADO} Já estás na saída como **${fmtParticipantType(existing.participant_type)}**.`,
       },
       { messageClass: 'WARN' }
     );

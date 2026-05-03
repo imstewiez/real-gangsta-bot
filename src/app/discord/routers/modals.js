@@ -13,6 +13,7 @@ const {
   handleCartQtyModal,
   handleCartNotesModal,
 } = require('../../../inventory/inventoryHandlers');
+const orderHandlers = require('../../../orders/orderHandlers');
 const {
   handleCreateSaidaModal,
   handleCloseSaidaModal,
@@ -42,6 +43,7 @@ const MODAL_ROUTES = [
   exact('inv::modal_add_item', handleAddItemModal),
   exact('inv::modal_edit_price', handleEditPriceModal),
   exact('inv::modal_encomenda', handleEncomendaModal),
+  exact('inv::modal_order_qty', orderHandlers.handleOrderQtyModal),
 
   // Bairrista cart modals (migration 038)
   prefix('invcart::qty_modal::', handleCartQtyModal),
@@ -78,11 +80,15 @@ const MODAL_ROUTES = [
   exact('adapter::modal_ausencia', buttonAdapters.handleAusenciaModalSubmit),
   exact('adapter::modal_criar_incidente', buttonAdapters.handleCriarIncidenteModalSubmit),
   exact('adapter::modal_transferir', buttonAdapters.handleTransferirModalSubmit),
-  prefix('adapter::modal_promover::', buttonAdapters.handlePromoverModalSubmit),
-  exact('adapter::modal_promover', buttonAdapters.handlePromoverModalSubmit),
 
   // Encomendas — modal de recusa
   prefix('order::modal_recusar::', require('../../../orders/orderManagement').handleOrderRecusarModal),
+
+  // Stock v3
+  prefix('stockv3::modal_entrada::', require('../../../inventory/v3/chefiaStockHandlers').handleEntradaModal),
+  prefix('stockv3::modal_venda::', require('../../../inventory/v3/chefiaStockHandlers').handleVendaModal),
+  prefix('stockv3::modal_entrega::', require('../../../inventory/v3/chefiaStockHandlers').handleEntregaModal),
+  prefix('stockv3::modal_preco::', require('../../../inventory/v3/chefiaStockHandlers').handlePrecoModal),
 ];
 
 async function handleModal(interaction) {

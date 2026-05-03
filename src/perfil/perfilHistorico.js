@@ -14,34 +14,9 @@ const { EMOJI } = require('../content');
 const { memberRepo, inventoryRepo } = require('../repositories');
 const { buttonRow, button } = require('../shared/ui/buttons');
 const { formatPtDate } = require('../shared/formatPtDate');
+const { fmtMovementType } = require('../shared/labels');
 
 const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
-
-const TYPE_EMOJI = {
-  entrega_bairrista: '📥',
-  entrega_oficial: '📥',
-  venda_bairrista: '💰',
-  fornecimento_org: '📤',
-  devolucao_saida: '↩️',
-  perda_saida: '❌',
-  consumo_saida: '🔥',
-  ajuste_manual: '⚙️',
-  apreendido: '🚔',
-  craftado: '🛠️',
-};
-
-const TYPE_LABEL = {
-  entrega_bairrista: 'entrega',
-  entrega_oficial: 'entrega oficial',
-  venda_bairrista: 'venda',
-  fornecimento_org: 'fornecimento',
-  devolucao_saida: 'devolução saída',
-  perda_saida: 'perda saída',
-  consumo_saida: 'consumo saída',
-  ajuste_manual: 'ajuste',
-  apreendido: 'apreendido',
-  craftado: 'craft',
-};
 
 async function handle(interaction) {
   if (isDuplicate(interaction.id)) return;
@@ -85,8 +60,8 @@ async function render(interaction, filter) {
     embed.setDescription(`${filtered.length} movimentos · total **${fmt(totalQty)}** un.`);
 
     const lines = filtered.map(m => {
-      const emj = TYPE_EMOJI[m.movement_type] || '•';
-      const lbl = TYPE_LABEL[m.movement_type] || m.movement_type;
+      const emj = (fmtMovementType(m.movement_type).match(/^(.?)\s/) || ['', '•'])[1];
+      const lbl = fmtMovementType(m.movement_type).replace(/^.?\s/, '');
       const date = formatPtDate(m.created_at);
       const opTag = m.saida_id ? ` · saída **#${m.saida_id}**` : '';
       return `${emj} \`${date}\` **${m.quantity}× ${m.item_name}** — ${lbl}${opTag}`;

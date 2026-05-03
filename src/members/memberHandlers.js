@@ -5,35 +5,7 @@ const { safeReply } = require('../shared/interactionHelpers');
 const { memberProfileEmbed, brandEmbed, progressBar, rankBadge } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS, RANKINGS } = require('../content');
 const { formatPtDate } = require('../shared/formatPtDate');
-
-// Mapping canónico de tipos de movimento → label para histórico/totais.
-const MOVEMENT_LABELS = {
-  entrega_bairrista: 'Entrega',
-  venda_bairrista: 'Venda',
-  entrega_oficial: 'Entrega (oficial)',
-  devolucao_saida: 'Devolução',
-  fornecimento_org: 'Fornecido',
-  consumo_saida: 'Consumo',
-  perda_saida: 'Perda',
-  ajuste_manual: 'Ajuste',
-  apreendido: 'Apreendido',
-  craftado: 'Craftado',
-  saldo_inicial: 'Saldo Inicial',
-};
-
-// Emoji por tipo (para histórico visual)
-const MOVEMENT_EMOJI = {
-  entrega_bairrista: EMOJI.MATERIAL,
-  venda_bairrista: EMOJI.LUCRO,
-  entrega_oficial: EMOJI.MATERIAL,
-  devolucao_saida: EMOJI.DEVOLVER,
-  fornecimento_org: EMOJI.FORNECER,
-  consumo_saida: EMOJI.CRAFT,
-  perda_saida: EMOJI.PERDIDO,
-  ajuste_manual: EMOJI.AJUSTAR,
-  apreendido: EMOJI.MATERIAL,
-  craftado: EMOJI.CRAFT,
-};
+const { fmtMovementType } = require('../shared/labels');
 
 async function handleMemberCommand(interaction) {
   const targetUser = interaction.options.getUser('membro') || interaction.user;
@@ -91,9 +63,7 @@ async function handleMemberHistoryButton(interaction) {
 
   const lines = movements.map(m => {
     const date = formatPtDate(m.created_at);
-    const label = MOVEMENT_LABELS[m.movement_type] || m.movement_type;
-    const e = MOVEMENT_EMOJI[m.movement_type] || EMOJI.MOVIMENTO;
-    return `${e} \`${date}\` **${m.quantity}×** ${m.item_name} · ${label}`;
+    return `${fmtMovementType(m.movement_type)} \`${date}\` **${m.quantity}×** ${m.item_name}`;
   });
 
   const embed = brandEmbed('MOVEMENT')
@@ -238,7 +208,7 @@ async function handleTopSemanalButton(interaction) {
   const lines = rankings.map((r, i) => {
     const prefix = rankBadge(i + 1);
     const isMe = r.discord_id === interaction.user.id ? ' ← **tu**' : '';
-    return `${prefix} <@${r.discord_id}> — **${parseFloat(r.weighted_value).toLocaleString('pt-PT')}** · ${r.deliveries} entregas · ${r.sales} vendas${isMe}`;
+    return `${prefix} <@${r.discord_id}> — **${Math.round(parseFloat(r.weighted_value)).toLocaleString('pt-PT')}** · ${r.deliveries} entregas · ${r.sales} vendas${isMe}`;
   });
 
   // Se user não está no top 10, mostra a sua posição
@@ -249,7 +219,7 @@ async function handleTopSemanalButton(interaction) {
     if (myPos >= 0) {
       lines.push('─────');
       lines.push(
-        `**#${myPos + 1}.** <@${interaction.user.id}> — **${parseFloat(allRankings[myPos].weighted_value).toLocaleString('pt-PT')}** ← **tu**`
+        `**#${myPos + 1}.** <@${interaction.user.id}> — **${Math.round(parseFloat(allRankings[myPos].weighted_value)).toLocaleString('pt-PT')}** ← **tu**`
       );
     }
   }

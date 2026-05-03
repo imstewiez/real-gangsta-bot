@@ -4,6 +4,7 @@ const { rankingEmbed, brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { weekBounds } = require('../util');
 const { query } = require('../db');
 const CONFIG = require('../config');
+const { fmtSaidaType, fmtSaidaStatus } = require('../shared/labels');
 const { log, warn } = require('../logger');
 const { jobRepo } = require('../repositories');
 const { recordWeeklyWinner } = require('../services/prizeService');
@@ -182,7 +183,7 @@ async function publishDailySummary(client) {
     if (todayOps.length > 0) {
       const opLines = todayOps.map(op => {
         const leader = op.leader_name ? ` · ${op.leader_name}` : '';
-        return `#${op.id} — ${op.operation_type} (${op.status})${leader}`;
+        return `#${op.id} — ${fmtSaidaType(op.operation_type)} (${fmtSaidaStatus(op.status)})${leader}`;
       });
       embed.addFields({ name: 'Saídas', value: opLines.join('\n').slice(0, 1024) });
     }

@@ -31,7 +31,7 @@ async function publishBairristaDailySummary() {
 
     embed.addFields({
       name: S.DAILY_TOTAL,
-      value: `**${summary.totalQty.toLocaleString('pt-PT')}** unidades · **${summary.totalValue.toLocaleString('pt-PT', { maximumFractionDigits: 0 })}€**`,
+      value: `**${summary.totalQty.toLocaleString('pt-PT')}** unidades · **${Math.round(summary.totalValue).toLocaleString('pt-PT')}€**`,
       inline: false,
     });
 

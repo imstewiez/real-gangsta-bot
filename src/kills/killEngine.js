@@ -41,7 +41,7 @@ async function recordKill({
     // Guard 1: saída tem de estar iniciada ou concluída (kills em saída
     // 'aberta' ainda não arrancada são nonsense).
     if (!KILL_ALLOWED_SAIDA_STATUSES.has(saida.status)) {
-      throw new Error(`Saída #${saidaId} está "${saida.status}" — não podem registar-se kills.`);
+      throw new Error(`Saída #${saidaId} está em estado que não permite kills.`);
     }
 
     // Guard 2: killer tem de ser participante desta saída (atribuição

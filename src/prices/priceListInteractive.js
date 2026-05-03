@@ -147,7 +147,7 @@ function classifyDisplayCategory(item) {
 // ── Formatação ──────────────────────────────────────────────────────────────
 
 function fmtPrice(n) {
-  return (Number(n) || 0).toLocaleString('pt-PT') + '€';
+  return Math.round(Number(n) || 0).toLocaleString('pt-PT') + '€';
 }
 
 function fmtPriceCompact(n) {

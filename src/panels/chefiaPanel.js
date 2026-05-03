@@ -78,12 +78,7 @@ async function buildChefiaPanel() {
       emoji: EMOJI.PENDENTE,
     }),
     button({ customId: 'chefia::relatorio', label: 'Relatório', style: 'Primary', emoji: EMOJI.AUDIT }),
-    button({ customId: 'chefia::dashboard', label: 'Dashboard', style: 'Primary', emoji: EMOJI.GRAFICO })
-  );
-
-  // Row 2b — Preçários (chefia only)
-  const row2b = buttonRow(
-    button({ customId: 'chefia::precarios', label: 'Preçários', style: 'Secondary', emoji: EMOJI.CRAFT })
+    button({ customId: 'chefia::gerir_stock_v3', label: 'Gerir Stock', style: 'Danger', emoji: EMOJI.STOCK })
   );
 
   // Row 3 — Gerir (compressão via select menu)
@@ -104,7 +99,7 @@ async function buildChefiaPanel() {
           emoji: EMOJI.EDITAR,
           description: 'Adicionar/remover itens do catálogo',
         },
-        { label: 'Promover', value: 'chefia::promover', emoji: EMOJI.PROGRESSO, description: 'Promover bairristas' },
+
         {
           label: 'Gerir Encomendas',
           value: 'chefia::gerir_encomendas',
@@ -121,7 +116,7 @@ async function buildChefiaPanel() {
     })
   );
 
-  return { embeds: [embed], components: [row1, row2, row2b, row3] };
+  return { embeds: [embed], components: [row1, row2, row3] };
 }
 
 module.exports = { buildChefiaPanel };

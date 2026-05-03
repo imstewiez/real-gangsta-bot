@@ -63,8 +63,12 @@ async function _recordRoleChange(id, newRole, changedBy, reason = '', timestampC
       [id, member.role, newRole, changedBy, reason]
     );
 
+    // Reactivar membro inativo se for promovido/demovido para cargo activo
+    const shouldReactivate = member.status === 'inativo' && newRole !== 'inativo';
+    const statusSet = shouldReactivate ? "status = 'ativo'," : '';
+
     const result = await client.query(
-      `UPDATE members SET role = $1, ${timestampColumn} = NOW(), updated_at = NOW() WHERE id = $2 RETURNING *`,
+      `UPDATE members SET role = $1, ${statusSet} ${timestampColumn} = NOW(), updated_at = NOW() WHERE id = $2 RETURNING *`,
       [newRole, id]
     );
     return result.rows[0];

@@ -540,7 +540,7 @@ describe('delivery requests - confirmacao OG+', () => {
     });
 
     assert.equal(r2.ok, false);
-    assert.match(r2.reason, /já foi approved/);
+    assert.match(r2.reason, /já foi aprovado/);
     assert.equal(_insertedMovements.length, 0);
   });
 });

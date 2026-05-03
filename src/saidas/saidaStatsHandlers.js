@@ -16,7 +16,7 @@ const { STATS, EMOJI } = require('../content');
 
 function fmtMoney(v) {
   const n = Number(v) || 0;
-  return `${n.toLocaleString('pt-PT', { maximumFractionDigits: 0 })} €`;
+  return `${Math.round(n).toLocaleString('pt-PT')}€`;
 }
 
 async function handleStatsOpen(interaction) {

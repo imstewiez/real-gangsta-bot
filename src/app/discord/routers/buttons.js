@@ -25,8 +25,6 @@ const {
 const { handleMovimento, handleRanking } = require('../../../members/bairristaHandlers');
 const {
   handleRegistarMaterialButton,
-  handleEncomendasButton,
-  handleEncomendaModeSelect,
   handleStockCommand,
   handleAdjustStockButton,
   handleGerirMateriaisButton,
@@ -40,6 +38,8 @@ const {
   handleCartPreview,
   handleCartPreviewBack,
 } = require('../../../inventory/inventoryHandlers');
+const stockV3Handlers = require('../../../inventory/v3/chefiaStockHandlers');
+const orderHandlers = require('../../../orders/orderHandlers');
 const {
   handleCreateSaidaButton,
   handleCloseSaidaButton,
@@ -168,8 +168,11 @@ const BUTTON_ROUTES = [
   // Bairrista — painel bairrista (v12)
   exact('bairrista::entregar_material', buttonAdapters.handleEntregarMaterialButton),
   exact('bairrista::registar_material', handleRegistarMaterialButton), // legacy fallback
-  exact('bairrista::encomendar', handleEncomendasButton),
-  prefix('inv::encomenda_mode::', handleEncomendaModeSelect),
+  exact('bairrista::encomendar', orderHandlers.handleEncomendasButton),
+  prefix('ordercart::add', orderHandlers.handleOrderCartAdd),
+  exact('ordercart::checkout', orderHandlers.handleOrderCartCheckout),
+  exact('ordercart::clear', orderHandlers.handleOrderCartClear),
+  prefix('ordermode::', orderHandlers.handleOrderModeSelect),
   exact('bairrista::vender', buttonAdapters.handleVenderButton),
   exact('bairrista::registar_kill', buttonAdapters.handleKillButton),
   exact('bairrista::ausencia', buttonAdapters.handleAusenciaButton),
@@ -212,13 +215,17 @@ const BUTTON_ROUTES = [
   exact('chefia::ausencias', buttonAdapters.handleChefiaAusenciasButton),
   exact('chefia::painel_pendencias', buttonAdapters.handlePainelPendenciasButton),
   exact('chefia::relatorio', buttonAdapters.handleRelatorioButton),
-  exact('chefia::dashboard', buttonAdapters.handleDashboardButton),
   exact('chefia::inactivos', buttonAdapters.handleInactivosButton),
   exact('chefia::sync_sheets', buttonAdapters.handleSyncSheetsButton),
   exact('chefia::republicar_paineis', chefiaActions.republicarTodosPaineis),
-  exact('chefia::promover', buttonAdapters.handlePromoverButton),
   exact('chefia::gerir_encomendas', orderManagement.handleGerirEncomendas),
-  exact('chefia::precarios', buttonAdapters.handlePrecariosChefiaButton),
+  exact('chefia::gerir_stock_v3', stockV3Handlers.handleGerirStockV3),
+
+  // Stock v3
+  exact('stockv3::entrada', stockV3Handlers.handleEntradaButton),
+  exact('stockv3::retirada', stockV3Handlers.handleRetiradaButton),
+  exact('stockv3::relatorio', stockV3Handlers.handleRelatorioButton),
+  exact('stockv3::precos', stockV3Handlers.handlePrecosButton),
 
   // Botões de encomenda no canal dedicado
   prefix('order::aceitar::', orderManagement.handleOrderAceitarButton),

@@ -14,7 +14,7 @@ async function handle(interaction) {
     const items = await itemAdminService.listItems({});
     const lines = items.map(
       i =>
-        `\`#${i.id}\` **${i.name}** | ${i.category} | ${i.active ? '🟢' : '🔴'} ${i.orderable ? '📦' : ''} ${i.counts_for_stock ? '📊' : ''} ${i.counts_for_rankings ? '🏆' : ''} | €${i.estimated_value}`
+        `\`#${i.id}\` **${i.name}** | ${i.category} | ${i.active ? '🟢' : '🔴'} ${i.orderable ? '📦' : ''} ${i.counts_for_stock ? '📊' : ''} ${i.counts_for_rankings ? '🏆' : ''} | ${Math.round(Number(i.estimated_value)).toLocaleString('pt-PT')}€`
     );
     const embed = brandEmbed('SHORT')
       .setTitle('📦 Catálogo de Itens')

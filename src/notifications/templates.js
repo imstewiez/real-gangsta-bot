@@ -15,9 +15,11 @@
 const { EMOJI, SAIDA_TYPE } = require('../content');
 const { formatPtDate } = require('../shared/formatPtDate');
 const { brandEmbed, COLOR } = require('../shared/embedBuilders');
+const { formatMoney } = require('../shared/formatMoney');
+const { fmtOrderStatus, fmtMovementType } = require('../shared/labels');
 
 const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
-const fmtVal = n => `${(Number(n) || 0).toLocaleString('pt-PT', { maximumFractionDigits: 0 })}€`;
+const fmtVal = n => formatMoney(n);
 const mention = discordId => (discordId ? `<@${discordId}>` : '—');
 
 // ── Inventário ─────────────────────────────────────────────────────────────
@@ -36,7 +38,11 @@ const MOVEMENT_LABELS = {
 };
 
 function inventoryMovementEmbed(p) {
-  const info = MOVEMENT_LABELS[p.movementType] || { label: p.movementType, color: COLOR.MUTED, emoji: EMOJI.MATERIAL };
+  const info = MOVEMENT_LABELS[p.movementType] || {
+    label: fmtMovementType(p.movementType),
+    color: COLOR.MUTED,
+    emoji: EMOJI.MATERIAL,
+  };
   const embed = brandEmbed('MOVEMENT')
     .setColor(info.color)
     .setTitle(`${info.emoji} ${info.label}`)
@@ -104,7 +110,7 @@ function orderLifecycleEmbed(p) {
   if (p.actorId && p.actorId !== p.memberDiscordId) {
     fields.push({ name: 'Actor', value: mention(p.actorId), inline: true });
   }
-  if (p.status) fields.push({ name: 'Estado', value: `\`${p.status}\``, inline: true });
+  if (p.status) fields.push({ name: 'Estado', value: fmtOrderStatus(p.status), inline: true });
   if (p.notes) {
     fields.push({ name: 'Observações', value: String(p.notes).slice(0, 500), inline: false });
   }

@@ -9,6 +9,7 @@ const {
   UserSelectMenuBuilder,
 } = require('discord.js');
 const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { fmtSaidaStatus, fmtSaidaType, fmtParticipantType } = require('../shared/labels');
 const { buildSearchableSelect } = require('../shared/selectSearch');
 const { successEmbed, brandEmbed } = require('../shared/embedBuilders');
 const { buildCategorySelectMenu, buildItemSelectMenuForCategory } = require('../inventory/inventoryMenus');
@@ -74,7 +75,7 @@ function buildSaidaSelectOptions(saidas) {
     const leader = s.leader_name ? ` · ${s.leader_name}` : '';
     return {
       label: `#${s.id} — ${typeLabel} (${date})`.slice(0, 100),
-      description: `${s.status}${spot}${leader}`.slice(0, 100) || 'Sem detalhes',
+      description: `${fmtSaidaStatus(s.status)}${spot}${leader}`.slice(0, 100) || 'Sem detalhes',
       value: String(s.id),
       emoji,
     };
@@ -336,7 +337,7 @@ async function handleCloseSessionDirect(interaction) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.WARN} Saída #${saidaId} já não está aberta (estado: ${saida?.status || 'não encontrada'}).`,
+        content: `${EMOJI.WARN} Saída #${saidaId} já não está aberta (estado: ${fmtSaidaStatus(saida?.status) || 'não encontrada'}).`,
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'WARN' }
@@ -606,7 +607,7 @@ async function handleFinalizeSaidaButton(interaction) {
             result?.totalSurvivors || 0
           ) +
           mvpLine +
-          `\n${profitLabel}: **${(v.net || 0).toLocaleString('pt-PT')} €**` +
+          `\n${profitLabel}: **${Math.round(v.net || 0).toLocaleString('pt-PT')}€**` +
           pendingNote,
       },
       { messageClass: 'RESULT' }
@@ -707,7 +708,7 @@ async function handleViewSaidasButton(interaction) {
       const t = String(s.scheduled_time).slice(0, 5);
       if (t && t !== '00:00') when += ` · ${t}`;
     }
-    return `${em}${re} **#${s.id}** — ${s.operation_type} · ${when} · ${s.spot || '—'} · Líder: ${s.leader_name || '—'}`;
+    return `${em}${re} **#${s.id}** — ${fmtSaidaType(s.operation_type)} · ${when} · ${s.spot || '—'} · Líder: ${s.leader_name || '—'}`;
   });
   const embed = brandEmbed('MOVEMENT').setTitle(`${EMOJI.SAIDA} Saídas recentes`).setDescription(lines.join('\n'));
   return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });

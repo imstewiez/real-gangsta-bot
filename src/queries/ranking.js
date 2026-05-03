@@ -22,7 +22,7 @@ async function handle(interaction) {
   let rankings, title;
   if (periodo === 'month') {
     rankings = await bairristaStatsRepo.getTopBairristasMonthly(monthStartStr, 15);
-    title = `🏆 Ranking Mensal — ${now.toLocaleString('pt-PT', { month: 'long', year: 'numeric' })}`;
+    title = `🏆 Ranking Mensal — ${formatPtDateOnly(monthStartStr)}`;
   } else if (periodo === 'alltime') {
     rankings = await bairristaStatsRepo.getTopBairristasAllTime(15);
     title = '🏆 Ranking Histórico — Bairristas';

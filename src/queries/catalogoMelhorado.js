@@ -27,7 +27,8 @@ async function handle(interaction) {
   }
 
   const lines = res.rows.map(
-    i => `\`#${i.id}\` **${i.name}** (${i.category}) — €${i.estimated_value}/${i.unit} ${i.orderable ? '📦' : ''}`
+    i =>
+      `\`#${i.id}\` **${i.name}** (${i.category}) — ${Math.round(Number(i.estimated_value)).toLocaleString('pt-PT')}€/${i.unit} ${i.orderable ? '📦' : ''}`
   );
 
   const embed = brandEmbed('SHORT')

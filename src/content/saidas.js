@@ -78,7 +78,7 @@ const SAIDAS = {
   WIZARD_SUMMARY: (id, kills, deaths, survivors, net, profitable, channel) =>
     `${E.FECHAR} Saída **#${id}** fechada.\n` +
     `${E.KILL} ${kills} kills · ${E.MORTE} ${deaths} mortes · ${E.OK} ${survivors} vivos\n` +
-    `${E.LUCRO} Líquido: **${(net || 0).toLocaleString('pt-PT')} €** (${profitable ? 'lucro' : 'prejuízo'})\n` +
+    `${E.LUCRO} Líquido: **${Math.round(net || 0).toLocaleString('pt-PT')}€** (${profitable ? 'lucro' : 'prejuízo'})\n` +
     `${E.INFO} Resultados publicados em <#${channel}>.`,
 
   // ── Liquidação (novo estado intermédio) ─────────────────────────────

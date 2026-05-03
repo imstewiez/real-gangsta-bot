@@ -57,9 +57,9 @@ function formatDelta(previous, current, kind = 'int') {
   const arrow = direction === 'up' ? '↑' : direction === 'down' ? '↓' : '→';
   const pctBase = prev === 0 ? (curr === 0 ? 0 : 1) : Math.abs(delta) / Math.abs(prev);
   const fmt = v => {
-    if (kind === 'euro') return `${v >= 0 ? '+' : '−'}${Math.abs(v).toLocaleString('pt-PT')}€`;
+    if (kind === 'euro') return `${v >= 0 ? '+' : '−'}${Math.round(Math.abs(v)).toLocaleString('pt-PT')}€`;
     if (kind === 'pct') return `${v >= 0 ? '+' : '−'}${(Math.abs(v) * 100).toFixed(1)}%`;
-    return `${v >= 0 ? '+' : '−'}${Math.abs(v).toLocaleString('pt-PT')}`;
+    return `${v >= 0 ? '+' : '−'}${Math.round(Math.abs(v)).toLocaleString('pt-PT')}`;
   };
   const pctTxt = prev === 0 ? '' : ` (${(pctBase * 100).toFixed(0)}%)`;
   return { text: `${arrow} ${fmt(delta)}${pctTxt}`, direction, delta };
@@ -77,10 +77,10 @@ function deltaField(label, current, previous, opts = {}) {
   const d = formatDelta(previous, current, kind);
   const fmtCur =
     kind === 'euro'
-      ? `${Number(current).toLocaleString('pt-PT')}€`
+      ? `${Math.round(Number(current)).toLocaleString('pt-PT')}€`
       : kind === 'pct'
         ? `${(Number(current) * 100).toFixed(1)}%`
-        : Number(current).toLocaleString('pt-PT');
+        : Math.round(Number(current)).toLocaleString('pt-PT');
   return { name: label, value: `**${fmtCur}** · ${d.text}`, inline };
 }
 
@@ -296,10 +296,10 @@ function operationEmbed(op) {
     if (t && t !== '00:00') dateValue += ` · ${t}`;
   }
   return brandEmbed()
-    .setTitle(`${EMOJI.SAIDA} Saída #${op.id} — ${SAIDA_TYPE[op.operation_type] || op.operation_type}`)
+    .setTitle(`${EMOJI.SAIDA} Saída #${op.id} — ${fmtSaidaType(op.operation_type)}`)
     .addFields(
       { name: 'Data', value: dateValue, inline: true },
-      { name: 'Estado', value: STATUS[op.status] || op.status, inline: true },
+      { name: 'Estado', value: fmtSaidaStatus(op.status), inline: true },
       { name: 'Spot', value: op.spot || '—', inline: true },
       { name: 'Grupo', value: `#${op.group_number} (máx ${op.max_participants})`, inline: true },
       { name: 'Líder', value: op.leader_name || '—', inline: true }
@@ -339,8 +339,8 @@ function memberProfileEmbed(member) {
   return brandEmbed()
     .setTitle(`${EMOJI.TAG} Ficha — ${member.display_name || member.username}`)
     .addFields(
-      { name: 'Peso', value: ROLE[member.role] || member.role, inline: true },
-      { name: 'Estado', value: STATUS[member.status] || member.status, inline: true },
+      { name: 'Peso', value: fmtRole(member.role), inline: true },
+      { name: 'Estado', value: fmtSaidaStatus(member.status) || STATUS[member.status] || member.status, inline: true },
       { name: 'Na casa desde', value: formatPtDateOnly(member.joined_at), inline: true }
     );
 }

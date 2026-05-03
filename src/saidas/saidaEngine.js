@@ -651,7 +651,7 @@ async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
 
   // Guard 1: status da saída
   if (!PARTICIPATION_ALLOWED_STATUSES.has(saida.status)) {
-    throw new Error(`Saída #${saidaId} já está "${saida.status}" — inscrições fechadas.`);
+    throw new Error(`Saída #${saidaId} já está fechada — inscrições encerradas.`);
   }
 
   const participantType = data.participantType || 'caracterizado';
@@ -780,7 +780,7 @@ async function issueMaterialToParticipant(saidaId, discordId, itemId, quantity, 
   const saida = await saidaRepo.findById(saidaId);
   if (!saida) throw new Error(`Saída #${saidaId} não existe.`);
   if (['concluida', 'cancelada'].includes(saida.status)) {
-    throw new Error(`Saída #${saidaId} está ${saida.status} — não aceita mais material.`);
+    throw new Error(`Saída #${saidaId} está fechada — não aceita mais material.`);
   }
 
   const member = await _resolveOrCreateMember(discordId, guild);

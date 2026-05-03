@@ -18,6 +18,7 @@ const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { ONBOARDING, EMOJI } = require('../content');
 const { formatPtDate } = require('../shared/formatPtDate');
 const { query } = require('../db');
+const { fmtOrderStatus } = require('../shared/labels');
 
 async function handleMeuPedido(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -87,7 +88,7 @@ async function handleMeuPedido(interaction) {
   // Estados desconhecidos ou cancelled — fallback genérico.
   return safeReply(
     interaction,
-    { content: `${EMOJI.WARN} Estado desconhecido: **${req.status}**. Fala com a chefia.` },
+    { content: `${EMOJI.WARN} Estado desconhecido: **${fmtOrderStatus(req.status)}**. Fala com a chefia.` },
     { messageClass: 'BANAL' }
   );
 }

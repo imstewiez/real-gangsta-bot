@@ -22,7 +22,7 @@ async function handle(interaction) {
     const embed = brandEmbed('SHORT')
       .setTitle(`📊 ${i.name}`)
       .setDescription(
-        `Categoria: ${i.category}\nStock: **${i.quantity}** unidades\nPreço: €${i.estimated_value}\n${i.purchase_price ? `Preço compra: €${i.purchase_price}\n` : ''}Stock alvo: ${i.target_stock || 'N/A'}`
+        `Categoria: ${i.category}\nStock: **${i.quantity}** unidades\nPreço: ${Math.round(Number(i.estimated_value)).toLocaleString('pt-PT')}€\n${i.purchase_price ? `Preço compra: ${Math.round(Number(i.purchase_price)).toLocaleString('pt-PT')}€\n` : ''}Stock alvo: ${i.target_stock || 'N/A'}`
       );
     return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral });
   }

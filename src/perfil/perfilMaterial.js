@@ -13,9 +13,10 @@ const { EMOJI } = require('../content');
 // const { formatPtDate } = require('../shared/formatPtDate');
 const { bairristaStatsRepo, memberAnalyticsRepo } = require('../repositories');
 const { buttonRow, button } = require('../shared/ui/buttons');
+const { formatMoney } = require('../shared/formatMoney');
 
 const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
-const fmtVal = n => `${(Number(n) || 0).toLocaleString('pt-PT', { maximumFractionDigits: 0 })}€`;
+const fmtVal = n => formatMoney(n);
 
 function deltaLine(cur, prev) {
   const c = Number(cur) || 0,

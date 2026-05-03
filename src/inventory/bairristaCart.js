@@ -120,16 +120,16 @@ function buildCartEmbed(cart, { extraNote } = {}) {
       const lineValue = l.quantity * (l.unitPrice ?? l.basePrice);
       const priceTag =
         isVenda && l.unitPrice !== null && l.unitPrice !== undefined && l.unitPrice !== l.basePrice
-          ? ` ⚡ **${l.unitPrice}€**/un _(base ${l.basePrice}€)_`
+          ? ` ⚡ **${Math.round(l.unitPrice)}€**/un _(base ${Math.round(l.basePrice)}€)_`
           : l.basePrice > 0
-            ? ` · ${l.basePrice}€/un`
+            ? ` · ${Math.round(l.basePrice)}€/un`
             : '';
-      const valTag = lineValue > 0 ? ` → **${lineValue.toLocaleString('pt-PT')}€**` : '';
+      const valTag = lineValue > 0 ? ` → **${Math.round(lineValue).toLocaleString('pt-PT')}€**` : '';
       lines.push(`**${i + 1}.** ${l.itemName} · **${l.quantity}×**${priceTag}${valTag}`);
     }
     lines.push(
       '',
-      `**Total:** ${totalQty} unidades${totalValue > 0 ? ` · **${totalValue.toLocaleString('pt-PT')}€**` : ''}`
+      `**Total:** ${totalQty} unidades${totalValue > 0 ? ` · **${Math.round(totalValue).toLocaleString('pt-PT')}€**` : ''}`
     );
   }
 
@@ -247,7 +247,7 @@ function buildCartPreview(cart, context = {}) {
     `• Total de unidades: **${totalQty.toLocaleString('pt-PT')}**`,
   ];
   if (totalValue > 0) {
-    lines.push(`• Valor total: **${totalValue.toLocaleString('pt-PT')}€**`);
+    lines.push(`• Valor total: **${Math.round(totalValue).toLocaleString('pt-PT')}€**`);
   }
   if (cart.globalNotes) {
     lines.push('', `📝 Notas: _${cart.globalNotes}_`);
@@ -319,7 +319,7 @@ function buildSubmissionFeedback({ submissionId, tipo, totalQty, totalValue, lin
     headerLine(isVenda ? EMOJI.LUCRO : EMOJI.MATERIAL, isVenda ? 'RESUMO' : 'RESUMO'),
     `**${lineCount}** linha(s) · **${totalQty.toLocaleString('pt-PT')}** unidades`,
   ];
-  if (totalValue > 0) desc.push(`Valor: **${totalValue.toLocaleString('pt-PT')}€**`);
+  if (totalValue > 0) desc.push(`Valor: **${Math.round(totalValue).toLocaleString('pt-PT')}€**`);
   if (promotionLine) desc.push('', promotionLine);
   desc.push('', statusPill(isVenda ? '+  PENDENTE DE APROVAÇÃO' : '+  PENDENTE DE APROVAÇÃO', 'diff'));
   desc.push('', `_${EMOJI.INFO} Podes desfazer esta submissão nos próximos 5 min._`);
@@ -382,7 +382,7 @@ function buildDeliveryRequestEmbed({
     headerLine(EMOJI.INFO, 'RESUMO'),
     `📊 **Total:** ${totalQty.toLocaleString('pt-PT')} unidades`,
   ];
-  if (totalValue > 0) desc.push(`💰 **Valor estimado:** ${totalValue.toLocaleString('pt-PT')}€`);
+  if (totalValue > 0) desc.push(`💰 **Valor estimado:** ${Math.round(totalValue).toLocaleString('pt-PT')}€`);
   if (displayNotes) desc.push('', `📝 **Notas:** _${displayNotes}_`);
   desc.push('', headerLine(EMOJI.PENDENTE, 'ESTADO'));
   desc.push(statusPill(isVenda ? '!  PENDENTE — VENDA' : '!  PENDENTE — ENTREGA', 'fix'));

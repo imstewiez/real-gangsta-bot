@@ -4,6 +4,8 @@ const { query } = require('../db');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
 const { requirePermission } = require('../shared/requirePermission');
+const { formatPtDateOnly } = require('../shared/formatPtDate');
+const { formatMoney } = require('../shared/formatMoney');
 
 async function handle(interaction) {
   await requirePermission(interaction, { minRole: 'OG' });
@@ -44,11 +46,15 @@ async function handle(interaction) {
 
   const embed = brandEmbed('SHORT')
     .setTitle(`📊 Relatório ${period === 'day' ? 'Diário' : period === 'week' ? 'Semanal' : 'Mensal'}`)
-    .setDescription(`Período: <t:${Math.floor(start.getTime() / 1000)}:D> a <t:${Math.floor(now.getTime() / 1000)}:D>`);
+    .setDescription(`Período: ${formatPtDateOnly(start)} a ${formatPtDateOnly(now)}`);
 
   embed.addFields(
-    { name: '📥 Entregas', value: `${deliveries.rows[0]?.n || 0} un | €${deliveries.rows[0]?.v || 0}`, inline: true },
-    { name: '💰 Vendas', value: `${sales.rows[0]?.n || 0} un | €${sales.rows[0]?.v || 0}`, inline: true },
+    {
+      name: '📥 Entregas',
+      value: `${deliveries.rows[0]?.n || 0} un | ${formatMoney(deliveries.rows[0]?.v)}`,
+      inline: true,
+    },
+    { name: '💰 Vendas', value: `${sales.rows[0]?.n || 0} un | ${formatMoney(sales.rows[0]?.v)}`, inline: true },
     { name: '🚗 Saídas concluídas', value: String(saidas.rows[0]?.n || 0), inline: true },
     { name: '⏳ Encomendas pendentes', value: String(pendingOrders.rows[0]?.n || 0), inline: true },
     { name: '🏆 Prémios por definir', value: String(pendingPrizes.rows[0]?.n || 0), inline: true }

@@ -96,7 +96,14 @@ async function calculateOrderPricing({ itemId, quantity, memberRole, memberTier,
   basePrice = unitPrice * quantity;
 
   const multiplier = getRankMultiplier(memberRole, 'buy', memberTier);
-  const finalPrice = basePrice * (1 + multiplier);
+
+  // s/ Mat = preço cheio; c/ Mat = paga só o custo dos materiais (com markup)
+  let finalPrice;
+  if (paymentMode === 'materials_money' && hasRecipe) {
+    finalPrice = materialCost * (1 + multiplier);
+  } else {
+    finalPrice = basePrice * (1 + multiplier);
+  }
 
   return {
     itemId,

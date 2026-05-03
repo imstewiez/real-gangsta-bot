@@ -137,7 +137,7 @@ function buildSearchModal(purpose) {
 function buildResultsSelect(purpose, matches) {
   const options = matches.slice(0, 25).map(it => {
     const price = parseFloat(it.estimated_value) || 0;
-    const priceTag = price > 0 ? `${price.toLocaleString('pt-PT')}€` : 'sem preço';
+    const priceTag = price > 0 ? `${Math.round(price).toLocaleString('pt-PT')}€` : 'sem preço';
     const catTag = it.category || 'outros';
     return new StringSelectMenuOptionBuilder()
       .setLabel(String(it.name).slice(0, 100))

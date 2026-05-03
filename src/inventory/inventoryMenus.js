@@ -126,7 +126,7 @@ async function buildItemSelectMenuForCategory(customIdPrefix, placeholder, categ
   const emoji = CATEGORY_EMOJI[category] || '📦';
   const options = filtered.slice(0, 25).map(item => {
     const price = parseFloat(item.estimated_value) || 0;
-    const priceStr = price > 0 ? `${price.toLocaleString('pt-PT')}€` : 'sem preço';
+    const priceStr = price > 0 ? `${Math.round(price).toLocaleString('pt-PT')}€` : 'sem preço';
     const balance = balanceMap.get(item.id) || 0;
     return {
       label: item.name.slice(0, 100),

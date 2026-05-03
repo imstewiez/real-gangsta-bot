@@ -24,7 +24,7 @@ const RESULT_META = {
 
 function formatMoney(v) {
   const n = Number(v) || 0;
-  return `${n.toLocaleString('pt-PT', { maximumFractionDigits: 0 })} €`;
+  return `${Math.round(n).toLocaleString('pt-PT')}€`;
 }
 
 async function resolveLeaderName(saida) {

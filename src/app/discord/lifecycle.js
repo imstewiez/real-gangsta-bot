@@ -10,7 +10,6 @@ const { Events } = require('discord.js');
 const CONFIG = require('../../config');
 const { log, warn, error } = require('../../logger');
 const { onMessageCreate: stickyOnMessage } = require('../../sticky/stickyEngine');
-const { handlePromotionToOficial } = require('../../onboarding/onboardingEngine');
 const eventBus = require('../../core/eventBus');
 
 function registerLifecycleListeners(client) {
@@ -69,49 +68,119 @@ function registerLifecycleListeners(client) {
     }
   });
 
-  // ── Role change detection (onboarding/promotion) ──────────────────────────
+  // ── Role change detection (promotion/demotion/tier) ───────────────────────
   client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
     try {
-      const oldRoles = oldMember.roles.cache;
-      const newRoles = newMember.roles.cache;
-
-      // 1. Detecta promoção a oficial (para arquivar canal individual)
-      let promotedToOficial = false;
-      for (const oficialId of CONFIG.OFICIAL_ROLE_IDS) {
-        if (!oldRoles.has(oficialId) && newRoles.has(oficialId)) {
-          const wasBairrista = CONFIG.BAIRRISTA_TIER_ROLE_IDS.some(id => oldRoles.has(id));
-          if (wasBairrista) {
-            await handlePromotionToOficial(newMember, client);
-            promotedToOficial = true;
-            break;
-          }
-        }
-      }
-      if (promotedToOficial) return;
-
-      // 2. Detecta tier change dentro do ramo bairrista (admin mete/tira role)
-      await _handleBairristaTierRoleChange(oldMember, newMember);
+      await _handleMemberRoleChange(oldMember, newMember, client);
     } catch (e) {
       error(`[ROLE_UPDATE] Error processing ${newMember?.id}: ${e.message}`, e);
     }
   });
 }
 
-/**
- * Detecta promoções manuais dentro do ramo bairrista (young_blood → o_gunao
- * → gangster_fodido) via role Discord. Sincroniza DB + renomeia canal +
- * dispara projecção sheet.
- *
- * Complementa o autoPromotionEngine (threshold de material) — este handler
- * cobre admin a meter o role à mão no Discord.
- */
-async function _handleBairristaTierRoleChange(oldMember, newMember) {
-  const oldRoles = oldMember.roles.cache;
-  const newRoles = newMember.roles.cache;
-  const tierIds = CONFIG.BAIRRISTA_TIER_ROLE_IDS;
+// ── Role resolution helpers ─────────────────────────────────────────────────
 
-  const added = tierIds.some(id => id && !oldRoles.has(id) && newRoles.has(id));
-  const removed = tierIds.some(id => id && oldRoles.has(id) && !newRoles.has(id));
+const ROLE_PRIORITY = Object.freeze({ chefia: 5, patrao_di_zona: 4, oficial: 3, bairrista: 2, inativo: 1 });
+
+function _resolveRoleAndTier(guildMember) {
+  const roles = guildMember.roles.cache;
+
+  // Comando total
+  if (CONFIG.COMMAND_ROLE_IDS.some(id => id && roles.has(id))) {
+    return { role: 'chefia', tier: null };
+  }
+  // Supervisão
+  if (CONFIG.SUPERVISOR_ROLE_IDS.some(id => id && roles.has(id))) {
+    return { role: 'oficial', tier: null };
+  }
+  // Patrão di Zona
+  if (CONFIG.PATRAO_DI_ZONA_ROLE_ID && roles.has(CONFIG.PATRAO_DI_ZONA_ROLE_ID)) {
+    return { role: 'patrao_di_zona', tier: null };
+  }
+  // Bairrista (tier ou role base)
+  const hasTier = CONFIG.BAIRRISTA_TIER_ROLE_IDS.some(id => id && roles.has(id));
+  const hasBase = CONFIG.BAIRRISTAS_BASE_ROLE_ID && roles.has(CONFIG.BAIRRISTAS_BASE_ROLE_ID);
+  if (hasTier || hasBase) {
+    const TIER_PRIORITY = [
+      { roleId: CONFIG.GANGSTER_FODIDO_ROLE_ID, tier: 'gangster_fodido' },
+      { roleId: CONFIG.O_GUNAO_ROLE_ID, tier: 'o_gunao' },
+      { roleId: CONFIG.YOUNG_BLOOD_ROLE_ID, tier: 'young_blood' },
+    ];
+    const current = TIER_PRIORITY.find(t => t.roleId && roles.has(t.roleId));
+    return { role: 'bairrista', tier: current?.tier || CONFIG.BAIRRISTA_DEFAULT_TIER || 'young_blood' };
+  }
+
+  return { role: 'inativo', tier: null };
+}
+
+function _getRelevantRoleIds() {
+  return [
+    ...CONFIG.COMMAND_ROLE_IDS,
+    ...CONFIG.SUPERVISOR_ROLE_IDS,
+    CONFIG.PATRAO_DI_ZONA_ROLE_ID,
+    ...CONFIG.BAIRRISTA_TIER_ROLE_IDS,
+    CONFIG.BAIRRISTAS_BASE_ROLE_ID,
+  ].filter(Boolean);
+}
+
+// ── Generic role change handler ─────────────────────────────────────────────
+
+async function _handleMemberRoleChange(oldMember, newMember, client) {
+  const relevantRoleIds = _getRelevantRoleIds();
+  const roleChanged = relevantRoleIds.some(id => oldMember.roles.cache.has(id) !== newMember.roles.cache.has(id));
+  if (!roleChanged) return;
+
+  const { memberRepo } = require('../../repositories');
+  const dbMember = await memberRepo.findByDiscordId(newMember.id);
+  if (!dbMember) return;
+
+  const { role: resolvedRole, tier: resolvedTier } = _resolveRoleAndTier(newMember);
+
+  // ── 1. Role principal mudou → promoção / demotion ───────────────────────
+  if (dbMember.role !== resolvedRole) {
+    const { promoteMember, demoteMember } = require('../../members/promotionEngine');
+    const isPromotion = (ROLE_PRIORITY[resolvedRole] || 0) > (ROLE_PRIORITY[dbMember.role] || 0);
+
+    if (isPromotion) {
+      await promoteMember(dbMember.id, resolvedRole, {
+        guildMember: newMember,
+        client,
+        reason: 'Detetada mudança de role no Discord',
+        actorTag: 'system',
+        actorId: 'system',
+        changedBy: 'system',
+      });
+      log(
+        `[ROLE_UPDATE] Promoção automática: ${dbMember.display_name || newMember.id} ${dbMember.role} → ${resolvedRole}`
+      );
+    } else {
+      await demoteMember(dbMember.id, resolvedRole, {
+        guildMember: newMember,
+        client,
+        reason: 'Detetada mudança de role no Discord',
+        actorTag: 'system',
+        actorId: 'system',
+        changedBy: 'system',
+      });
+      log(
+        `[ROLE_UPDATE] Rebaixamento automático: ${dbMember.display_name || newMember.id} ${dbMember.role} → ${resolvedRole}`
+      );
+    }
+    return;
+  }
+
+  // ── 2. Role igual mas tier mudou (só aplica a bairristas) ───────────────
+  if (resolvedRole === 'bairrista' && dbMember.tier !== resolvedTier) {
+    await _handleBairristaTierRoleChange(oldMember, newMember, resolvedTier);
+  }
+}
+
+// ── Tier change within bairrista branch ─────────────────────────────────────
+
+async function _handleBairristaTierRoleChange(oldMember, newMember, resolvedTier) {
+  const tierIds = CONFIG.BAIRRISTA_TIER_ROLE_IDS;
+  const added = tierIds.some(id => id && !oldMember.roles.cache.has(id) && newMember.roles.cache.has(id));
+  const removed = tierIds.some(id => id && oldMember.roles.cache.has(id) && !newMember.roles.cache.has(id));
   if (!added && !removed) return;
 
   // Tier actual = role mais alto presente (topo da hierarquia vence).
@@ -120,7 +189,7 @@ async function _handleBairristaTierRoleChange(oldMember, newMember) {
     { roleId: CONFIG.O_GUNAO_ROLE_ID, tier: 'o_gunao' },
     { roleId: CONFIG.YOUNG_BLOOD_ROLE_ID, tier: 'young_blood' },
   ];
-  const current = TIER_PRIORITY.find(t => t.roleId && newRoles.has(t.roleId));
+  const current = TIER_PRIORITY.find(t => t.roleId && newMember.roles.cache.has(t.roleId));
   if (!current) return; // Ficou sem tier role — não é tier change, é saída do ramo
 
   const { memberRepo } = require('../../repositories');

@@ -4,6 +4,7 @@ const { incidentRepo } = require('../repositories');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
 const { requirePermission } = require('../shared/requirePermission');
+const { fmtOrderStatus } = require('../shared/labels');
 
 async function handle(interaction) {
   await requirePermission(interaction, { minRole: 'OG' });
@@ -15,7 +16,7 @@ async function handle(interaction) {
     const rows = await incidentRepo.list({ status, limit: 25 });
     const lines = rows.map(
       r =>
-        `\`#${r.id}\` [${r.severity.toUpperCase()}] **${r.title}** — ${r.status} (<t:${Math.floor(new Date(r.created_at).getTime() / 1000)}:R>)`
+        `\`#${r.id}\` [${r.severity.toUpperCase()}] **${r.title}** — ${fmtOrderStatus(r.status)} (<t:${Math.floor(new Date(r.created_at).getTime() / 1000)}:R>)`
     );
     const embed = brandEmbed('SHORT')
       .setTitle('🚨 Incidentes')

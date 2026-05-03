@@ -35,7 +35,7 @@ async function handle(interaction) {
       content:
         `${EMOJI.MATERIAL} **${item.name}** _${item.category}_\n` +
         `${EMOJI.CASA} Armazém: \`${ar}\` · Grupo: \`${gr}\`\n` +
-        `▸ Total: **${total}** un. (≈ ${value.toLocaleString('pt-PT')} €)`,
+        `▸ Total: **${total}** un. (≈ ${Math.round(value).toLocaleString('pt-PT')}€)`,
     },
     { messageClass: 'BANAL' }
   );

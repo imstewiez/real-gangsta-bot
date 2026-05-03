@@ -383,7 +383,6 @@ async function getMembersFull() {
     ) mv ON true
     LEFT JOIN member_saida_stats mss ON mss.member_id = m.id
     LEFT JOIN member_last_saida mls ON mls.member_id = m.id
-    WHERE m.status = 'ativo'
     ORDER BY m.display_name`);
   return r.rows;
 }

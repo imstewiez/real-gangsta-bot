@@ -528,7 +528,10 @@ async function decideDeliveryRequest({ requestId, decisionBy, approve, reason = 
     const request = await deliveryRequestRepo.findPendingByIdForUpdate(requestId, client);
     if (!request) return { ok: false, reason: 'Pedido não encontrado.' };
     if (request.status !== 'pending') {
-      return { ok: false, reason: `Pedido já foi ${request.status}.` };
+      return {
+        ok: false,
+        reason: `Pedido já foi ${request.status === 'pending' ? 'pendente' : request.status === 'approved' ? 'aprovado' : request.status === 'rejected' ? 'recusado' : request.status}.`,
+      };
     }
 
     if (!approve) {
@@ -780,7 +783,7 @@ async function registerSale({ memberId, itemName, quantity, price = null, note =
     itemId: item.id,
     quantity,
     movementType: 'venda_bairrista',
-    notes: note + (price ? ` | Preço: ${price}€` : ''),
+    notes: note + (price ? ` | Preço: ${Math.round(Number(price)).toLocaleString('pt-PT')}€` : ''),
     createdBy: `discord:${memberId}`,
   });
   return { success: true, movement: result.movement };

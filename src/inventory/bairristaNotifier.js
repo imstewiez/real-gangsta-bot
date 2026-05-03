@@ -114,12 +114,12 @@ async function notifyBairristaMovement(opts) {
       headerLine(isVenda ? EMOJI.LUCRO : EMOJI.MATERIAL, isVenda ? 'MATERIAL' : 'MATERIAL'),
       `**${opts.itemName}** · **${opts.quantity.toLocaleString('pt-PT')}x**`,
     ];
-    if (movValue > 0) desc.push(`💰 Valor: **${movValue.toLocaleString('pt-PT')}€**`);
+    if (movValue > 0) desc.push(`💰 Valor: **${Math.round(movValue).toLocaleString('pt-PT')}€**`);
 
     const fields = dataGrid([
       { icon: '👤', label: 'Membro', value: `<@${opts.memberDiscordId}>`, inline: true },
       { icon: '📝', label: 'Registou', value: `<@${opts.createdBy || opts.memberDiscordId}>`, inline: true },
-      { icon: '💰', label: 'Valor', value: `${movValue.toLocaleString('pt-PT')}€`, inline: true },
+      { icon: '💰', label: 'Valor', value: `${Math.round(movValue).toLocaleString('pt-PT')}€`, inline: true },
     ]);
 
     if (opts.weekStats) {
@@ -178,14 +178,15 @@ async function notifyBairristaBatch(opts) {
 
     const desc = [headerLine(isVenda ? EMOJI.LUCRO : EMOJI.MATERIAL, isVenda ? 'ITENS' : 'ITENS')];
     const itemLines = opts.lines.slice(0, 20).map(l => {
-      const valTag = l.lineValue > 0 ? ` · **${l.lineValue.toLocaleString('pt-PT')}€**` : '';
-      const priceTag = isVenda && l.unitPrice !== null && l.unitPrice !== undefined ? ` ⚡@${l.unitPrice}€` : '';
+      const valTag = l.lineValue > 0 ? ` · **${Math.round(l.lineValue).toLocaleString('pt-PT')}€**` : '';
+      const priceTag =
+        isVenda && l.unitPrice !== null && l.unitPrice !== undefined ? ` ⚡@${Math.round(l.unitPrice)}€` : '';
       return `**${l.quantity}×** ${l.itemName}${priceTag}${valTag}`;
     });
     if (opts.lines.length > 20) itemLines.push(`… +${opts.lines.length - 20} itens`);
     desc.push(...itemLines);
     desc.push('', `📊 **Total:** ${opts.totalQty.toLocaleString('pt-PT')} unidades`);
-    if (opts.totalValue > 0) desc.push(`💰 **Valor:** ${opts.totalValue.toLocaleString('pt-PT')}€`);
+    if (opts.totalValue > 0) desc.push(`💰 **Valor:** ${Math.round(opts.totalValue).toLocaleString('pt-PT')}€`);
 
     const fields = dataGrid([
       { icon: '👤', label: 'Membro', value: `<@${opts.memberDiscordId}>`, inline: true },

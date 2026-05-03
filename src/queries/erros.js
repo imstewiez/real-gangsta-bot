@@ -4,6 +4,7 @@ const { query } = require('../db');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
 const { requirePermission } = require('../shared/requirePermission');
+const { fmtOrderStatus, fmtSaidaStatus } = require('../shared/labels');
 
 async function handle(interaction) {
   await requirePermission(interaction, { minRole: 'OG' });
@@ -32,7 +33,9 @@ async function handle(interaction) {
     .setDescription(sections.join('\n') || '✅ Nenhum erro recente.');
 
   if (incidents.rows.length) {
-    const lines = incidents.rows.map(r => `\`#${r.id}\` [${r.severity}] ${r.title} — ${r.status}`);
+    const lines = incidents.rows.map(
+      r => `\`#${r.id}\` [${r.severity.toUpperCase()}] ${r.title} — ${fmtOrderStatus(r.status)}`
+    );
     embed.addFields({ name: '🚨 Incidentes', value: lines.join('\n') });
   }
 

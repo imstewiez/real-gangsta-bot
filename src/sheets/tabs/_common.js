@@ -348,7 +348,12 @@ function tableHeader(batch, sheetId, row, headers) {
 // ─────────────────────────────────────────────────────────────────────────────
 function tableBody(batch, sheetId, row, dataRows, { basicFilter = false, columnCount = null } = {}) {
   if (!dataRows.length) return row;
-  const banded = applyRowBanding(dataRows);
+  const maxCols = columnCount || Math.max(...dataRows.map(r => r.length));
+  const padded = dataRows.map(r => {
+    if (r.length >= maxCols) return r;
+    return [...r, ...Array(maxCols - r.length).fill(cell('', { bg: COLOR.BG_APP }))];
+  });
+  const banded = applyRowBanding(padded);
   batch.updateCells(sheetId, row, 0, banded);
   for (let i = 0; i < banded.length; i++) batch.setRowHeight(sheetId, row + i, ROW_H.TABLE_ROW);
   if (basicFilter && columnCount) {

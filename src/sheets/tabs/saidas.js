@@ -242,7 +242,7 @@ async function syncSaidas(batch, sheetId) {
       {
         label: 'Melhor Spot',
         value: bestSpot ? bestSpot.spot : '—',
-        delta: bestSpot ? `${Math.round(Number(bestSpot.total_net_value) || 0).toLocaleString('pt-PT')} €` : '—',
+        delta: bestSpot ? `${Math.round(Number(bestSpot.total_net_value) || 0).toLocaleString('pt-PT')}€` : '—',
         deltaDirection: 'up',
       },
       {

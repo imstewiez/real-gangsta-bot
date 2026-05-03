@@ -22,7 +22,9 @@ async function handle(interaction) {
   for (const [cat, catItems] of Object.entries(grouped)) {
     lines.push(`**${cat.toUpperCase()}**`);
     for (const item of catItems) {
-      const price = item.estimated_value ? ` (${Number(item.estimated_value).toLocaleString('pt-PT')}€)` : '';
+      const price = item.estimated_value
+        ? ` (${Math.round(Number(item.estimated_value)).toLocaleString('pt-PT')}€)`
+        : '';
       lines.push(`  ${item.name} — ${item.unit}${price}`);
     }
   }

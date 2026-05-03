@@ -14,6 +14,7 @@ const { EMOJI } = require('../content');
 const { memberRepo, ordersRepo } = require('../repositories');
 const { buttonRow, button } = require('../shared/ui/buttons');
 const { formatPtDate } = require('../shared/formatPtDate');
+const { formatMoney } = require('../shared/formatMoney');
 
 const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
 
@@ -78,7 +79,7 @@ async function handle(interaction) {
       const lines = activas.map(o => {
         const age = ageLabel(o.created_at);
         const modeEmoji = o.payment_mode === 'money_only' ? '💵' : '📦';
-        const price = o.total_price ? ` (${fmt(o.total_price)}€)` : '';
+        const price = o.total_price ? ` (${formatMoney(o.total_price)})` : '';
         return `⏳ **${o.quantity}× ${o.item_name}**${price} ${modeEmoji} · aberta há ${age}`;
       });
       embed.addFields({ name: '🔧 Activas', value: lines.join('\n'), inline: false });
@@ -90,7 +91,7 @@ async function handle(interaction) {
         const lbl = STATUS_LABEL[o.status] || o.status;
         const when = formatPtDate(o.resolved_at || o.created_at);
         const modeEmoji = o.payment_mode === 'money_only' ? '💵' : '📦';
-        const price = o.total_price ? ` (${fmt(o.total_price)}€)` : '';
+        const price = o.total_price ? ` (${formatMoney(o.total_price)})` : '';
         return `${emj} \`${when}\` **${o.quantity}× ${o.item_name}**${price} ${modeEmoji} — ${lbl}`;
       });
       embed.addFields({ name: '📜 Histórico recente', value: lines.join('\n'), inline: false });

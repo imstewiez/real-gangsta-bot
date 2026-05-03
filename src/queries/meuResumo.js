@@ -104,7 +104,7 @@ async function handle(interaction) {
   if (histRows.length) {
     const lines = histRows.map(mov => {
       const emj = mov.movement_type === 'venda_bairrista' ? '💰' : '📥';
-      const date = new Date(mov.created_at).toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' });
+      const date = formatPtDateOnly(mov.created_at);
       return `${emj} \`${date}\` **${mov.quantity}× ${mov.item_name}**`;
     });
     embed.addFields({ name: '📜 Últimos Movimentos', value: lines.join('\n').slice(0, 1024), inline: false });
