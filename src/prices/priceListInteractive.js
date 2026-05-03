@@ -316,11 +316,11 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
         const matStr = fmtPriceCompact(buyWithMat).padStart(6);
         return `${name}  ${baseStr}  ${sellStr}  ${buyStr}  ${matStr}`;
       }
-      return `${name}  ${baseStr}  ${sellStr}  ${buyStr}       —`;
+      return `${name}  ${baseStr}  ${sellStr}  ${buyStr}  ${'—'.padStart(6)}`;
     });
 
-    const header = `${padName('Item', 18)}   Base  Vende Compra  c/Mat`;
-    const sep = '─────────────────────────────────────────────';
+    const header = `${padName('Item', 18)}  ${'Base'.padStart(6)}  ${'Vende'.padStart(6)}  ${'Compra'.padStart(6)}  ${'c/Mat'.padStart(6)}`;
+    const sep = '────────────────────────────────────────────────────';
     const prefix = '```\n' + header + '\n' + sep + '\n';
     const suffix = '\n```';
 
