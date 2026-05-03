@@ -91,6 +91,32 @@ const CARREGADORES_SPECIAL_NAMES = new Set([
 
 const EXCLUDED_NAMES = new Set(['Lançador da Âncora']);
 
+// Items de arma específicos disponíveis para compra (o resto é filtrado)
+const BUY_WEAPON_NAMES = new Set([
+  // Armas Brancas
+  'Canivete',
+  'Taco de Baseball',
+  'Taco de 8Ball',
+  // Armas Orange
+  'SNS Pistol',
+  'Pistol XM3',
+  'Mini SMG',
+  'Micro SMG',
+  'Machine Pistol',
+  'TEC Pistol',
+  'AP Pistol',
+  'Compact Rifle',
+  'Gusenberg',
+  // Armas Red
+  '.50',
+  'P90',
+  'PDW',
+  'Revolver',
+  'Gadget Pistol',
+  'Bullpup',
+  'Carabina Especial',
+]);
+
 function classifyDisplayCategory(item) {
   const name = item.name || '';
   const cat = item.category || '';
@@ -355,8 +381,15 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
     // Só mostrar categorias compráveis no preçário de compra
     if (!BUY_CATEGORIES.has(catDef.key)) continue;
 
-    const catItems = byCat.get(catDef.key) || [];
+    let catItems = byCat.get(catDef.key) || [];
     if (!catItems.length) continue;
+
+    // Filtrar armas: só os nomes explicitamente permitidos
+    if (catDef.key.startsWith('armas_')) {
+      catItems = catItems.filter(item => BUY_WEAPON_NAMES.has(item.name));
+      if (!catItems.length) continue;
+    }
+
     catItems.sort((a, b) => a.name.localeCompare(b.name));
 
     const lines = catItems.map(item => {
@@ -406,7 +439,10 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
   const buyableItemIds = new Set();
   for (const item of items) {
     const dc = classifyDisplayCategory(item);
-    if (dc && BUY_CATEGORIES.has(dc)) buyableItemIds.add(item.id);
+    if (!dc || !BUY_CATEGORIES.has(dc)) continue;
+    // Só incluir craft recipes de armas que estão na whitelist
+    if (dc.startsWith('armas_') && !BUY_WEAPON_NAMES.has(item.name)) continue;
+    buyableItemIds.add(item.id);
   }
 
   const relevantRecipes = recipes.filter(r => buyableItemIds.has(r.item_id));
