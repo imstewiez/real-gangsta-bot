@@ -900,38 +900,19 @@ async function handleCartQtyModal(interaction) {
     return safeReply(interaction, { content: ERRORS.ITEM_NOT_FOUND() }, { messageClass: 'ERROR' });
   }
 
-  // ── Validação: só certos items podem ser entregues/vendidos ────────────────
-  const SELLABLE_ITEMS = new Set([
-    'Lixo Eletrónico',
-    'Sucata',
-    'Peças',
-    'Peças Estragadas',
-    'Tábua Cerejeira',
-    'Tábua Pinho',
-    'Tábua Ébano',
-    'Tábua Carvalho',
-    'Plástico Reciclado',
-    'Plástico Velho',
-    'Borracha',
-    'Papel',
-    'Molde de Arma',
-    'Corpo Pistol XM3',
-    'Corpo UZI',
-    'Corpo TEC-9',
-    'Corpo TEC Pistol',
-    'Corpo AP Pistol',
-    'Print Laranja',
-    'Print Azul',
-    'Print Vermelha',
-    'Print Amarela',
-    'Cobre',
-    'Carvão',
-    'Pólvora',
-    'Ferro',
-    'Telemóvel Estragado',
-    'Rádio Estragado',
+  // ── Validação: materiais primas podem ser entregues/vendidos ───────────────
+  const BLOCKED_CATEGORIES = new Set([
+    'armas',
+    'armas_fogo',
+    'armas_brancas',
+    'municoes',
+    'dinheiro',
+    'droga',
+    'comida',
+    'pesca',
+    'comida_pesca',
   ]);
-  if (!SELLABLE_ITEMS.has(item.name)) {
+  if (BLOCKED_CATEGORIES.has(item.category)) {
     return safeReply(
       interaction,
       { content: `${EMOJI.ERRO} **${item.name}** não pode ser entregue/vendido. Consulta o regulamento.` },
