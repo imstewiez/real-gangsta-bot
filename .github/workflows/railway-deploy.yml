@@ -10,7 +10,7 @@ jobs:
   deploy:
     name: Force Redeploy
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -22,10 +22,8 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          echo "Listing non-SUCCESS deployments..."
+          echo "Listing deployments..."
           railway deployment list --service "$RAILWAY_SERVICE" --json > deployments.json || true
-          cat deployments.json || echo "No deployments list available"
-
           IDS=$(cat deployments.json 2>/dev/null | jq -r '[.[] | select(.status != "SUCCESS") | .id] | .[]' 2>/dev/null || true)
           if [ -z "$IDS" ]; then
             echo "No stuck deployments to cancel."
@@ -33,7 +31,6 @@ jobs:
           fi
           for id in $IDS; do
             echo "Cancelling deployment $id"
-            # Railway CLI doesn't have a direct cancel, but we can try to remove via API
             curl -s -X POST https://backboard.railway.app/graphql/v2 \
               -H "Authorization: Bearer $RAILWAY_TOKEN" \
               -H "Content-Type: application/json" \
@@ -48,28 +45,41 @@ jobs:
           echo "Triggering redeploy from source..."
           railway redeploy --service "$RAILWAY_SERVICE" --yes --from-source
 
+      - name: Wait and fetch build logs
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "Waiting 60s for build to start..."
+          sleep 60
+          echo "=== Build logs (latest deployment) ==="
+          railway logs --service "$RAILWAY_SERVICE" --build --lines 200 --latest || true
+
       - name: Watch deploy
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          echo "Waiting for deployment to reach SUCCESS..."
-          for i in {1..60}; do
+          echo "Watching deployment..."
+          for i in {1..80}; do
             railway deployment list --service "$RAILWAY_SERVICE" --json > status.json 2>/dev/null || true
-            cat status.json 2>/dev/null || echo "No status available"
-            
             STATUS=$(cat status.json 2>/dev/null | jq -r '.[0].status // "UNKNOWN"' 2>/dev/null || echo "UNKNOWN")
             STOPPED=$(cat status.json 2>/dev/null | jq -r '.[0].deploymentStopped // false' 2>/dev/null || echo "false")
             echo "Iteration $i: status=$STATUS, stopped=$STOPPED"
-            
             if [ "$STATUS" = "SUCCESS" ]; then
               echo "Deployment reached SUCCESS!"
               exit 0
             fi
             if [ "$STOPPED" = "true" ]; then
-              echo "Deployment was stopped! Check Railway dashboard."
+              echo "Deployment was stopped!"
+              railway logs --service "$RAILWAY_SERVICE" --build --lines 200 --latest || true
+              exit 1
+            fi
+            if [ "$STATUS" = "FAILED" ]; then
+              echo "Deployment FAILED!"
+              railway logs --service "$RAILWAY_SERVICE" --build --lines 200 --latest || true
               exit 1
             fi
             sleep 15
           done
-          echo "Timed out waiting for deployment to succeed."
+          echo "Timed out waiting for deployment. Fetching latest logs..."
+          railway logs --service "$RAILWAY_SERVICE" --build --lines 200 --latest || true
           exit 1
