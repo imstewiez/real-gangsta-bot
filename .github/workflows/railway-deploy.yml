@@ -1,0 +1,36 @@
+name: Railway Force Deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install -g @railway/cli
+      - name: Cancel stuck deployments
+        run: |
+          # List deployments and cancel any that are WAITING
+          curl -s -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"query": "query { deployments(input: { serviceId: \"99b5ded5-7957-4899-ba92-36239ef28d60\" }) { edges { node { id status } } } }"}' | jq -r '.data.deployments.edges[] | select(.node.status == "WAITING") | .node.id' | while read id; do
+            echo "Cancelling deployment $id"
+            curl -s -X POST https://backboard.railway.app/graphql/v2 \
+              -H "Authorization: Bearer $RAILWAY_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"query\": \"mutation { deploymentRemove(id: \\\"$id\\\") }\"}"
+          done
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: Force redeploy
+        run: railway redeploy --service bot-di-zona --environment production
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: Watch deploy
+        run: |
+          sleep 30
+          railway status --json | jq '.environments.edges[0].node.serviceInstances.edges[] | select(.node.serviceName == "bot-di-zona") | .node.latestDeployment | {id, status, createdAt}'
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
