@@ -130,9 +130,7 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
   ]);
 
   const recipeMap = new Map();
-  for (const r of recipes) {
-    recipeMap.set(r.item_id, r);
-  }
+  for (const r of recipes) recipeMap.set(r.item_id, r);
 
   const buyMult = getRankMultiplier(memberRole, 'buy', memberTier);
   const sellMult = getRankMultiplier(memberRole, 'sell', memberTier);
@@ -147,6 +145,21 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
 
   const embeds = [];
 
+  // ── Embed de legenda ──────────────────────────────────────────────────────
+  const legend = applyLogo(
+    brandEmbed('MOVEMENT')
+      .setColor(COLOR.INFO)
+      .setTitle(`${EMOJI.CRAFT} O Teu Preçário`)
+      .setDescription(
+        `**Como ler:**\n` +
+          `\`V\` = **Venda** à Firma (eles compram-te)\n` +
+          `\`C\` = **Compra** à Firma (tu compras, sem material)\n` +
+          `\`🛠️\` = **Compra c/ Material** (tu entregas ingredientes, pagas menos)\n\n` +
+          `_Rank: ${memberRole} | Compra ${fmtPct(buyMult)} | Venda ${fmtPct(sellMult)}_`
+      )
+  );
+  embeds.push(legend);
+
   for (const catDef of DISPLAY_CATEGORIES) {
     const catItems = byCat.get(catDef.key) || [];
     if (!catItems.length) continue;
@@ -160,8 +173,8 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       const buyPrice = base * (1 + buyMult);
       const recipe = recipeMap.get(item.id);
 
-      let text = `**${item.name}**\n`;
-      text += `\`Base ${fmtPrice(base)}\`  \`V ${fmtPrice(sellPrice)}\`  \`C ${fmtPrice(buyPrice)}\``;
+      let text = `**${item.name}**  `;
+      text += `\`V ${fmtPrice(sellPrice)}\`  \`C ${fmtPrice(buyPrice)}\``;
 
       if (recipe) {
         const materialCost = recipe.ingredients.reduce((sum, ing) => {
@@ -180,7 +193,7 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
     for (const line of lines) {
       const lineLen = line.length + 1;
       if (chunkLen + lineLen > 950) {
-        embed.addFields({ name: '\u200b', value: chunk.join('\n\n'), inline: false });
+        embed.addFields({ name: '\u200b', value: chunk.join('\n'), inline: false });
         chunk = [line];
         chunkLen = lineLen;
       } else {
@@ -189,12 +202,9 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       }
     }
     if (chunk.length) {
-      embed.addFields({ name: '\u200b', value: chunk.join('\n\n'), inline: false });
+      embed.addFields({ name: '\u200b', value: chunk.join('\n'), inline: false });
     }
 
-    embed.setFooter({
-      text: `V=Venda à Firma | C=Compra à Firma | 🛠️=Compra c/ material | ${memberRole} (Compra ${fmtPct(buyMult)}, Venda ${fmtPct(sellMult)})`,
-    });
     embeds.push(embed);
   }
 
@@ -244,8 +254,16 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Preçário da Chefia — análise de margem de lucro
+// Preçário da Chefia — análise de margem de lucro (compacto)
 // ══════════════════════════════════════════════════════════════════════════════
+
+const TIERS = ['young_blood', 'o_gunao', 'gangster_fodido'];
+const TIER_LABELS = { young_blood: 'YB', o_gunao: 'OG', gangster_fodido: 'GF' };
+const TIER_MULT_BUY = {
+  young_blood: 0.1,
+  o_gunao: 0.07,
+  gangster_fodido: 0.03,
+};
 
 async function buildPriceEmbedsForChefia() {
   const [items, recipes] = await Promise.all([
@@ -254,84 +272,116 @@ async function buildPriceEmbedsForChefia() {
   ]);
 
   const recipeMap = new Map();
-  for (const r of recipes) {
-    recipeMap.set(r.item_id, r);
-  }
+  for (const r of recipes) recipeMap.set(r.item_id, r);
 
-  // Tiers de bairrista para análise
-  const tiers = ['young_blood', 'o_gunao', 'gangster_fodido'];
-  const tierLabels = { young_blood: 'YB', o_gunao: 'OG', gangster_fodido: 'GF' };
-
-  // Agrupar items por categoria de exibição
-  const byCat = new Map();
+  // Separar: com receita (craft) vs sem receita
+  const withRecipe = [];
+  const withoutRecipe = [];
   for (const item of items) {
-    const dc = classifyDisplayCategory(item);
-    if (!byCat.has(dc)) byCat.set(dc, []);
-    byCat.get(dc).push(item);
+    const recipe = recipeMap.get(item.id);
+    if (recipe) withRecipe.push({ item, recipe });
+    else withoutRecipe.push(item);
   }
 
   const embeds = [];
 
-  for (const catDef of DISPLAY_CATEGORIES) {
-    const catItems = byCat.get(catDef.key) || [];
-    if (!catItems.length) continue;
-    catItems.sort((a, b) => a.name.localeCompare(b.name));
+  // ── Embed de legenda ──────────────────────────────────────────────────────
+  const legend = applyLogo(
+    brandEmbed('MOVEMENT')
+      .setColor(COLOR.INFO)
+      .setTitle(`${EMOJI.CRAFT} Preçário da Chefia — Margens de Lucro`)
+      .setDescription(
+        '**Legenda:**\n' +
+          '`Custo` = valor total dos materiais de craft\n' +
+          '`YB/OG/GF` = preço que o bairrista paga (c/ material) por tier\n' +
+          '`Margem` = lucro da firma sobre o custo de produção\n\n' +
+          '_Ordenado por margem de lucro (maior primeiro)._'
+      )
+  );
+  embeds.push(legend);
 
-    const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(`${catDef.label} — Margens`));
-
-    const lines = catItems.map(item => {
-      const base = parseFloat(item.estimated_value) || 0;
-      const recipe = recipeMap.get(item.id);
-      let materialCost = 0;
-      if (recipe) {
-        materialCost = recipe.ingredients.reduce((sum, ing) => {
+  // ── Itens com receita — ordenados por margem ──────────────────────────────
+  if (withRecipe.length) {
+    const sorted = withRecipe
+      .map(({ item, recipe }) => {
+        const materialCost = recipe.ingredients.reduce((sum, ing) => {
           const unit = parseFloat(ing.unit_price) || parseFloat(ing.ingredient_price) || 0;
           return sum + unit * ing.quantity;
         }, 0);
-      }
+        const base = parseFloat(item.estimated_value) || 0;
+        // Usar o preço mais alto (YB) para calcular margem máxima
+        const sellPrice = materialCost * (1 + TIER_MULT_BUY.young_blood);
+        const profit = sellPrice - materialCost;
+        const marginPct = materialCost > 0 ? (profit / materialCost) * 100 : 0;
+        return { item, materialCost, base, marginPct };
+      })
+      .sort((a, b) => b.marginPct - a.marginPct);
 
-      let text = `**${item.name}**  \`Base ${fmtPrice(base)}\``;
-      if (recipe) {
-        text += `  \`Custo ${fmtPrice(materialCost)}\``;
-        const profits = tiers.map(t => {
-          const mult = getRankMultiplier('bairrista', 'buy', t);
-          const sellPrice = materialCost * (1 + mult);
-          const profit = sellPrice - materialCost;
-          const margin = materialCost > 0 ? (profit / sellPrice) * 100 : 0;
-          return `${tierLabels[t]} ${fmtPrice(sellPrice)} (+${fmtPrice(profit)}, ${margin.toFixed(0)}%)`;
-        });
-        text += `\n${profits.join('  |  ')}`;
-      } else {
-        const prices = tiers.map(t => {
-          const mult = getRankMultiplier('bairrista', 'buy', t);
-          return `${tierLabels[t]} ${fmtPrice(base * (1 + mult))}`;
-        });
-        text += `\n${prices.join('  |  ')}`;
-      }
-      return text;
-    });
+    // Agrupar em chunks de ~15 itens por embed para não ultrapassar 1024 chars/field
+    const CHUNK_SIZE = 15;
+    for (let i = 0; i < sorted.length; i += CHUNK_SIZE) {
+      const chunk = sorted.slice(i, i + CHUNK_SIZE);
+      const embed = applyLogo(
+        brandEmbed('MOVEMENT')
+          .setColor(i === 0 ? COLOR.GOLD : COLOR.MUTED)
+          .setTitle(i === 0 ? '🔥 Itens Craft — Margens' : '🔥 Itens Craft — Continuação')
+      );
 
-    let chunk = [];
-    let chunkLen = 0;
-    for (const line of lines) {
-      const lineLen = line.length + 1;
-      if (chunkLen + lineLen > 950) {
-        embed.addFields({ name: '\u200b', value: chunk.join('\n\n'), inline: false });
-        chunk = [line];
-        chunkLen = lineLen;
-      } else {
-        chunk.push(line);
-        chunkLen += lineLen;
+      const lines = chunk.map(({ item, materialCost, marginPct }) => {
+        const prices = TIERS.map(t => {
+          const mult = TIER_MULT_BUY[t];
+          return `${TIER_LABELS[t]} ${fmtPrice(materialCost * (1 + mult))}`;
+        });
+        return `\`${item.name.padEnd(22).slice(0, 22)}\` Custo ${fmtPrice(materialCost).padStart(8)} | ${prices.join(' | ')} | Margem ${marginPct.toFixed(0)}%`;
+      });
+
+      embed.addFields({
+        name: `\u200b`,
+        value: '```\n' + lines.join('\n') + '\n```',
+        inline: false,
+      });
+
+      embeds.push(embed);
+    }
+  }
+
+  // ── Itens sem receita — preços por tier ───────────────────────────────────
+  if (withoutRecipe.length) {
+    const byCat = new Map();
+    for (const item of withoutRecipe) {
+      const dc = classifyDisplayCategory(item);
+      if (!byCat.has(dc)) byCat.set(dc, []);
+      byCat.get(dc).push(item);
+    }
+
+    for (const catDef of DISPLAY_CATEGORIES) {
+      const catItems = byCat.get(catDef.key) || [];
+      if (!catItems.length) continue;
+      catItems.sort((a, b) => a.name.localeCompare(b.name));
+
+      const lines = catItems.map(item => {
+        const base = parseFloat(item.estimated_value) || 0;
+        const prices = TIERS.map(t => `${TIER_LABELS[t]} ${fmtPrice(base * (1 + TIER_MULT_BUY[t]))}`);
+        return `\`${item.name.padEnd(22).slice(0, 22)}\` Base ${fmtPrice(base).padStart(8)} | ${prices.join(' | ')}`;
+      });
+
+      // Agrupar em chunks de ~20 itens por embed
+      const CHUNK_SIZE = 20;
+      for (let i = 0; i < lines.length; i += CHUNK_SIZE) {
+        const chunk = lines.slice(i, i + CHUNK_SIZE);
+        const embed = applyLogo(
+          brandEmbed('MOVEMENT')
+            .setColor(catDef.color)
+            .setTitle(`${catDef.label}${i > 0 ? ' (cont.)' : ''}`)
+        );
+        embed.addFields({
+          name: '\u200b',
+          value: '```\n' + chunk.join('\n') + '\n```',
+          inline: false,
+        });
+        embeds.push(embed);
       }
     }
-    if (chunk.length) {
-      embed.addFields({ name: '\u200b', value: chunk.join('\n\n'), inline: false });
-    }
-
-    embed.setFooter({
-      text: 'Preçário da Chefia — Custo = materiais craft | Preço = valor pago pelo bairrista (c/ material)',
-    });
-    embeds.push(embed);
   }
 
   return embeds;
@@ -361,9 +411,9 @@ async function handlePrecariosButton(interaction) {
     for (const embed of embeds.slice(0, 10)) {
       const json = embed.toJSON ? embed.toJSON() : embed.data;
       const len = JSON.stringify(json || {}).length;
-      if (totalLen + len > 5500) break;
-      toSend.push(embed);
+      if (totalLen + len > 5900) break;
       totalLen += len;
+      toSend.push(embed);
     }
 
     return await interaction.editReply({ embeds: toSend });
@@ -391,9 +441,9 @@ async function handlePrecariosChefiaButton(interaction) {
     for (const embed of embeds.slice(0, 10)) {
       const json = embed.toJSON ? embed.toJSON() : embed.data;
       const len = JSON.stringify(json || {}).length;
-      if (totalLen + len > 5500) break;
-      toSend.push(embed);
+      if (totalLen + len > 5900) break;
       totalLen += len;
+      toSend.push(embed);
     }
 
     return await interaction.editReply({ embeds: toSend });
