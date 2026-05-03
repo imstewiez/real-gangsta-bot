@@ -6,7 +6,7 @@
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── Stage 1: deps ────────────────────────────────────────────────────────────
-FROM node:22-alpine AS deps
+FROM node:22-slim AS deps
 
 WORKDIR /app
 
@@ -15,14 +15,14 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 # ── Stage 2: runtime ─────────────────────────────────────────────────────────
-FROM node:22-alpine
+FROM node:22-slim
 
 # Metadata
 LABEL maintainer="Firma RedWood"
 LABEL description="Bot di Zona — Discord bot de gestão operacional"
 
 # Segurança: não correr como root
-RUN addgroup -S botgroup && adduser -S botuser -G botgroup
+RUN groupadd -r botgroup && useradd -r -g botgroup botuser
 
 WORKDIR /app
 
