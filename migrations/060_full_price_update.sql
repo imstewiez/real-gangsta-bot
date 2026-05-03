@@ -1,10 +1,18 @@
 -- Migração 060: Preços completos e crafts conforme tabela do utilizador
 BEGIN;
 
--- Garantir constraint UNIQUE para ON CONFLICT em recipe_ingredients
-ALTER TABLE recipe_ingredients
-  ADD CONSTRAINT IF NOT EXISTS recipe_ingredients_unique_ingredient
-  UNIQUE (recipe_id, ingredient_item_id);
+-- Garantir constraint UNIQUE para ON CONFLICT em recipe_ingredients (PG 15 compat)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'recipe_ingredients_unique_ingredient'
+  ) THEN
+    ALTER TABLE recipe_ingredients
+      ADD CONSTRAINT recipe_ingredients_unique_ingredient
+      UNIQUE (recipe_id, ingredient_item_id);
+  END IF;
+END $$;
 
 -- ══════════════════════════════════════════════════════════════════════════════
 -- Items — INSERT ou UPDATE de estimated_value
