@@ -280,7 +280,7 @@ describe('bairristaCart — buildCartComponents', () => {
     });
     const visible = JSON.stringify(embed.toJSON());
 
-    assert.match(visible, /aprovação/);
+    assert.match(visible, /confirmação/);
     assert.match(visible, /50€/);
     assert.doesNotMatch(visible, /Ã|Â|â/);
   });

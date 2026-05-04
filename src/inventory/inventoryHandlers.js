@@ -1507,8 +1507,9 @@ async function handleDeliveryDecision(interaction) {
           .setTitle(isVenda ? '❌ Venda Rejeitada' : '❌ Entrega Rejeitada')
           .setDescription(`Rejeitada por <@${interaction.user.id}>`);
 
-        if (reason) {
-          embed.addFields({ name: '📝 Motivo', value: String(reason).slice(0, 500), inline: false });
+        const decisionReason = result.request?.decision_reason;
+        if (decisionReason) {
+          embed.addFields({ name: '📝 Motivo', value: String(decisionReason).slice(0, 500), inline: false });
         }
         embed.addFields({
           name: '⚠️ Info',

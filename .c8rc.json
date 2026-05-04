@@ -44,7 +44,9 @@
     "src/repositories/memberLifecycle.js",
     "src/repositories/absence.js",
     "src/repositories/incident.js",
-    "src/services/itemAdminService.js"
+    "src/services/itemAdminService.js",
+    "src/ui/**",
+    "src/repositories/panelRepo.js"
   ],
   "lines": 26,
   "statements": 26,

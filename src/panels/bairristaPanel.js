@@ -15,7 +15,6 @@ async function buildBairristaPanel() {
   const fields = [];
 
   // ── Top 3 entregas ──
-  const topLines = [];
   // O panelRepo.getOficialMetrics não retorna top3; usamos query local simples
   // ou podemos criar um helper. Por simplicidade, mantemos a query local.
   const { query } = require('../db');

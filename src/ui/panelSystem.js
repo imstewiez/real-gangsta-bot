@@ -13,8 +13,7 @@
  *   - Botões organizados por prioridade (ação → consulta → pessoal → admin)
  */
 
-const { EmbedBuilder } = require('discord.js');
-const { brandEmbed, applyLogo, COLOR, metricCard, sectionDivider, setFooterText } = require('../shared/embedBuilders');
+const { brandEmbed, applyLogo, COLOR, sectionDivider, setFooterText } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { button, buttonRow } = require('../shared/ui/buttons');
 

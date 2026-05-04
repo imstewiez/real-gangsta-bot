@@ -3,7 +3,7 @@ const {
   renderPanelEmbed,
   formatMetric,
   formatAlert,
-  formatSection,
+
   buildButtonRowsByCategory,
   fmt,
 } = require('../ui/panelSystem');
