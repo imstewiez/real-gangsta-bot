@@ -32,6 +32,7 @@ const BUY_WEAPON_NAMES = new Set([
   'Gadget Pistol',
   'Bullpup',
   'Carabina Especial',
+  'Heavy Pistol',
 ]);
 
 const EXCLUDED_NAMES = new Set([
@@ -79,7 +80,16 @@ const ARMAS_ORANGE_NAMES = new Set([
   'Gusenberg',
 ]);
 
-const ARMAS_RED_NAMES = new Set(['.50', 'P90', 'PDW', 'Revolver', 'Gadget Pistol', 'Bullpup', 'Carabina Especial']);
+const ARMAS_RED_NAMES = new Set([
+  '.50',
+  'P90',
+  'PDW',
+  'Revolver',
+  'Gadget Pistol',
+  'Bullpup',
+  'Carabina Especial',
+  'Heavy Pistol',
+]);
 
 // ── Categorias de exibição para encomendas ─────────────────────────────────
 
