@@ -91,6 +91,40 @@ const ARMAS_RED_NAMES = new Set([
   'Heavy Pistol',
 ]);
 
+// ── Ordem explícita dentro de cada categoria ───────────────────────────────
+
+const ORDER_ARMAS_BRANCAS = ['Canivete', 'Taco de Baseball', 'Taco de 8Ball'];
+const ORDER_ARMAS_ORANGE = [
+  'Mini SMG',
+  'Pistol XM3',
+  'Micro SMG',
+  'Machine Pistol',
+  'TEC Pistol',
+  'AP Pistol',
+  'Compact Rifle',
+  'SNS Pistol',
+  'Gusenberg',
+];
+const ORDER_ARMAS_RED = [
+  'Heavy Pistol',
+  '.50',
+  'PDW',
+  'P90',
+  'Bullpup',
+  'Carabina Especial',
+  'Revolver',
+  'Gadget Pistol',
+];
+
+function sortByExplicitOrder(items, orderArray) {
+  const orderMap = new Map(orderArray.map((name, i) => [name, i]));
+  return items.slice().sort((a, b) => {
+    const ia = orderMap.get(a.name) ?? Infinity;
+    const ib = orderMap.get(b.name) ?? Infinity;
+    return ia - ib;
+  });
+}
+
 // ── Categorias de exibição para encomendas ─────────────────────────────────
 
 const ORDER_CATEGORIES = [
@@ -179,7 +213,13 @@ async function buildOrderCategorySelect(customIdPrefix, placeholder, { searchKey
 
 async function buildOrderItemSelect(customIdPrefix, placeholder, category, { searchKey, modalTitle } = {}) {
   const items = await getOrderCatalogItems();
-  const filtered = items.filter(i => i.orderCategory === category);
+  let filtered = items.filter(i => i.orderCategory === category);
+
+  // Ordenação explícita por categoria
+  if (category === 'armas_brancas') filtered = sortByExplicitOrder(filtered, ORDER_ARMAS_BRANCAS);
+  else if (category === 'armas_orange') filtered = sortByExplicitOrder(filtered, ORDER_ARMAS_ORANGE);
+  else if (category === 'armas_red') filtered = sortByExplicitOrder(filtered, ORDER_ARMAS_RED);
+  else filtered.sort((a, b) => a.name.localeCompare(b.name));
 
   const catMeta = ORDER_CATEGORIES.find(c => c.key === category);
   const emoji = catMeta?.emoji || '📦';
