@@ -45,10 +45,11 @@ const STATUS_LABEL = {
 };
 
 const ACTION_META = {
+  approved: { emoji: '✅', label: 'Aprovada' },
   in_progress: { emoji: '🔧', label: 'Em Processo' },
   ready: { emoji: '📦', label: 'Pronta' },
   fulfilled: { emoji: '✅', label: 'Entregue' },
-  denied: { emoji: '⛔', label: 'Recusar' },
+  denied: { emoji: '⛔', label: 'Recusada' },
 };
 
 function _fmtIngredients(json) {
