@@ -663,6 +663,7 @@ async function handleEncomendaModal(interaction) {
     paymentMode: 'materials_money',
     materialCost: null,
     moneyCost: pricing.finalPrice,
+    ingredientsJson: pricing.ingredients ? JSON.stringify(pricing.ingredients) : null,
   });
 
   pendingItemSelections.delete(interaction.user.id);

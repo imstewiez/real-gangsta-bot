@@ -23,6 +23,7 @@ const {
 const { ordersRepo } = require('../repositories');
 const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
 const { brandEmbed } = require('../shared/embedBuilders');
+const { formatMoney } = require('../shared/formatMoney');
 const { EMOJI } = require('../content');
 
 const STATUS_EMOJI = {
@@ -50,6 +51,17 @@ const ACTION_META = {
   denied: { emoji: '⛔', label: 'Recusar' },
 };
 
+function _fmtIngredients(json) {
+  if (!json) return '';
+  try {
+    const list = JSON.parse(json);
+    if (!Array.isArray(list) || !list.length) return '';
+    return list.map(i => `${i.qty}× ${i.name}`).join(', ');
+  } catch {
+    return '';
+  }
+}
+
 async function handleGerirEncomendas(interaction) {
   if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -67,7 +79,10 @@ async function handleGerirEncomendas(interaction) {
   const lines = all.map(o => {
     const em = STATUS_EMOJI[o.status] || '•';
     const lbl = STATUS_LABEL[o.status] || o.status;
-    return `${em} **#${o.id}** — ${o.quantity}× ${o.item_name} · ${o.member_name} · _${lbl}_`;
+    const price = o.total_price ? ` · **${formatMoney(o.total_price)}**` : '';
+    const mats = _fmtIngredients(o.ingredients_json);
+    const matLine = mats ? `\n    📋 ${mats}` : '';
+    return `${em} **#${o.id}** — ${o.quantity}× ${o.item_name} · ${o.member_name}${price} · _${lbl}_${matLine}`;
   });
 
   const embed = brandEmbed('MOVEMENT')
@@ -190,6 +205,19 @@ async function handleOrderAceitarButton(interaction) {
       status: 'in_progress',
       actorDiscordId: interaction.user.id,
     });
+
+    // Update the original channel message to reflect new status
+    try {
+      if (interaction.message) {
+        const updatedEmbed = brandEmbed('MOVEMENT')
+          .setTitle('🔧 Encomenda em Processo')
+          .setDescription(`**${order.quantity}× ${order.item_name}**\nAceite por <@${interaction.user.id}>`);
+        await interaction.message.edit({ embeds: [updatedEmbed], components: [] });
+      }
+    } catch {
+      // Non-critical
+    }
+
     return safeReply(
       interaction,
       {
@@ -214,6 +242,19 @@ async function handleOrderEntregueButton(interaction) {
 
   try {
     const order = await ordersRepo.updateStatus(orderId, { status: 'fulfilled', actorDiscordId: interaction.user.id });
+
+    // Update the original channel message
+    try {
+      if (interaction.message) {
+        const updatedEmbed = brandEmbed('MOVEMENT')
+          .setTitle('✅ Encomenda Entregue')
+          .setDescription(`**${order.quantity}× ${order.item_name}**\nEntregue por <@${interaction.user.id}>`);
+        await interaction.message.edit({ embeds: [updatedEmbed], components: [] });
+      }
+    } catch {
+      // Non-critical
+    }
+
     return safeReply(
       interaction,
       {
@@ -253,7 +294,7 @@ async function handleOrderRecusarButton(interaction) {
 }
 
 async function handleOrderRecusarModal(interaction) {
-  const orderId = parseInt(interaction.customId.split('::')[3], 10);
+  const orderId = parseInt(interaction.customId.split('::')[2], 10);
   const motivo = interaction.fields.getTextInputValue('motivo');
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -263,6 +304,21 @@ async function handleOrderRecusarModal(interaction) {
       actorDiscordId: interaction.user.id,
       notes: motivo,
     });
+
+    // Update the original channel message
+    try {
+      if (interaction.message) {
+        const updatedEmbed = brandEmbed('MOVEMENT')
+          .setTitle('⛔ Encomenda Recusada')
+          .setDescription(
+            `**${order.quantity}× ${order.item_name}**\nRecusada por <@${interaction.user.id}>\n**Motivo:** ${motivo}`
+          );
+        await interaction.message.edit({ embeds: [updatedEmbed], components: [] });
+      }
+    } catch {
+      // Non-critical
+    }
+
     return safeReply(
       interaction,
       {

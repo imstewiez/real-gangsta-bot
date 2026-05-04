@@ -21,12 +21,13 @@ async function create({
   paymentMode = 'materials_money',
   materialCost = null,
   moneyCost = null,
+  ingredientsJson = null,
 }) {
   const res = await query(
-    `INSERT INTO orders (member_id, item_id, quantity, unit_price, total_price, status, notes, payment_mode, material_cost, money_cost)
-     VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9)
+    `INSERT INTO orders (member_id, item_id, quantity, unit_price, total_price, status, notes, payment_mode, material_cost, money_cost, ingredients_json)
+     VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $10)
      RETURNING *`,
-    [memberId, itemId, quantity, unitPrice, totalPrice, notes, paymentMode, materialCost, moneyCost]
+    [memberId, itemId, quantity, unitPrice, totalPrice, notes, paymentMode, materialCost, moneyCost, ingredientsJson]
   );
   return res.rows[0];
 }
@@ -99,7 +100,7 @@ async function updateStatus(id, { status, actorDiscordId, notes = null }) {
       setParts.push('resolved_at = NOW()');
     }
 
-    const res = await client.query(`UPDATE orders SET ${setParts.join(', ')} WHERE id = $3 RETURNING *`, params);
+    await client.query(`UPDATE orders SET ${setParts.join(', ')} WHERE id = $3`, params);
 
     await client.query(
       `INSERT INTO order_status_history (order_id, old_status, new_status, changed_by, notes)
@@ -107,7 +108,17 @@ async function updateStatus(id, { status, actorDiscordId, notes = null }) {
       [id, oldStatus, status, actorDiscordId, notes]
     );
 
-    const order = res.rows[0];
+    // Fetch enriched order with item_name and member details
+    const enrichedRes = await client.query(
+      `SELECT o.*, i.name AS item_name, i.category, m.display_name AS member_name, m.discord_id AS member_discord_id
+       FROM orders o
+       JOIN items i ON i.id = o.item_id
+       JOIN members m ON m.id = o.member_id
+       WHERE o.id = $1`,
+      [id]
+    );
+    const order = enrichedRes.rows[0];
+
     const eventName = `order.${status}`;
     eventBus
       .emitAsync(eventName, {
@@ -115,10 +126,14 @@ async function updateStatus(id, { status, actorDiscordId, notes = null }) {
         oldStatus,
         newStatus: status,
         memberId: order.member_id,
+        memberDiscordId: order.member_discord_id,
         itemId: order.item_id,
+        itemName: order.item_name,
         quantity: order.quantity,
+        totalPrice: order.total_price,
         actorDiscordId,
         notes,
+        createdAt: order.created_at,
         at: new Date(),
       })
       .catch(e => warn(`[EVENT] ${eventName}: ${e.message}`));

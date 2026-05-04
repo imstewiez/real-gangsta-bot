@@ -21,6 +21,7 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  StringSelectMenuBuilder,
 } = require('discord.js');
 const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
 const { brandEmbed, COLOR } = require('../shared/embedBuilders');
@@ -418,6 +419,7 @@ async function handleOrderCartCheckout(interaction) {
       paymentMode: 'materials_money',
       materialCost: null,
       moneyCost: line.finalPrice,
+      ingredientsJson: line.ingredients ? JSON.stringify(line.ingredients) : null,
     });
     createdOrders.push(order);
   }
