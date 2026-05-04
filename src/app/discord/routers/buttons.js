@@ -174,6 +174,7 @@ const BUTTON_ROUTES = [
   prefix('ordercart::add', orderHandlers.handleOrderCartAdd),
   exact('ordercart::checkout', orderHandlers.handleOrderCartCheckout),
   exact('ordercart::clear', orderHandlers.handleOrderCartClear),
+  exact('ordercart::back', orderHandlers.handleOrderCartBack),
   prefix('ordermode::', orderHandlers.handleOrderModeSelect),
   exact('bairrista::vender', buttonAdapters.handleVenderButton),
   exact('bairrista::registar_kill', buttonAdapters.handleKillButton),

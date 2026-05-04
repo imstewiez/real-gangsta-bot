@@ -107,6 +107,16 @@ async function handleOrderCategorySelect(interaction) {
     { searchKey: `orderitem::${interaction.user.id}`, modalTitle: 'Pesquisar item' }
   );
 
+  // Botão para voltar ao carrinho
+  rows.push(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('ordercart::back')
+        .setLabel('🔙 Voltar ao Carrinho')
+        .setStyle(ButtonStyle.Secondary)
+    )
+  );
+
   const catMeta = orderCatalog.ORDER_CATEGORIES.find(c => c.key === category);
   const embed = brandEmbed('HOUSE')
     .setTitle(`${EMOJI.ENCOMENDA} ${catMeta?.label || category}`)
@@ -346,6 +356,24 @@ async function handleOrderCartClear(interaction) {
   return safeUpdate(interaction, { embeds: [embed], components });
 }
 
+async function handleOrderCartBack(interaction) {
+  if (isDuplicate(interaction.id)) return;
+
+  const cart = orderCart.getCart(interaction.user.id);
+  if (!cart) {
+    return safeUpdate(
+      interaction,
+      { content: `${EMOJI.WARN} Carrinho expirado. Volta a clicar em Encomendar.` },
+      { messageClass: 'BANAL' }
+    );
+  }
+
+  const member = await memberRepo.findByDiscordId(interaction.user.id).catch(() => null);
+  const embed = orderCart.buildCartEmbed(cart, { memberName: member?.display_name });
+  const components = orderCart.buildCartComponents(cart);
+  return safeUpdate(interaction, { embeds: [embed], components });
+}
+
 async function handleOrderCartCheckout(interaction) {
   if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -428,5 +456,6 @@ module.exports = {
   handleOrderQtyModal,
   handleOrderCartRemove,
   handleOrderCartClear,
+  handleOrderCartBack,
   handleOrderCartCheckout,
 };
