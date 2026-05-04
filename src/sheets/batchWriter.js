@@ -8,8 +8,39 @@
  *   b.updateCells(sheetId, startRow, startCol, rows);
  *   b.format(sheetId, range, format);
  *   b.addChart(...);
- *   await b.flush();  // 1 chamada à API
+ *   await b.flush();  // 1 chamada à API, com retry automático em erros transitórios
  */
+
+const { warn } = require('../logger');
+
+// Retry config para flush() — espelha googleAuth._withRetry.
+// Transient: 429, 5xx, rede. Permanent: 4xx (auth/config bugs).
+const FLUSH_RETRY_MAX = 3;
+const FLUSH_RETRY_BASE_MS = 1_000;
+const FLUSH_RETRY_MAX_MS = 30_000;
+
+function _isTransientFlush(err) {
+  if (!err) return false;
+  const code = err.code || err.response?.status || err.response?.data?.error?.code;
+  if (code) {
+    const n = Number(code);
+    if (Number.isFinite(n)) {
+      if (n === 429) return true;
+      if (n >= 500 && n < 600) return true;
+      return false;
+    }
+    const s = String(code).toUpperCase();
+    if (s === 'ECONNRESET' || s === 'ETIMEDOUT' || s === 'EAI_AGAIN' || s === 'ENOTFOUND') return true;
+  }
+  const msg = String(err.message || '').toLowerCase();
+  if (msg.includes('timeout') || msg.includes('econnreset') || msg.includes('socket hang up')) return true;
+  if (msg.includes('rate limit') || msg.includes('quota exceeded')) return true;
+  return false;
+}
+
+function _sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
 
 class BatchWriter {
   constructor(sheets, spreadsheetId) {
@@ -266,16 +297,37 @@ class BatchWriter {
     }
   }
 
-  /** Flush — manda tudo em 1 chamada. */
+  /** Flush — manda tudo em 1 chamada, com retry automático em erros transitórios.
+   *
+   * Backoff exponencial: 1s → 2s → 4s (capped 30s), max 3 tentativas.
+   * Erros permanentes (4xx auth/config) falham imediatamente sem retry.
+   */
   async flush() {
     if (!this.requests.length) return { replies: [] };
     this.validate();
-    const res = await this.sheets.spreadsheets.batchUpdate({
-      spreadsheetId: this.spreadsheetId,
-      requestBody: { requests: this.requests },
-    });
-    this.requests = [];
-    return res.data;
+    const requestsSnapshot = this.requests;
+    let lastErr;
+    for (let attempt = 0; attempt <= FLUSH_RETRY_MAX; attempt++) {
+      try {
+        const res = await this.sheets.spreadsheets.batchUpdate({
+          spreadsheetId: this.spreadsheetId,
+          requestBody: { requests: requestsSnapshot },
+        });
+        this.requests = [];
+        return res.data;
+      } catch (e) {
+        lastErr = e;
+        const canRetry = attempt < FLUSH_RETRY_MAX && _isTransientFlush(e);
+        if (!canRetry) throw e;
+        const delay = Math.min(FLUSH_RETRY_BASE_MS * Math.pow(2, attempt), FLUSH_RETRY_MAX_MS);
+        warn(
+          `[SHEETS:BATCH] flush transitório (tentativa ${attempt + 1}/${FLUSH_RETRY_MAX + 1}): ` +
+            `${e.message} — retry em ${delay}ms`
+        );
+        await _sleep(delay);
+      }
+    }
+    throw lastErr;
   }
 
   /** Quantas requests pendentes. */

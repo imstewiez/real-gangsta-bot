@@ -63,7 +63,8 @@ const EVENT_TO_TABS = {
 const DEBOUNCE_MS = 5_000;
 // Retry backoff — só usado para erros transitórios (5xx, 429, rede).
 // Bugs do bot (400/403/404) falham logo, sem retry, para surfarem em logs/métricas.
-const RETRY_DELAYS_MS = [1_000, 3_000, 9_000];
+// Exponential: 1s → 2s → 4s (capped at 30s). Max 3 retries.
+const RETRY_DELAYS_MS = [1_000, 2_000, 4_000];
 
 // Estado local do subscriber — debounce por tab para que uma rajada de
 // eventos num domínio (ex: saídas) não atrase o flush de outro (ex: membros).
