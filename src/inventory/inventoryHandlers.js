@@ -556,6 +556,11 @@ async function handleEncomendaSelect(interaction) {
       inline: true,
     },
     {
+      name: '💵 Pagamento',
+      value: 'Dinheiro sujo + materiais',
+      inline: true,
+    },
+    {
       name: 'ℹ️ Multiplicador',
       value: `${(preview.multiplier * 100).toFixed(0)}%`,
       inline: true,
@@ -697,6 +702,7 @@ async function handleEncomendaModal(interaction) {
 
   let description = `**${quantity}x** ${pending.itemName}\n`;
   description += `Preço final: **${Math.round(pricing.finalPrice).toLocaleString('pt-PT')}€**\n`;
+  description += '💵 Pagamento: Dinheiro sujo + materiais\n';
   if (pricing.hasRecipe) {
     description += '📦 Materiais obrigatórios incluídos\n';
   }

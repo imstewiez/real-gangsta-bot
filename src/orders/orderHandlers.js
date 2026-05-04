@@ -37,7 +37,7 @@ const { createSessionStore } = require('../shared/sessionStore');
 const { SANITY_MAX_QTY } = require('../shared/constants');
 
 // Session para guardar item em seleção antes do modal
-const pendingSelections = createSessionStore('orderPending', { ttlMs: 10 * 60 * 1000 });
+const pendingSelections = createSessionStore('orderPending', { ttlMs: 30 * 60 * 1000 });
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ENTRY POINT — inicia carrinho
@@ -183,6 +183,7 @@ async function handleOrderItemSelect(interaction) {
 
   const descLines = [];
   descLines.push(`**💰 Preço:** ${formatMoney(pricing.finalPrice)} por unidade`);
+  descLines.push('💵 **Pagamento:** Dinheiro sujo + materiais');
 
   if (pricing.hasRecipe) {
     descLines.push('', '🛠️ **Materiais obrigatórios por unidade:**');
@@ -211,12 +212,9 @@ async function handleOrderItemSelect(interaction) {
 
 async function handleOrderModeSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
-  const parts = interaction.customId.split('::');
-  const mode = parts[2];
-  const itemId = parseInt(parts[3], 10);
 
   const pending = pendingSelections.get(interaction.user.id);
-  if (!pending || pending.itemId !== itemId) {
+  if (!pending || !pending.pricing) {
     return safeReply(
       interaction,
       { content: `${EMOJI.WARN} Sessão expirada. Volta a começar.`, flags: MessageFlags.Ephemeral },

@@ -86,8 +86,9 @@ async function calculateOrderPricing({ itemId, quantity, memberRole, memberTier 
   const { ingredients, hasRecipe } = await calculateIngredientsForOrder(itemId, quantity);
 
   const basePrice = unitPrice * quantity;
+  const materialCost = hasRecipe ? ingredients.reduce((sum, ing) => sum + (parseFloat(ing.subtotal) || 0), 0) : 0;
   const multiplier = getRankMultiplier(memberRole, 'buy', memberTier);
-  const finalPrice = basePrice * (1 + multiplier);
+  const finalPrice = (basePrice + materialCost) * (1 + multiplier);
 
   return {
     itemId,
@@ -95,6 +96,7 @@ async function calculateOrderPricing({ itemId, quantity, memberRole, memberTier 
     quantity,
     unitPrice,
     basePrice,
+    materialCost,
     finalPrice,
     multiplier,
     hasRecipe,
