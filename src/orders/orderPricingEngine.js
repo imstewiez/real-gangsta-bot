@@ -10,25 +10,26 @@ const { inventoryRepo } = require('../repositories');
 const craftRecipeRepo = require('../repositories/craftRecipe');
 
 // ── Multiplicadores por rank/tier ──────────────────────────────────────────
-// Bairristas: diferenciados por tier. Patrão/Oficial/Chefia: valor base (0%).
+// Bairristas: diferenciados por tier com incrementos de ~0.5%.
+// Patrão/Oficial/Chefia: valor base (0%).
 const RANK_MULTIPLIERS = {
   buy: {
-    young_blood: 0.1,
-    o_gunao: 0.07,
-    gangster_fodido: 0.03,
+    young_blood: 0.015, // +1.5%
+    o_gunao: 0.01, // +1.0%
+    gangster_fodido: 0.005, // +0.5%
     patrao_di_zona: 0.0,
     oficial: 0.0,
     chefia: 0.0,
-    inativo: 0.1,
+    inativo: 0.015, // mesmo que young_blood
   },
   sell: {
-    young_blood: -0.05,
+    young_blood: -0.005, // -0.5%
     o_gunao: 0.0,
-    gangster_fodido: 0.03,
+    gangster_fodido: 0.005, // +0.5%
     patrao_di_zona: 0.0,
     oficial: 0.0,
     chefia: 0.0,
-    inativo: -0.05,
+    inativo: -0.005, // mesmo que young_blood
   },
 };
 
@@ -98,9 +99,11 @@ async function calculateOrderPricing({ itemId, quantity, memberRole, memberTier,
   const multiplier = getRankMultiplier(memberRole, 'buy', memberTier);
 
   // s/ Mat = preço cheio; c/ Mat = paga só o custo dos materiais (com markup)
+  // Salvaguarda: c/ Mat nunca pode ser mais caro que s/ Mat — se os materiais
+  // estiverem sobrevalorizados na DB, limitamos ao preço cheio.
   let finalPrice;
   if (paymentMode === 'materials_money' && hasRecipe) {
-    finalPrice = materialCost * (1 + multiplier);
+    finalPrice = Math.min(materialCost * (1 + multiplier), basePrice * (1 + multiplier));
   } else {
     finalPrice = basePrice * (1 + multiplier);
   }

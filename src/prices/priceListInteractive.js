@@ -676,7 +676,7 @@ function normalizeCraftCategory(cat) {
 
 const TIERS = ['young_blood', 'o_gunao', 'gangster_fodido'];
 const TIER_LABELS = { young_blood: 'YB', o_gunao: 'OG', gangster_fodido: 'GF' };
-const TIER_MULT_BUY = { young_blood: 0.1, o_gunao: 0.07, gangster_fodido: 0.03 };
+const TIER_MULT_BUY = { young_blood: 0.015, o_gunao: 0.01, gangster_fodido: 0.005 };
 
 async function buildPriceEmbedsForChefia() {
   const [items, recipes] = await Promise.all([

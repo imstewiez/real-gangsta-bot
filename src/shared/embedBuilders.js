@@ -26,6 +26,7 @@ const COLOR = Object.freeze({
   DARK: 0x2c2f33, // quase preto — kill log, embeds pesados
   TEAL: 0x1abc9c, // teal — notificações de eventos
   GREEN_ALT: 0x27ae60, // verde alternativo — notificações positivas
+  PRIMARY: 0x3498db, // azul — primário/encomendas/destaque
 });
 
 // ── Brand embeds ────────────────────────────────────────────────────────────
