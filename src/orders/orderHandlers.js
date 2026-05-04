@@ -257,10 +257,10 @@ async function handleOrderModeSelect(interaction) {
 
 async function handleOrderQtyModal(interaction) {
   if (isDuplicate(interaction.id)) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const pending = pendingSelections.get(interaction.user.id);
   if (!pending || !pending.mode) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     return safeReply(
       interaction,
       { content: `${EMOJI.WARN} Sessão expirada.`, flags: MessageFlags.Ephemeral },
@@ -273,6 +273,7 @@ async function handleOrderQtyModal(interaction) {
   const quantity = parseInt(quantityStr, 10);
 
   if (isNaN(quantity) || quantity <= 0 || quantity > SANITY_MAX_QTY) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     return safeReply(
       interaction,
       { content: `${EMOJI.WARN} Quantidade inválida.`, flags: MessageFlags.Ephemeral },
@@ -282,6 +283,7 @@ async function handleOrderQtyModal(interaction) {
 
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     return safeReply(
       interaction,
       { content: 'Não estás registado.', flags: MessageFlags.Ephemeral },
@@ -314,7 +316,7 @@ async function handleOrderQtyModal(interaction) {
   orderCart.saveCart(interaction.user.id, cart);
   pendingSelections.delete(interaction.user.id);
 
-  // Volta ao carrinho
+  // Volta ao carrinho — substitui a mensagem original
   const embed = orderCart.buildCartEmbed(cart, { memberName: member.display_name });
   const components = orderCart.buildCartComponents(cart);
 
@@ -323,7 +325,8 @@ async function handleOrderQtyModal(interaction) {
     orderCart.saveCart(interaction.user.id, cart);
   }
 
-  return safeReply(interaction, { embeds: [embed], components }, { messageClass: 'COCKPIT' });
+  await interaction.deferUpdate();
+  return interaction.editReply({ embeds: [embed], components });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -454,6 +457,89 @@ async function handleOrderCartCheckout(interaction) {
   return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CANCELAR ENCOMENDA
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function handleOrderCancelButton(interaction) {
+  if (isDuplicate(interaction.id)) return;
+
+  const member = await memberRepo.findByDiscordId(interaction.user.id);
+  if (!member) {
+    return safeReply(interaction, { content: 'Não estás registado.' }, { messageClass: 'BANAL' });
+  }
+
+  const pendingOrders = await ordersRepo.findByMember(member.id, { status: 'pending', limit: 25 });
+  if (!pendingOrders.length) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.OK} Não tens encomendas pendentes para cancelar.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
+  }
+
+  const options = pendingOrders.map(o => ({
+    label: `${o.quantity}× ${o.item_name}`.slice(0, 100),
+    description: `#${o.id} · ${formatMoney(o.total_price)}`.slice(0, 100),
+    value: String(o.id),
+  }));
+
+  const row = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('order::cancel_select')
+      .setPlaceholder('❌ Escolhe a encomenda para cancelar')
+      .addOptions(options)
+  );
+
+  const embed = brandEmbed('HOUSE')
+    .setTitle('❌ Cancelar Encomenda')
+    .setDescription('Selecciona a encomenda pendente que queres cancelar.');
+
+  return safeReply(
+    interaction,
+    { embeds: [embed], components: [row], flags: MessageFlags.Ephemeral },
+    { messageClass: 'FLOW' }
+  );
+}
+
+async function handleOrderCancelSelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+
+  const orderId = parseInt(interaction.values[0], 10);
+  if (!orderId) return;
+
+  const member = await memberRepo.findByDiscordId(interaction.user.id);
+  if (!member) {
+    return safeReply(interaction, { content: 'Não estás registado.' }, { messageClass: 'BANAL' });
+  }
+
+  // Verifica que a encomenda pertence ao user e está pendente
+  const order = await ordersRepo.findById(orderId);
+  if (!order || order.member_id !== member.id || order.status !== 'pending') {
+    return safeReply(
+      interaction,
+      {
+        content: `${EMOJI.WARN} Encomenda não encontrada ou já não pode ser cancelada.`,
+        flags: MessageFlags.Ephemeral,
+      },
+      { messageClass: 'BANAL' }
+    );
+  }
+
+  await ordersRepo.updateStatus(orderId, {
+    status: 'cancelled',
+    actorDiscordId: interaction.user.id,
+    notes: 'Cancelada pelo bairrista',
+  });
+
+  const embed = brandEmbed('HOUSE')
+    .setTitle(`${EMOJI.OK} Encomenda Cancelada`)
+    .setColor(COLOR.SUCCESS)
+    .setDescription(`**#${orderId}** · ${order.quantity}× ${order.item_name} foi cancelada.`);
+
+  return safeUpdate(interaction, { embeds: [embed], components: [] });
+}
+
 module.exports = {
   handleEncomendasButton,
   handleOrderCartAdd,
@@ -465,4 +551,6 @@ module.exports = {
   handleOrderCartClear,
   handleOrderCartBack,
   handleOrderCartCheckout,
+  handleOrderCancelButton,
+  handleOrderCancelSelect,
 };

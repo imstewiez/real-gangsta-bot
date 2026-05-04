@@ -117,6 +117,9 @@ const SELECT_ROUTES = [
   // Order management — chefia select actions
   exact('order::manage_action', orderManagement.handleOrderManageSelect),
 
+  // Cancelamento de encomenda pelo bairrista
+  exact('order::cancel_select', orderHandlers.handleOrderCancelSelect),
+
   // Stock v3
   exact('stockv3::select_entrada_item', require('../../../inventory/v3/chefiaStockHandlers').handleEntradaItemSelect),
   exact('stockv3::select_retirada_tipo', require('../../../inventory/v3/chefiaStockHandlers').handleRetiradaTipoSelect),

@@ -98,6 +98,7 @@ async function handle(interaction) {
 
   const navRow = buttonRow(
     button({ customId: 'bairrista::encomendar', label: 'Nova Encomenda', style: 'Success', emoji: EMOJI.NOVO }),
+    button({ customId: 'order::cancel', label: 'Cancelar Encomenda', style: 'Danger', emoji: '❌' }),
     button({ customId: 'perfil::voltar', label: 'Voltar ao Perfil', style: 'Secondary', emoji: EMOJI.VOLTAR })
   );
 
