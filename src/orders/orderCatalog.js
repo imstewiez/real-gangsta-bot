@@ -95,14 +95,14 @@ const ARMAS_RED_NAMES = new Set([
 
 const ORDER_ARMAS_BRANCAS = ['Canivete', 'Taco de Baseball', 'Taco de 8Ball'];
 const ORDER_ARMAS_ORANGE = [
-  'Mini SMG',
+  'SNS Pistol',
   'Pistol XM3',
+  'Mini SMG',
   'Micro SMG',
   'Machine Pistol',
   'TEC Pistol',
   'AP Pistol',
   'Compact Rifle',
-  'SNS Pistol',
   'Gusenberg',
 ];
 const ORDER_ARMAS_RED = [
@@ -215,11 +215,11 @@ async function buildOrderItemSelect(customIdPrefix, placeholder, category, { sea
   const items = await getOrderCatalogItems();
   let filtered = items.filter(i => i.orderCategory === category);
 
-  // Ordenação explícita por categoria
+  // Ordenação: explícita para armas; todas as outras categorias por preço descendente
   if (category === 'armas_brancas') filtered = sortByExplicitOrder(filtered, ORDER_ARMAS_BRANCAS);
   else if (category === 'armas_orange') filtered = sortByExplicitOrder(filtered, ORDER_ARMAS_ORANGE);
   else if (category === 'armas_red') filtered = sortByExplicitOrder(filtered, ORDER_ARMAS_RED);
-  else filtered.sort((a, b) => a.name.localeCompare(b.name));
+  else filtered.sort((a, b) => (parseFloat(b.estimated_value) || 0) - (parseFloat(a.estimated_value) || 0));
 
   const catMeta = ORDER_CATEGORIES.find(c => c.key === category);
   const emoji = catMeta?.emoji || '📦';

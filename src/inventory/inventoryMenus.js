@@ -120,7 +120,9 @@ async function buildCategorySelectMenu(
  */
 async function buildItemSelectMenuForCategory(customIdPrefix, placeholder, category, { searchKey, modalTitle } = {}) {
   const items = await inventoryRepo.getItems(true);
-  const filtered = items.filter(i => (i.category || 'outros') === category);
+  const filtered = items
+    .filter(i => (i.category || 'outros') === category)
+    .sort((a, b) => (parseFloat(b.estimated_value) || 0) - (parseFloat(a.estimated_value) || 0));
 
   // Batch-fetch stock balances
   const balanceMap = new Map();
@@ -220,12 +222,14 @@ const EXCLUDED_ITEM_PREFIXES = [
 
 async function buildRawMaterialSelectMenu(customIdPrefix, placeholder, { searchKey, modalTitle } = {}) {
   const items = await inventoryRepo.getItems(true);
-  const filtered = items.filter(item => {
-    const cat = item.category || 'outros';
-    if (!RAW_MATERIAL_CATEGORIES.has(cat)) return false;
-    if (EXCLUDED_ITEM_PREFIXES.some(p => item.name.startsWith(p))) return false;
-    return true;
-  });
+  const filtered = items
+    .filter(item => {
+      const cat = item.category || 'outros';
+      if (!RAW_MATERIAL_CATEGORIES.has(cat)) return false;
+      if (EXCLUDED_ITEM_PREFIXES.some(p => item.name.startsWith(p))) return false;
+      return true;
+    })
+    .sort((a, b) => (parseFloat(b.estimated_value) || 0) - (parseFloat(a.estimated_value) || 0));
 
   const balanceMap = new Map();
   for (const item of filtered) {
