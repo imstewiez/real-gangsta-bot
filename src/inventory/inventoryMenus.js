@@ -186,6 +186,86 @@ function buildItemSelectMenuFlat(customIdPrefix, placeholder, items, opts = {}) 
   return new ActionRowBuilder().addComponents(builder);
 }
 
+/**
+ * Select menu de matérias primas — flat list com TODOS os itens entregáveis.
+ * Agrupa metais, madeiras, reciclagem, componentes (filtrados), químicos, etc.
+ * Exclui armas, munições, droga, comida, equipamento, acessórios, e itens de craft (corpos/prints).
+ */
+const RAW_MATERIAL_CATEGORIES = new Set([
+  'metais',
+  'madeiras',
+  'reciclagem',
+  'quimicos',
+  'quimicos_droga',
+  'sucata_industria',
+  'electronica',
+  'texteis',
+  'utilidade',
+  'outros',
+]);
+const EXCLUDED_ITEM_PREFIXES = [
+  'Corpo ',
+  'Print ',
+  'Carregador ',
+  'Colete ',
+  'Silenciador',
+  'Mira',
+  'Grip',
+  'Lanterna',
+  'Muzzle',
+  'Barrel',
+  'Extensivo',
+  'Mag Expandido',
+];
+
+async function buildRawMaterialSelectMenu(customIdPrefix, placeholder, { searchKey, modalTitle } = {}) {
+  const items = await inventoryRepo.getItems(true);
+  const filtered = items.filter(item => {
+    const cat = item.category || 'outros';
+    if (!RAW_MATERIAL_CATEGORIES.has(cat)) return false;
+    if (EXCLUDED_ITEM_PREFIXES.some(p => item.name.startsWith(p))) return false;
+    return true;
+  });
+
+  const balanceMap = new Map();
+  for (const item of filtered) {
+    const bal = await inventoryRepo.getStockForItem(item.id).catch(() => 0);
+    balanceMap.set(item.id, Number(bal) || 0);
+  }
+
+  const options = filtered.slice(0, 25).map(item => {
+    const price = parseFloat(item.estimated_value) || 0;
+    const priceStr = price > 0 ? `${Math.round(price).toLocaleString('pt-PT')}€` : 'sem preço';
+    const balance = balanceMap.get(item.id) || 0;
+    return {
+      label: item.name.slice(0, 100),
+      description: `${priceStr} · ${balance} em stock`.slice(0, 100),
+      value: String(item.id),
+      emoji: CATEGORY_EMOJI[item.category] || '📦',
+    };
+  });
+
+  if (searchKey) {
+    return buildSearchableSelect({
+      customId: customIdPrefix,
+      placeholder: placeholder || 'Escolhe o material',
+      options: options.length ? options : [{ label: 'Sem materiais disponíveis', value: 'none' }],
+      searchKey,
+      modalTitle: modalTitle || 'Pesquisar material',
+      messageClass: 'FLOW',
+    });
+  }
+
+  return new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(customIdPrefix)
+      .setPlaceholder(placeholder || 'Escolhe o material')
+      .setMinValues(1)
+      .setMaxValues(1)
+      .addOptions(options.length ? options : [{ label: 'Sem materiais disponíveis', value: 'none' }])
+  );
+}
+
 function buildQuantityModal(title, customId) {
   const F = MODALS.INVENTORY_QUANTITY.FIELDS;
   return new ModalBuilder()
@@ -271,6 +351,7 @@ module.exports = {
   buildCategorySelectMenu,
   buildItemSelectMenuForCategory,
   buildItemSelectMenuFlat,
+  buildRawMaterialSelectMenu,
   buildQuantityModal,
   buildOperationMaterialModal,
   buildStockAdjustmentModal,

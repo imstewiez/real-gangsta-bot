@@ -37,6 +37,7 @@ const {
   handleDeliveryDecision,
   handleCartPreview,
   handleCartPreviewBack,
+  handleCartBack,
 } = require('../../../inventory/inventoryHandlers');
 const stockV3Handlers = require('../../../inventory/v3/chefiaStockHandlers');
 const orderHandlers = require('../../../orders/orderHandlers');
@@ -161,6 +162,7 @@ const BUTTON_ROUTES = [
   prefix('invcart::submit::', handleCartSubmit),
   prefix('invcart::undo::', handleCartUndo),
   prefix('invcart::preview_back::', handleCartPreviewBack),
+  prefix('invcart::back::', handleCartBack),
   prefix('invcart::preview::', handleCartPreview),
   prefix('invdelivery::approve::', handleDeliveryDecision),
   prefix('invdelivery::reject::', handleDeliveryDecision),

@@ -16,6 +16,7 @@ const { adjustStock, getCurrentStock } = require('./inventoryEngine');
 const {
   buildCategorySelectMenu,
   buildItemSelectMenuForCategory,
+  buildRawMaterialSelectMenu,
   buildStockAdjustmentModal,
 } = require('./inventoryMenus');
 const { inventoryRepo, memberRepo } = require('../repositories');
@@ -759,25 +760,21 @@ async function handleCartAdd(interaction) {
       { messageClass: 'BANAL' }
     );
   }
-  const rows = await buildCategorySelectMenu(`invcart::cat::${tipo}`, 'Escolhe a categoria', {
-    searchKey: `cartcat::${interaction.user.id}::${tipo}`,
-    modalTitle: 'Pesquisar categoria',
-    excludeCategories: [
-      'armas',
-      'armas_fogo',
-      'armas_brancas',
-      'municoes',
-      'dinheiro',
-      'droga',
-      'comida',
-      'pesca',
-      'comida_pesca',
-    ],
+  const selectRow = await buildRawMaterialSelectMenu(`invcart::pick::${tipo}`, 'Escolhe o material', {
+    searchKey: `cartpick::${interaction.user.id}::${tipo}`,
+    modalTitle: 'Pesquisar material',
   });
+  const backRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`invcart::back::${tipo}`)
+      .setLabel('Voltar ao carrinho')
+      .setStyle(ButtonStyle.Secondary)
+      .setEmoji('⬅️')
+  );
   return safeUpdate(interaction, {
-    content: 'Escolhe a categoria do item a adicionar:',
+    content: '**Matérias Primas** — escolhe o item a adicionar:',
     embeds: [],
-    components: rows,
+    components: [selectRow, backRow],
   });
 }
 
@@ -1169,6 +1166,22 @@ async function handleCartPreviewBack(interaction) {
   return _refreshCartPanel(interaction, cart);
 }
 
+// ── Voltar ao carrinho (do menu de matérias primas) ─────────────────────────
+async function handleCartBack(interaction) {
+  if (isDuplicate(interaction.id)) return;
+  const tipo = interaction.customId.split('::')[2];
+  const bairristaCart = require('./bairristaCart');
+  const cart = bairristaCart.getCart(interaction.user.id);
+  if (!cart || cart.tipo !== tipo) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.PENDENTE} Carrinho expirado.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
+  }
+  return _refreshCartPanel(interaction, cart);
+}
+
 // ── Submeter carrinho ───────────────────────────────────────────────────────
 async function handleCartSubmit(interaction) {
   if (isDuplicate(interaction.id)) return;
@@ -1546,4 +1559,5 @@ module.exports = {
   handleDeliveryDecision,
   handleCartPreview,
   handleCartPreviewBack,
+  handleCartBack,
 };
