@@ -82,6 +82,15 @@ async function handleOrderCartAdd(interaction) {
     { searchKey: `ordercat::${interaction.user.id}`, modalTitle: 'Pesquisar categoria' }
   );
 
+  rows.push(
+    new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('ordercart::back')
+        .setLabel('🔙 Voltar ao Carrinho')
+        .setStyle(ButtonStyle.Secondary)
+    )
+  );
+
   const embed = brandEmbed('HOUSE')
     .setTitle(`${EMOJI.ENCOMENDA} Nova Encomenda`)
     .setDescription(
