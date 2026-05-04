@@ -12,6 +12,57 @@ const { EMOJI } = require('../content');
 const { safeReply } = require('../shared/interactionHelpers');
 const { query } = require('../db');
 
+// ── Abreviações de materiais para caber em linha única ─────────────────────
+const MAT_ABBREV = {
+  Aço: 'Aç',
+  Peças: 'Pç',
+  'Peças Estragadas': 'Pç Estrg',
+  'Tábua Ébano': 'Ébano',
+  'Tábua Carvalho': 'Carvalho',
+  'Tábua Cerejeira': 'Cerejeira',
+  'Tábua Pinho': 'Pinho',
+  'Barra de Ouro': 'Ouro',
+  'Barra de Prata': 'Prata',
+  'Corpo Pistol XM3': 'Corpo XM3',
+  'Corpo UZI': 'Corpo UZI',
+  'Corpo TEC-9': 'Corpo TEC9',
+  'Corpo TEC Pistol': 'Corpo TEC',
+  'Corpo AP Pistol': 'Corpo AP',
+  'Corpo Mini SMG': 'Corpo Mini',
+  'Corpo Micro SMG': 'Corpo Micro',
+  'Corpo Machine Pistol': 'Corpo Machine',
+  'Corpo Compact Rifle': 'Corpo Compact',
+  'Corpo Gusenberg': 'Corpo Gusenberg',
+  'Corpo .50': 'Corpo .50',
+  'Corpo P90': 'Corpo P90',
+  'Corpo PDW': 'Corpo PDW',
+  'Corpo Revolver': 'Corpo Revolver',
+  'Corpo Gadget Pistol': 'Corpo Gadget',
+  'Corpo Bullpup': 'Corpo Bullpup',
+  'Corpo Carabina Especial': 'Corpo Carabina',
+  'Print Laranja': 'Print Lrj',
+  'Print Vermelha': 'Print Vrm',
+  'Print Azul': 'Print Azl',
+  'Print Amarela': 'Print Amr',
+  'Molde de Arma': 'Molde',
+  Pólvora: 'Pólv',
+  'Plástico Reciclado': 'Plástico',
+  'Plástico Velho': 'Plástico Vlh',
+  'Lixo Eletrónico': 'Lixo Eletr',
+  'Telemóvel Estragado': 'Telemóvel',
+  'Rádio Estragado': 'Rádio',
+  Sucata: 'Sucata',
+  Borracha: 'Borracha',
+  Papel: 'Papel',
+  Cobre: 'Cobre',
+  Carvão: 'Carvão',
+  Ferro: 'Ferro',
+};
+
+function abbrevMat(name) {
+  return MAT_ABBREV[name] || name;
+}
+
 // ── Nome → categoria de exibição ────────────────────────────────────────────
 
 const ARMAS_ORANGE_NAMES = new Set([
@@ -457,55 +508,53 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       if (!catItems.length) continue;
     }
 
-    // ── Construir conteúdo conforme o tipo de colunas ───────────────────────
-    if (catDef.cols === 'craft') {
-      // Armas/carregadores com materiais: usar texto formatado (não code block)
-      // para evitar quebra de linha dentro do campo limitado do Discord
-      const lines = catItems.map(item => {
+    // ── Construir linhas da tabela conforme o tipo de colunas ───────────────
+    const lines = catItems.map(item => {
+      const name = padName(item.name, 18);
+
+      if (catDef.cols === 'craft') {
         const base = parseFloat(item.estimated_value) || 0;
         const recipe = recipeMap.get(item.id);
         const price = base * (1 + buyMult);
-        const mats = recipe ? recipe.ingredients.map(ing => `${ing.quantity}× ${ing.ingredient_name}`).join(', ') : '';
-        return `**${item.name}** — ${fmtPriceCompact(price)}\n  └ 📦 ${mats}`;
-      });
+        const mats = recipe
+          ? recipe.ingredients.map(ing => `${ing.quantity}× ${abbrevMat(ing.ingredient_name)}`).join(', ')
+          : '';
+        return `${name}  ${fmtPriceCompact(price).padStart(6)}  ${mats}`;
+      }
 
-      const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(catDef.label));
-      embed.setDescription(lines.join('\n\n'));
-      embeds.push(embed);
-    } else {
-      // Categorias simples (price / colete): code block alinhado funciona bem
-      const lines = catItems.map(item => {
-        const name = padName(item.name, 22);
-
-        if (catDef.cols === 'colete') {
-          const limpo = 1600;
-          const sujo = 1800;
-          return `${name}  ${fmtPriceCompact(limpo).padStart(6)}  ${fmtPriceCompact(sujo).padStart(6)}`;
-        }
-
-        const base = parseFloat(item.estimated_value) || 0;
-        const price = base * (1 + buyMult);
-        return `${name}  ${fmtPriceCompact(price).padStart(6)}`;
-      });
-
-      let header, sep;
       if (catDef.cols === 'colete') {
-        header = `${padName('Item', 22)}  ${'Limpo'.padStart(6)}  ${'Sujo'.padStart(6)}`;
-        sep = '──────────────────────────────────────────';
-      } else {
-        header = `${padName('Item', 22)}  ${'Preço'.padStart(6)}`;
-        sep = '──────────────────────────────────';
+        const limpo = 1600;
+        const sujo = 1800;
+        return `${name}  ${fmtPriceCompact(limpo).padStart(6)}  ${fmtPriceCompact(sujo).padStart(6)}`;
       }
 
-      const prefix = '```\n' + header + '\n' + sep + '\n';
-      const suffix = '\n```';
-      const chunks = buildTable(prefix, suffix, lines);
+      // cols === 'price'
+      const base = parseFloat(item.estimated_value) || 0;
+      const price = base * (1 + buyMult);
+      return `${name}  ${fmtPriceCompact(price).padStart(6)}`;
+    });
 
-      for (const chunk of chunks) {
-        const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(catDef.label));
-        embed.setDescription(prefix + chunk.join('\n') + suffix);
-        embeds.push(embed);
-      }
+    // ── Header conforme tipo de colunas ─────────────────────────────────────
+    let header, sep;
+    if (catDef.cols === 'craft') {
+      header = `${padName('Item', 18)}  ${'Preço'.padStart(6)}  Materiais`;
+      sep = '─────────────────────────────────────────────────────';
+    } else if (catDef.cols === 'colete') {
+      header = `${padName('Item', 18)}  ${'Limpo'.padStart(6)}  ${'Sujo'.padStart(6)}`;
+      sep = '──────────────────────────────────────────';
+    } else {
+      header = `${padName('Item', 18)}  ${'Preço'.padStart(6)}`;
+      sep = '──────────────────────────────────';
+    }
+
+    const prefix = '```\n' + header + '\n' + sep + '\n';
+    const suffix = '\n```';
+    const chunks = buildTable(prefix, suffix, lines);
+
+    for (const chunk of chunks) {
+      const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(catDef.label));
+      embed.setDescription(prefix + chunk.join('\n') + suffix);
+      embeds.push(embed);
     }
   }
 
