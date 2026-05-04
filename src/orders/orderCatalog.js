@@ -118,6 +118,32 @@ const ORDER_ARMAS_RED = [
   'Gadget Pistol',
 ];
 
+const _ING_ABBREV = {
+  'Barra de Ouro': 'Ouro',
+  'Barra de Cobre': 'Cobre',
+  'Print Laranja': 'P.Lar',
+  'Print Azul': 'P.Azu',
+  'Print Vermelha': 'P.Verm',
+  'Print Amarela': 'P.Amar',
+  'Tábua de Ébano': 'Ébano',
+  'Molde de Arma': 'Molde',
+  'Corpo Mini SMG': 'Corpo',
+  'Corpo Pistol XM3': 'Corpo',
+  'Corpo UZI': 'Corpo',
+  'Corpo TEC-9': 'Corpo',
+  'Corpo TEC Pistol': 'Corpo',
+  'Corpo AP Pistol': 'Corpo',
+  'Dinheiro Sujo': 'Sujo',
+};
+
+function _compactIngredients(ingredients) {
+  const parts = ingredients.map(ing => {
+    const name = _ING_ABBREV[ing.ingredient_name] || ing.ingredient_name;
+    return `${ing.quantity}${name}`;
+  });
+  return parts.join('+');
+}
+
 function sortByExplicitOrder(items, orderArray) {
   const orderMap = new Map(orderArray.map((name, i) => [name, i]));
   return items.slice().sort((a, b) => {
@@ -244,17 +270,7 @@ async function buildOrderItemSelect(
     const recipe = recipeMap.get(item.id);
     let priceStr = price > 0 ? `${Math.round(price).toLocaleString('pt-PT')}€` : 'sem preço';
     if (recipe) {
-      const ingList = recipe.ingredients;
-      let mats;
-      if (ingList.length > 2) {
-        mats =
-          ingList
-            .slice(0, 2)
-            .map(ing => `${ing.quantity}× ${ing.ingredient_name}`)
-            .join(', ') + '…';
-      } else {
-        mats = ingList.map(ing => `${ing.quantity}× ${ing.ingredient_name}`).join(', ');
-      }
+      const mats = _compactIngredients(recipe.ingredients);
       priceStr = `${priceStr} 🛠️ ${mats}`;
     }
     return {
