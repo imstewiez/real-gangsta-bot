@@ -49,7 +49,7 @@ function clearCart(discordId) {
 }
 
 function addLine(cart, line) {
-  const existing = cart.lines.find(l => l.itemId === line.itemId && l.mode === line.mode);
+  const existing = cart.lines.find(l => l.itemId === line.itemId);
   if (existing) {
     existing.quantity += line.quantity;
     existing.finalPrice += line.finalPrice;
@@ -66,10 +66,8 @@ function addLine(cart, line) {
       itemName: line.itemName,
       category: line.category,
       quantity: line.quantity,
-      mode: line.mode,
       unitPrice: line.unitPrice,
       finalPrice: line.finalPrice,
-      materialCost: line.materialCost || 0,
       ingredients: line.ingredients ? line.ingredients.map(i => ({ ...i })) : [],
     });
   }
@@ -86,19 +84,18 @@ function removeLine(cart, index) {
 function totals(cart) {
   const totalQty = cart.lines.reduce((a, l) => a + l.quantity, 0);
   const totalPrice = cart.lines.reduce((a, l) => a + l.finalPrice, 0);
-  const totalMaterialCost = cart.lines.reduce((a, l) => a + (l.mode === 'materials_money' ? l.materialCost : 0), 0);
 
-  // Agregar todos os ingredientes de todas as linhas c/ Mat
+  // Agregar todos os ingredientes de todas as linhas
   const materialMap = new Map();
   for (const l of cart.lines) {
-    if (l.mode !== 'materials_money' || !l.ingredients) continue;
+    if (!l.ingredients) continue;
     for (const ing of l.ingredients) {
       materialMap.set(ing.name, (materialMap.get(ing.name) || 0) + ing.qty);
     }
   }
   const materials = Array.from(materialMap.entries()).map(([name, qty]) => ({ name, qty }));
 
-  return { totalQty, totalPrice, totalMaterialCost, materials };
+  return { totalQty, totalPrice, materials };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -118,8 +115,7 @@ function buildCartEmbed(cart, { memberName } = {}) {
   const lines = [];
   for (let i = 0; i < cart.lines.length; i++) {
     const l = cart.lines[i];
-    const modeTag = l.mode === 'money_only' ? '💵 s/ Mat' : '📦 c/ Mat';
-    lines.push(`**${i + 1}.** ${l.itemName} · **${l.quantity}×** · ${modeTag} · **${formatMoney(l.finalPrice)}**`);
+    lines.push(`**${i + 1}.** ${l.itemName} · **${l.quantity}×** · **${formatMoney(l.finalPrice)}**`);
   }
 
   lines.push('', `**Total:** ${totalQty} unidades · **${formatMoney(totalPrice)}**`);
@@ -162,7 +158,7 @@ function buildCartComponents(cart) {
       new StringSelectMenuOptionBuilder()
         .setLabel(`${i + 1}. ${l.itemName} (${l.quantity}×)`)
         .setValue(String(i))
-        .setDescription(l.mode === 'money_only' ? 's/ Mat' : 'c/ Mat')
+        .setDescription('📦 Encomenda')
     );
     const removeSelect = new StringSelectMenuBuilder()
       .setCustomId('ordercart::remove')

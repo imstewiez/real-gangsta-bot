@@ -536,6 +536,7 @@ async function handleEncomendaSelect(interaction) {
     const ingLines = preview.ingredients.map(
       ing => `• ${ing.name}: ${ing.qty}x (~${Math.round(ing.subtotal).toLocaleString('pt-PT')}€)`
     );
+    const materialCost = preview.ingredients.reduce((sum, ing) => sum + ing.subtotal, 0);
     embed.addFields({
       name: '🛠️ Fórmula de Craft',
       value: ingLines.join('\n'),
@@ -543,7 +544,7 @@ async function handleEncomendaSelect(interaction) {
     });
     embed.addFields({
       name: '💰 Custo dos Materiais',
-      value: `${Math.round(preview.materialCost).toLocaleString('pt-PT')}€`,
+      value: `${Math.round(materialCost).toLocaleString('pt-PT')}€`,
       inline: true,
     });
   }
@@ -564,12 +565,8 @@ async function handleEncomendaSelect(interaction) {
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`inv::encomenda_mode::materials_money::${itemId}`)
-      .setLabel('📦 Entregar Materiais')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId(`inv::encomenda_mode::money_only::${itemId}`)
-      .setLabel('💵 Pagar em Dinheiro')
-      .setStyle(ButtonStyle.Secondary)
+      .setLabel('📦 Encomendar')
+      .setStyle(ButtonStyle.Primary)
   );
 
   await safeReply(
@@ -585,16 +582,13 @@ async function handleEncomendaSelect(interaction) {
 
 async function handleEncomendaModeSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
-  const parts = interaction.customId.split('::');
-  const paymentMode = parts[2];
-  // const itemId = parseInt(parts[3]);
 
   const pending = pendingItemSelections.get(interaction.user.id);
   if (!pending || pending.action !== 'order') {
     return safeReply(interaction, { content: 'Sessão expirada.' }, { messageClass: 'BANAL' });
   }
 
-  pending.paymentMode = paymentMode;
+  pending.paymentMode = 'materials_money';
   pendingItemSelections.set(interaction.user.id, pending);
 
   const modal = new ModalBuilder()
@@ -651,7 +645,6 @@ async function handleEncomendaModal(interaction) {
     quantity,
     memberRole: member.role,
     memberTier: member.tier,
-    paymentMode,
   });
 
   const ordersRepo = require('../repositories/orders');
@@ -662,9 +655,9 @@ async function handleEncomendaModal(interaction) {
     unitPrice: pricing.unitPrice,
     totalPrice: pricing.finalPrice,
     notes,
-    paymentMode,
-    materialCost: pricing.materialCost,
-    moneyCost: paymentMode === 'money_only' ? pricing.finalPrice : 0,
+    paymentMode: 'materials_money',
+    materialCost: null,
+    moneyCost: pricing.finalPrice,
   });
 
   pendingItemSelections.delete(interaction.user.id);
@@ -679,7 +672,7 @@ async function handleEncomendaModal(interaction) {
       item: pending.itemName,
       quantity,
       notes,
-      paymentMode,
+      paymentMode: 'materials_money',
       totalPrice: pricing.finalPrice,
     },
   });
@@ -695,7 +688,7 @@ async function handleEncomendaModal(interaction) {
       actorId: interaction.user.id,
       status: 'pending',
       notes,
-      paymentMode,
+      paymentMode: 'materials_money',
       totalPrice: pricing.finalPrice,
       createdAt: order.created_at,
       at: new Date(),
@@ -703,10 +696,9 @@ async function handleEncomendaModal(interaction) {
     .catch(() => {});
 
   let description = `**${quantity}x** ${pending.itemName}\n`;
-  description += `Modo: ${paymentMode === 'money_only' ? '💵 Apenas Dinheiro' : '📦 Materiais + Dinheiro'}\n`;
   description += `Preço final: **${Math.round(pricing.finalPrice).toLocaleString('pt-PT')}€**\n`;
   if (pricing.hasRecipe) {
-    description += `Custo materiais: ${Math.round(pricing.materialCost).toLocaleString('pt-PT')}€\n`;
+    description += '📦 Materiais obrigatórios incluídos\n';
   }
   description += 'Estado: Pendente\n';
   if (notes) description += `Notas: ${notes}\n`;

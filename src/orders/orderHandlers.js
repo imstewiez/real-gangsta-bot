@@ -142,21 +142,12 @@ async function handleOrderItemSelect(interaction) {
     );
   }
 
-  // Calcula ambos os preços para 1 unidade
-  const pricingNoMat = await calculateOrderPricing({
+  // Calcula preço para 1 unidade (preço base + materiais obrigatórios)
+  const pricing = await calculateOrderPricing({
     itemId,
     quantity: 1,
     memberRole: member.role,
     memberTier: member.tier,
-    paymentMode: 'money_only',
-  });
-
-  const pricingWithMat = await calculateOrderPricing({
-    itemId,
-    quantity: 1,
-    memberRole: member.role,
-    memberTier: member.tier,
-    paymentMode: 'materials_money',
   });
 
   // Guarda na sessão para o handler de quantidade usar
@@ -164,8 +155,7 @@ async function handleOrderItemSelect(interaction) {
     itemId,
     itemName: item.name,
     category: item.category,
-    pricingNoMat,
-    pricingWithMat,
+    pricing,
     memberRole: member.role,
     memberTier: member.tier,
   });
@@ -173,30 +163,23 @@ async function handleOrderItemSelect(interaction) {
   const embed = brandEmbed('HOUSE').setTitle(`📦 ${item.name}`).setColor(COLOR.PRIMARY);
 
   const descLines = [];
-  descLines.push(`**💵 s/ Materiais:** ${formatMoney(pricingNoMat.finalPrice)}`);
+  descLines.push(`**💰 Preço:** ${formatMoney(pricing.finalPrice)} por unidade`);
 
-  if (pricingWithMat.hasRecipe) {
-    descLines.push(`**📦 c/ Materiais:** ${formatMoney(pricingWithMat.finalPrice)}`);
-    descLines.push('', '🛠️ **Fórmula de Craft:**');
-    for (const ing of pricingWithMat.ingredients) {
+  if (pricing.hasRecipe) {
+    descLines.push('', '🛠️ **Materiais obrigatórios por unidade:**');
+    for (const ing of pricing.ingredients) {
       descLines.push(`  • ${ing.name}: **${ing.qty}×**`);
     }
-  } else {
-    descLines.push(`**📦 c/ Materiais:** ${formatMoney(pricingWithMat.finalPrice)} (sem craft)`);
   }
 
-  descLines.push('', `💳 Multiplicador: **${(pricingNoMat.multiplier * 100).toFixed(0)}%** (${member.role})`);
+  descLines.push('', `💳 Multiplicador: **${(pricing.multiplier * 100).toFixed(1)}%** (${member.role})`);
   embed.setDescription(descLines.join('\n'));
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId(`ordermode::money_only::${itemId}`)
-      .setLabel('💵 s/ Materiais')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
       .setCustomId(`ordermode::materials_money::${itemId}`)
-      .setLabel('📦 c/ Materiais')
-      .setStyle(ButtonStyle.Secondary),
+      .setLabel('📦 Encomendar')
+      .setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId('ordercart::add').setLabel('🔙 Voltar').setStyle(ButtonStyle.Secondary)
   );
 
@@ -222,10 +205,8 @@ async function handleOrderModeSelect(interaction) {
     );
   }
 
-  pending.mode = mode;
+  pending.mode = 'materials_money';
   pendingSelections.set(interaction.user.id, pending);
-
-  const pricing = mode === 'money_only' ? pending.pricingNoMat : pending.pricingWithMat;
 
   const modal = new ModalBuilder()
     .setCustomId('inv::modal_order_qty')
@@ -234,7 +215,7 @@ async function handleOrderModeSelect(interaction) {
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
           .setCustomId('quantity')
-          .setLabel(`Quantidade (preço: ${formatMoney(pricing.finalPrice)}/un)`)
+          .setLabel(`Quantidade (preço: ${formatMoney(pending.pricing.finalPrice)}/un)`)
           .setStyle(TextInputStyle.Short)
           .setRequired(true)
           .setMaxLength(5)
@@ -297,7 +278,6 @@ async function handleOrderQtyModal(interaction) {
     quantity,
     memberRole: member.role,
     memberTier: member.tier,
-    paymentMode: pending.mode,
   });
 
   let cart = orderCart.getCart(interaction.user.id);
@@ -308,10 +288,9 @@ async function handleOrderQtyModal(interaction) {
     itemName: pending.itemName,
     category: pending.category,
     quantity,
-    mode: pending.mode,
+    mode: 'materials_money',
     unitPrice: pricing.unitPrice,
     finalPrice: pricing.finalPrice,
-    materialCost: pricing.materialCost,
     ingredients: pricing.ingredients.map(i => ({ name: i.name, qty: i.qty })),
   });
 
@@ -398,9 +377,9 @@ async function handleOrderCartCheckout(interaction) {
       unitPrice: line.unitPrice,
       totalPrice: line.finalPrice,
       notes: cart.globalNotes || '',
-      paymentMode: line.mode,
-      materialCost: line.mode === 'materials_money' ? line.materialCost : null,
-      moneyCost: line.mode === 'money_only' ? line.finalPrice : null,
+      paymentMode: 'materials_money',
+      materialCost: null,
+      moneyCost: line.finalPrice,
     });
     createdOrders.push(order);
   }
@@ -430,10 +409,7 @@ async function handleOrderCartCheckout(interaction) {
 
   // Embed de sucesso
   const { totalPrice } = orderCart.totals({ lines: cart.lines });
-  const lines = createdOrders.map(
-    (o, i) =>
-      `**#${o.id}** · ${cart.lines[i].quantity}× ${cart.lines[i].itemName} · ${cart.lines[i].mode === 'money_only' ? '💵' : '📦'}`
-  );
+  const lines = createdOrders.map((o, i) => `**#${o.id}** · ${cart.lines[i].quantity}× ${cart.lines[i].itemName}`);
 
   const embed = brandEmbed('HOUSE')
     .setTitle(`${EMOJI.OK} Encomendas Registadas`)

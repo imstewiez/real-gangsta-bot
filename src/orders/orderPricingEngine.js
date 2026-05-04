@@ -76,37 +76,18 @@ async function calculateIngredientsForOrder(itemId, quantity) {
  * @param {number} opts.quantity — quantidade
  * @param {string} opts.memberRole — rank do membro
  * @param {string} [opts.memberTier] — tier do bairrista
- * @param {string} [opts.paymentMode='materials_money'] — 'materials_money' ou 'money_only'
  * @returns {Promise<Object>}
  */
-async function calculateOrderPricing({ itemId, quantity, memberRole, memberTier, paymentMode = 'materials_money' }) {
+async function calculateOrderPricing({ itemId, quantity, memberRole, memberTier }) {
   const item = await inventoryRepo.getItemById(itemId);
   if (!item) throw new Error('Item não encontrado.');
 
   const unitPrice = parseFloat(item.estimated_value) || 0;
   const { ingredients, hasRecipe } = await calculateIngredientsForOrder(itemId, quantity);
 
-  let basePrice = 0;
-  let materialCost = 0;
-
-  if (hasRecipe) {
-    materialCost = ingredients.reduce((sum, ing) => sum + ing.subtotal, 0);
-  }
-
-  // Preço base é sempre o estimated_value do item (independente de ter craft ou não)
-  basePrice = unitPrice * quantity;
-
+  const basePrice = unitPrice * quantity;
   const multiplier = getRankMultiplier(memberRole, 'buy', memberTier);
-
-  // s/ Mat = preço cheio; c/ Mat = paga só o custo dos materiais (com markup)
-  // Salvaguarda: c/ Mat nunca pode ser mais caro que s/ Mat — se os materiais
-  // estiverem sobrevalorizados na DB, limitamos ao preço cheio.
-  let finalPrice;
-  if (paymentMode === 'materials_money' && hasRecipe) {
-    finalPrice = Math.min(materialCost * (1 + multiplier), basePrice * (1 + multiplier));
-  } else {
-    finalPrice = basePrice * (1 + multiplier);
-  }
+  const finalPrice = basePrice * (1 + multiplier);
 
   return {
     itemId,
@@ -115,9 +96,7 @@ async function calculateOrderPricing({ itemId, quantity, memberRole, memberTier,
     unitPrice,
     basePrice,
     finalPrice,
-    materialCost,
     multiplier,
-    paymentMode,
     hasRecipe,
     ingredients,
   };
