@@ -367,33 +367,42 @@ function buildDeliveryRequestEmbed({
   tipo,
 }) {
   const isVenda = tipo === 'venda';
-  // Strip tipo prefix from notes for display
-  const displayNotes = String(notes || '').replace(/^\[TIPO:\w+\]\s?/, '');
-
-  const desc = [
-    `${EMOJI.BAIRRO} **Bairrista:** <@${memberDiscordId}>${memberName ? ` (${memberName})` : ''}`,
-    '',
-    headerLine(EMOJI.MATERIAL, 'ITENS'),
-    itemList(
-      lines.map(l => `**${l.itemName}** · **${l.quantity.toLocaleString('pt-PT')}x**`),
-      { numbered: true }
-    ),
-    '',
-    headerLine(EMOJI.INFO, 'RESUMO'),
-    `📊 **Total:** ${totalQty.toLocaleString('pt-PT')} unidades`,
-  ];
-  if (totalValue > 0) desc.push(`💰 **Valor estimado:** ${Math.round(totalValue).toLocaleString('pt-PT')}€`);
-  if (displayNotes) desc.push('', `📝 **Notas:** _${displayNotes}_`);
-  desc.push('', headerLine(EMOJI.PENDENTE, 'ESTADO'));
-  desc.push(statusPill(isVenda ? '!  PENDENTE — VENDA' : '!  PENDENTE — ENTREGA', 'fix'));
+  const title = isVenda ? '💰 Pedido de Venda' : '📥 Pedido de Entrega';
+  const color = isVenda ? COLOR.GOLD : COLOR.WARNING_SOFT;
 
   const embed = brandEmbed('MOVEMENT')
-    .setColor(isVenda ? COLOR.GOLD : COLOR.WARNING_SOFT)
-    .setTitle(
-      isVenda ? `${EMOJI.LUCRO} Venda pendente de aprovação` : `${EMOJI.MATERIAL} Entrega pendente de aprovação`
-    )
-    .setDescription(desc.join('\n'));
-  setFooterText(embed, `pedido ${String(requestId).slice(0, 8)}`);
+    .setColor(color)
+    .setTitle(title)
+    .setDescription(`De <@${memberDiscordId}>${memberName ? ` · **${memberName}**` : ''}`);
+
+  // Items as inline fields — clean grid layout
+  for (const l of lines) {
+    embed.addFields(
+      { name: '📦 Item', value: `**${l.itemName}**`, inline: true },
+      { name: '🔢 Qtd', value: `**${l.quantity.toLocaleString('pt-PT')}** unidades`, inline: true }
+    );
+  }
+
+  // Summary fields
+  embed.addFields({ name: '📊 Total', value: `**${totalQty.toLocaleString('pt-PT')}** unidades`, inline: true });
+  if (totalValue > 0) {
+    embed.addFields({
+      name: '💰 Valor estimado',
+      value: `**${Math.round(totalValue).toLocaleString('pt-PT')}€**`,
+      inline: true,
+    });
+  }
+  if (notes) {
+    embed.addFields({ name: '📝 Notas', value: String(notes).slice(0, 500), inline: false });
+  }
+
+  embed.addFields({
+    name: '⏳ Estado',
+    value: isVenda ? '**Pendente** · aguarda confirmação de venda' : '**Pendente** · aguarda confirmação de entrega',
+    inline: false,
+  });
+
+  setFooterText(embed, `Pedido #${String(requestId).slice(0, 8)}`);
   return embed;
 }
 

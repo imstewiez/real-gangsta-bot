@@ -485,16 +485,14 @@ async function createDeliveryRequest({
   const { totalQty, totalValue } = batchTotals(enrichedLines);
   const requestId = crypto.randomUUID();
 
-  // V12: guarda tipo no notes como prefixo parseável (até migration adicionar coluna)
-  const notesWithTipo = `[TIPO:${tipo}]${globalNotes ? ' ' + globalNotes : ''}`;
-
   const request = await deliveryRequestRepo.create({
     id: requestId,
     requesterMemberId: member.id,
     requesterDiscordId: member.discord_id,
     approverDiscordId,
     lines: enrichedLines,
-    notes: notesWithTipo,
+    notes: globalNotes,
+    tipo,
     totalQty,
     totalValue,
     createdBy,
@@ -518,8 +516,10 @@ async function createDeliveryRequest({
   return { request, member, lines: enrichedLines, totalQty, totalValue };
 }
 
-function _extractTipoFromNotes(notes) {
-  const m = String(notes || '').match(/^\[TIPO:(\w+)\]/);
+function _extractTipoFromNotes(request) {
+  // V13: uses dedicated tipo column; fallback to notes parsing for legacy rows.
+  if (request.tipo) return request.tipo;
+  const m = String(request.notes || '').match(/^\[TIPO:(\w+)\]/);
   return m ? m[1] : 'entrega';
 }
 
@@ -546,7 +546,7 @@ async function decideDeliveryRequest({ requestId, decisionBy, approve, reason = 
     const member = await memberRepo.findByDiscordId(request.requester_discord_id);
     if (!member) return { ok: false, reason: 'Membro do pedido já não existe.' };
 
-    const tipo = _extractTipoFromNotes(request.notes);
+    const tipo = _extractTipoFromNotes(request);
     const enrichedLines = await enrichCartLines(tipo, request.lines);
     const submissionId = crypto.randomUUID();
     const movementType =
@@ -613,7 +613,7 @@ async function decideDeliveryRequest({ requestId, decisionBy, approve, reason = 
     submissionId: txResult.submissionId,
     movements: txResult.movements,
     member: txResult.member,
-    tipo: _extractTipoFromNotes(txResult.notes),
+    tipo: _extractTipoFromNotes(txResult.request),
     movementType: txResult.movementType,
     enrichedLines: txResult.lines,
     globalNotes: txResult.notes,

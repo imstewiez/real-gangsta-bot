@@ -8,6 +8,7 @@ async function create({
   approverDiscordId,
   lines,
   notes = '',
+  tipo = 'entrega',
   totalQty,
   totalValue,
   createdBy,
@@ -15,8 +16,8 @@ async function create({
   const res = await query(
     `INSERT INTO inventory_delivery_requests
      (id, requester_member_id, requester_discord_id, approver_discord_id,
-      lines, notes, total_qty, total_value, created_by)
-     VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9)
+      lines, notes, tipo, total_qty, total_value, created_by)
+     VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9, $10)
      RETURNING *`,
     [
       id,
@@ -25,6 +26,7 @@ async function create({
       approverDiscordId,
       JSON.stringify(lines),
       notes,
+      tipo,
       totalQty,
       totalValue,
       createdBy,

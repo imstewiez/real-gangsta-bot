@@ -189,28 +189,28 @@ async function notifyMovement(movement) {
     const kind = MOVEMENT_KIND[movement.movementType] || 'ajustes';
     const color = MOVEMENT_COLOR[kind] || COLOR.MUTED;
 
-    const fields = [
-      { name: 'Item', value: `**${movement.itemName || '—'}**`, inline: true },
-      { name: 'Quantidade', value: `\`${movement.quantity}\``, inline: true },
-    ];
-    if (movement.balanceAfter !== undefined && movement.balanceAfter !== null) {
-      fields.push({ name: 'Balance', value: `\`${movement.balanceAfter}\``, inline: true });
-    }
+    const embed = brandEmbed()
+      .setColor(color)
+      .setTitle(label)
+      .setDescription(`**${movement.itemName || '—'}** · **${movement.quantity}** unidades`);
+
     if (movement.memberDiscordId) {
-      fields.push({ name: 'Membro', value: `<@${movement.memberDiscordId}>`, inline: true });
+      embed.addFields({ name: '👤 Membro', value: `<@${movement.memberDiscordId}>`, inline: true });
     } else if (movement.memberName) {
-      fields.push({ name: 'Membro', value: movement.memberName, inline: true });
+      embed.addFields({ name: '👤 Membro', value: movement.memberName, inline: true });
+    }
+    if (movement.balanceAfter !== undefined && movement.balanceAfter !== null) {
+      embed.addFields({ name: '📊 Stock', value: `**${movement.balanceAfter}** unidades`, inline: true });
     }
     if (movement.operationId) {
-      fields.push({ name: 'Operação', value: `#${movement.operationId}`, inline: true });
+      embed.addFields({ name: '🎯 Operação', value: `#${movement.operationId}`, inline: true });
     }
     if (movement.context) {
-      fields.push({ name: 'Contexto', value: movement.context.slice(0, 200), inline: false });
+      embed.addFields({ name: '📝 Contexto', value: movement.context.slice(0, 200), inline: false });
     }
 
-    const embed = brandEmbed().setColor(color).setTitle(label).addFields(fields);
     if (movement.actorId) {
-      setFooterText(embed, `Por ${movement.actorId}`);
+      setFooterText(embed, `Registado por <@${movement.actorId}>`);
     }
 
     await channel.send({ embeds: [embed], allowedMentions: { parse: [] } });

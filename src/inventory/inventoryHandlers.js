@@ -1382,6 +1382,7 @@ async function handleDeliveryApproverSelect(interaction) {
       totalQty: result.totalQty,
       totalValue: result.totalValue,
       notes: globalNotesSnapshot,
+      tipo: cart.tipo,
     });
     const decisionComponents = bairristaCart.buildDeliveryDecisionComponents(result.request.id);
 
@@ -1469,32 +1470,40 @@ async function handleDeliveryDecision(interaction) {
       const tipoLabel = result.request?.tipo === 'venda' ? 'venda' : 'entrega';
       const isVenda = result.request?.tipo === 'venda';
       if (approve) {
-        const desc = [
-          'A tua **${tipoLabel}** foi **aprovada** por <@${interaction.user.id}>.',
-          '',
-          "📊 **${result.totalQty.toLocaleString('pt-PT')}** unidade(s) confirmadas no stock.",
-          '',
-          '```diff\n+  APROVADO\n```',
-        ];
         const embed = brandEmbed('MOVEMENT')
           .setColor(isVenda ? COLOR.GOLD : COLOR.SUCCESS)
-          .setTitle(
-            `${isVenda ? EMOJI.LUCRO : EMOJI.MATERIAL} ${tipoLabel.charAt(0).toUpperCase() + tipoLabel.slice(1)} Aprovada`
-          )
-          .setDescription(desc.join('\\n'));
+          .setTitle(isVenda ? '💰 Venda Confirmada' : '✅ Entrega Confirmada')
+          .setDescription(`Aprovada por <@${interaction.user.id}>`);
+
+        // List items as fields
+        for (const l of result.lines || []) {
+          embed.addFields(
+            { name: '📦 Item', value: `**${l.itemName}**`, inline: true },
+            { name: '🔢 Qtd', value: `**${l.quantity.toLocaleString('pt-PT')}** unidades`, inline: true }
+          );
+        }
+        embed.addFields({
+          name: '📊 Total confirmado',
+          value: `**${result.totalQty.toLocaleString('pt-PT')}** unidades`,
+          inline: false,
+        });
+        embed.setFooter({ text: 'Obrigado pela contribuição! 🙏' });
         await bairristaUser.send({ embeds: [embed] }).catch(() => {});
       } else {
-        const desc = [
-          'A tua **${tipoLabel}** foi **rejeitada** por <@${interaction.user.id}>.',
-          '',
-          '_Nada foi alterado no stock._',
-          '',
-          '```diff\n-  REJEITADO\n```',
-        ];
         const embed = brandEmbed('MOVEMENT')
           .setColor(COLOR.DANGER)
-          .setTitle(`${EMOJI.ERRO} ${tipoLabel.charAt(0).toUpperCase() + tipoLabel.slice(1)} Rejeitada`)
-          .setDescription(desc.join('\\n'));
+          .setTitle(isVenda ? '❌ Venda Rejeitada' : '❌ Entrega Rejeitada')
+          .setDescription(`Rejeitada por <@${interaction.user.id}>`);
+
+        if (reason) {
+          embed.addFields({ name: '📝 Motivo', value: String(reason).slice(0, 500), inline: false });
+        }
+        embed.addFields({
+          name: '⚠️ Info',
+          value: '_Nada foi alterado no stock._',
+          inline: false,
+        });
+        embed.setFooter({ text: 'Podes submeter novamente se necessário.' });
         await bairristaUser.send({ embeds: [embed] }).catch(() => {});
       }
     }
