@@ -457,52 +457,55 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       if (!catItems.length) continue;
     }
 
-    // ── Construir linhas da tabela conforme o tipo de colunas ───────────────
-    const lines = catItems.map(item => {
-      const name = padName(item.name, 22);
-
-      if (catDef.cols === 'craft') {
+    // ── Construir conteúdo conforme o tipo de colunas ───────────────────────
+    if (catDef.cols === 'craft') {
+      // Armas/carregadores com materiais: usar texto formatado (não code block)
+      // para evitar quebra de linha dentro do campo limitado do Discord
+      const lines = catItems.map(item => {
         const base = parseFloat(item.estimated_value) || 0;
         const recipe = recipeMap.get(item.id);
         const price = base * (1 + buyMult);
         const mats = recipe ? recipe.ingredients.map(ing => `${ing.quantity}× ${ing.ingredient_name}`).join(', ') : '';
-        return `${name}  ${fmtPriceCompact(price).padStart(6)}  ${mats.slice(0, 30)}`;
-      }
+        return `**${item.name}** — ${fmtPriceCompact(price)}\n  └ 📦 ${mats}`;
+      });
 
-      if (catDef.cols === 'colete') {
-        // Colete Padrão: preços hardcoded
-        const limpo = 1600;
-        const sujo = 1800;
-        return `${name}  ${fmtPriceCompact(limpo).padStart(6)}  ${fmtPriceCompact(sujo).padStart(6)}`;
-      }
-
-      // cols === 'price'
-      const base = parseFloat(item.estimated_value) || 0;
-      const price = base * (1 + buyMult);
-      return `${name}  ${fmtPriceCompact(price).padStart(6)}`;
-    });
-
-    // ── Header conforme tipo de colunas ─────────────────────────────────────
-    let header, sep;
-    if (catDef.cols === 'craft') {
-      header = `${padName('Item', 22)}  ${'Preço'.padStart(6)}  Materiais`;
-      sep = '─────────────────────────────────────────────────────────';
-    } else if (catDef.cols === 'colete') {
-      header = `${padName('Item', 22)}  ${'Limpo'.padStart(6)}  ${'Sujo'.padStart(6)}`;
-      sep = '──────────────────────────────────────────';
-    } else {
-      header = `${padName('Item', 22)}  ${'Preço'.padStart(6)}`;
-      sep = '──────────────────────────────────';
-    }
-
-    const prefix = '```\n' + header + '\n' + sep + '\n';
-    const suffix = '\n```';
-    const chunks = buildTable(prefix, suffix, lines);
-
-    for (const chunk of chunks) {
       const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(catDef.label));
-      embed.setDescription(prefix + chunk.join('\n') + suffix);
+      embed.setDescription(lines.join('\n\n'));
       embeds.push(embed);
+    } else {
+      // Categorias simples (price / colete): code block alinhado funciona bem
+      const lines = catItems.map(item => {
+        const name = padName(item.name, 22);
+
+        if (catDef.cols === 'colete') {
+          const limpo = 1600;
+          const sujo = 1800;
+          return `${name}  ${fmtPriceCompact(limpo).padStart(6)}  ${fmtPriceCompact(sujo).padStart(6)}`;
+        }
+
+        const base = parseFloat(item.estimated_value) || 0;
+        const price = base * (1 + buyMult);
+        return `${name}  ${fmtPriceCompact(price).padStart(6)}`;
+      });
+
+      let header, sep;
+      if (catDef.cols === 'colete') {
+        header = `${padName('Item', 22)}  ${'Limpo'.padStart(6)}  ${'Sujo'.padStart(6)}`;
+        sep = '──────────────────────────────────────────';
+      } else {
+        header = `${padName('Item', 22)}  ${'Preço'.padStart(6)}`;
+        sep = '──────────────────────────────────';
+      }
+
+      const prefix = '```\n' + header + '\n' + sep + '\n';
+      const suffix = '\n```';
+      const chunks = buildTable(prefix, suffix, lines);
+
+      for (const chunk of chunks) {
+        const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(catDef.label));
+        embed.setDescription(prefix + chunk.join('\n') + suffix);
+        embeds.push(embed);
+      }
     }
   }
 
