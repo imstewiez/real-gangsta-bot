@@ -10,6 +10,7 @@ const { getOficialMetrics } = require('../repositories/panelRepo');
 
 async function buildOficialPanel() {
   const m = await getOficialMetrics();
+  const safe = m || {};
 
   const fields = [];
 
@@ -17,14 +18,14 @@ async function buildOficialPanel() {
   fields.push(
     formatMetric({
       label: 'Saídas Activas',
-      value: m.saidas_activas,
+      value: safe.saidas_activas ?? 0,
       emoji: EMOJI.SAIDA,
       hint: 'em curso',
       inline: true,
     }),
     formatMetric({
       label: 'Concluídas',
-      value: m.saidas_concluidas,
+      value: safe.saidas_concluidas ?? 0,
       emoji: '✅',
       hint: 'esta semana',
       inline: true,
@@ -35,21 +36,21 @@ async function buildOficialPanel() {
   fields.push(
     formatMetric({
       label: 'Entregas',
-      value: m.entregas_count,
+      value: safe.entregas_count ?? 0,
       emoji: EMOJI.ENTREGA,
-      hint: `(${fmt(m.entregas_qty)} qty)`,
+      hint: `(${fmt(safe.entregas_qty)} qty)`,
       inline: true,
     }),
     formatMetric({
       label: 'Vendas',
-      value: m.vendas_count,
+      value: safe.vendas_count ?? 0,
       emoji: EMOJI.VENDA,
-      hint: `(${fmt(m.vendas_qty)} qty)`,
+      hint: `(${fmt(safe.vendas_qty)} qty)`,
       inline: true,
     }),
     formatMetric({
       label: 'Kills',
-      value: m.kills_semana,
+      value: safe.kills_semana ?? 0,
       emoji: EMOJI.KILL,
       hint: 'semana',
       inline: true,
@@ -60,7 +61,7 @@ async function buildOficialPanel() {
   fields.push(
     formatMetric({
       label: 'Firma',
-      value: m.membros_activos,
+      value: safe.membros_activos ?? 0,
       emoji: EMOJI.PARTICIPANTE,
       hint: 'activos',
       inline: true,

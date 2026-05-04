@@ -17,6 +17,7 @@ const { getPatraoMetrics } = require('../repositories/panelRepo');
 
 async function buildPatraoDiZonaPanel() {
   const m = await getPatraoMetrics();
+  const safe = m || {};
 
   const fields = [];
 
@@ -24,14 +25,14 @@ async function buildPatraoDiZonaPanel() {
   fields.push(
     formatMetric({
       label: 'Bairristas',
-      value: m.bairristas_activos,
+      value: safe.bairristas_activos ?? 0,
       emoji: EMOJI.PARTICIPANTE,
       hint: 'activos',
       inline: true,
     }),
     formatMetric({
       label: 'Inactivos',
-      value: m.bairristas_inactivos,
+      value: safe.bairristas_inactivos ?? 0,
       emoji: '💤',
       hint: 'sem movimento',
       inline: true,
@@ -42,14 +43,14 @@ async function buildPatraoDiZonaPanel() {
   fields.push(
     formatMetric({
       label: 'Entregas',
-      value: fmt(m.entregas_qty),
+      value: fmt(safe.entregas_qty),
       emoji: EMOJI.ENTREGA,
       hint: 'qty semana',
       inline: true,
     }),
     formatMetric({
       label: 'Vendas',
-      value: fmt(m.vendas_qty),
+      value: fmt(safe.vendas_qty),
       emoji: EMOJI.VENDA,
       hint: 'qty semana',
       inline: true,
@@ -57,20 +58,20 @@ async function buildPatraoDiZonaPanel() {
   );
 
   // ── Top ──
-  if (m.top_qty > 0) {
+  if ((safe.top_qty ?? 0) > 0) {
     fields.push(
       formatMetric({
         label: '🏆 Top da Zona',
-        value: m.top_nome,
+        value: safe.top_nome ?? '—',
         emoji: EMOJI.MEDAL_1,
-        hint: `${fmt(m.top_qty)} qty`,
+        hint: `${fmt(safe.top_qty)} qty`,
         inline: false,
       })
     );
   }
 
   // ── Alerta: inactivos na semana ──
-  const inactivos = m.inactivos_semana || [];
+  const inactivos = safe.inactivos_semana || [];
   if (inactivos.length > 0) {
     const nomes = inactivos.map(i => i.nome).join(', ');
     fields.push(

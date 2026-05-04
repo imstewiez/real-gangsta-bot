@@ -81,7 +81,7 @@ async function buildPriceEmbeds() {
     if (!catItems.length) continue;
     const lines = catItems.map(i => `\`${fmtPrice(i.estimated_value).padStart(8)}\` ${i.name}`);
     const catDef = PRICE_CATEGORIES.find(c => c.key === cat);
-    embed1.addFields({ name: catDef?.label || cat, value: lines.join('\n'), inline: true });
+    embed1.addFields({ name: catDef?.label || cat, value: lines.join('\n'), inline: false });
   }
   embed1.setFooter({ text: buildMultiplierFooter() });
   embeds.push(embed1);
@@ -94,7 +94,7 @@ async function buildPriceEmbeds() {
     if (!catItems.length) continue;
     const lines = catItems.map(i => `\`${fmtPrice(i.estimated_value).padStart(8)}\` ${i.name}`);
     const catDef = PRICE_CATEGORIES.find(c => c.key === cat);
-    embed2.addFields({ name: catDef?.label || cat, value: lines.join('\n'), inline: true });
+    embed2.addFields({ name: catDef?.label || cat, value: lines.join('\n'), inline: false });
   }
   embeds.push(embed2);
 
@@ -109,7 +109,7 @@ async function buildPriceEmbeds() {
       return `\`${fmtPrice(i.estimated_value).padStart(10)}\` ${i.name}${hasRecipe}`;
     });
     const catDef = PRICE_CATEGORIES.find(c => c.key === cat);
-    embed3.addFields({ name: catDef?.label || cat, value: lines.join('\n'), inline: true });
+    embed3.addFields({ name: catDef?.label || cat, value: lines.join('\n'), inline: false });
   }
   embeds.push(embed3);
 

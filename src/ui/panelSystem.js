@@ -42,8 +42,8 @@ function renderPanelEmbed({
   footerVariant = 'MOVEMENT',
   skipLogo = false,
 }) {
-  const embed = brandEmbed(footerVariant, { skipLogo }).setColor(color).setTitle(title);
-  if (subtitle) embed.setDescription(subtitle);
+  const embed = brandEmbed(footerVariant, { skipLogo }).setColor(color).setTitle(String(title));
+  if (subtitle) embed.setDescription(String(subtitle));
 
   // Adiciona fields; insere dividers entre grupos quando detecta mudança de inline=false
   let prevInline = false;
@@ -72,9 +72,10 @@ function renderPanelEmbed({
  * @param {boolean} [opts.inline=true]
  */
 function formatMetric({ label, value, emoji = '', hint = '', inline = true }) {
-  const val = hint ? `**${value}** ${hint}` : `**${value}**`;
+  const safeValue = value === null || value === undefined ? '—' : String(value);
+  const val = hint ? `**${safeValue}** ${hint}` : `**${safeValue}**`;
   return {
-    name: emoji ? `${emoji} ${label}` : label,
+    name: emoji ? `${emoji} ${label}` : String(label),
     value: val,
     inline,
   };
@@ -106,7 +107,7 @@ function formatAlert({ text, emoji = '⚠️', severity = 'warn' }) {
   const icon = severity === 'warn' ? emoji : colorMap[severity] || emoji;
   return {
     name: `${icon} Alerta`,
-    value: text,
+    value: String(text),
     inline: false,
   };
 }
@@ -119,8 +120,8 @@ function formatAlert({ text, emoji = '⚠️', severity = 'warn' }) {
  */
 function formatSection({ title, lines, inline = false }) {
   return {
-    name: title,
-    value: lines.join('\n') || '_Sem dados._',
+    name: String(title),
+    value: (Array.isArray(lines) ? lines.join('\n') : String(lines)) || '_Sem dados._',
     inline,
   };
 }

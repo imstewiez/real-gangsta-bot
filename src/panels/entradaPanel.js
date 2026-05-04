@@ -11,20 +11,21 @@ const { getEntradaMetrics } = require('../repositories/panelRepo');
 
 async function buildEntradaPanel() {
   const m = await getEntradaMetrics();
+  const safe = m || { membros_activos: 0, novos_semana: 0 };
 
   const fields = [];
 
   fields.push(
     formatMetric({
       label: 'Membros Activos',
-      value: m.membros_activos,
+      value: safe.membros_activos ?? 0,
       emoji: EMOJI.PARTICIPANTE,
       hint: 'na Firma',
       inline: true,
     }),
     formatMetric({
       label: 'Novos esta Semana',
-      value: m.novos_semana,
+      value: safe.novos_semana ?? 0,
       emoji: EMOJI.SANGUE,
       hint: 'entradas',
       inline: true,

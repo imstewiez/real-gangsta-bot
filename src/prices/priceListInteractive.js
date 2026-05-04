@@ -168,7 +168,7 @@ function fmtPct(n) {
   return n >= 0 ? `+${s}%` : `${s}%`;
 }
 
-function padName(name, max = 22) {
+function padName(name, max = 18) {
   const s = String(name);
   return s.length > max ? s.slice(0, max - 1) + '…' : s.padEnd(max);
 }
@@ -499,11 +499,11 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
     const suffix = '\n```';
     const chunks = buildTable(prefix, suffix, lines);
 
-    const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(catDef.label));
     for (const chunk of chunks) {
-      embed.addFields({ name: '\u200b', value: prefix + chunk.join('\n') + suffix, inline: false });
+      const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(catDef.label));
+      embed.setDescription(prefix + chunk.join('\n') + suffix);
+      embeds.push(embed);
     }
-    embeds.push(embed);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -547,11 +547,11 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       const suffix = '\n```';
       const chunks = buildTable(prefix, suffix, lines);
 
-      const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(catDef.label));
       for (const chunk of chunks) {
-        embed.addFields({ name: '\u200b', value: prefix + chunk.join('\n') + suffix, inline: false });
+        const embed = applyLogo(brandEmbed('MOVEMENT').setColor(catDef.color).setTitle(catDef.label));
+        embed.setDescription(prefix + chunk.join('\n') + suffix);
+        embeds.push(embed);
       }
-      embeds.push(embed);
     }
   }
 

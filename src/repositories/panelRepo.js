@@ -90,7 +90,14 @@ async function getChefiaMetrics() {
       e.aprovadas AS enc_aprovadas,
       e.entregues AS enc_entregues,
       sc.cnt AS stock_critico
-    FROM saidas s, membros m, top_semana ts, pvp p, movimento mv, ausencias a, encomendas e, stock_critico sc
+    FROM saidas s
+    CROSS JOIN membros m
+    CROSS JOIN pvp p
+    CROSS JOIN movimento mv
+    CROSS JOIN ausencias a
+    CROSS JOIN encomendas e
+    CROSS JOIN stock_critico sc
+    LEFT JOIN top_semana ts ON true
   `;
   const res = await query(sql);
   return res.rows[0];
@@ -268,7 +275,9 @@ async function getPatraoMetrics() {
       (SELECT jsonb_agg(jsonb_build_object('nome', i.display_name)) FROM inactivos_semana i),
       '[]'::jsonb
     ) AS inactivos_semana
-    FROM membros mb, movimento mv, top_zona tz
+    FROM membros mb
+    CROSS JOIN movimento mv
+    LEFT JOIN top_zona tz ON true
   `;
   const res = await query(sql);
   return res.rows[0];

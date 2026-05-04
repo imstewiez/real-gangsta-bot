@@ -11,6 +11,7 @@ const { getOficialMetrics } = require('../repositories/panelRepo');
 
 async function buildBairristaPanel() {
   const m = await getOficialMetrics();
+  const safe = m || {};
 
   const fields = [];
 
@@ -45,21 +46,21 @@ async function buildBairristaPanel() {
   fields.push(
     formatMetric({
       label: 'Firma',
-      value: m.membros_activos,
+      value: safe.membros_activos ?? 0,
       emoji: EMOJI.PARTICIPANTE,
       hint: 'activos',
       inline: true,
     }),
     formatMetric({
       label: 'Saídas',
-      value: m.saidas_activas,
+      value: safe.saidas_activas ?? 0,
       emoji: EMOJI.SAIDA,
       hint: 'em curso',
       inline: true,
     }),
     formatMetric({
       label: 'Movimento',
-      value: m.entregas_count + m.vendas_count,
+      value: (safe.entregas_count ?? 0) + (safe.vendas_count ?? 0),
       emoji: EMOJI.ENTREGA,
       hint: 'registos semana',
       inline: true,

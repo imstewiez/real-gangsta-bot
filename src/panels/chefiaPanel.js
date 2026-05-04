@@ -18,6 +18,7 @@ const { selectMenu, selectRow } = require('../shared/ui/selects');
 
 async function buildChefiaPanel() {
   const m = await getChefiaMetrics();
+  const safe = m || {};
 
   const fields = [];
 
@@ -25,14 +26,14 @@ async function buildChefiaPanel() {
   fields.push(
     formatMetric({
       label: 'Saídas Activas',
-      value: m.saidas_activas,
+      value: safe.saidas_activas ?? 0,
       emoji: EMOJI.SAIDA,
       hint: 'em curso',
       inline: true,
     }),
     formatMetric({
       label: 'Concluídas',
-      value: m.saidas_concluidas,
+      value: safe.saidas_concluidas ?? 0,
       emoji: '✅',
       hint: 'esta semana',
       inline: true,
@@ -43,21 +44,21 @@ async function buildChefiaPanel() {
   fields.push(
     formatMetric({
       label: 'Bairristas',
-      value: m.membros_activos,
+      value: safe.membros_activos ?? 0,
       emoji: EMOJI.PARTICIPANTE,
       hint: 'activos',
       inline: true,
     }),
     formatMetric({
       label: 'Inactivos',
-      value: m.membros_inactivos,
+      value: safe.membros_inactivos ?? 0,
       emoji: '💤',
       hint: 'sem movimento',
       inline: true,
     }),
     formatMetric({
       label: 'Ausências',
-      value: m.ausencias_activas,
+      value: safe.ausencias_activas ?? 0,
       emoji: EMOJI.PENDENTE,
       hint: 'hoje',
       inline: true,
@@ -65,10 +66,10 @@ async function buildChefiaPanel() {
   );
 
   // ── Stock & Encomendas ──
-  if (m.stock_critico > 0) {
+  if ((safe.stock_critico ?? 0) > 0) {
     fields.push(
       formatAlert({
-        text: `**${m.stock_critico}** item(s) com stock crítico (≤5 unidades).`,
+        text: `**${safe.stock_critico}** item(s) com stock crítico (≤5 unidades).`,
         emoji: '📦',
         severity: 'warn',
       })
@@ -78,21 +79,21 @@ async function buildChefiaPanel() {
   fields.push(
     formatMetric({
       label: 'Encomendas',
-      value: m.enc_pendentes,
+      value: safe.enc_pendentes ?? 0,
       emoji: EMOJI.ENCOMENDA,
       hint: 'pendentes',
       inline: true,
     }),
     formatMetric({
       label: 'Em Processo',
-      value: m.enc_aprovadas,
+      value: safe.enc_aprovadas ?? 0,
       emoji: '🔧',
       hint: 'aprovadas',
       inline: true,
     }),
     formatMetric({
       label: 'Entregues',
-      value: m.enc_entregues,
+      value: safe.enc_entregues ?? 0,
       emoji: '✅',
       hint: 'esta semana',
       inline: true,
@@ -103,21 +104,21 @@ async function buildChefiaPanel() {
   fields.push(
     formatMetric({
       label: 'Entregas',
-      value: m.entregas_count,
+      value: safe.entregas_count ?? 0,
       emoji: EMOJI.ENTREGA,
-      hint: `(${fmt(m.entregas_qty)} qty)`,
+      hint: `(${fmt(safe.entregas_qty)} qty)`,
       inline: true,
     }),
     formatMetric({
       label: 'Vendas',
-      value: m.vendas_count,
+      value: safe.vendas_count ?? 0,
       emoji: EMOJI.VENDA,
       hint: 'esta semana',
       inline: true,
     }),
     formatMetric({
       label: 'Kills',
-      value: m.kills_semana,
+      value: safe.kills_semana ?? 0,
       emoji: EMOJI.KILL,
       hint: 'semana',
       inline: true,
@@ -125,13 +126,13 @@ async function buildChefiaPanel() {
   );
 
   // ── Top ──
-  if (m.top_qty > 0) {
+  if ((safe.top_qty ?? 0) > 0) {
     fields.push(
       formatMetric({
         label: '🏆 Top Entregador (Semana)',
-        value: m.top_nome,
+        value: safe.top_nome ?? '—',
         emoji: EMOJI.MEDAL_1,
-        hint: `${fmt(m.top_qty)} qty`,
+        hint: `${fmt(safe.top_qty)} qty`,
         inline: false,
       })
     );
