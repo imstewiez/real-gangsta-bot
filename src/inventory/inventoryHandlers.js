@@ -1276,7 +1276,11 @@ async function handleCartSubmit(interaction) {
 
   const embed = brandEmbed('MOVEMENT').setColor(COLOR.WARNING_SOFT).setTitle(title).setDescription(desc);
 
-  return safeReply(interaction, { content: '', embeds: [embed], components: [] }, { messageClass: 'RESULT' });
+  return safeReply(
+    interaction,
+    { content: '', embeds: [embed], components: [] },
+    { messageClass: 'RESULT', ttlMs: 15_000 }
+  );
 }
 
 // ── Undo submission ─────────────────────────────────────────────────────────
@@ -1418,15 +1422,21 @@ async function handleDeliveryApproverSelect(interaction) {
         ? 'Pedido criado, mas não consegui notificar o OG+. Pede-lhe para abrir a mensagem de confirmação se tiver sido entregue noutro canal.'
         : `Pedido enviado para <@${approverId}> (${delivered}). O stock só muda quando a entrega for aceite.`;
 
-    return interaction.editReply({ content: `${EMOJI.OK} ${msg}`, embeds: [], components: [] }).catch(() => {});
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.OK} ${msg}`, embeds: [], components: [] },
+      { messageClass: 'BANAL', ttlMs: 15_000 }
+    );
   } catch (e) {
-    return interaction
-      .editReply({
+    return safeReply(
+      interaction,
+      {
         content: `${EMOJI.ERRO} Pedido criado, mas falhou a notifica\u00e7\u00e3o do OG+: ${e.message}`,
         embeds: [],
         components: [],
-      })
-      .catch(() => {});
+      },
+      { messageClass: 'ERROR', ttlMs: 15_000 }
+    );
   }
 }
 
@@ -1458,9 +1468,11 @@ async function handleDeliveryDecision(interaction) {
   });
 
   if (!result.ok) {
-    return interaction
-      .editReply({ content: `${EMOJI.WARN} ${result.reason}`, embeds: [], components: [] })
-      .catch(() => {});
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.WARN} ${result.reason}`, embeds: [], components: [] },
+      { messageClass: 'WARN', ttlMs: 15_000 }
+    );
   }
 
   // Notificar o bairrista do resultado
@@ -1512,27 +1524,31 @@ async function handleDeliveryDecision(interaction) {
   }
 
   if (!approve) {
-    return interaction
-      .editReply({
+    return safeReply(
+      interaction,
+      {
         content: `${EMOJI.OK} ${result.request?.tipo === 'venda' ? 'Venda' : 'Entrega'} recusada. Nada foi alterado no stock.`,
         embeds: [],
         components: [],
-      })
-      .catch(() => {});
+      },
+      { messageClass: 'BANAL', ttlMs: 15_000 }
+    );
   }
 
   const { checkAndPromote } = require('../members/autoPromotionEngine');
   await checkAndPromote(result.member.discord_id, interaction.guild, interaction.client).catch(() => null);
 
-  return interaction
-    .editReply({
+  return safeReply(
+    interaction,
+    {
       content:
         `${EMOJI.OK} ${result.request?.tipo === 'venda' ? 'Venda' : 'Entrega'} aceite. ` +
         `${result.totalQty.toLocaleString('pt-PT')} unidade(s) foram confirmadas no stock para <@${result.member.discord_id}>.`,
       embeds: [],
       components: [],
-    })
-    .catch(() => {});
+    },
+    { messageClass: 'BANAL', ttlMs: 15_000 }
+  );
 }
 
 module.exports = {

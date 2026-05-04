@@ -37,9 +37,18 @@ function autoClearSelectComponents(interaction, payload) {
   }
 }
 
-function scheduleDeleteInteractionReply(interaction, ms = EPHEMERAL_AUTO_DELETE_MS) {
+function scheduleDeleteInteractionReply(interaction, ms = EPHEMERAL_AUTO_DELETE_MS, message = null) {
   setTimeout(() => {
-    interaction.deleteReply().catch(() => {});
+    if (message?.delete) {
+      message.delete().catch(() => {});
+      return;
+    }
+    interaction.deleteReply().catch(() => {
+      // Fallback for deferUpdate paths where deleteReply may fail
+      if (interaction.message?.delete) {
+        interaction.message.delete().catch(() => {});
+      }
+    });
   }, ms);
 }
 
@@ -89,7 +98,7 @@ async function safeReply(interaction, payload, opts = {}) {
       : await interaction.reply(payload).catch(() => null);
 
   if (shouldDelete && ttl && result) {
-    scheduleDeleteInteractionReply(interaction, ttl);
+    scheduleDeleteInteractionReply(interaction, ttl, result);
   }
   return result;
 }
