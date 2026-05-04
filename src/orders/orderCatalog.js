@@ -244,8 +244,18 @@ async function buildOrderItemSelect(
     const recipe = recipeMap.get(item.id);
     let priceStr = price > 0 ? `${Math.round(price).toLocaleString('pt-PT')}€` : 'sem preço';
     if (recipe) {
-      const mats = recipe.ingredients.map(ing => `${ing.quantity}× ${ing.ingredient_name}`).join(', ');
-      priceStr = `${priceStr} 🛠️ ${mats.slice(0, 40)}`;
+      const ingList = recipe.ingredients;
+      let mats;
+      if (ingList.length > 2) {
+        mats =
+          ingList
+            .slice(0, 2)
+            .map(ing => `${ing.quantity}× ${ing.ingredient_name}`)
+            .join(', ') + '…';
+      } else {
+        mats = ingList.map(ing => `${ing.quantity}× ${ing.ingredient_name}`).join(', ');
+      }
+      priceStr = `${priceStr} 🛠️ ${mats}`;
     }
     return {
       label: item.name.slice(0, 100),
