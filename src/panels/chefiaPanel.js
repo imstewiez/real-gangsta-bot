@@ -1,88 +1,167 @@
 'use strict';
-const { brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
+const {
+  renderPanelEmbed,
+  formatMetric,
+  formatAlert,
+  formatEmptyState,
+  buildButtonRowsByCategory,
+  fmt,
+} = require('../ui/panelSystem');
+const { COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
-const { button, buttonRow } = require('../shared/ui/buttons');
+const { getChefiaMetrics } = require('../repositories/panelRepo');
 const { selectMenu, selectRow } = require('../shared/ui/selects');
-const { query } = require('../db');
 
-// ══════════════════════════════════════════════════════════════════════════════
-// Painel da Chefia — Comando e Gestão (SIMPLIFICADO v2)
-// ══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
+// Painel da Chefia — Visão Estratégica e Operacional
+// ═══════════════════════════════════════════════════════════════════════════════
 
 async function buildChefiaPanel() {
-  const [openOps, topWeek, activeMembers, weekKills, weekDeliveries, activeAbsences] = await Promise.all([
-    query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
-    query(`
-      SELECT m.display_name, SUM(im.quantity) AS total_qty
-      FROM inventory_movements im
-      JOIN members m ON m.id = im.member_id
-      WHERE im.movement_type IN ('entrega_bairrista','entrega_oficial')
-        AND im.created_at >= date_trunc('week', NOW())
-      GROUP BY m.display_name
-      ORDER BY total_qty DESC
-      LIMIT 1
-    `),
-    query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'ativo'"),
-    query("SELECT COUNT(*)::int AS c FROM kill_logs WHERE created_at >= date_trunc('week', NOW())"),
-    query(
-      "SELECT COUNT(*)::int AS c FROM inventory_movements WHERE movement_type IN ('entrega_bairrista','entrega_oficial') AND created_at >= date_trunc('week', NOW())"
-    ),
-    query(
-      "SELECT COUNT(*)::int AS c FROM member_absences WHERE status = 'approved' AND CURRENT_DATE BETWEEN start_date AND end_date"
-    ),
+  const m = await getChefiaMetrics();
+
+  const fields = [];
+
+  // ── Saídas ──
+  fields.push(
+    formatMetric({
+      label: 'Saídas Activas',
+      value: m.saidas_activas,
+      emoji: EMOJI.SAIDA,
+      hint: 'em curso',
+      inline: true,
+    }),
+    formatMetric({
+      label: 'Concluídas',
+      value: m.saidas_concluidas,
+      emoji: '✅',
+      hint: 'esta semana',
+      inline: true,
+    })
+  );
+
+  // ── Membros ──
+  fields.push(
+    formatMetric({
+      label: 'Bairristas',
+      value: m.membros_activos,
+      emoji: EMOJI.PARTICIPANTE,
+      hint: 'activos',
+      inline: true,
+    }),
+    formatMetric({
+      label: 'Inactivos',
+      value: m.membros_inactivos,
+      emoji: '💤',
+      hint: 'sem movimento',
+      inline: true,
+    }),
+    formatMetric({
+      label: 'Ausências',
+      value: m.ausencias_activas,
+      emoji: EMOJI.PENDENTE,
+      hint: 'hoje',
+      inline: true,
+    })
+  );
+
+  // ── Stock & Encomendas ──
+  if (m.stock_critico > 0) {
+    fields.push(
+      formatAlert({
+        text: `**${m.stock_critico}** item(s) com stock crítico (≤5 unidades).`,
+        emoji: '📦',
+        severity: 'warn',
+      })
+    );
+  }
+
+  fields.push(
+    formatMetric({
+      label: 'Encomendas',
+      value: m.enc_pendentes,
+      emoji: EMOJI.ENCOMENDA,
+      hint: 'pendentes',
+      inline: true,
+    }),
+    formatMetric({
+      label: 'Em Processo',
+      value: m.enc_aprovadas,
+      emoji: '🔧',
+      hint: 'aprovadas',
+      inline: true,
+    }),
+    formatMetric({
+      label: 'Entregues',
+      value: m.enc_entregues,
+      emoji: '✅',
+      hint: 'esta semana',
+      inline: true,
+    })
+  );
+
+  // ── Movimento & PvP ──
+  fields.push(
+    formatMetric({
+      label: 'Entregas',
+      value: m.entregas_count,
+      emoji: EMOJI.ENTREGA,
+      hint: `(${fmt(m.entregas_qty)} qty)`,
+      inline: true,
+    }),
+    formatMetric({
+      label: 'Vendas',
+      value: m.vendas_count,
+      emoji: EMOJI.VENDA,
+      hint: 'esta semana',
+      inline: true,
+    }),
+    formatMetric({
+      label: 'Kills',
+      value: m.kills_semana,
+      emoji: EMOJI.KILL,
+      hint: 'semana',
+      inline: true,
+    })
+  );
+
+  // ── Top ──
+  if (m.top_qty > 0) {
+    fields.push(
+      formatMetric({
+        label: '🏆 Top Entregador (Semana)',
+        value: m.top_nome,
+        emoji: EMOJI.MEDAL_1,
+        hint: `${fmt(m.top_qty)} qty`,
+        inline: false,
+      })
+    );
+  }
+
+  const embed = renderPanelEmbed({
+    title: `${EMOJI.LIDER} Painel da Chefia`,
+    subtitle: 'Visão geral da Firma RedWood — operações, membros, stock e movimento.',
+    color: COLOR.DANGER,
+    fields,
+  });
+
+  // Botões organizados por categoria
+  const components = buildButtonRowsByCategory([
+    // Row 1 — Ações principais
+    [
+      { customId: 'chefia::criar_saida', label: 'Abrir Saída', style: 'Success', emoji: EMOJI.NOVO },
+      { customId: 'chefia::gerir_encomendas', label: 'Gerir Encomendas', style: 'Success', emoji: EMOJI.ENCOMENDA },
+    ],
+    // Row 2 — Consultas
+    [
+      { customId: 'chefia::painel_pendencias', label: 'Pendências', style: 'Primary', emoji: EMOJI.PENDENTE },
+      { customId: 'chefia::relatorio', label: 'Relatório', style: 'Primary', emoji: EMOJI.AUDIT },
+      { customId: 'chefia::ver_stock', label: 'Stock', style: 'Primary', emoji: EMOJI.STOCK },
+    ],
+    // Row 3 — Gestão (select menu)
   ]);
 
-  const ops = openOps.rows[0]?.c ?? 0;
-  const topName = topWeek.rows[0]?.display_name ?? '—';
-  const topQty = topWeek.rows[0]?.total_qty ?? 0;
-  const members = activeMembers.rows[0]?.c ?? 0;
-  const kills = weekKills.rows[0]?.c ?? 0;
-  const deliv = weekDeliveries.rows[0]?.c ?? 0;
-  const abs = activeAbsences.rows[0]?.c ?? 0;
-
-  const embed = applyLogo(
-    brandEmbed('MOVEMENT')
-      .setColor(COLOR.DANGER)
-      .setTitle(`${EMOJI.LIDER} Painel da Chefia | Firma RedWood`)
-      .setDescription('**Aqui não se pergunta — decide-se.**')
-      .addFields(
-        { name: `${EMOJI.SAIDA} Saídas`, value: `**${ops}** activas`, inline: true },
-        { name: `${EMOJI.PARTICIPANTE} Bairristas`, value: `**${members}** activos`, inline: true },
-        {
-          name: `${EMOJI.MEDAL_1} Top Entregador`,
-          value: `**${topName}** — ${Number(topQty).toLocaleString('pt-PT')} qty`,
-          inline: true,
-        },
-        { name: `${EMOJI.KILL} Kills (Semana)`, value: `**${kills}** registadas`, inline: true },
-        { name: `${EMOJI.ENTREGA} Entregas (Semana)`, value: `**${deliv}** registadas`, inline: true },
-        {
-          name: `${EMOJI.PENDENTE} Ausências`,
-          value: abs > 0 ? `**${abs}** activas ${EMOJI.WARN}` : `**0** activas ${EMOJI.OK}`,
-          inline: true,
-        }
-      )
-  );
-
-  // Row 1 — Acções rápidas
-  const row1 = buttonRow(
-    button({ customId: 'chefia::ausencias', label: 'Ausências', style: 'Success', emoji: EMOJI.PENDENTE }),
-    button({ customId: 'chefia::inactivos', label: 'Inactivos', style: 'Primary', emoji: EMOJI.WARN })
-  );
-
-  // Row 2 — Consultas
-  const row2 = buttonRow(
-    button({
-      customId: 'chefia::painel_pendencias',
-      label: 'Pendências',
-      style: 'Primary',
-      emoji: EMOJI.PENDENTE,
-    }),
-    button({ customId: 'chefia::relatorio', label: 'Relatório', style: 'Primary', emoji: EMOJI.AUDIT }),
-    button({ customId: 'chefia::gerir_stock_v3', label: 'Gerir Stock', style: 'Danger', emoji: EMOJI.STOCK })
-  );
-
-  // Row 3 — Gerir (compressão via select menu)
-  const row3 = selectRow(
+  // Row 4 — Select de gestão
+  const rowSelect = selectRow(
     selectMenu({
       customId: 'panel::chefia_gerir',
       placeholder: `${EMOJI.EM_CURSO} Gerir — escolhe uma acção`,
@@ -99,13 +178,6 @@ async function buildChefiaPanel() {
           emoji: EMOJI.EDITAR,
           description: 'Adicionar/remover itens do catálogo',
         },
-
-        {
-          label: 'Gerir Encomendas',
-          value: 'chefia::gerir_encomendas',
-          emoji: EMOJI.ENCOMENDA,
-          description: 'Aprovar, processar e entregar encomendas',
-        },
         {
           label: 'Republicar Painéis',
           value: 'chefia::republicar_paineis',
@@ -116,7 +188,9 @@ async function buildChefiaPanel() {
     })
   );
 
-  return { embeds: [embed], components: [row1, row2, row3] };
+  components.push(rowSelect);
+
+  return { embeds: [embed], components };
 }
 
 module.exports = { buildChefiaPanel };

@@ -1,81 +1,98 @@
 'use strict';
-const { brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
+const { renderPanelEmbed, formatMetric, formatSection, buildButtonRowsByCategory, fmt } = require('../ui/panelSystem');
+const { COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
-const { button, buttonRow } = require('../shared/ui/buttons');
-const { query } = require('../db');
+const { getOficialMetrics } = require('../repositories/panelRepo');
 
-// ══════════════════════════════════════════════════════════════════════════════
-// Painel do Bairrista — TUDO num só sítio (RENOVADO v12)
-// ══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════════
+// Painel do Bairrista — Atividade da Firma
+// ═══════════════════════════════════════════════════════════════════════════════
+// Nota: este é o painel PÚBLICO no canal. Dados pessoais aparecem em "Meu Resumo".
 
 async function buildBairristaPanel() {
-  const [weeklyTop, memberCount, openOps] = await Promise.all([
-    query(`
-      SELECT m.display_name, SUM(im.quantity) AS total_qty
-      FROM inventory_movements im
-      JOIN members m ON m.id = im.member_id
-      WHERE im.movement_type IN ('entrega_bairrista','entrega_oficial')
-        AND im.created_at >= date_trunc('week', NOW())
-      GROUP BY m.display_name
-      ORDER BY total_qty DESC
-      LIMIT 3
-    `),
-    query("SELECT COUNT(*)::int AS c FROM members WHERE status = 'ativo'"),
-    query("SELECT COUNT(*)::int AS c FROM operations WHERE status IN ('aberta','em_curso')"),
+  const m = await getOficialMetrics();
+
+  const fields = [];
+
+  // ── Top 3 entregas ──
+  const topLines = [];
+  // O panelRepo.getOficialMetrics não retorna top3; usamos query local simples
+  // ou podemos criar um helper. Por simplicidade, mantemos a query local.
+  const { query } = require('../db');
+  const topRes = await query(`
+    SELECT m.display_name, SUM(im.quantity)::int AS total_qty
+    FROM inventory_movements im
+    JOIN members m ON m.id = im.member_id
+    WHERE im.movement_type IN ('entrega_morador','entrega_oficial')
+      AND im.created_at >= date_trunc('week', NOW())
+    GROUP BY m.display_name
+    ORDER BY total_qty DESC
+    LIMIT 3
+  `);
+
+  if (topRes.rows.length === 0) {
+    fields.push(
+      formatSection({ title: `${EMOJI.MEDAL_1} Top Entregas (Semana)`, lines: ['_Sem entregas esta semana._'] })
+    );
+  } else {
+    const lines = topRes.rows.map(
+      (r, i) =>
+        `${i === 0 ? EMOJI.MEDAL_1 : i === 1 ? EMOJI.MEDAL_2 : EMOJI.MEDAL_3} **${r.display_name}** — ${fmt(r.total_qty)} qty`
+    );
+    fields.push(formatSection({ title: `${EMOJI.MEDAL_1} Top Entregas (Semana)`, lines }));
+  }
+
+  // ── Resumo rápido ──
+  fields.push(
+    formatMetric({
+      label: 'Firma',
+      value: m.membros_activos,
+      emoji: EMOJI.PARTICIPANTE,
+      hint: 'activos',
+      inline: true,
+    }),
+    formatMetric({
+      label: 'Saídas',
+      value: m.saidas_activas,
+      emoji: EMOJI.SAIDA,
+      hint: 'em curso',
+      inline: true,
+    }),
+    formatMetric({
+      label: 'Movimento',
+      value: m.entregas_count + m.vendas_count,
+      emoji: EMOJI.ENTREGA,
+      hint: 'registos semana',
+      inline: true,
+    })
+  );
+
+  const embed = renderPanelEmbed({
+    title: `${EMOJI.CASA} Painel do Bairrista`,
+    subtitle: 'Atividade semanal da Firma RedWood — quem puxa, quem rende.',
+    color: COLOR.GOLD,
+    fields,
+  });
+
+  const components = buildButtonRowsByCategory([
+    // Row 1 — Registar
+    [
+      { customId: 'bairrista::entregar_material', label: 'Entregar Material', style: 'Success', emoji: EMOJI.ENTREGA },
+      { customId: 'bairrista::vender', label: 'Vender', style: 'Success', emoji: EMOJI.VENDA },
+      { customId: 'bairrista::encomendar', label: 'Encomendar', style: 'Success', emoji: EMOJI.ENCOMENDA },
+      { customId: 'bairrista::ausencia', label: 'Ausência', style: 'Success', emoji: EMOJI.PENDENTE },
+    ],
+    // Row 2 — Ver
+    [
+      { customId: 'bairrista::ranking', label: 'Ranking', style: 'Primary', emoji: EMOJI.MEDAL_1 },
+      { customId: 'bairrista::precarios', label: 'Preçários', style: 'Primary', emoji: EMOJI.DINHEIRO },
+      { customId: 'bairrista::top_semanal', label: 'Topo Semanal', style: 'Primary', emoji: EMOJI.TOPO },
+    ],
+    // Row 3 — Pessoal
+    [{ customId: 'bairrista::meu_resumo', label: 'Meu Resumo', style: 'Secondary', emoji: EMOJI.INFO }],
   ]);
 
-  const top3 = weeklyTop.rows;
-  const members = memberCount.rows[0]?.c ?? 0;
-  const ops = openOps.rows[0]?.c ?? 0;
-
-  const topText =
-    top3.length === 0
-      ? '_Sem entregas esta semana._'
-      : top3
-          .map(
-            (r, i) =>
-              `${i === 0 ? EMOJI.MEDAL_1 : i === 1 ? EMOJI.MEDAL_2 : EMOJI.MEDAL_3} **${r.display_name}** — ${Number(r.total_qty).toLocaleString('pt-PT')} qty`
-          )
-          .join('\n');
-
-  const embed = applyLogo(
-    brandEmbed('HOUSE')
-      .setColor(COLOR.GOLD)
-      .setTitle(`${EMOJI.CASA} Painel do Bairrista | Firma RedWood`)
-      .setDescription('**Peso é o que conta. O resto é conversa.**')
-      .addFields(
-        { name: `${EMOJI.MEDAL_1} Top Entregas (Semana)`, value: topText, inline: false },
-        { name: `${EMOJI.PARTICIPANTE} Firma`, value: `**${members}** bairristas activos`, inline: true },
-        { name: `${EMOJI.SAIDA} Saídas`, value: `**${ops}** em curso`, inline: true }
-      )
-  );
-
-  // Row 1 — REGISTAR
-  const row1 = buttonRow(
-    button({
-      customId: 'bairrista::entregar_material',
-      label: 'Registar Material',
-      style: 'Success',
-      emoji: EMOJI.ENTREGA,
-    }),
-    button({ customId: 'bairrista::vender', label: 'Vender', style: 'Success', emoji: EMOJI.VENDA }),
-    button({ customId: 'bairrista::encomendar', label: 'Encomendar', style: 'Success', emoji: EMOJI.ENCOMENDA }),
-    button({ customId: 'bairrista::ausencia', label: 'Ausência', style: 'Success', emoji: EMOJI.PENDENTE })
-  );
-
-  // Row 2 — VER
-  const row2 = buttonRow(
-    button({ customId: 'bairrista::ranking', label: 'Ranking', style: 'Primary', emoji: EMOJI.MEDAL_1 }),
-    button({ customId: 'bairrista::precarios', label: 'Preçários', style: 'Primary', emoji: EMOJI.DINHEIRO })
-  );
-
-  // Row 3 — PESSOAL
-  const row3 = buttonRow(
-    button({ customId: 'bairrista::meu_resumo', label: 'Meu Resumo', style: 'Secondary', emoji: EMOJI.INFO }),
-    button({ customId: 'bairrista::top_semanal', label: 'Topo Semanal', style: 'Secondary', emoji: EMOJI.TOPO })
-  );
-
-  return { embeds: [embed], components: [row1, row2, row3] };
+  return { embeds: [embed], components };
 }
 
 module.exports = { buildBairristaPanel };
