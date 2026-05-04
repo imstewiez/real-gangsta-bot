@@ -6,7 +6,7 @@
 const { MessageFlags, ButtonBuilder, ButtonStyle, ActionRowBuilder, EmbedBuilder } = require('discord.js');
 const { inventoryRepo } = require('../repositories');
 const craftRecipeRepo = require('../repositories/craftRecipe');
-const { getRankMultiplier } = require('../orders/orderPricingEngine');
+const { getRankMultiplier, RANK_MULTIPLIERS } = require('../orders/orderPricingEngine');
 const { brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { safeReply } = require('../shared/interactionHelpers');
@@ -408,9 +408,8 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       .setTitle(`${EMOJI.CRAFT} O Teu Preçário`)
       .setDescription(
         '**Como ler:**\n' +
-          '💰 **Preço** — preço final (já com markup do teu tier)\n' +
-          '🔧 **s/ Mat** — sem entregar materiais (só dinheiro)\n' +
-          '📦 **c/ Mat** — entregas os materiais de craft + dinheiro\n\n' +
+          '💰 **Preço** — dinheiro sujo a pagar (já com markup do teu tier)\n' +
+          '📦 **Materiais** — entregas fisicamente na firma (obrigatórios)\n\n' +
           `_Rank: ${memberRole} | Compra ${fmtPct(buyMult)}_`
       )
   );
@@ -465,15 +464,9 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       if (catDef.cols === 'craft') {
         const base = parseFloat(item.estimated_value) || 0;
         const recipe = recipeMap.get(item.id);
-        const materialCost = recipe
-          ? recipe.ingredients.reduce(
-              (sum, ing) => sum + (parseFloat(ing.unit_price) || parseFloat(ing.ingredient_price) || 0) * ing.quantity,
-              0
-            )
-          : 0;
-        const semMat = base * (1 + buyMult);
-        const comMat = materialCost * (1 + buyMult);
-        return `${name}  ${fmtPriceCompact(semMat).padStart(6)}  ${fmtPriceCompact(comMat).padStart(6)}`;
+        const price = base * (1 + buyMult);
+        const mats = recipe ? recipe.ingredients.map(ing => `${ing.quantity}× ${ing.ingredient_name}`).join(', ') : '';
+        return `${name}  ${fmtPriceCompact(price).padStart(6)}  ${mats.slice(0, 30)}`;
       }
 
       if (catDef.cols === 'colete') {
@@ -492,8 +485,8 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
     // ── Header conforme tipo de colunas ─────────────────────────────────────
     let header, sep;
     if (catDef.cols === 'craft') {
-      header = `${padName('Item', 22)}  ${'s/ Mat'.padStart(6)}  ${'c/ Mat'.padStart(6)}`;
-      sep = '──────────────────────────────────────────';
+      header = `${padName('Item', 22)}  ${'Preço'.padStart(6)}  Materiais`;
+      sep = '─────────────────────────────────────────────────────────';
     } else if (catDef.cols === 'colete') {
       header = `${padName('Item', 22)}  ${'Limpo'.padStart(6)}  ${'Sujo'.padStart(6)}`;
       sep = '──────────────────────────────────────────';
@@ -676,7 +669,6 @@ function normalizeCraftCategory(cat) {
 
 const TIERS = ['young_blood', 'o_gunao', 'gangster_fodido'];
 const TIER_LABELS = { young_blood: 'YB', o_gunao: 'OG', gangster_fodido: 'GF' };
-const TIER_MULT_BUY = { young_blood: 0.015, o_gunao: 0.01, gangster_fodido: 0.005 };
 
 async function buildPriceEmbedsForChefia() {
   const [items, recipes] = await Promise.all([
@@ -722,7 +714,7 @@ async function buildPriceEmbedsForChefia() {
           return sum + unit * ing.quantity;
         }, 0);
         const base = parseFloat(item.estimated_value) || 0;
-        const sellPrice = materialCost * (1 + TIER_MULT_BUY.young_blood);
+        const sellPrice = base * (1 + RANK_MULTIPLIERS.buy.young_blood);
         const profit = sellPrice - materialCost;
         const marginPct = materialCost > 0 ? (profit / materialCost) * 100 : 0;
         return { item, materialCost, base, marginPct };
@@ -738,10 +730,10 @@ async function buildPriceEmbedsForChefia() {
           .setTitle(i === 0 ? '🔥 Itens Craft — Margens' : '🔥 Itens Craft — Continuação')
       );
 
-      const lines = chunk.map(({ item, materialCost, marginPct }) => {
+      const lines = chunk.map(({ item, materialCost, base, marginPct }) => {
         const prices = TIERS.map(t => {
-          const mult = TIER_MULT_BUY[t];
-          return `${TIER_LABELS[t]} ${fmtPrice(materialCost * (1 + mult))}`;
+          const mult = RANK_MULTIPLIERS.buy[t];
+          return `${TIER_LABELS[t]} ${fmtPrice(base * (1 + mult))}`;
         });
         return `\`${item.name.padEnd(22).slice(0, 22)}\` Custo ${fmtPrice(materialCost).padStart(8)} | ${prices.join(' | ')} | Margem ${marginPct.toFixed(0)}%`;
       });
@@ -767,7 +759,7 @@ async function buildPriceEmbedsForChefia() {
 
       const lines = catItems.map(item => {
         const base = parseFloat(item.estimated_value) || 0;
-        const prices = TIERS.map(t => `${TIER_LABELS[t]} ${fmtPrice(base * (1 + TIER_MULT_BUY[t]))}`);
+        const prices = TIERS.map(t => `${TIER_LABELS[t]} ${fmtPrice(base * (1 + RANK_MULTIPLIERS.buy[t]))}`);
         return `\`${item.name.padEnd(22).slice(0, 22)}\` Base ${fmtPrice(base).padStart(8)} | ${prices.join(' | ')}`;
       });
 

@@ -18,6 +18,17 @@ const { formatMoney } = require('../shared/formatMoney');
 
 const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
 
+function _fmtIngredients(json) {
+  if (!json) return '';
+  try {
+    const list = JSON.parse(json);
+    if (!Array.isArray(list) || !list.length) return '';
+    return list.map(i => `${i.qty}× ${i.name}`).join(', ');
+  } catch {
+    return '';
+  }
+}
+
 const STATUS_EMOJI = {
   pending: '⏳',
   approved: '✅',
@@ -79,7 +90,9 @@ async function handle(interaction) {
       const lines = activas.map(o => {
         const age = ageLabel(o.created_at);
         const price = o.total_price ? ` (${formatMoney(o.total_price)})` : '';
-        return `⏳ **${o.quantity}× ${o.item_name}**${price} · aberta há ${age}`;
+        const mats = _fmtIngredients(o.ingredients_json);
+        const matLine = mats ? `\n    📋 ${mats}` : '';
+        return `⏳ **${o.quantity}× ${o.item_name}**${price} · aberta há ${age}${matLine}`;
       });
       embed.addFields({ name: '🔧 Activas', value: lines.join('\n'), inline: false });
     }
@@ -90,7 +103,9 @@ async function handle(interaction) {
         const lbl = STATUS_LABEL[o.status] || o.status;
         const when = formatPtDate(o.resolved_at || o.created_at);
         const price = o.total_price ? ` (${formatMoney(o.total_price)})` : '';
-        return `${emj} \`${when}\` **${o.quantity}× ${o.item_name}**${price} — ${lbl}`;
+        const mats = _fmtIngredients(o.ingredients_json);
+        const matLine = mats ? `\n    📋 ${mats}` : '';
+        return `${emj} \`${when}\` **${o.quantity}× ${o.item_name}**${price} — ${lbl}${matLine}`;
       });
       embed.addFields({ name: '📜 Histórico recente', value: lines.join('\n'), inline: false });
     }

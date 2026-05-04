@@ -110,11 +110,17 @@ async function handleOrderCategorySelect(interaction) {
   const category = interaction.values[0];
   if (category === 'none') return;
 
+  const member = await memberRepo.findByDiscordId(interaction.user.id);
   const rows = await orderCatalog.buildOrderItemSelect(
     `orderitem::${interaction.user.id}`,
     'Escolhe o item',
     category,
-    { searchKey: `orderitem::${interaction.user.id}`, modalTitle: 'Pesquisar item' }
+    {
+      searchKey: `orderitem::${interaction.user.id}`,
+      modalTitle: 'Pesquisar item',
+      memberRole: member?.role,
+      memberTier: member?.tier,
+    }
   );
 
   // Botão para voltar ao carrinho

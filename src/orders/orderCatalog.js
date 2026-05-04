@@ -7,6 +7,8 @@
  */
 
 const { inventoryRepo } = require('../repositories');
+const craftRecipeRepo = require('../repositories/craftRecipe');
+const { getRankMultiplier } = require('../orders/orderPricingEngine');
 const { ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
 const { buildSearchableSelect } = require('../shared/selectSearch');
 
@@ -211,7 +213,12 @@ async function buildOrderCategorySelect(customIdPrefix, placeholder, { searchKey
   ];
 }
 
-async function buildOrderItemSelect(customIdPrefix, placeholder, category, { searchKey, modalTitle } = {}) {
+async function buildOrderItemSelect(
+  customIdPrefix,
+  placeholder,
+  category,
+  { searchKey, modalTitle, memberRole, memberTier } = {}
+) {
   const items = await getOrderCatalogItems();
   let filtered = items.filter(i => i.orderCategory === category);
 
@@ -224,12 +231,25 @@ async function buildOrderItemSelect(customIdPrefix, placeholder, category, { sea
   const catMeta = ORDER_CATEGORIES.find(c => c.key === category);
   const emoji = catMeta?.emoji || '📦';
 
+  // Fetch recipes for craft indicator
+  const recipes = await craftRecipeRepo.getAllRecipesWithIngredients();
+  const recipeMap = new Map();
+  for (const r of recipes) recipeMap.set(r.item_id, r);
+
+  const mult = memberRole ? getRankMultiplier(memberRole, 'buy', memberTier) : 0;
+
   const options = filtered.slice(0, 25).map(item => {
-    const price = parseFloat(item.estimated_value) || 0;
-    const priceStr = price > 0 ? `${Math.round(price).toLocaleString('pt-PT')}€` : 'sem preço';
+    const base = parseFloat(item.estimated_value) || 0;
+    const price = base * (1 + mult);
+    const recipe = recipeMap.get(item.id);
+    let priceStr = price > 0 ? `${Math.round(price).toLocaleString('pt-PT')}€` : 'sem preço';
+    if (recipe) {
+      const mats = recipe.ingredients.map(ing => `${ing.quantity}× ${ing.ingredient_name}`).join(', ');
+      priceStr = `${priceStr} 🛠️ ${mats.slice(0, 40)}`;
+    }
     return {
       label: item.name.slice(0, 100),
-      description: `${priceStr}`.slice(0, 100),
+      description: priceStr.slice(0, 100),
       value: String(item.id),
       emoji,
     };
