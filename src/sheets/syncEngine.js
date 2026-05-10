@@ -116,12 +116,12 @@ const TAB_SYNCERS = {
   config: () => require('./tabs/config').syncConfig,
 };
 
-// -- Circuit breaker para protec��o contra quotas Google esgotadas -----------
-// Se uma tab falhar 3x seguidas, o circuito abre e salta syncs dessa tab
-// durante 5 minutos. Isto evita gastar quota em erros persistentes.
-const _circuitState = new Map(); // key ? { failures: number, openSince: timestamp|null }
-const CIRCUIT_FAILURE_THRESHOLD = 3;
-const CIRCUIT_COOLDOWN_MS = 5 * 60 * 1000;
+// -- Circuit breaker para proteção contra quotas Google esgotadas -----------
+// Se uma tab falhar 5x seguidas, o circuito abre e salta syncs dessa tab
+// durante 60 segundos. Isto evita gastar quota em erros persistentes.
+const _circuitState = new Map(); // key → { failures: number, openSince: timestamp|null }
+const CIRCUIT_FAILURE_THRESHOLD = 5;
+const CIRCUIT_COOLDOWN_MS = 60_000;
 
 async function _persistCircuitState(key, state) {
   try {

@@ -47,11 +47,29 @@ if (pool) {
   pool.on('error', err => {
     console.error('[DB] Erro inesperado no pool de conexões:', err.message);
   });
+
+  // Log pool exhaustion: when all connections are in use and a new acquire
+  // is queued, warn so ops can tune DB_POOL_MAX or investigate slow queries.
+  pool.on('connect', () => {
+    const waiting = pool.waitingCount || 0;
+    const total = pool.totalCount || 0;
+    if (waiting > 0) {
+      try {
+        require('./logger').warn(
+          `[DB:POOL] Nova conexão criada com ${waiting} queries em fila (total=${total}/${POOL_MAX}). ` +
+            'Considerar aumentar DB_POOL_MAX ou investigar queries lentas.'
+        );
+      } catch {
+        console.warn(`[DB:POOL] Nova conexão criada com ${waiting} queries em fila (total=${total}/${POOL_MAX}).`);
+      }
+    }
+  });
 }
 
 // Threshold para log de queries lentas (ms). Configurável via DB_SLOW_QUERY_MS.
-// Railway Postgres tem cold starts frequentes — 1500ms evita ruído falso.
-const SLOW_QUERY_MS = parseInt(process.env.DB_SLOW_QUERY_MS, 10) || 1500;
+// Default: 500ms (production-grade). Railway cold starts podem ser mais lentos —
+// aumentar para 1500ms via DB_SLOW_QUERY_MS se houver ruído falso no boot.
+const SLOW_QUERY_MS = parseInt(process.env.DB_SLOW_QUERY_MS, 10) || 500;
 
 // Métricas de query (lazy — evita dependência circular no load)
 let _queryCounter = null;
@@ -78,11 +96,16 @@ async function query(text, params) {
     if (_queryCounter) _queryCounter.inc();
     if (duration >= SLOW_QUERY_MS) {
       if (_slowQueryCounter) _slowQueryCounter.inc();
-      const preview = String(text).replace(/\s+/g, ' ').slice(0, 120);
+      const preview = String(text).replace(/\s+/g, ' ').slice(0, 200);
+      const poolStats = pool
+        ? `pool(total=${pool.totalCount}|idle=${pool.idleCount}|waiting=${pool.waitingCount})`
+        : '';
       // Lazy require — logger pode não estar carregado durante boot
       try {
         require('./logger').warn(
-          `[DB:SLOW] ${duration}ms · ${preview}${params?.length ? ` · params: ${params.length}` : ''}`
+          `[DB:SLOW] ${duration}ms · ${preview}` +
+            `${params?.length ? ` · params:${params.length}` : ''}` +
+            `${poolStats ? ` · ${poolStats}` : ''}`
         );
       } catch {
         console.warn(`[DB:SLOW] ${duration}ms · ${preview}`);
@@ -95,6 +118,7 @@ async function query(text, params) {
 }
 
 async function queryWithTransaction(callback) {
+  if (!pool) throw new Error('[DB] DATABASE_URL não está definida — impossível iniciar transacção.');
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -102,7 +126,16 @@ async function queryWithTransaction(callback) {
     await client.query('COMMIT');
     return result;
   } catch (err) {
-    await client.query('ROLLBACK');
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackErr) {
+      // Log rollback failure but always re-throw the original error
+      try {
+        require('./logger').warn(`[DB:TX] ROLLBACK falhou: ${rollbackErr.message}`);
+      } catch {
+        console.warn(`[DB:TX] ROLLBACK falhou: ${rollbackErr.message}`);
+      }
+    }
     throw err;
   } finally {
     client.release();
