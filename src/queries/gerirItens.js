@@ -6,7 +6,7 @@ const { safeReply } = require('../shared/interactionHelpers');
 const { requirePermission } = require('../shared/requirePermission');
 
 async function handle(interaction) {
-  await requirePermission(interaction, { minRole: 'OG' });
+  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
   const sub = interaction.options.getSubcommand();
   const userTag = interaction.user.tag;
 

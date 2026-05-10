@@ -9,7 +9,6 @@ const craftRecipeRepo = require('../repositories/craftRecipe');
 const { getRankMultiplier, RANK_MULTIPLIERS } = require('../orders/orderPricingEngine');
 const { brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
-const { safeReply } = require('../shared/interactionHelpers');
 const { withTimeout } = require('../shared/collectorDefaults');
 const { query } = require('../db');
 

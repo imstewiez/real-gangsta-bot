@@ -17,9 +17,8 @@ const { log, warn, error } = require('../../logger');
 const metrics = require('../../lib/metrics');
 const ctx = require('../../shared/requestContext');
 const rateLimiter = require('../../shared/rateLimiter');
-const { safeReply } = require('../../shared/interactionHelpers');
+const { safeReply, isDuplicate } = require('../../shared/interactionHelpers');
 const { isDraining } = require('../../instanceCoordinator');
-const { ERRORS } = require('../../content');
 const { UserError, InternalError } = require('../../shared/errors');
 const { errorEmbed } = require('../../shared/embedBuilders');
 
@@ -50,6 +49,12 @@ async function dispatch(interaction) {
   // ── Autocomplete (sem rate limit, sem deferReply) ──────────────────────
   if (interaction.isAutocomplete?.()) {
     return handleAutocomplete(interaction);
+  }
+
+  // ── Duplicate guard ────────────────────────────────────────────────────
+  if (isDuplicate(interaction.id)) {
+    log(`[Router] Duplicate interaction ignored: ${typeTagFor(interaction)}`);
+    return;
   }
 
   // ── Rate limiting global por user ──────────────────────────────────────

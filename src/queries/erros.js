@@ -7,7 +7,7 @@ const { requirePermission } = require('../shared/requirePermission');
 const { fmtOrderStatus, fmtSaidaStatus } = require('../shared/labels');
 
 async function handle(interaction) {
-  await requirePermission(interaction, { minRole: 'OG' });
+  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
 
   const [incidents, staleSync, unfinalized, orphanCh] = await Promise.all([
     query(

@@ -1,6 +1,6 @@
 'use strict';
 const { MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
-const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply, safeShowModal, getModalField } = require('../shared/interactionHelpers');
 const { brandEmbed, rankBadge, streakBadge } = require('../shared/embedBuilders');
 const { canRegisterKill } = require('../permissions/permissionEngine');
 const { EMOJI, MODALS, KILLS, ERRORS } = require('../content');
@@ -70,7 +70,6 @@ async function handleRegisterKillButton(interaction) {
 }
 
 async function handleKillModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const victimRaw = getModalField(interaction, 'victim').trim();

@@ -6,7 +6,7 @@ const { safeReply } = require('../shared/interactionHelpers');
 const { requirePermission } = require('../shared/requirePermission');
 
 async function handle(interaction) {
-  await requirePermission(interaction, { minRole: 'OG' });
+  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
 
   const [deliveries, orders, prizes, saidas, stockLow, ausencias] = await Promise.all([
     query("SELECT COUNT(*)::int AS n FROM inventory_delivery_requests WHERE status = 'pending'"),

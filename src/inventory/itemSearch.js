@@ -32,7 +32,7 @@ const {
   MessageFlags,
 } = require('discord.js');
 const { inventoryRepo } = require('../repositories');
-const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply, safeShowModal, getModalField } = require('../shared/interactionHelpers');
 const { EMOJI } = require('../content');
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -159,14 +159,12 @@ function buildResultsSelect(purpose, matches) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleOpenButton(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const purpose = interaction.customId.split('::')[2];
   const modal = buildSearchModal(purpose);
   await safeShowModal(interaction, modal);
 }
 
 async function handleSubmitModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const purpose = interaction.customId.split('::')[2];
   const query = String(getModalField(interaction, 'query') || '').trim();
 
@@ -220,7 +218,6 @@ function registerPickHandler(purpose, handler) {
 }
 
 async function handlePick(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const purpose = interaction.customId.split('::')[2];
   const itemId = parseInt(interaction.values[0], 10);
   const item = await inventoryRepo.getItemById(itemId);

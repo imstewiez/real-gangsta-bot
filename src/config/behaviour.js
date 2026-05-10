@@ -12,8 +12,6 @@ module.exports = {
   ENABLE_BACKGROUND_JOBS: optBool('ENABLE_BACKGROUND_JOBS', false),
   ENFORCE_ROLE_INVARIANTS: optBool('ENFORCE_ROLE_INVARIANTS', true),
   PANEL_BOOTSTRAP_ON_READY: optBool('PANEL_BOOTSTRAP_ON_READY', true),
-  // Guard-rail: com true, /rg-sync-structure fica travado em apply.
-  STRUCTURE_SYNC_LOCKED: optBool('STRUCTURE_SYNC_LOCKED', false),
   // Saídas v3.0: auto-lock automático (5 min após criação)
   SAIDA_AUTO_LOCK_ENABLED: optBool('SAIDA_AUTO_LOCK_ENABLED', false),
   // Saídas v3.0: auto-force-close (12h após liquidação)

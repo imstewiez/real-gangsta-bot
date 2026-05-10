@@ -46,7 +46,7 @@ const {
 
 const { query } = require('../db');
 const { saidaRepo, memberRepo } = require('../repositories');
-const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply, safeShowModal, getModalField } = require('../shared/interactionHelpers');
 const { buildSearchableSelect } = require('../shared/selectSearch');
 const { brandEmbed, errorEmbed, successEmbed, COLOR, headerLine } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
@@ -76,7 +76,6 @@ function _parseSN(value) {
  * Sem botões intermediários. Tudo num só modal de 3-5 campos.
  */
 async function handleOpenSubmitResult(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const saidaId = parseInt(interaction.customId.split('::')[2], 10);
 
   const member = await memberRepo.findByDiscordId(interaction.user.id);
@@ -211,7 +210,6 @@ async function handleOpenSubmitResult(interaction) {
  * wFlag: 'w' = had weapon question, 'n' = no weapon question
  */
 async function handleSubmitResultModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const parts = interaction.customId.split('::');
@@ -348,7 +346,6 @@ async function handleSubmitResultModal(interaction) {
  * Handler do botão "Lembrar Pendentes" — re-pinga participantes que faltam.
  */
 async function handleRepingPendentes(interaction) {
-  if (isDuplicate(interaction.id)) return;
   if (!isChefia(interaction.member) && !isOficial(interaction.member)) {
     return safeReply(
       interaction,
@@ -461,7 +458,6 @@ function _canConfirmWeapon(member) {
  * Mostra lista de devoluções pendentes com select por participante.
  */
 async function handleOpenWeaponQueue(interaction) {
-  if (isDuplicate(interaction.id)) return;
   if (!_canConfirmWeapon(interaction.member)) {
     return safeReply(
       interaction,
@@ -520,7 +516,6 @@ async function handleOpenWeaponQueue(interaction) {
  * Handler do select "escolhe participante" → mostra botões de decisão.
  */
 async function handleWeaponConfirmPick(interaction) {
-  if (isDuplicate(interaction.id)) return;
   if (!_canConfirmWeapon(interaction.member)) return;
 
   await interaction.deferUpdate().catch(() => {});
@@ -574,7 +569,6 @@ async function handleWeaponConfirmPick(interaction) {
  * Handler da decisão — aplica status + emite evento.
  */
 async function handleWeaponDecide(interaction) {
-  if (isDuplicate(interaction.id)) return;
   if (!_canConfirmWeapon(interaction.member)) {
     return safeReply(
       interaction,

@@ -9,7 +9,7 @@
  */
 
 const { MessageFlags } = require('discord.js');
-const { safeReply, safeUpdate, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply, safeUpdate } = require('../shared/interactionHelpers');
 const { EMOJI } = require('../content');
 const orderCart = require('./orderCart');
 const {
@@ -27,8 +27,6 @@ const orderService = new OrderService();
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function showConfirmation(interaction) {
-  if (isDuplicate(interaction.id)) return;
-
   const cart = orderCart.getCart(interaction.user.id);
   if (!cart || !cart.lines.length) {
     return safeReply(
@@ -52,7 +50,6 @@ async function showConfirmation(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function executeCheckout(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const cart = orderCart.getCart(interaction.user.id);

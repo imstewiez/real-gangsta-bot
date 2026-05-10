@@ -13,6 +13,7 @@
 const { query, queryWithTransaction } = require('../db');
 const { logAudit } = require('../audit/auditEngine');
 const eventBus = require('../core/eventBus');
+const { warn } = require('../logger');
 const { MOVEMENT_TYPE, STOCK_INFLOW_TYPES, STOCK_OUTFLOW_TYPES } = require('../shared/movementTypes');
 const { withAdvisoryLock } = require('../shared/advisoryLocks');
 const inventoryBalanceRepo = require('../repositories/inventoryBalance');
@@ -101,7 +102,7 @@ async function addStock({ itemId, quantity, location, type = 'apreendido', actor
     actorId: actor,
     afterState: { quantity, location, type },
     context: notes,
-  }).catch(() => {});
+  }).catch(err => warn(`[STOCK] logAudit falhou em addStock: ${err.message}`));
   return { id: r.rows[0].id };
 }
 
@@ -167,7 +168,7 @@ async function removeStock({
       actorId: actor,
       afterState: { quantity, location, type },
       context: notes,
-    }).catch(() => {});
+    }).catch(err => warn(`[STOCK] logAudit falhou em removeStock: ${err.message}`));
     return { id: r.rows[0].id };
   };
 
@@ -232,7 +233,7 @@ async function transferStock({ itemId, quantity, fromLocation, toLocation, actor
       actorId: actor,
       afterState: { quantity, fromLocation, toLocation },
       context: notes,
-    }).catch(() => {});
+    }).catch(err => warn(`[STOCK] logAudit falhou em transferStock: ${err.message}`));
 
     eventBus
       .emitAsync('material.transferred', {
@@ -246,7 +247,7 @@ async function transferStock({ itemId, quantity, fromLocation, toLocation, actor
         inMovementId: inv.rows[0].id,
         at: new Date(),
       })
-      .catch(() => {});
+      .catch(err => warn(`[STOCK] Evento material.transferred falhou: ${err.message}`));
 
     return { outId: out.rows[0].id, inId: inv.rows[0].id };
   };
@@ -299,7 +300,7 @@ async function adjustStock({ itemId, newTotal, location, actor, memberId = null,
       beforeState: { balance: current },
       afterState: { balance: newTotal, delta },
       context: reason,
-    }).catch(() => {});
+    }).catch(err => warn(`[STOCK] logAudit falhou em adjustStock: ${err.message}`));
     return { id: r.rows[0].id, delta };
   };
 

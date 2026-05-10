@@ -139,18 +139,12 @@ function registerNotificationRouting() {
   eventBus.on('material.transferred', _onMaterialTransferred);
   // Orders (encomendas)
   eventBus.on('order.created', _onOrderEvent);
-  eventBus.on('order.approved', _onOrderEvent);
-  eventBus.on('order.in_progress', _onOrderEvent);
-  eventBus.on('order.ready', _onOrderEvent);
-  eventBus.on('order.fulfilled', _onOrderEvent);
-  eventBus.on('order.denied', _onOrderEvent);
-  eventBus.on('order.cancelled', _onOrderEvent);
   // Members
   eventBus.on('member.joined', _onMemberJoined);
   eventBus.on('member.left', _onMemberLeft);
   eventBus.on('member.promoted', _onMemberPromoted);
   eventBus.on('member.tier_changed', _onMemberTierChanged);
-  eventBus.on('member.nickname_changed', _onMemberNicknameChanged);
+  // member.nickname_changed — nunca emitido; removido.
   // Saídas — opened + participant_added suprimidos (redundantes com session
   // panel que é o painel vivo interactivo da saída).
   eventBus.on('saida.started', _onSaidaStarted);

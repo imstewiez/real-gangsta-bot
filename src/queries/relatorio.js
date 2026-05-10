@@ -8,7 +8,7 @@ const { formatPtDateOnly } = require('../shared/formatPtDate');
 const { formatMoney } = require('../shared/formatMoney');
 
 async function handle(interaction) {
-  await requirePermission(interaction, { minRole: 'OG' });
+  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
   const period = interaction.options.getString('periodo') || 'week';
 
   const now = new Date();

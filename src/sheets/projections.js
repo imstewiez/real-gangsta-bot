@@ -33,12 +33,6 @@ const EVENT_TO_TABS = {
 
   // ── Encomendas ─────────────────────────────────────────────────────────
   'order.created': ['stock', 'dashboard'],
-  'order.approved': ['stock', 'dashboard'],
-  'order.in_progress': ['stock', 'dashboard'],
-  'order.ready': ['stock', 'dashboard'],
-  'order.fulfilled': ['stock', 'dashboard'],
-  'order.denied': ['stock'],
-  'order.cancelled': ['stock'],
 
   // ── Vida da org ────────────────────────────────────────────────────────
   'member.joined': ['membros', 'dashboard', 'rankings'],

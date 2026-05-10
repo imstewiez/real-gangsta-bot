@@ -35,7 +35,7 @@ const {
 } = require('discord.js');
 const { saidaRepo, memberRepo } = require('../repositories');
 const { query } = require('../db');
-const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply, safeShowModal, getModalField } = require('../shared/interactionHelpers');
 const { buildSearchableSelect } = require('../shared/selectSearch');
 const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { SAIDAS, EMOJI, RESULT_LABEL } = require('../content');
@@ -117,7 +117,6 @@ async function handleStart(interaction, saidaId) {
 
 // STEP 1: staff escolheu participante → ephemeral com "Vivo / Morto" botões.
 async function handleSelectParticipant(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const parts = interaction.customId.split('::');
   const saidaId = parseInt(parts[2], 10);
   if (Number.isNaN(saidaId)) {
@@ -158,7 +157,6 @@ async function handleSelectParticipant(interaction) {
 // STEP 2: clicou Vivo/Morto → se caracterizado+org+vivo, pergunta arma;
 // caso contrário salta para o modal de kills/notes.
 async function handleOutcome(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const parts = interaction.customId.split('::');
   const saidaId = parseInt(parts[2], 10);
   if (Number.isNaN(saidaId)) {
@@ -216,7 +214,6 @@ async function handleOutcome(interaction) {
 
 // STEP 3: clicou decisão da arma → abre modal.
 async function handleWeaponDecision(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const parts = interaction.customId.split('::');
   const saidaId = parseInt(parts[2], 10);
   if (Number.isNaN(saidaId)) {
@@ -261,7 +258,6 @@ async function _openSettleModal(interaction, saidaId, discordId, outcome, weapon
 }
 
 async function handleSettleModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferUpdate().catch(() => {});
 
   // Formato custom ID: saida::wz_modal::<saidaId>::<discId>::<outcome>::<weapon>
@@ -350,7 +346,6 @@ async function handleSettleModal(interaction) {
 }
 
 async function handleFinish(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const saidaId = parseInt(interaction.customId.split('::')[2]);

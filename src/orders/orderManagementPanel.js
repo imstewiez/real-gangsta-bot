@@ -10,7 +10,7 @@
 
 const { MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const { ordersRepo } = require('../repositories');
-const { safeReply, safeUpdate, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply, safeUpdate } = require('../shared/interactionHelpers');
 const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { formatMoney } = require('../shared/formatMoney');
@@ -166,8 +166,6 @@ function _actionsFor(status) {
 // ── Public API ─────────────────────────────────────────────────────────────
 
 async function showManagementPanel(interaction, opts = {}) {
-  if (isDuplicate(interaction.id)) return;
-
   const { tab = 'pending', page = 0 } = opts;
 
   // Contagens rápidas para os tabs
@@ -201,8 +199,6 @@ async function showManagementPanel(interaction, opts = {}) {
 }
 
 async function handleOrderAction(interaction) {
-  if (isDuplicate(interaction.id)) return;
-
   const value = interaction.values[0];
   if (value === 'refresh:refresh') {
     return showManagementPanel(interaction, { tab: 'pending' });

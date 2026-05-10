@@ -15,7 +15,8 @@ const { formatPtDate } = require('../shared/formatPtDate');
 async function handle(interaction) {
   if (!(await requirePermission(interaction, isChefia))) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-  const limit = interaction.options.getInteger('limite') || 20;
+  const rawLimit = interaction.options.getInteger('limite') || 20;
+  const limit = Math.min(Math.max(1, rawLimit), 100);
   const logs = await getRecentLogs(limit);
   if (!logs.length) {
     return safeReply(interaction, { content: 'Sem logs recentes.' }, { messageClass: 'BANAL' });

@@ -40,7 +40,7 @@ async function handle(interaction) {
   }
 
   if (sub === 'aprovar') {
-    await requirePermission(interaction, { minRole: 'OG' });
+    if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
     const id = interaction.options.getInteger('id');
     const status = interaction.options.getString('estado');
     await absenceRepo.updateStatus(id, status, userTag);

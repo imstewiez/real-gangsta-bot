@@ -534,7 +534,7 @@ async function handlePromoverModalSubmit(interaction) {
 }
 
 async function handleChefiaAusenciasButton(interaction) {
-  await requirePermission(interaction, { minRole: 'OG' });
+  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
   const { query } = require('../db');
   const { brandEmbed } = require('../shared/embedBuilders');
 

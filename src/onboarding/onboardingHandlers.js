@@ -10,7 +10,7 @@ const {
   EmbedBuilder,
 } = require('discord.js');
 const CONFIG = require('../config');
-const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply, safeShowModal, getModalField } = require('../shared/interactionHelpers');
 const { brandEmbed, successEmbed, errorEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
 const { EMOJI, PANELS, BUTTONS, MODALS, ONBOARDING, ERRORS } = require('../content');
 const { isPatraoDiZona } = require('../permissions/permissionEngine');
@@ -163,7 +163,6 @@ async function handlePedirTagButton(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleTagModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const fullName = getModalField(interaction, 'full_name').trim();
@@ -325,8 +324,6 @@ async function _buildMemberContext(interaction, _fullName, nickname) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleApproveButton(interaction, requestId) {
-  if (isDuplicate(interaction.id)) return;
-
   if (!isPatraoDiZona(interaction.member)) {
     return safeReply(
       interaction,
@@ -427,8 +424,6 @@ function _buildStaffApprovalReply(tagReq, result) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleDenyButton(interaction, requestId) {
-  if (isDuplicate(interaction.id)) return;
-
   if (!isPatraoDiZona(interaction.member)) {
     return safeReply(
       interaction,
@@ -473,7 +468,6 @@ async function handleDenyButton(interaction, requestId) {
 }
 
 async function handleDenyModalSubmit(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   if (!isPatraoDiZona(interaction.member)) {

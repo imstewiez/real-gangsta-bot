@@ -7,7 +7,7 @@
  */
 
 const { MessageFlags, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
-const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 // const { formatPtDate } = require('../shared/formatPtDate');
@@ -29,7 +29,6 @@ function deltaLine(cur, prev) {
 }
 
 async function handle(interaction) {
-  if (isDuplicate(interaction.id)) return;
   if (!interaction.deferred && !interaction.replied) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   }
@@ -37,7 +36,6 @@ async function handle(interaction) {
 }
 
 async function handlePeriodSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferUpdate().catch(() => {});
   return render(interaction, interaction.values[0]);
 }

@@ -23,12 +23,9 @@
  *   sticky.js      — stickys
  */
 
-const voice = require('./voice');
 const EMOJI = require('./emojis');
 const footers = require('./footers');
-const TONE = require('./tone');
 const ERRORS = require('./errors');
-const SUCCESS = require('./success');
 const PANELS = require('./panels');
 const { BUTTONS, STYLE } = require('./buttons');
 const MODALS = require('./modals');
@@ -45,12 +42,9 @@ const MEMBER_STATS = require('./memberStats');
 const BAIRRISTAS = require('./bairristas');
 
 module.exports = {
-  ...voice,
   EMOJI,
   ...footers,
-  TONE,
   ERRORS,
-  SUCCESS,
   PANELS,
   BUTTONS,
   STYLE,

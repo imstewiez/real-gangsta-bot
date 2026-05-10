@@ -86,9 +86,9 @@ class SessionLifecycle {
       if (remaining <= 0) {
         // Já expirou — executa imediatamente
         if (row.countdown_type === 'auto_lock') {
-          this._executeAutoLock(row.saida_id).catch(() => {});
+          this._executeAutoLock(row.saida_id).catch(err => warn(`[LIFECYCLE] Auto-lock imediato falhou para #${row.saida_id}: ${err.message}`));
         } else if (row.countdown_type === 'force_close') {
-          this._executeForceClose(row.saida_id).catch(() => {});
+          this._executeForceClose(row.saida_id).catch(err => warn(`[LIFECYCLE] Force-close imediato falhou para #${row.saida_id}: ${err.message}`));
         }
         continue;
       }
@@ -150,7 +150,7 @@ class SessionLifecycle {
         workers: selection.workers.length,
         actorId,
         at: new Date(),
-      }).catch(() => {});
+      }).catch(err => warn(`[LIFECYCLE] Evento saida.team_selected falhou: ${err.message}`));
 
       log(`[LIFECYCLE] Saída #${saidaId} locked: ${selection.fighters.length} fighters, ${selection.workers.length} workers`);
     } catch (e) {
@@ -224,8 +224,8 @@ class SessionLifecycle {
             `_Aguarda instruções da chefia para o início._`
           );
 
-        await user.send({ embeds: [embed] }).catch(() => {});
-      } catch { /* non-fatal */ }
+        await user.send({ embeds: [embed] }).catch(err => warn(`[LIFECYCLE] DM falhou para fighter ${fighter.discord_id}: ${err.message}`));
+      } catch (err) { warn(`[LIFECYCLE] DM falhou para fighter ${fighter.discord_id}: ${err.message}`); }
     }
 
     for (const worker of selection.workers) {
@@ -269,7 +269,7 @@ class SessionLifecycle {
   _clearCountdown(saidaId, type) {
     const key = `${saidaId}:${type}`;
     this._clearTimer(key);
-    query(`UPDATE saida_countdowns SET cancelled = TRUE WHERE saida_id = $1 AND countdown_type = $2`, [saidaId, type]).catch(() => {});
+    query(`UPDATE saida_countdowns SET cancelled = TRUE WHERE saida_id = $1 AND countdown_type = $2`, [saidaId, type]).catch(err => warn(`[LIFECYCLE] Cancel countdown falhou para #${saidaId}: ${err.message}`));
   }
 
   _clearTimer(key) {

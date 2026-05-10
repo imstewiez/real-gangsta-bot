@@ -7,7 +7,15 @@
  * quando fizer sentido pelo contexto.
  */
 
-const { SIGNATURES, BRAND } = require('./voice');
+const BRAND = 'Firma RedWood';
+
+const SIGNATURES = {
+  SHORT: `— ${BRAND}`,
+  HOUSE: `— ${BRAND}`,
+  STREET: `— ${BRAND}`,
+  MOVEMENT: `— ${BRAND}`,
+  TOP: `— ${BRAND}`,
+};
 
 // Footer principal — usa sempre.
 function footerText(variant = 'SHORT') {

@@ -8,7 +8,7 @@
  */
 
 const { MessageFlags, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
-const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { memberRepo, inventoryRepo } = require('../repositories');
@@ -19,7 +19,6 @@ const { fmtMovementType } = require('../shared/labels');
 const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
 
 async function handle(interaction) {
-  if (isDuplicate(interaction.id)) return;
   if (!interaction.deferred && !interaction.replied) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   }
@@ -27,7 +26,6 @@ async function handle(interaction) {
 }
 
 async function handleFilterSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferUpdate().catch(() => {});
   return render(interaction, interaction.values[0]);
 }

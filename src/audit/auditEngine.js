@@ -127,4 +127,8 @@ async function getLogsForActor(actorId, { limit = 50, offset = 0 } = {}) {
   return getLogs({ limit, offset, actorId });
 }
 
-module.exports = { logAudit, sendAuditToChannel, getLogs, getLogsCount, getLogsForActor };
+async function getRecentLogs(limit = 20) {
+  return getLogs({ limit: Math.min(Math.max(1, limit), 100) });
+}
+
+module.exports = { logAudit, sendAuditToChannel, getLogs, getLogsCount, getLogsForActor, getRecentLogs };

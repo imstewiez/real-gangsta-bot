@@ -23,7 +23,7 @@ const {
   TextInputStyle,
   StringSelectMenuBuilder,
 } = require('discord.js');
-const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply, safeUpdate, safeShowModal, getModalField } = require('../shared/interactionHelpers');
 const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { formatMoney } = require('../shared/formatMoney');
@@ -48,7 +48,6 @@ const pendingSelections = createSessionStore('orderPending', { ttlMs: 30 * 60 * 
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleEncomendasButton(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const member = await memberRepo.findByDiscordId(interaction.user.id);
@@ -69,8 +68,6 @@ async function handleEncomendasButton(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleOrderCartAdd(interaction) {
-  if (isDuplicate(interaction.id)) return;
-
   const cart = orderCart.getCart(interaction.user.id);
   if (!cart) {
     return safeReply(
@@ -109,7 +106,6 @@ async function handleOrderCartAdd(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleOrderCategorySelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const category = interaction.values[0];
   if (category === 'none') return;
 
@@ -149,7 +145,6 @@ async function handleOrderCategorySelect(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleOrderItemSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const itemId = parseInt(interaction.values[0], 10);
   if (!itemId || itemId === 'none') return;
 
@@ -207,8 +202,6 @@ async function handleOrderItemSelect(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleOrderModeSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
-
   const pending = pendingSelections.get(interaction.user.id);
   if (!pending || !pending.pricing) {
     return safeReply(
@@ -252,8 +245,6 @@ async function handleOrderModeSelect(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleOrderQtyModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
-
   const pending = pendingSelections.get(interaction.user.id);
   if (!pending || !pending.mode) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -330,7 +321,6 @@ async function handleOrderQtyModal(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleOrderCartRemove(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const index = parseInt(interaction.values[0], 10);
 
   const cart = orderCart.getCart(interaction.user.id);
@@ -352,7 +342,6 @@ async function handleOrderCartRemove(interaction) {
 }
 
 async function handleOrderCartClear(interaction) {
-  if (isDuplicate(interaction.id)) return;
   orderCart.clearCart(interaction.user.id);
 
   const cart = orderCart.createCart(interaction.user.id);
@@ -363,8 +352,6 @@ async function handleOrderCartClear(interaction) {
 }
 
 async function handleOrderCartBack(interaction) {
-  if (isDuplicate(interaction.id)) return;
-
   const cart = orderCart.getCart(interaction.user.id);
   if (!cart) {
     return safeUpdate(
@@ -389,8 +376,6 @@ async function handleOrderCartCheckout(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleOrderQtySelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
-
   const itemId = parseInt(interaction.customId.split('::')[1], 10);
   const value = interaction.values[0];
 
@@ -486,8 +471,6 @@ async function handleOrderQtySelect(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleOrderCancelButton(interaction) {
-  if (isDuplicate(interaction.id)) return;
-
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {
     return safeReply(interaction, { content: 'Não estás registado.' }, { messageClass: 'BANAL' });
@@ -527,8 +510,6 @@ async function handleOrderCancelButton(interaction) {
 }
 
 async function handleOrderCancelSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
-
   const orderId = parseInt(interaction.values[0], 10);
   if (!orderId) return;
 

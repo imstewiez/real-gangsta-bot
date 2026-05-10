@@ -10,7 +10,7 @@ const {
   ButtonStyle,
   EmbedBuilder,
 } = require('discord.js');
-const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply, safeUpdate, safeShowModal, getModalField } = require('../shared/interactionHelpers');
 const { replySafe } = require('../shared/safeEmbed');
 const { successEmbed, errorEmbed, stockEmbed, brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
 const { adjustStock, getCurrentStock } = require('./inventoryEngine');
@@ -75,7 +75,6 @@ async function handleRegistarMaterialButton(interaction) {
 
 // Step 2: Escolheu entrega ou venda → inicia carrinho (novo fluxo multi-item)
 async function handleTipoRegistoSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const tipo = interaction.values[0]; // 'entrega' ou 'venda'
 
   const bairristaCart = require('./bairristaCart');
@@ -100,7 +99,6 @@ async function handleTipoRegistoSelect(interaction) {
 // Usado pelos fluxos staff (ajuste / edit / deactivate / encomenda) — o
 // fluxo bairrista entrega/venda migrou para bairristaCart + itemSearch.
 async function handleCategorySelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const category = interaction.values[0];
   if (category === 'none') return;
 
@@ -151,7 +149,6 @@ async function handleAdjustStockButton(interaction) {
 }
 
 async function handleAdjustSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const itemId = parseInt(interaction.values[0], 10);
   if (Number.isNaN(itemId)) {
     return safeReply(
@@ -166,7 +163,6 @@ async function handleAdjustSelect(interaction) {
 }
 
 async function handleAdjustModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const pending = pendingItemSelections.get(interaction.user.id);
@@ -240,7 +236,6 @@ async function handleGerirMateriaisButton(interaction) {
 }
 
 async function handleGerirActionSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const action = interaction.values[0];
 
   if (action === 'list') {
@@ -360,7 +355,6 @@ async function handleGerirActionSelect(interaction) {
 }
 
 async function handleAddItemModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const name = getModalField(interaction, 'name').trim();
@@ -391,7 +385,6 @@ async function handleAddItemModal(interaction) {
 }
 
 async function handleEditItemSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const itemId = parseInt(interaction.values[0]);
   const item = await inventoryRepo.getItemById(itemId);
   if (!item)
@@ -422,7 +415,6 @@ async function handleEditItemSelect(interaction) {
 }
 
 async function handleEditPriceModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const pending = pendingItemSelections.get(interaction.user.id);
@@ -456,7 +448,6 @@ async function handleEditPriceModal(interaction) {
 }
 
 async function handleDeactivateItemSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferUpdate().catch(() => {});
 
   const itemId = parseInt(interaction.values[0]);
@@ -486,7 +477,6 @@ async function handleDeactivateItemSelect(interaction) {
 }
 
 async function handleReactivateItemSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferUpdate().catch(() => {});
 
   const itemId = parseInt(interaction.values[0]);
@@ -521,7 +511,6 @@ async function handleEncomendasButton(interaction) {
 }
 
 async function handleEncomendaSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const itemId = parseInt(interaction.values[0]);
   if (!itemId || itemId === 'none') return;
 
@@ -615,8 +604,6 @@ async function handleEncomendaSelect(interaction) {
 }
 
 async function handleEncomendaModeSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
-
   const pending = pendingItemSelections.get(interaction.user.id);
   if (!pending || pending.action !== 'order') {
     return safeReply(interaction, { content: 'Sessão expirada.' }, { messageClass: 'BANAL' });
@@ -652,7 +639,6 @@ async function handleEncomendaModeSelect(interaction) {
 }
 
 async function handleEncomendaModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const pending = pendingItemSelections.get(interaction.user.id);
@@ -775,7 +761,6 @@ async function _refreshCartPanel(interaction, cart, { extraNote } = {}) {
 
 // ── Add item → mostra categoria select ──────────────────────────────────────
 async function handleCartAdd(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const tipo = interaction.customId.split('::')[2];
   const cart = await require('./bairristaCart').getCart(interaction.user.id);
   if (!cart || cart.tipo !== tipo) {
@@ -808,7 +793,6 @@ async function handleCartAdd(interaction) {
 
 // ── Categoria escolhida → mostra itens ──────────────────────────────────────
 async function handleCartCategory(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const tipo = interaction.customId.split('::')[2];
   const category = interaction.values[0];
   if (category === 'none') return;
@@ -875,7 +859,6 @@ async function _openCartQtyModal(interaction, tipo, item, { category = 'search' 
 }
 
 async function handleCartItemPick(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const parts = interaction.customId.split('::');
   const tipo = parts[2];
   const category = parts[3];
@@ -907,7 +890,6 @@ async function handleCartItemPick(interaction) {
 
 // ── Qty modal submetido → adiciona linha + re-render painel ─────────────────
 async function handleCartQtyModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   // Novo ephemeral é o novo "pai" — futuros modais na cascade vão fechá-lo.
   parentStore.setParent(interaction.user.id, interaction);
@@ -999,7 +981,6 @@ async function handleCartQtyModal(interaction) {
 
 // ── Remover uma linha via select menu ───────────────────────────────────────
 async function handleCartLineAction(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const tipo = interaction.customId.split('::')[2];
   const value = interaction.values[0]; // "remove:<idx>"
   const [action, idxStr] = value.split(':');
@@ -1030,7 +1011,6 @@ async function handleCartLineAction(interaction) {
 
 // ── Notas globais ───────────────────────────────────────────────────────────
 async function handleCartNotesButton(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const tipo = interaction.customId.split('::')[2];
   const cart = await require('./bairristaCart').getCart(interaction.user.id);
   if (!cart) {
@@ -1060,7 +1040,6 @@ async function handleCartNotesButton(interaction) {
 }
 
 async function handleCartNotesModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   parentStore.setParent(interaction.user.id, interaction);
   const tipo = interaction.customId.split('::')[2];
@@ -1076,7 +1055,6 @@ async function handleCartNotesModal(interaction) {
 
 // ── Cancelar carrinho ───────────────────────────────────────────────────────
 async function handleCartCancel(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await require('./bairristaCart').clearCart(interaction.user.id);
   parentStore.clearParent(interaction.user.id);
   return safeUpdate(
@@ -1092,7 +1070,6 @@ async function handleCartCancel(interaction) {
 
 // ── Repetir última entrega/venda ────────────────────────────────────────────
 async function handleCartRepeat(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const tipo = interaction.customId.split('::')[2];
   const bairristaCart = require('./bairristaCart');
   const cart = await bairristaCart.getCart(interaction.user.id);
@@ -1145,7 +1122,6 @@ async function handleCartRepeat(interaction) {
 
 // ── Preview (Rever) ─────────────────────────────────────────────────────────
 async function handleCartPreview(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const tipo = interaction.customId.split('::')[2];
   const bairristaCart = require('./bairristaCart');
   const cart = await bairristaCart.getCart(interaction.user.id);
@@ -1191,7 +1167,6 @@ async function handleCartPreview(interaction) {
 }
 
 async function handleCartPreviewBack(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const tipo = interaction.customId.split('::')[2];
   const bairristaCart = require('./bairristaCart');
   const cart = await bairristaCart.getCart(interaction.user.id);
@@ -1207,7 +1182,6 @@ async function handleCartPreviewBack(interaction) {
 
 // ── Voltar ao carrinho (do menu de matérias primas) ─────────────────────────
 async function handleCartBack(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const tipo = interaction.customId.split('::')[2];
   const bairristaCart = require('./bairristaCart');
   const cart = await bairristaCart.getCart(interaction.user.id);
@@ -1223,8 +1197,6 @@ async function handleCartBack(interaction) {
 
 // ── Submeter carrinho ───────────────────────────────────────────────────────
 async function handleCartSubmit(interaction) {
-  if (isDuplicate(interaction.id)) return;
-
   const tipo = interaction.customId.split('::')[2];
   const bairristaCart = require('./bairristaCart');
   const cart = await bairristaCart.getCart(interaction.user.id);
@@ -1328,7 +1300,6 @@ async function handleCartSubmit(interaction) {
 
 // ── Undo submission ─────────────────────────────────────────────────────────
 async function handleCartUndo(interaction) {
-  if (isDuplicate(interaction.id)) return;
   // deferUpdate pela mesma razão que handleCartSubmit: evita double-click
   // race + substitui o feedback (com botão undo) pela confirmação de undo
   // na mesma mensagem.
@@ -1360,7 +1331,6 @@ async function handleCartUndo(interaction) {
 }
 
 async function handleDeliveryApproverSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferUpdate().catch(() => {});
 
   const approverId = interaction.values[0];
@@ -1484,8 +1454,6 @@ async function handleDeliveryApproverSelect(interaction) {
 }
 
 async function handleDeliveryDecision(interaction) {
-  if (isDuplicate(interaction.id)) return;
-
   // V12: só Patrão/OG/Kingpin/Manda-Chuva podem aprovar
   const { isPatraoDiZona } = require('../permissions/permissionEngine');
   if (!isPatraoDiZona(interaction.member)) {

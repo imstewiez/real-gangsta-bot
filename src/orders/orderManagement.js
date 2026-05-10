@@ -21,7 +21,7 @@ const {
   TextInputStyle,
 } = require('discord.js');
 const { ordersRepo } = require('../repositories');
-const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { formatMoney } = require('../shared/formatMoney');
 const { EMOJI } = require('../content');
@@ -64,7 +64,6 @@ function _fmtIngredients(json) {
 }
 
 async function handleGerirEncomendas(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const rows = await ordersRepo.findByStatus('pending', { limit: 50 });
@@ -137,7 +136,6 @@ function _actionsFor(status) {
 }
 
 async function handleOrderManageSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const value = interaction.values[0];
   if (value === 'refresh:refresh') {
     return handleGerirEncomendas(interaction);

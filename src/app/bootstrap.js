@@ -88,7 +88,7 @@ async function bootstrap() {
   const locked = await acquireInstanceLockWithRetry(90000);
   if (!locked) {
     error('[BOOT] Não foi possível adquirir lock após 90s. A abortar.');
-    await deregisterInstance('lock_timeout').catch(() => {});
+    await deregisterInstance('lock_timeout').catch(err => warn(`[BOOT] Falha a deregister instance: ${err.message}`));
     process.exit(1);
   }
   setPhase(BOOT_PHASES.INSTANCE_LOCKED);
@@ -154,24 +154,34 @@ async function shutdown(signal) {
   log(`[SHUTDOWN] ${signal} received. Shutting down...`);
   try {
     await drainActiveJobs(30000);
-  } catch (_) {}
+  } catch (err) {
+    warn(`[SHUTDOWN] drainActiveJobs falhou: ${err.message}`);
+  }
   try {
     stopScheduler();
-  } catch (_) {}
+  } catch (err) {
+    warn(`[SHUTDOWN] stopScheduler falhou: ${err.message}`);
+  }
   try {
     stopLogMaintenance();
-  } catch (_) {}
+  } catch (err) {
+    warn(`[SHUTDOWN] stopLogMaintenance falhou: ${err.message}`);
+  }
   try {
     client?.destroy();
-  } catch (_) {}
+  } catch (err) {
+    warn(`[SHUTDOWN] client.destroy falhou: ${err.message}`);
+  }
   if (_server) {
     try {
       await new Promise((res, rej) => {
         _server.close(err => (err ? rej(err) : res()));
       });
-    } catch (_) {}
+    } catch (err) {
+      warn(`[SHUTDOWN] server.close falhou: ${err.message}`);
+    }
   }
-  await deregisterInstance(signal).catch(() => {});
+  await deregisterInstance(signal).catch(err => warn(`[SHUTDOWN] deregisterInstance falhou: ${err.message}`));
   await releaseInstanceLock().catch(() => {});
   await pool.end().catch(() => {});
   process.exit(0);

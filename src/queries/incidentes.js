@@ -7,7 +7,7 @@ const { requirePermission } = require('../shared/requirePermission');
 const { fmtOrderStatus } = require('../shared/labels');
 
 async function handle(interaction) {
-  await requirePermission(interaction, { minRole: 'OG' });
+  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
   const sub = interaction.options.getSubcommand();
   const userTag = interaction.user.tag;
 

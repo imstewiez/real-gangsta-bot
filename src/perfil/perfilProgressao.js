@@ -7,7 +7,7 @@
  */
 
 const { MessageFlags } = require('discord.js');
-const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed, progressBar } = require('../shared/embedBuilders');
 const { EMOJI, BAIRRISTAS } = require('../content');
 const { getPromotionProgress } = require('../members/autoPromotionEngine');
@@ -17,7 +17,6 @@ const { buttonRow, button } = require('../shared/ui/buttons');
 const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
 
 async function handle(interaction) {
-  if (isDuplicate(interaction.id)) return;
   if (!interaction.deferred && !interaction.replied) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   }

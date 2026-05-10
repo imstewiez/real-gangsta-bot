@@ -10,7 +10,7 @@
  */
 
 const { MessageFlags, ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
-const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply } = require('../shared/interactionHelpers');
 const { EMOJI } = require('../content');
 const {
   buildDetailsForPeriod,
@@ -23,7 +23,6 @@ const {
 const { warn } = require('../logger');
 
 async function handleLeaderboardDetails(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
   const period = interaction.customId.split('::')[2];
@@ -45,7 +44,6 @@ async function handleLeaderboardDetails(interaction) {
 }
 
 async function handleLeaderboardNav(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
   const [, , period, offsetStr] = interaction.customId.split('::');
@@ -64,7 +62,6 @@ async function handleLeaderboardNav(interaction) {
 }
 
 async function handleLeaderboardCustomOpen(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const modal = new ModalBuilder()
     .setCustomId('lb::custom::modal')
     .setTitle('📅 Leaderboard — datas custom')
@@ -110,7 +107,6 @@ async function handleLeaderboardCustomModal(interaction) {
 }
 
 async function handleLeaderboardRefresh(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
 
   const gate = canUserRefresh(interaction.user.id);

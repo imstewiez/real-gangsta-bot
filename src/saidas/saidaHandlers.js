@@ -8,7 +8,7 @@ const {
   StringSelectMenuBuilder,
   UserSelectMenuBuilder,
 } = require('discord.js');
-const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply, safeUpdate, safeShowModal, getModalField } = require('../shared/interactionHelpers');
 const { replySafe } = require('../shared/safeEmbed');
 const { fmtSaidaStatus, fmtSaidaType, fmtParticipantType } = require('../shared/labels');
 const { buildSearchableSelect } = require('../shared/selectSearch');
@@ -155,7 +155,6 @@ async function handleCreateSaidaButton(interaction) {
 
 // Step 2: tipo seleccionado → dropdown de spots (em vez de ir já ao modal).
 async function handleCreateTypeSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const saidaType = interaction.values[0];
   _setContext(interaction.user.id, { saidaType });
 
@@ -188,7 +187,6 @@ async function handleCreateTypeSelect(interaction) {
 // Step 3: spot seleccionado → abre modal final com data/hora/notas
 // (data e hora pré-preenchidas com o momento actual — Europe/Lisbon).
 async function handleCreateSpotSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const spotKey = interaction.values[0];
   const ctx = pendingSaidaContext.get(interaction.user.id) || {};
   ctx.spotKey = spotKey;
@@ -245,7 +243,6 @@ async function handleCreateSpotSelect(interaction) {
 }
 
 async function handleCreateSaidaModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const date = getModalField(interaction, 'date');
   const time = getModalField(interaction, 'time');
@@ -344,7 +341,6 @@ async function handleCloseSaidaButton(interaction) {
  */
 async function handleCloseSessionDirect(interaction) {
   _deprecate('handleCloseSessionDirect');
-  if (isDuplicate(interaction.id)) return;
   if (!(await requirePermission(interaction, isChefia))) return;
 
   const saidaId = parseInt(interaction.customId.split('::')[2], 10);
@@ -393,7 +389,6 @@ async function handleCloseSessionDirect(interaction) {
 
 async function handleCloseSaidaSelect(interaction) {
   _deprecate('handleCloseSaidaSelect');
-  if (isDuplicate(interaction.id)) return;
   const saidaId = parseInt(interaction.values[0], 10);
   if (Number.isNaN(saidaId)) {
     return safeReply(
@@ -430,7 +425,6 @@ async function handleCloseSaidaSelect(interaction) {
 // "por escrita" para ser mais directo.
 async function handleCloseResultSelect(interaction) {
   _deprecate('handleCloseResultSelect');
-  if (isDuplicate(interaction.id)) return;
   const result = interaction.values[0];
   const ctx = pendingSaidaContext.get(interaction.user.id) || {};
   ctx.result = result;
@@ -488,7 +482,6 @@ async function handleCloseResultSelect(interaction) {
 
 async function handleCloseSaidaModal(interaction) {
   _deprecate('handleCloseSaidaModal');
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const ctx = pendingSaidaContext.get(interaction.user.id);
   if (!ctx)
@@ -559,7 +552,6 @@ async function handleCloseSaidaModal(interaction) {
  */
 async function handleFinalizeSaidaButton(interaction) {
   _deprecate('handleFinalizeSaidaButton');
-  if (isDuplicate(interaction.id)) return;
 
   if (!(await requirePermission(interaction, isChefia))) return;
 
@@ -649,7 +641,6 @@ async function handleFinalizeSaidaButton(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleMarkDeadSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferUpdate().catch(() => {});
   const parts = interaction.customId.split('::');
   const saidaId = parseInt(parts[2]);
@@ -771,7 +762,6 @@ async function handleAddParticipantButton(interaction) {
 }
 
 async function handleAddParticipantSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const saidaId = parseInt(interaction.values[0], 10);
   if (Number.isNaN(saidaId)) {
     return safeReply(
@@ -795,7 +785,6 @@ async function handleAddParticipantSelect(interaction) {
 }
 
 async function handleParticipantUsersSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferUpdate().catch(() => {});
   const parts = interaction.customId.split('::');
   const saidaId = parseInt(parts[2]);
@@ -868,7 +857,6 @@ async function handleRegisterMaterialButton(interaction) {
 }
 
 async function handleMaterialOpSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const saidaId = parseInt(interaction.values[0]);
   _setContext(interaction.user.id, { saidaId, action: 'material_op' });
   const directionOptions = [
@@ -897,7 +885,6 @@ async function handleMaterialOpSelect(interaction) {
 }
 
 async function handleMaterialDirectionSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const direction = interaction.values[0];
   const ctx = pendingSaidaContext.get(interaction.user.id);
   if (!ctx || ctx.action !== 'material_op') {
@@ -923,7 +910,6 @@ async function handleMaterialDirectionSelect(interaction) {
 // Adiciona botão "🔎 Procurar" em row separado para o user poder pesquisar
 // directamente no catálogo inteiro em vez de scrollar.
 async function handleMaterialCategorySelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const category = interaction.values[0];
   if (category === 'none') return;
   const customId = interaction.customId;
@@ -947,7 +933,6 @@ async function handleMaterialCategorySelect(interaction) {
 }
 
 async function handleMaterialItemSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const itemId = parseInt(interaction.values[0]);
   const ctx = pendingSaidaContext.get(interaction.user.id);
   if (!ctx || ctx.action !== 'material_op') {
@@ -988,7 +973,6 @@ async function handleMaterialItemSelect(interaction) {
 }
 
 async function handleMaterialQtyModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const ctx = pendingSaidaContext.get(interaction.user.id);
   if (!ctx || ctx.action !== 'material_op') {
@@ -1052,7 +1036,6 @@ async function handleIssueToParticipantButton(interaction) {
 }
 
 async function handleIssueSaidaSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const saidaId = parseInt(interaction.values[0], 10);
   if (Number.isNaN(saidaId)) {
     return safeReply(
@@ -1093,7 +1076,6 @@ async function handleIssueSaidaSelect(interaction) {
 }
 
 async function handleIssueParticipantSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const discordId = interaction.values[0];
   const ctx = pendingSaidaContext.get(interaction.user.id);
   if (!ctx || ctx.action !== 'issue_to_participant')
@@ -1115,7 +1097,6 @@ async function handleIssueParticipantSelect(interaction) {
 }
 
 async function handleIssueItemSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const itemId = parseInt(interaction.values[0]);
   const ctx = pendingSaidaContext.get(interaction.user.id);
   if (!ctx || ctx.action !== 'issue_to_participant')
@@ -1155,7 +1136,6 @@ async function handleIssueItemSelect(interaction) {
 }
 
 async function handleIssueQtyModal(interaction) {
-  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const ctx = pendingSaidaContext.get(interaction.user.id);
   if (!ctx || ctx.action !== 'issue_to_participant')

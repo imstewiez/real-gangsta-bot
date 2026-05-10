@@ -9,7 +9,7 @@
 
 const { MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
 const { ordersRepo } = require('../repositories');
-const { safeReply, safeUpdate, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply, safeUpdate } = require('../shared/interactionHelpers');
 const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { formatMoney } = require('../shared/formatMoney');
@@ -123,8 +123,6 @@ function _buildTrackingComponents(orders, { page = 0, totalPages = 1, memberDisc
 // ── Public API ─────────────────────────────────────────────────────────────
 
 async function showTrackingPanel(interaction, opts = {}) {
-  if (isDuplicate(interaction.id)) return;
-
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {
     return safeReply(
@@ -156,8 +154,6 @@ async function showTrackingPanel(interaction, opts = {}) {
 }
 
 async function showOrderDetail(interaction, orderId) {
-  if (isDuplicate(interaction.id)) return;
-
   if (!orderId && interaction.values?.length) {
     orderId = parseInt(interaction.values[0], 10);
   }

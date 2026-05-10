@@ -7,7 +7,7 @@ const { requirePermission } = require('../shared/requirePermission');
 const { promoteMember, demoteMember } = require('../members/promotionEngine');
 
 async function handle(interaction) {
-  await requirePermission(interaction, { minRole: 'OG' });
+  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
   const sub = interaction.options.getSubcommand();
   const userTag = interaction.user.tag;
 

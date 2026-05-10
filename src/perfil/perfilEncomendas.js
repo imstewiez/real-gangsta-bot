@@ -8,7 +8,7 @@
  */
 
 const { MessageFlags } = require('discord.js');
-const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { memberRepo, ordersRepo } = require('../repositories');
@@ -50,7 +50,6 @@ const STATUS_LABEL = {
 };
 
 async function handle(interaction) {
-  if (isDuplicate(interaction.id)) return;
   if (!interaction.deferred && !interaction.replied) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   }

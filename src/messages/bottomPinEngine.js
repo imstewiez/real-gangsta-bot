@@ -182,7 +182,9 @@ class BottomPinEngine {
     if (oldPin.discord_msg_id) {
       const oldMsg = await channel.messages.fetch(oldPin.discord_msg_id).catch(() => null);
       if (oldMsg) {
-        await oldMsg.delete().catch(() => {});
+        await oldMsg
+          .delete()
+          .catch(err => warn(`[BOTTOM_PIN] Falha a apagar mensagem antiga ${oldPin.discord_msg_id}: ${err.message}`));
       }
     }
 

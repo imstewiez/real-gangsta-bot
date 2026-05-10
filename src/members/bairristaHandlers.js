@@ -13,7 +13,7 @@
 
 const { MessageFlags, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
 const { bairristaStatsRepo } = require('../repositories');
-const { safeReply, isDuplicate } = require('../shared/interactionHelpers');
+const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed, applyLogo, progressBar, rankBadge, streakBadge } = require('../shared/embedBuilders');
 const { BAIRRISTAS, EMOJI } = require('../content');
 const { getPromotionProgress, formatTierName } = require('./autoPromotionEngine');
@@ -200,7 +200,6 @@ async function handleRanking(interaction) {
 }
 
 async function handleRankingSelect(interaction) {
-  if (isDuplicate(interaction.id)) return;
   const period = interaction.values[0];
   await interaction.deferUpdate().catch(() => {});
   return _showRanking(interaction, period);
