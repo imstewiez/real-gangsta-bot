@@ -158,27 +158,14 @@ async function handleSetModal(interaction) {
 async function handleRandom(interaction) {
   if (await _denyIfNotOG(interaction)) return;
   const [, , type] = parseId(interaction.customId);
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   try {
-    const result = await setRandom({ type, actorId: interaction.user.id });
+    await setRandom({ type, actorId: interaction.user.id });
+    await interaction.deferUpdate();
     await refreshMessage(interaction);
     notifyStickyChange(interaction.client).catch(() => {});
-    await notifyRadioChange(interaction.channel, {
-      type,
-      value: result.value,
-      previous: result.previous,
-      mode: 'random',
-      actorId: interaction.user.id,
-    });
-
-    const meta = TYPE_META[type];
-    const embed = successEmbed(
-      RADIO.RANDOM_TITLE,
-      `**${meta.label}**\n${RADIO.LABELS.ANTES}: \`${result.previous || '—'}\`\n${RADIO.LABELS.AGORA}: \`${result.value}\``
-    );
-    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
-    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'RESULT' });
+    warn(`[RADIO] handleRandom: ${e.message}`);
+    return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'ERROR' });
   }
 }
 
