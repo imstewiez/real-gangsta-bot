@@ -175,13 +175,19 @@ async function handleAdjustModal(interaction) {
     return safeReply(interaction, { embeds: [embed] }, { messageClass: 'ERROR' });
   }
   if (Math.abs(quantity) > MAX_ADJUSTMENT) {
-    const embed = errorEmbed('Quantidade excede o limite', `O ajuste máximo permitido é **${MAX_ADJUSTMENT.toLocaleString('pt-PT')}** unidades.`);
+    const embed = errorEmbed(
+      'Quantidade excede o limite',
+      `O ajuste máximo permitido é **${MAX_ADJUSTMENT.toLocaleString('pt-PT')}** unidades.`
+    );
     return safeReply(interaction, { embeds: [embed] }, { messageClass: 'ERROR' });
   }
 
   const currentStock = await inventoryRepo.getStockForItem(pending.itemId).catch(() => 0);
   if (currentStock + quantity < 0) {
-    const embed = errorEmbed('Stock insuficiente', `Saldo actual: **${currentStock}**. Não podes descontar **${Math.abs(quantity)}** unidades.`);
+    const embed = errorEmbed(
+      'Stock insuficiente',
+      `Saldo actual: **${currentStock}**. Não podes descontar **${Math.abs(quantity)}** unidades.`
+    );
     return safeReply(interaction, { embeds: [embed] }, { messageClass: 'ERROR' });
   }
 
@@ -968,14 +974,18 @@ async function handleCartQtyModal(interaction) {
     }
   }
 
-  await bairristaCart.addLine(cart, {
-    itemId: item.id,
-    itemName: item.name,
-    category: item.category,
-    quantity: qty,
-    unitPrice,
-    basePrice,
-  }, interaction.user.id);
+  await bairristaCart.addLine(
+    cart,
+    {
+      itemId: item.id,
+      itemName: item.name,
+      category: item.category,
+      quantity: qty,
+      unitPrice,
+      basePrice,
+    },
+    interaction.user.id
+  );
 
   return _refreshCartPanel(interaction, cart);
 }
@@ -1101,14 +1111,18 @@ async function handleCartRepeat(interaction) {
   for (const line of last.lines) {
     const item = await inventoryRepo.getItemById(line.item_id).catch(() => null);
     if (!item) continue;
-    await bairristaCart.addLine(cart, {
-      itemId: line.item_id,
-      itemName: line.item_name,
-      category: line.category,
-      quantity: line.quantity,
-      unitPrice: null, // não re-usa preço custom antigo
-      basePrice: parseFloat(item.estimated_value) || 0,
-    }, interaction.user.id);
+    await bairristaCart.addLine(
+      cart,
+      {
+        itemId: line.item_id,
+        itemName: line.item_name,
+        category: line.category,
+        quantity: line.quantity,
+        unitPrice: null, // não re-usa preço custom antigo
+        basePrice: parseFloat(item.estimated_value) || 0,
+      },
+      interaction.user.id
+    );
   }
   return _refreshCartPanel(interaction, cart, {
     extraNote: `🔁 _Pré-preenchido com ${last.lines.length} linha(s) da última submissão. Preços actualizados._`,

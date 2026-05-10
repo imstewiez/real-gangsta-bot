@@ -33,7 +33,8 @@ function getLogPaths() {
   };
 }
 
-const SENSITIVE_KEYS = /\b(token|password|secret|api_key|auth_key|private_key|secret_key|authorization|credential|service_account|database_url|connection_string)\b/i;
+const SENSITIVE_KEYS =
+  /\b(token|password|secret|api_key|auth_key|private_key|secret_key|authorization|credential|service_account|database_url|connection_string)\b/i;
 
 function redactObject(obj, depth = 0) {
   if (depth > 4 || !obj || typeof obj !== 'object') return obj;

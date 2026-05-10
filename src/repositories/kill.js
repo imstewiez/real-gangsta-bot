@@ -82,10 +82,9 @@ async function countKillsByMember(memberId, weekStart = null, weekEnd = null) {
 }
 
 async function countKillsToday(killerId) {
-  const res = await query(
-    `SELECT COUNT(*)::int AS n FROM kill_logs WHERE killer_id = $1 AND date = CURRENT_DATE`,
-    [killerId]
-  );
+  const res = await query(`SELECT COUNT(*)::int AS n FROM kill_logs WHERE killer_id = $1 AND date = CURRENT_DATE`, [
+    killerId,
+  ]);
   return res.rows[0]?.n || 0;
 }
 
@@ -115,11 +114,14 @@ async function totalOrgKillsAllSources(windowDays = null) {
     logsWindow = `WHERE created_at >= NOW() - $1::interval`;
     opsWindow = `WHERE updated_at >= NOW() - $1::interval`;
   }
-  const r = await query(`
+  const r = await query(
+    `
     SELECT
       (SELECT COUNT(*) FROM kill_logs ${logsWindow})::int AS from_logs,
       (SELECT COALESCE(SUM(kills), 0) FROM operation_participants ${opsWindow})::int AS from_saidas
-  `, params);
+  `,
+    params
+  );
   const row = r.rows[0] || {};
   return (row.from_logs || 0) + (row.from_saidas || 0);
 }

@@ -42,9 +42,7 @@ async function sendDMAlert(userId, { title, description }, client) {
     return { success: false, code: 'USER_NOT_FOUND' };
   }
 
-  const embed = new EmbedBuilder()
-    .setTitle(title || 'Alerta')
-    .setDescription(description || '');
+  const embed = new EmbedBuilder().setTitle(title || 'Alerta').setDescription(description || '');
 
   try {
     await user.send({ embeds: [embed] });
@@ -66,13 +64,23 @@ async function sendDMAlert(userId, { title, description }, client) {
  */
 async function sendAdminAlert(message, client) {
   if (!client) {
-    logAudit({ action: 'ADMIN_ALERT_FAILED', entityType: 'dm_notification', entityId: 'bulk', context: 'missing_client' });
+    logAudit({
+      action: 'ADMIN_ALERT_FAILED',
+      entityType: 'dm_notification',
+      entityId: 'bulk',
+      context: 'missing_client',
+    });
     return { sent: 0, failed: 0, errors: ['missing_client'] };
   }
 
   const guild = CONFIG.DISCORD_GUILD_ID ? client.guilds.cache.get(CONFIG.DISCORD_GUILD_ID) : null;
   if (!guild) {
-    logAudit({ action: 'ADMIN_ALERT_FAILED', entityType: 'dm_notification', entityId: 'bulk', context: 'guild_not_found' });
+    logAudit({
+      action: 'ADMIN_ALERT_FAILED',
+      entityType: 'dm_notification',
+      entityId: 'bulk',
+      context: 'guild_not_found',
+    });
     return { sent: 0, failed: 0, errors: ['guild_not_found'] };
   }
 
@@ -90,9 +98,7 @@ async function sendAdminAlert(message, client) {
   }
 
   const results = await Promise.allSettled(
-    adminMembers.map(member =>
-      sendDMAlert(member.user.id, { title: 'Alerta Admin', description: message }, client)
-    )
+    adminMembers.map(member => sendDMAlert(member.user.id, { title: 'Alerta Admin', description: message }, client))
   );
 
   let sent = 0;

@@ -56,7 +56,9 @@ async function runJob(job) {
     try {
       await Promise.race([
         job.fn(_client),
-        new Promise((_, reject) => setTimeout(() => reject(new Error(`Job ${job.name} timeout após ${JOB_TIMEOUT_MS}ms`)), JOB_TIMEOUT_MS))
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`Job ${job.name} timeout após ${JOB_TIMEOUT_MS}ms`)), JOB_TIMEOUT_MS)
+        ),
       ]);
       await jobRepo.completeJob(jobId, {});
     } catch (e) {
@@ -73,7 +75,11 @@ async function runJob(job) {
     }
   })();
   _activeJobs.set(job.name, promise);
-  try { await promise; } finally { _activeJobs.delete(job.name); }
+  try {
+    await promise;
+  } finally {
+    _activeJobs.delete(job.name);
+  }
 }
 
 async function drainActiveJobs(timeoutMs = 30000) {
@@ -84,10 +90,8 @@ async function drainActiveJobs(timeoutMs = 30000) {
   }
   if (!_activeJobs.size) return;
   log(`[SCHEDULER] Draining ${_activeJobs.size} active jobs...`);
-  await Promise.all(
-    Array.from(_activeJobs.values()).map(p =>
-      Promise.race([p, new Promise(r => setTimeout(r, timeoutMs))])
-    )
+  await Promise.allSettled(
+    Array.from(_activeJobs.values()).map(p => Promise.race([p, new Promise(r => setTimeout(r, timeoutMs))]))
   );
   log('[SCHEDULER] Drain complete.');
 }

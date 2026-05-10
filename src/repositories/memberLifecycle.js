@@ -33,7 +33,9 @@ async function transition({ memberId, newState, changedBy, reason }) {
     const oldState = cur.rows[0].lifecycle_state;
     if (oldState === newState) return { oldState, newState, changed: false };
     if (!canTransition(oldState, newState)) {
-      throw new ConflictError(`Transição inválida: ${oldState} → ${newState}`, { code: 'INVALID_LIFECYCLE_TRANSITION' });
+      throw new ConflictError(`Transição inválida: ${oldState} → ${newState}`, {
+        code: 'INVALID_LIFECYCLE_TRANSITION',
+      });
     }
 
     await client.query(

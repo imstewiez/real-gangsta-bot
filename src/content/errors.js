@@ -7,10 +7,11 @@
  */
 
 const E = require('./emojis');
+const { t } = require('../shared/i18n');
 
 const ERRORS = {
   // Genéricos
-  GENERIC: () => `${E.ERRO} Algo correu mal. Tenta outra vez.`,
+  GENERIC: () => `${E.ERRO} ${t('errors.generic', 'Algo correu mal. Tenta outra vez.')}`,
 
   // Erro com mensagem user-friendly explícita (ex: throws de domínio tipo
   // "Spot em cooldown — faltam 22 min"). Usar APENAS com strings já
@@ -34,12 +35,12 @@ const ERRORS = {
   ALREADY_EXISTS: what => `${E.DUPLICADO} "${what}" já existe.`,
 
   // Permissões
-  NO_PERMISSION: what => `${E.NO_PERMISSION} ${what ? `Não é contigo — ${what}.` : 'Ainda não tens acesso a isto.'}`,
+  NO_PERMISSION: what => `${E.NO_PERMISSION} ${what ? `Não é contigo — ${what}.` : t('errors.no_permission', 'Ainda não tens acesso a isto.')}`,
 
   NO_ROLE: () => `${E.NO_PERMISSION} Não tens o peso para isto.`,
 
   // Membros
-  MEMBER_NOT_FOUND: () => `${E.NOT_FOUND} Esse nome não está na casa.`,
+  MEMBER_NOT_FOUND: () => `${E.NOT_FOUND} ${t('errors.member_not_found', 'Esse nome não está na casa.')}`,
 
   ALREADY_REGISTERED: () => `${E.WARN} Já está na firma — não precisas de registar outra vez.`,
 

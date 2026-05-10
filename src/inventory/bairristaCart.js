@@ -106,7 +106,9 @@ async function setNotes(cart, notes, discordId) {
   const text = String(notes || '').trim();
   const MAX_NOTES = 500;
   if (text.length > MAX_NOTES) {
-    throw new ValidationError(`Notas excedem ${MAX_NOTES} caracteres (${text.length} inseridos).`, { code: 'NOTES_TOO_LONG' });
+    throw new ValidationError(`Notas excedem ${MAX_NOTES} caracteres (${text.length} inseridos).`, {
+      code: 'NOTES_TOO_LONG',
+    });
   }
   cart.globalNotes = text;
   cart.updatedAt = Date.now();

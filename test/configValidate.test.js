@@ -92,7 +92,9 @@ const shouldSkip = !process.env.CI && !process.env.DISCORD_BOT_TOKEN;
   });
 
   test('validateConfig — availability auto-publish sem canal é erro', () => {
-    const findings = validateConfig(baseConfig({ AVAILABILITY_AUTO_PUBLISH_ENABLED: true, AVAILABILITY_CHANNEL_ID: '' }));
+    const findings = validateConfig(
+      baseConfig({ AVAILABILITY_AUTO_PUBLISH_ENABLED: true, AVAILABILITY_CHANNEL_ID: '' })
+    );
     const err = findings.find(f => f.key === 'AVAILABILITY_CHANNEL_ID');
     assert.ok(err);
     assert.equal(err.level, 'error');

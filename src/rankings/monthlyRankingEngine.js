@@ -159,7 +159,8 @@ async function recomputeAllTimeStats() {
   // Agrega TUDO desde o início — queries cruzadas:
   //   - inventory_movements (entregas, vendas, weighted_value)
   //   - operation_participants (saidas, wins/losses, kills, deaths, mvp, profit)
-  const r = await query(`
+  const r = await query(
+    `
     WITH inv AS (
       SELECT
         member_id,
@@ -212,7 +213,8 @@ async function recomputeAllTimeStats() {
     LEFT JOIN inv ON inv.member_id = m.id
     LEFT JOIN sai ON sai.member_id = m.id
     WHERE m.status = 'ativo' OR m.status IS NULL`,
-    [DELIVERY_TYPES, SALE_TYPES, CONTRIBUTION_TYPES]);
+    [DELIVERY_TYPES, SALE_TYPES, CONTRIBUTION_TYPES]
+  );
 
   for (const row of r.rows) {
     const hybrid = computeHybridScore({

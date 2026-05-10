@@ -39,10 +39,10 @@ async function recalculateBalance(itemId, location = 'armazem') {
 }
 
 async function getBalance(itemId, location = 'armazem') {
-  const res = await query(
-    'SELECT balance FROM inventory_balance WHERE item_id = $1 AND location = $2',
-    [itemId, location]
-  );
+  const res = await query('SELECT balance FROM inventory_balance WHERE item_id = $1 AND location = $2', [
+    itemId,
+    location,
+  ]);
   if (res.rows.length) {
     return res.rows[0].balance;
   }

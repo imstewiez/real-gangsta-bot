@@ -28,7 +28,7 @@ function resolved(rel) {
 const _carts = new Map();
 require.cache[resolved('repositories/cartStore.js')] = {
   exports: {
-    getCart: async (discordId) => {
+    getCart: async discordId => {
       const c = _carts.get(discordId);
       if (!c) return null;
       return {
@@ -46,7 +46,7 @@ require.cache[resolved('repositories/cartStore.js')] = {
         updatedAt: cart.updatedAt || Date.now(),
       });
     },
-    clearCart: async (discordId) => {
+    clearCart: async discordId => {
       _carts.delete(discordId);
     },
     touchExpiry: async () => {},

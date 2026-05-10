@@ -339,7 +339,9 @@ async function _syncOneImpl(key) {
         }
       }
     } else {
-      warn(`[SHEETS] ${key} partial batch failure (${(flushed.replies || []).length}/${requestCount} replies) — trim skipped`);
+      warn(
+        `[SHEETS] ${key} partial batch failure (${(flushed.replies || []).length}/${requestCount} replies) — trim skipped`
+      );
       syncErr = new ConflictError('Partial sync failure — trim skipped');
     }
   } catch (e) {
@@ -414,10 +416,15 @@ async function syncOne(key) {
   await googleRateLimiter.acquire(5);
 
   while (_syncLocks.has(key)) {
-    try { await _syncLocks.get(key); } catch {}
+    try {
+      await _syncLocks.get(key);
+    } catch {}
   }
   let resolveLock, rejectLock;
-  const lockPromise = new Promise((res, rej) => { resolveLock = res; rejectLock = rej; });
+  const lockPromise = new Promise((res, rej) => {
+    resolveLock = res;
+    rejectLock = rej;
+  });
   _syncLocks.set(key, lockPromise);
 
   let lastErr = null;
@@ -448,10 +455,13 @@ async function syncOne(key) {
       }
     }
     try {
-      await query(`
+      await query(
+        `
         INSERT INTO sync_retries (tab, event_type, last_error, next_retry_at)
         VALUES ($1, $2, $3, NOW() + interval '5 seconds')
-      `, [key, 'sync.failed', lastErr.message?.slice(0, 500) || 'unknown']);
+      `,
+        [key, 'sync.failed', lastErr.message?.slice(0, 500) || 'unknown']
+      );
     } catch (dbErr) {
       warn(`[SHEETS:DLQ] Falha a gravar retry na DB: ${dbErr.message}`);
     }

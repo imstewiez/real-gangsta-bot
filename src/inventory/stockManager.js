@@ -73,8 +73,11 @@ async function getCurrentStock(itemId, location = null) {
 
 async function addStock({ itemId, quantity, location, type = 'apreendido', actor, memberId = null, notes = '' }) {
   if (!VALID_LOCATIONS.includes(location))
-    throw new ValidationError(`Casa inválida: ${location} (deve ser 'armazem' ou 'grupo')`, { code: 'INVALID_LOCATION' });
-  if (!Number.isInteger(quantity) || quantity <= 0) throw new ValidationError('Quantidade tem de ser inteiro positivo', { code: 'INVALID_QUANTITY' });
+    throw new ValidationError(`Casa inválida: ${location} (deve ser 'armazem' ou 'grupo')`, {
+      code: 'INVALID_LOCATION',
+    });
+  if (!Number.isInteger(quantity) || quantity <= 0)
+    throw new ValidationError('Quantidade tem de ser inteiro positivo', { code: 'INVALID_QUANTITY' });
   const VALID_INFLOW_TYPES = [
     MOVEMENT_TYPE.APREENDIDO,
     MOVEMENT_TYPE.CRAFTADO,
@@ -111,8 +114,10 @@ async function removeStock({
   memberId = null,
   notes = '',
 }) {
-  if (!VALID_LOCATIONS.includes(location)) throw new ValidationError(`Casa inválida: ${location}`, { code: 'INVALID_LOCATION' });
-  if (!Number.isInteger(quantity) || quantity <= 0) throw new ValidationError('Quantidade tem de ser inteiro positivo', { code: 'INVALID_QUANTITY' });
+  if (!VALID_LOCATIONS.includes(location))
+    throw new ValidationError(`Casa inválida: ${location}`, { code: 'INVALID_LOCATION' });
+  if (!Number.isInteger(quantity) || quantity <= 0)
+    throw new ValidationError('Quantidade tem de ser inteiro positivo', { code: 'INVALID_QUANTITY' });
   const VALID_OUTFLOW_TYPES = [
     MOVEMENT_TYPE.VENDA_BAIRRISTA,
     MOVEMENT_TYPE.FORNECIMENTO_ORG,
@@ -143,7 +148,9 @@ async function removeStock({
     );
     const current = currentRes.rows[0]?.balance || 0;
     if (current < quantity) {
-      throw new ConflictError(`Stock insuficiente em ${location}: tem ${current}, queres tirar ${quantity}`, { code: 'INSUFFICIENT_STOCK' });
+      throw new ConflictError(`Stock insuficiente em ${location}: tem ${current}, queres tirar ${quantity}`, {
+        code: 'INSUFFICIENT_STOCK',
+      });
     }
 
     const r = await client.query(
@@ -171,10 +178,14 @@ async function removeStock({
 }
 
 async function transferStock({ itemId, quantity, fromLocation, toLocation, actor, memberId = null, notes = '' }) {
-  if (!VALID_LOCATIONS.includes(fromLocation)) throw new ValidationError(`Casa origem inválida: ${fromLocation}`, { code: 'INVALID_LOCATION' });
-  if (!VALID_LOCATIONS.includes(toLocation)) throw new ValidationError(`Casa destino inválida: ${toLocation}`, { code: 'INVALID_LOCATION' });
-  if (fromLocation === toLocation) throw new ValidationError('Origem e destino não podem ser iguais', { code: 'INVALID_LOCATION' });
-  if (!Number.isInteger(quantity) || quantity <= 0) throw new ValidationError('Quantidade tem de ser inteiro positivo', { code: 'INVALID_QUANTITY' });
+  if (!VALID_LOCATIONS.includes(fromLocation))
+    throw new ValidationError(`Casa origem inválida: ${fromLocation}`, { code: 'INVALID_LOCATION' });
+  if (!VALID_LOCATIONS.includes(toLocation))
+    throw new ValidationError(`Casa destino inválida: ${toLocation}`, { code: 'INVALID_LOCATION' });
+  if (fromLocation === toLocation)
+    throw new ValidationError('Origem e destino não podem ser iguais', { code: 'INVALID_LOCATION' });
+  if (!Number.isInteger(quantity) || quantity <= 0)
+    throw new ValidationError('Quantidade tem de ser inteiro positivo', { code: 'INVALID_QUANTITY' });
 
   const run = async client => {
     const currentRes = await client.query(
@@ -196,7 +207,9 @@ async function transferStock({ itemId, quantity, fromLocation, toLocation, actor
     );
     const current = currentRes.rows[0]?.balance || 0;
     if (current < quantity) {
-      throw new ConflictError(`Stock insuficiente em ${fromLocation}: tem ${current}, queres mover ${quantity}`, { code: 'INSUFFICIENT_STOCK' });
+      throw new ConflictError(`Stock insuficiente em ${fromLocation}: tem ${current}, queres mover ${quantity}`, {
+        code: 'INSUFFICIENT_STOCK',
+      });
     }
 
     // Par de movimentos ajuste_manual: -X numa casa, +X na outra. Saldo global mantém-se.
@@ -248,8 +261,10 @@ async function transferStock({ itemId, quantity, fromLocation, toLocation, actor
 }
 
 async function adjustStock({ itemId, newTotal, location, actor, memberId = null, reason = 'contagem manual' }) {
-  if (!VALID_LOCATIONS.includes(location)) throw new ValidationError(`Casa inválida: ${location}`, { code: 'INVALID_LOCATION' });
-  if (!Number.isInteger(newTotal) || newTotal < 0) throw new ValidationError('Novo total tem de ser inteiro >= 0', { code: 'INVALID_QUANTITY' });
+  if (!VALID_LOCATIONS.includes(location))
+    throw new ValidationError(`Casa inválida: ${location}`, { code: 'INVALID_LOCATION' });
+  if (!Number.isInteger(newTotal) || newTotal < 0)
+    throw new ValidationError('Novo total tem de ser inteiro >= 0', { code: 'INVALID_QUANTITY' });
 
   const run = async client => {
     const currentRes = await client.query(

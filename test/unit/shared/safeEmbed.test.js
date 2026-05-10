@@ -64,7 +64,10 @@ describe('replySafe', () => {
     const interaction = {
       replied: false,
       deferred: false,
-      reply: async (p) => { called = true; return p; },
+      reply: async p => {
+        called = true;
+        return p;
+      },
       deleteReply: async () => {},
     };
     const payload = { embeds: [new SafeEmbedBuilder().setTitle('T')] };
@@ -78,8 +81,14 @@ describe('replySafe', () => {
     const interaction = {
       replied: false,
       deferred: false,
-      reply: async (p) => { calls.push({ method: 'reply', embedCount: p.embeds.length }); return p; },
-      followUp: async (p) => { calls.push({ method: 'followUp', embedCount: p.embeds.length }); return p; },
+      reply: async p => {
+        calls.push({ method: 'reply', embedCount: p.embeds.length });
+        return p;
+      },
+      followUp: async p => {
+        calls.push({ method: 'followUp', embedCount: p.embeds.length });
+        return p;
+      },
       deleteReply: async () => {},
     };
     await replySafe(interaction, { embeds });
@@ -94,8 +103,14 @@ describe('replySafe', () => {
     const interaction = {
       replied: false,
       deferred: true,
-      editReply: async (p) => { calls.push({ method: 'editReply', embedCount: p.embeds.length }); return p; },
-      followUp: async (p) => { calls.push({ method: 'followUp', embedCount: p.embeds.length }); return p; },
+      editReply: async p => {
+        calls.push({ method: 'editReply', embedCount: p.embeds.length });
+        return p;
+      },
+      followUp: async p => {
+        calls.push({ method: 'followUp', embedCount: p.embeds.length });
+        return p;
+      },
       deleteReply: async () => {},
     };
     const embeds = Array.from({ length: 12 }, () => new SafeEmbedBuilder().setTitle('X'));

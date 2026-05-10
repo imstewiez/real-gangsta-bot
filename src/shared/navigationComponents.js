@@ -29,23 +29,14 @@ function buildPaginationButtons({ page, totalPages, customIdPrefix }) {
 
 function buildBackButton(targetCustomId) {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(targetCustomId)
-      .setLabel('↩ Voltar')
-      .setStyle(ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId(targetCustomId).setLabel('↩ Voltar').setStyle(ButtonStyle.Secondary)
   );
 }
 
 function buildConfirmCancel(confirmId, cancelId) {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(confirmId)
-      .setLabel('✅ Confirmar')
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId(cancelId)
-      .setLabel('❌ Cancelar')
-      .setStyle(ButtonStyle.Danger)
+    new ButtonBuilder().setCustomId(confirmId).setLabel('✅ Confirmar').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(cancelId).setLabel('❌ Cancelar').setStyle(ButtonStyle.Danger)
   );
 }
 

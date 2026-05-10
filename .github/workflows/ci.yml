@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - name: Audit dependencies
@@ -25,7 +25,7 @@ jobs:
       - name: Test with coverage (enforces thresholds via .c8rc.json)
         run: npm run test:coverage
         env:
-          DATABASE_URL: ''
+          DATABASE_URL: 'postgresql://bot:bot@localhost:5432/bot_ci'
           DISCORD_BOT_TOKEN: 'test'
           DISCORD_GUILD_ID: 'test'
       - name: Upload coverage report
@@ -56,7 +56,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - name: Audit dependencies

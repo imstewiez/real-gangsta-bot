@@ -7,8 +7,8 @@
 const { queryWithTransaction } = require('../db');
 
 function hashLockKey(lockKey) {
-  const hashed = Array.from(lockKey).reduce((h, c) => ((h << 5) - h) + c.charCodeAt(0), 0);
-  return Math.abs(hashed % (2 ** 31));
+  const hashed = Array.from(lockKey).reduce((h, c) => (h << 5) - h + c.charCodeAt(0), 0);
+  return Math.abs(hashed % 2 ** 31);
 }
 
 async function withAdvisoryLock(lockKey, fn) {

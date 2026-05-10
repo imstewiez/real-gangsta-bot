@@ -66,9 +66,20 @@ async function createItem({ name, category = 'outros', unit = 'unidade', estimat
 
 async function updateItem(id, fields) {
   const ALLOWED = new Set([
-    'name', 'category', 'unit', 'estimated_value', 'active', 'orderable',
-    'counts_for_stock', 'counts_for_rankings', 'purchase_price', 'min_sale_price',
-    'max_sale_price', 'target_stock', 'supplier', 'notes',
+    'name',
+    'category',
+    'unit',
+    'estimated_value',
+    'active',
+    'orderable',
+    'counts_for_stock',
+    'counts_for_rankings',
+    'purchase_price',
+    'min_sale_price',
+    'max_sale_price',
+    'target_stock',
+    'supplier',
+    'notes',
   ]);
   const safe = guardColumns(fields, ALLOWED);
   const sets = [];
@@ -170,9 +181,19 @@ async function recordMovementsBulk({
      )
      RETURNING *`,
     [
-      movementTypes, itemIds, quantities, memberIds, memberRoles,
-      origins, destinations, contexts, notesArray, operationIds,
-      createdBys, submissionIds, unitPrices,
+      movementTypes,
+      itemIds,
+      quantities,
+      memberIds,
+      memberRoles,
+      origins,
+      destinations,
+      contexts,
+      notesArray,
+      operationIds,
+      createdBys,
+      submissionIds,
+      unitPrices,
     ]
   );
   return res.rows;

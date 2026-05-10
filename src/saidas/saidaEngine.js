@@ -22,6 +22,7 @@ const { ALLOWED_TRANSITIONS, assertTransition: _assertTransition } = require('./
 const metrics = require('../lib/metrics');
 const { log, warn } = require('../logger');
 const eventBus = require('../core/eventBus');
+const { queryWithTransaction } = require('../db');
 const { NotFoundError, ConflictError, ValidationError } = require('../shared/errors');
 
 // Cliente Discord injectado no boot. Usado apenas para publicar resultados
@@ -93,69 +94,81 @@ async function createSaida({
     const leader = await memberRepo.findByDiscordId(leaderDiscordId);
     if (leader) leaderId = leader.id;
   }
-  const s = await saidaRepo.create({
-    date,
-    scheduledTime,
-    spot,
-    spotType,
-    saidaType,
-    leaderId,
-    groupNumber,
-    maxParticipants,
-    notes,
-    createdBy,
-  });
-  metrics.operationsCreated.inc();
-  await logAudit({
-    action: 'saida_created',
-    entityType: 'saida',
-    entityId: String(s.id),
-    actorId: createdBy,
-    afterState: { saidaType, spot, spotType, date, groupNumber },
-  });
 
-  // Arranca cooldown do spot + posta notificação pública.
-  // Fire-and-forget: se falha, não aborta a criação (saída já foi gravada).
-  if (spot) {
-    const spotCooldown = require('./spotCooldown');
-    const { SAIDA_TYPE } = require('../content');
-    let leaderName = '—';
-    if (leaderId) {
-      const leader = await memberRepo.findById(leaderId).catch(() => null);
-      if (leader) leaderName = leader.display_name || leader.username;
-    } else if (createdBy) {
-      const creator = await memberRepo.findByDiscordId(createdBy).catch(() => null);
-      if (creator) leaderName = creator.display_name || creator.username;
-    }
-    spotCooldown
-      .startCooldown({
+  let createdId = null;
+  try {
+    const s = await queryWithTransaction(async client => {
+      const created = await saidaRepo.create({
+        date,
+        scheduledTime,
         spot,
+        spotType,
+        saidaType,
+        leaderId,
+        groupNumber,
+        maxParticipants,
+        notes,
+        createdBy,
+        client,
+      });
+      createdId = created.id;
+      metrics.operationsCreated.inc();
+      await logAudit({
+        action: 'saida_created',
+        entityType: 'saida',
+        entityId: String(created.id),
+        actorId: createdBy,
+        afterState: { saidaType, spot, spotType, date, groupNumber },
+      });
+
+      if (spot) {
+        const spotCooldown = require('./spotCooldown');
+        const { SAIDA_TYPE } = require('../content');
+        let leaderName = '—';
+        if (leaderId) {
+          const leader = await memberRepo.findById(leaderId).catch(() => null);
+          if (leader) leaderName = leader.display_name || leader.username;
+        } else if (createdBy) {
+          const creator = await memberRepo.findByDiscordId(createdBy).catch(() => null);
+          if (creator) leaderName = creator.display_name || creator.username;
+        }
+        await spotCooldown.startCooldown({
+          spot,
+          saidaId: created.id,
+          saidaType: SAIDA_TYPE[saidaType] || saidaType,
+          leaderName,
+          client,
+        });
+      }
+
+      return created;
+    });
+
+    // Event bus — notification routing publica em SAIDAS_EVENTS.
+    eventBus
+      .emitAsync('saida.opened', {
         saidaId: s.id,
-        saidaType: SAIDA_TYPE[saidaType] || saidaType,
-        leaderName,
+        date,
+        scheduledTime,
+        spot,
+        spotType,
+        saidaType,
+        leaderId: leaderDiscordId,
+        groupNumber,
+        maxParticipants,
+        actorId: createdBy,
+        notes,
+        at: new Date(),
       })
-      .catch(e => warn(`[SAIDA] Cooldown falhou para "${spot}": ${e.message}`));
+      .catch(e => warn(`[EVENT] saida.opened: ${e.message}`));
+
+    return s;
+  } catch (e) {
+    if (createdId) {
+      await saidaRepo.deleteSaida(createdId).catch(() => {});
+    }
+    throw e;
   }
-
-  // Event bus — notification routing publica em SAIDAS_EVENTS.
-  eventBus
-    .emitAsync('saida.opened', {
-      saidaId: s.id,
-      date,
-      scheduledTime,
-      spot,
-      spotType,
-      saidaType,
-      leaderId: leaderDiscordId,
-      groupNumber,
-      maxParticipants,
-      actorId: createdBy,
-      notes,
-      at: new Date(),
-    })
-    .catch(e => warn(`[EVENT] saida.opened: ${e.message}`));
-
-  return s;
 }
 
 async function startSaida(saidaId, actorId) {
@@ -203,7 +216,9 @@ async function closeSaida(saidaId, resultData, actorId) {
   const saida = await saidaRepo.findById(saidaId);
   if (!saida) throw new NotFoundError(`Saída #${saidaId} não existe.`, { code: 'SAIDA_NOT_FOUND' });
   if (saida.status === 'concluida') {
-    throw new ConflictError(`Saída #${saidaId} já está concluída — não pode ser fechada novamente.`, { code: 'SAIDA_ALREADY_CLOSED' });
+    throw new ConflictError(`Saída #${saidaId} já está concluída — não pode ser fechada novamente.`, {
+      code: 'SAIDA_ALREADY_CLOSED',
+    });
   }
   await _assertTransition(saidaId, 'em_liquidacao');
   const participants = await saidaRepo.getParticipants(saidaId);
@@ -659,7 +674,9 @@ async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
     const maxCharacterized = saida.max_participants || 12;
     const currentCount = await saidaRepo.countCharacterized(saidaId);
     if (currentCount >= maxCharacterized) {
-      throw new ConflictError(`Limite de ${maxCharacterized} caracterizados atingido. Regista-te como trabalhador.`, { code: 'SAIDA_FULL' });
+      throw new ConflictError(`Limite de ${maxCharacterized} caracterizados atingido. Regista-te como trabalhador.`, {
+        code: 'SAIDA_FULL',
+      });
     }
   }
 

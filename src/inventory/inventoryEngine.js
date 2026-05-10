@@ -716,7 +716,9 @@ async function undoSubmission({ submissionId, requesterDiscordId, client = null 
 
 async function adjustStock({ itemId, quantity, notes, createdBy }) {
   if (!Number.isFinite(quantity) || quantity === 0) {
-    throw new ValidationError('Quantidade inválida. Tem de ser um número diferente de zero.', { code: 'INVALID_QUANTITY' });
+    throw new ValidationError('Quantidade inválida. Tem de ser um número diferente de zero.', {
+      code: 'INVALID_QUANTITY',
+    });
   }
 
   const item = await inventoryRepo.getItemById(itemId);

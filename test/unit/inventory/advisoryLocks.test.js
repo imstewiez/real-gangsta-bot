@@ -92,7 +92,10 @@ describe('advisoryLocks', () => {
 
   it('withAdvisoryLock faz ROLLBACK se callback atirar', async () => {
     await assert.rejects(
-      () => withAdvisoryLock('inventory:1', async () => { throw new Error('boom'); }),
+      () =>
+        withAdvisoryLock('inventory:1', async () => {
+          throw new Error('boom');
+        }),
       /boom/
     );
     assert.ok(_captured.some(c => c.sql === 'ROLLBACK'));

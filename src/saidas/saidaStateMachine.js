@@ -37,11 +37,15 @@ async function assertTransition(saidaId, toStatus) {
   const from = saida.status;
   // Rejeitar quando from == toStatus — evita re-entrância em cálculos
   if (from === toStatus) {
-    throw new ConflictError(`Transição proibida: saída #${saidaId} já está "${from}".`, { code: 'SAIDA_ALREADY_IN_STATUS' });
+    throw new ConflictError(`Transição proibida: saída #${saidaId} já está "${from}".`, {
+      code: 'SAIDA_ALREADY_IN_STATUS',
+    });
   }
   const allowed = ALLOWED_TRANSITIONS[from];
   if (!allowed || !allowed.has(toStatus)) {
-    throw new ConflictError(`Transição proibida: saída #${saidaId} está "${from}" e não pode passar a "${toStatus}".`, { code: 'SAIDA_INVALID_TRANSITION' });
+    throw new ConflictError(`Transição proibida: saída #${saidaId} está "${from}" e não pode passar a "${toStatus}".`, {
+      code: 'SAIDA_INVALID_TRANSITION',
+    });
   }
   return saida;
 }

@@ -74,9 +74,20 @@ async function update(id, fields, changedBy) {
     const old = current.rows[0];
 
     const ALLOWED = new Set([
-      'name', 'category', 'unit', 'estimated_value', 'active', 'orderable',
-      'counts_for_stock', 'counts_for_rankings', 'purchase_price', 'min_sale_price',
-      'max_sale_price', 'target_stock', 'supplier', 'notes',
+      'name',
+      'category',
+      'unit',
+      'estimated_value',
+      'active',
+      'orderable',
+      'counts_for_stock',
+      'counts_for_rankings',
+      'purchase_price',
+      'min_sale_price',
+      'max_sale_price',
+      'target_stock',
+      'supplier',
+      'notes',
     ]);
     const safe = guardColumns(fields, ALLOWED);
 

@@ -175,7 +175,20 @@ require.cache[resolved('repositories/index.js')] = {
         );
         return res.rows[0];
       },
-      recordMovementsBulk: async ({ client, lines, movementType, memberId, memberRole, origin, destination, context, notes, operationId, createdBy, submissionId }) => {
+      recordMovementsBulk: async ({
+        client,
+        lines,
+        movementType,
+        memberId,
+        memberRole,
+        origin,
+        destination,
+        context,
+        notes,
+        operationId,
+        createdBy,
+        submissionId,
+      }) => {
         const values = [
           lines.map(() => movementType),
           lines.map(l => l.itemId),

@@ -36,9 +36,18 @@ async function create({ discordId, username, displayName, role = 'bairrista', ch
 
 async function update(id, fields) {
   const ALLOWED = new Set([
-    'discord_id', 'username', 'display_name', 'role', 'channel_id',
-    'status', 'tier', 'notes', 'promoted_at', 'demoted_at',
-    'nickname', 'updated_at',
+    'discord_id',
+    'username',
+    'display_name',
+    'role',
+    'channel_id',
+    'status',
+    'tier',
+    'notes',
+    'promoted_at',
+    'demoted_at',
+    'nickname',
+    'updated_at',
   ]);
   const safe = guardColumns(fields, ALLOWED);
   const sets = [];

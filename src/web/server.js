@@ -52,13 +52,15 @@ function createServer(port = 3000) {
       const phase = getBootPhase ? getBootPhase() : 0;
       const ok = phase >= 8;
       res.writeHead(ok ? 200 : 503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: ok ? 'ready' : 'booting',
-        phase,
-        db: 'ok',
-        discord: _client?.ws?.status === 0 ? 'connected' : 'disconnected',
-        timestamp: new Date().toISOString(),
-      }));
+      res.end(
+        JSON.stringify({
+          status: ok ? 'ready' : 'booting',
+          phase,
+          db: 'ok',
+          discord: _client?.ws?.status === 0 ? 'connected' : 'disconnected',
+          timestamp: new Date().toISOString(),
+        })
+      );
       return;
     }
 

@@ -294,9 +294,11 @@ async function sendPaginatedEmbeds(interaction, embeds, titlePrefix) {
     return msg;
   }
 
-  const collector = msg.createMessageComponentCollector(withTimeout({
-    filter: i => i.user.id === interaction.user.id,
-  }));
+  const collector = msg.createMessageComponentCollector(
+    withTimeout({
+      filter: i => i.user.id === interaction.user.id,
+    })
+  );
 
   collector.on('collect', async i => {
     try {
