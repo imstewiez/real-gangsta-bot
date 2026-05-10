@@ -1,0 +1,2 @@
+ALTER TABLE weekly_rankings ADD COLUMN IF NOT EXISTS normalized_score NUMERIC DEFAULT NULL;
+ALTER TABLE monthly_rankings ADD COLUMN IF NOT EXISTS normalized_score NUMERIC DEFAULT NULL;
