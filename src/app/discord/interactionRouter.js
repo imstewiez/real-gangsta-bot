@@ -68,18 +68,6 @@ async function dispatch(interaction) {
     );
   }
 
-  // ── DeferReply global (idempotente com handlers que já deferem) ────────
-  if (!interaction.deferred && !interaction.replied) {
-    if (
-      interaction.isChatInputCommand?.() ||
-      interaction.isButton?.() ||
-      interaction.isStringSelectMenu?.() ||
-      interaction.isUserSelectMenu?.()
-    ) {
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-    }
-  }
-
   // ── Dispatch por tipo ──────────────────────────────────────────────────
   if (interaction.isChatInputCommand()) {
     metrics.commandInvocationsTotal.inc();
