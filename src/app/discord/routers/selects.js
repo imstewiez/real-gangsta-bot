@@ -15,7 +15,7 @@ const {
   handleCartCategory,
   handleCartItemPick,
   handleCartLineAction,
-} = require('../../../inventory/inventoryHandlers');
+} = require('../../../inventory/handlers');
 const orderHandlers = require('../../../orders/orderHandlers');
 const {
   handleCloseSaidaSelect,

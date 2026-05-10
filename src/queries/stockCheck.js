@@ -6,7 +6,7 @@
 const { MessageFlags } = require('discord.js');
 const { safeReply } = require('../shared/interactionHelpers');
 const { EMOJI } = require('../content');
-const { handleStockCommand } = require('../inventory/inventoryHandlers');
+const { handleStockCommand } = require('../inventory/handlers');
 
 async function handle(interaction) {
   const itemName = interaction.options.getString('item');

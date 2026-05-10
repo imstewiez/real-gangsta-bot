@@ -5,7 +5,7 @@
  */
 
 const { handleParticipantUsersSelect } = require('../../../saidas/saidaHandlers');
-const { handleDeliveryApproverSelect } = require('../../../inventory/inventoryHandlers');
+const { handleDeliveryApproverSelect } = require('../../../inventory/handlers');
 
 const prefix = (p, handler) => ({ match: x => x.startsWith(p), handler });
 

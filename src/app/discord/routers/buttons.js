@@ -38,7 +38,7 @@ const {
   handleCartPreview,
   handleCartPreviewBack,
   handleCartBack,
-} = require('../../../inventory/inventoryHandlers');
+} = require('../../../inventory/handlers');
 const stockV3Handlers = require('../../../inventory/v3/chefiaStockHandlers');
 const orderHandlers = require('../../../orders/orderHandlers');
 const {

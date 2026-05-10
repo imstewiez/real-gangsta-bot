@@ -12,7 +12,7 @@ const {
   handleEncomendaModal,
   handleCartQtyModal,
   handleCartNotesModal,
-} = require('../../../inventory/inventoryHandlers');
+} = require('../../../inventory/handlers');
 const orderHandlers = require('../../../orders/orderHandlers');
 const {
   handleCreateSaidaModal,

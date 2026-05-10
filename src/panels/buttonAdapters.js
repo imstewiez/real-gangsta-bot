@@ -268,7 +268,7 @@ async function handleAddParticipanteButton(interaction) {
 }
 
 async function handleEntregarMaterialButton(interaction) {
-  const { handleRegistarMaterialButton } = require('../inventory/inventoryHandlers');
+  const { handleRegistarMaterialButton } = require('../inventory/handlers');
   return handleRegistarMaterialButton(interaction);
 }
 
