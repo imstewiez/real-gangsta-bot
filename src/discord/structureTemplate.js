@@ -171,8 +171,8 @@ function extractNicknameFromFormatted(channelName) {
 // Usado APENAS para canais individuais de bairrista (onboarding + promoção).
 const TIER_EMOJI = {
   young_blood: '🍼',
-  o_gunao: '🔫',
-  gangster_fodido: '💀',
+  o_gunao: '🚬',
+  gangster_fodido: '🥷',
   patrao_di_zona: '👑',
   real_gangster: '🥷',
   og: '🏆',
@@ -180,7 +180,7 @@ const TIER_EMOJI = {
   manda_chuva: '🐉',
 };
 // Labels curtos para canais individuais — reduzem comprimento do nome do
-// canal. Longos ficavam tipo `🍼・𝗬𝗼𝘂𝗻𝗴 𝗕𝗹𝗼𝗼𝗱 - 𝗡𝗶𝗰𝗸` → agora `🍼・𝗬𝗕 - 𝗡𝗶𝗰𝗸`.
+// canal. Longos ficavam tipo `🍼・𝗬𝗼𝘂𝗻𝗴 𝗕𝗹𝗼𝗼𝗱 - 𝗡𝗶𝗰𝗸` → agora `🍼・𝗬𝗕-𝗡𝗶𝗰𝗸`.
 const TIER_LABEL = {
   young_blood: 'YB',
   o_gunao: 'Gunão',
@@ -215,7 +215,7 @@ function formatResidentChannelName(tier, nickname) {
   const safeNick = (nickname || '').trim() || 'sem-nome';
   const maxNickChars = 30;
   const truncatedNick = safeNick.length > maxNickChars ? `${safeNick.slice(0, maxNickChars)}…` : safeNick;
-  return `${emoji}・${bold(label)} - ${bold(truncatedNick)}`;
+  return `${emoji}・${bold(label)}-${bold(truncatedNick)}`;
 }
 
 /**

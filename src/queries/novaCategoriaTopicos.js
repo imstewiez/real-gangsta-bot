@@ -28,7 +28,7 @@ const { TIER_EMOJI } = require('../discord/structureTemplate');
 
 const DEFAULT_NAME = 'BAIRRISTAS';
 
-// Pattern de canal de bairrista: <tier_emoji>・<tier_label> - <nickname>.
+// Pattern de canal de bairrista: <tier_emoji>・<tier_label>-<nickname>.
 // Usado para varrer Discord e apanhar canais NÃO tracked em resident_channels
 // mas que claramente são tópicos de bairrista (YB, Gunão, GF, etc.).
 const TIER_EMOJIS = Object.values(TIER_EMOJI);

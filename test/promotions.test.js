@@ -88,7 +88,7 @@ describe('tier hierarchy & promotion chain', () => {
     const { formatResidentChannelName } = require('../src/discord/structureTemplate');
     const name = formatResidentChannelName('young_blood', 'tester');
     // emoji・𝗬𝗼𝘂𝗻𝗴 𝗕𝗹𝗼𝗼𝗱 - 𝘁𝗲𝘀𝘁𝗲𝗿
-    assert.match(name, /^.+・.+ - .+$/, 'formato emoji・Tier - Nick');
+    assert.match(name, /^.+・.+-.*$/, 'formato emoji・Tier-Nick');
     assert.ok(name.startsWith('🍼'), 'tier young_blood deve começar com 🍼');
   });
 });

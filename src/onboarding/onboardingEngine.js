@@ -110,7 +110,7 @@ async function processApproval(tagRequest, approverMember, client) {
   );
 
   // ── 5. Create individual channel ───────────────────────────────────────
-  // Format: emoji・𝗧𝗶𝗲𝗿 - 𝗡𝗶𝗰𝗸 (mantido em sincronia em auto-promoção e
+  // Format: emoji・𝗧𝗶𝗲𝗿-𝗡𝗶𝗰𝗸 (mantido em sincronia em auto-promoção e
   // bulk-rename via /rg-sync-structure).
   const { formatResidentChannelName, TIER_LABEL } = require('../discord/structureTemplate');
   const channelName = formatResidentChannelName(entryTier, nickname);
