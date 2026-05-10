@@ -32,9 +32,9 @@ const MATERIAL_NORMALIZATION = 1000;
 const PROTECTED_ROLES = new Set(['chefia', 'patrao_di_zona']);
 
 // ── Lifecycle Timers ─────────────────────────────────────────────────────────
-const AUTO_LOCK_DELAY_MS = 5 * 60 * 1000;       // 5 min
-const FORCE_CLOSE_DELAY_MS = 10 * 60 * 1000;    // 10 min
-const AUTO_FINALIZE_GRACE_MS = 60 * 60 * 1000;  // 1 hour
+const AUTO_LOCK_DELAY_MS = 5 * 60 * 1000; // 5 min
+const FORCE_CLOSE_DELAY_MS = 10 * 60 * 1000; // 10 min
+const AUTO_FINALIZE_GRACE_MS = 60 * 60 * 1000; // 1 hour
 
 module.exports = {
   BASE_RATING,

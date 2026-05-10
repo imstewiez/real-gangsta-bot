@@ -84,7 +84,9 @@ async function runMigrations() {
     let count = 0;
     for (const migration of migrations) {
       if (appliedIds.has(migration.id)) continue;
-      require('./logger').log(`[DB:Migrate] Applying migration ${migration.id}: ${migration.name} (${migration.file})...`);
+      require('./logger').log(
+        `[DB:Migrate] Applying migration ${migration.id}: ${migration.name} (${migration.file})...`
+      );
       await client.query('BEGIN');
       try {
         await client.query(migration.sql);

@@ -849,9 +849,7 @@ async function handlePrecariosButton(interaction) {
     return sendPaginatedEmbeds(interaction, embeds, 'Preçário');
   } catch (e) {
     require('../logger').error('[PRECARIOS] Erro:', e);
-    return interaction
-      .editReply({ content: `${EMOJI.ERRO} Erro ao gerar preçário: ${e.message}` })
-      .catch(() => {});
+    return interaction.editReply({ content: `${EMOJI.ERRO} Erro ao gerar preçário: ${e.message}` }).catch(() => {});
   }
 }
 
@@ -863,9 +861,7 @@ async function handlePrecariosChefiaButton(interaction) {
     return sendPaginatedEmbeds(interaction, embeds, 'Preçário Chefia');
   } catch (e) {
     console.error('[PRECARIOS-CHEFIA] Erro:', e);
-    return interaction
-      .editReply({ content: `${EMOJI.ERRO} Erro ao gerar preçário: ${e.message}` })
-      .catch(() => {});
+    return interaction.editReply({ content: `${EMOJI.ERRO} Erro ao gerar preçário: ${e.message}` }).catch(() => {});
   }
 }
 

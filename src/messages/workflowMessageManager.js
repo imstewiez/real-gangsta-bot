@@ -96,7 +96,7 @@ class WorkflowMessageManager {
     try {
       const { query } = require('../db');
       await query(
-        'UPDATE bot_messages SET metadata = jsonb_set(metadata, \'{step}\', $1::jsonb) WHERE discord_msg_id = $2',
+        "UPDATE bot_messages SET metadata = jsonb_set(metadata, '{step}', $1::jsonb) WHERE discord_msg_id = $2",
         [JSON.stringify(stepNumber), message.id]
       );
     } catch (e) {

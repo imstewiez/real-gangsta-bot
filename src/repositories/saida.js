@@ -23,7 +23,19 @@ async function create({
   const res = await runner.query(
     `INSERT INTO operations (date, scheduled_time, spot, spot_type, operation_type, leader_id, group_number, max_participants, notes, status, created_by)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-    [date, scheduledTime, spot, spotType || '', saidaType, leaderId, groupNumber, maxParticipants, notes, 'criada', createdBy]
+    [
+      date,
+      scheduledTime,
+      spot,
+      spotType || '',
+      saidaType,
+      leaderId,
+      groupNumber,
+      maxParticipants,
+      notes,
+      'criada',
+      createdBy,
+    ]
   );
   return res.rows[0];
 }

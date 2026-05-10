@@ -15,11 +15,7 @@ const {
   TextInputStyle,
 } = require('discord.js');
 const { getCatalog, getItemName } = require('./stockCatalog');
-const {
-  getWeeklyReport,
-  getMonthlyReport,
-  getDailyAverage,
-} = require('./stockManager');
+const { getWeeklyReport, getMonthlyReport, getDailyAverage } = require('./stockManager');
 
 const { applyLogo, brandEmbed, COLOR } = require('../../shared/embedBuilders');
 const { EMOJI } = require('../../content');

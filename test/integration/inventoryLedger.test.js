@@ -103,5 +103,3 @@ describe('integration/inventoryLedger', () => {
     assert.equal(b, 22);
   });
 });
-
-

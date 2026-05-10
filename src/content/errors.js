@@ -35,7 +35,8 @@ const ERRORS = {
   ALREADY_EXISTS: what => `${E.DUPLICADO} "${what}" já existe.`,
 
   // Permissões
-  NO_PERMISSION: what => `${E.NO_PERMISSION} ${what ? `Não é contigo — ${what}.` : t('errors.no_permission', 'Ainda não tens acesso a isto.')}`,
+  NO_PERMISSION: what =>
+    `${E.NO_PERMISSION} ${what ? `Não é contigo — ${what}.` : t('errors.no_permission', 'Ainda não tens acesso a isto.')}`,
 
   NO_ROLE: () => `${E.NO_PERMISSION} Não tens o peso para isto.`,
 
