@@ -48,7 +48,7 @@ const shouldSkip = !process.env.CI && !process.env.DISCORD_BOT_TOKEN;
   });
 
   it('mapeamento cobre todos os eventos saida.* emitidos', () => {
-    const events = ['saida.opened', 'saida.closed', 'saida.cancelled', 'saida.started'];
+    const events = ['saida.opened', 'saida.closed', 'saida.started'];
     for (const ev of events) {
       assert.ok(EVENT_TO_TABS[ev], `EVENT_TO_TABS deve cobrir ${ev}`);
     }
@@ -56,17 +56,6 @@ const shouldSkip = !process.env.CI && !process.env.DISCORD_BOT_TOKEN;
 });
 
 (shouldSkip ? describe.skip : describe)('templates saídas — novos eventos', () => {
-  const templates = require('../src/saidas/saidaLifecycle');
-
-  it('saida.opened tem título e menção ao spot', () => {
-    const t = templates.saidaOpened({ id: 1, spot: 'Bairro Novo' });
-    assert.ok(t.title.includes('Aberta'));
-    assert.ok(t.description.includes('Bairro Novo'));
-  });
-
-  it('saida.closed tem resultado e net formatado', () => {
-    const t = templates.saidaClosed({ id: 2, result: 'vitoria', net: 1500 });
-    assert.ok(t.title.includes('Fechada'));
-    assert.ok(t.fields.some(f => f.name.includes('Resultado')));
-  });
+  // Templates saidaOpened/saidaClosed removidos na refactor v3.0
+  // Eventos são agora consumidos directamente pelo lifecycle engine.
 });

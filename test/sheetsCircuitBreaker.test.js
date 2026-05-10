@@ -50,9 +50,9 @@ const shouldSkip = !process.env.CI && !process.env.DISCORD_BOT_TOKEN;
   it('circuito auto-reseta após cooldown', async () => {
     const key = 'rankings';
     // Forçar estado de circuito aberto
-    await _circuitRecord(key, false);
-    await _circuitRecord(key, false);
-    await _circuitRecord(key, false);
+    for (let i = 0; i < CIRCUIT_FAILURE_THRESHOLD; i++) {
+      await _circuitRecord(key, false);
+    }
     assert.strictEqual(_circuitIsOpen(key), true);
 
     // A lógica de auto-reset é testada indirectamente:
@@ -63,9 +63,9 @@ const shouldSkip = !process.env.CI && !process.env.DISCORD_BOT_TOKEN;
   });
 
   it('tabs independentes — falha numa não afecta outra', async () => {
-    await _circuitRecord('dashboard', false);
-    await _circuitRecord('dashboard', false);
-    await _circuitRecord('dashboard', false);
+    for (let i = 0; i < CIRCUIT_FAILURE_THRESHOLD; i++) {
+      await _circuitRecord('dashboard', false);
+    }
     assert.strictEqual(_circuitIsOpen('dashboard'), true);
     assert.strictEqual(_circuitIsOpen('stock'), false);
   });

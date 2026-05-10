@@ -165,7 +165,8 @@ async function _circuitRecord(key, success) {
     }
   }
   _circuitState.set(key, state);
-  await _persistCircuitState(key, state);
+  // Persistência best-effort — não bloqueia o sync path principal.
+  _persistCircuitState(key, state).catch(() => {});
   return state;
 }
 

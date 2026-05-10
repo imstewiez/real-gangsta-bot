@@ -40,6 +40,9 @@ const shouldSkip = !process.env.CI && !process.env.DISCORD_BOT_TOKEN;
       PANELS_STICKY_MODE: 'repost',
       SPOT_COOLDOWN_MINUTES: 30,
       SPOT_COOLDOWN_CHANNEL_ID: '12345678901234581',
+      PRICE_LIST_CHANNEL_ID: '12345678901234582',
+      BAIRRISTA_WEEKLY_PRIZE_DAY: 0,
+      BAIRRISTA_WEEKLY_PRIZE_HOUR: 20,
       ...overrides,
     };
   }
