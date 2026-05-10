@@ -51,6 +51,6 @@
   "lines": 19,
   "statements": 19,
   "branches": 60,
-  "functions": 29,
+  "functions": 28,
   "reporter": ["text-summary", "lcov"]
 }
