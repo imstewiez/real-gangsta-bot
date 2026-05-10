@@ -5,56 +5,13 @@ on:
     branches: [main]
 
 jobs:
-  migrate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-      - name: Run migrations via Railway
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway run --service bot-di-zona "npm run db:migrate"
-
   deploy:
-    needs: migrate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
       - name: Deploy to Railway
+        run: |
+          npm install -g @railway/cli
+          railway up --service bot-di-zona
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service bot-di-zona
-      - name: Get Railway domain
-        id: domain
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          DOMAIN=$(railway domain --service bot-di-zona 2>/dev/null || echo "")
-          if [ -z "$DOMAIN" ]; then
-            echo "domain=" >> $GITHUB_OUTPUT
-          else
-            echo "domain=https://$DOMAIN" >> $GITHUB_OUTPUT
-          fi
-      - name: Smoke test
-        if: steps.domain.outputs.domain != ''
-        run: |
-          echo "Waiting for deploy..."
-          sleep 30
-          for i in {1..20}; do
-            HEALTH=$(curl -sf ${{ steps.domain.outputs.domain }}/ready && echo "OK" || echo "FAIL")
-            if [ "$HEALTH" = "OK" ]; then
-              echo "Smoke test passed!"
-              exit 0
-            fi
-            sleep 10
-          done
-          echo "Smoke test FAILED"
-          exit 1

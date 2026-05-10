@@ -19,7 +19,7 @@ const { Events } = require('discord.js');
 const CONFIG = require('../config');
 const { validateOrExit } = require('../config/validate');
 const { pool, acquireInstanceLockWithRetry, releaseInstanceLock } = require('../db');
-const { checkPendingMigrations } = require('../dbMigrate');
+const { runMigrations } = require('../dbMigrate');
 const {
   ensureInstanceTable,
   cleanupStaleInstances,
@@ -93,10 +93,11 @@ async function bootstrap() {
   }
   setPhase(BOOT_PHASES.INSTANCE_LOCKED);
 
-  const pending = await checkPendingMigrations();
-  if (pending.length > 0) {
-    error(`[BOOT] ${pending.length} migration(s) pendente(s): ${pending.map(m => m.file).join(', ')}`);
-    error('[BOOT] Corre `npm run db:migrate` antes de iniciar o bot. A abortar.');
+  try {
+    await runMigrations();
+    log('[BOOT] Migrations aplicadas com sucesso.');
+  } catch (e) {
+    error(`[BOOT] Falha ao aplicar migrations: ${e.message}`);
     process.exit(1);
   }
   setPhase(BOOT_PHASES.MIGRATIONS_CHECKED);
