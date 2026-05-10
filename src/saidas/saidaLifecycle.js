@@ -73,11 +73,12 @@ class SessionLifecycle {
   // ═══════════════════════════════════════════════════════════════════════
 
   async restoreCountdowns() {
-    const rows = await query(
+    const result = await query(
       `SELECT saida_id, countdown_type, fire_at
        FROM saida_countdowns
        WHERE cancelled = FALSE AND fire_at > NOW()`
     );
+    const rows = result.rows || [];
 
     let restored = 0;
     for (const row of rows) {
