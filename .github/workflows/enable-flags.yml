@@ -1,0 +1,20 @@
+name: Enable Saídas v3.0 Feature Flags
+
+on:
+  workflow_dispatch:
+
+jobs:
+  enable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Enable SAIDA_AUTO_LOCK_ENABLED
+        run: railway variables set SAIDA_AUTO_LOCK_ENABLED=true --service bot-di-zona
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: Enable SAIDA_AUTO_FORCE_CLOSE_ENABLED
+        run: railway variables set SAIDA_AUTO_FORCE_CLOSE_ENABLED=true --service bot-di-zona
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
