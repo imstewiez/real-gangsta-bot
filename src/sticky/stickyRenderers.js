@@ -64,6 +64,10 @@ function registerBuiltinRenderers() {
     const { buildPatraoDiZonaPanel } = require('../panels/patraoDiZonaPanel');
     return buildPatraoDiZonaPanel();
   });
+  registerRenderer('panel:radio', async () => {
+    const { buildRadioPanel } = require('../panels/radioPanel');
+    return buildRadioPanel();
+  });
 }
 
 module.exports = { registerBuiltinRenderers };
