@@ -1,0 +1,22 @@
+name: Apply DB Migrations
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+      - name: Install dependencies
+        run: npm ci
+      - name: Apply migrations
+        run: railway run --service bot-di-zona -- npm run db:migrate
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
