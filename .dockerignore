@@ -1,10 +1,9 @@
 node_modules
-.git
 .env
 .env.*
-*.md
-test/
-.vscode/
-.claude/
-state.json
-debug-logs/
+railway-vars.txt
+railway_login*.txt
+.git
+coverage
+logs
+.vscode

@@ -11,7 +11,8 @@ const {
   EmbedBuilder,
 } = require('discord.js');
 const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
-const { successEmbed, stockEmbed, brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
+const { replySafe } = require('../shared/safeEmbed');
+const { successEmbed, errorEmbed, stockEmbed, brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
 const { adjustStock, getCurrentStock } = require('./inventoryEngine');
 const {
   buildCategorySelectMenu,
@@ -59,7 +60,7 @@ async function handleRegistarMaterialButton(interaction) {
   // Vai directo para entrega (o botão "Vender" no painel cobre vendas)
   const tipo = 'entrega';
   const bairristaCart = require('./bairristaCart');
-  const cart = bairristaCart.createCart(interaction.user.id, tipo);
+  const cart = await bairristaCart.createCart(interaction.user.id, tipo);
 
   const movementType = member.role === 'oficial' ? 'entrega_oficial' : 'entrega_bairrista';
   const last = await inventoryRepo.getLastSubmissionForMember(member.id, movementType).catch(() => null);
@@ -68,7 +69,7 @@ async function handleRegistarMaterialButton(interaction) {
   const embed = bairristaCart.buildCartEmbed(cart);
   const components = bairristaCart.buildCartComponents(cart, { canRepeat });
 
-  await safeReply(interaction, { content: '', embeds: [embed], components, flags: MessageFlags.Ephemeral });
+  await replySafe(interaction, { content: '', embeds: [embed], components, flags: MessageFlags.Ephemeral });
   parentStore.setParent(interaction.user.id, interaction);
 }
 
@@ -78,7 +79,7 @@ async function handleTipoRegistoSelect(interaction) {
   const tipo = interaction.values[0]; // 'entrega' ou 'venda'
 
   const bairristaCart = require('./bairristaCart');
-  const cart = bairristaCart.createCart(interaction.user.id, tipo);
+  const cart = await bairristaCart.createCart(interaction.user.id, tipo);
 
   // "Repetir última" visível se existe submission recente do mesmo tipo.
   const member = await memberRepo.findByDiscordId(interaction.user.id);
@@ -129,7 +130,7 @@ async function handleStockCommand(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const stock = await getCurrentStock();
   const embed = stockEmbed(stock);
-  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
+  return replySafe(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -166,14 +167,29 @@ async function handleAdjustModal(interaction) {
 
   const quantityStr = getModalField(interaction, 'quantity');
   const notes = getModalField(interaction, 'notes');
-  const quantity = parseInt(quantityStr);
-  if (isNaN(quantity)) return safeReply(interaction, { content: 'Quantidade inválida.' }, { messageClass: 'BANAL' });
+  const quantity = parseInt(quantityStr, 10);
+  const MAX_ADJUSTMENT = 999999;
+
+  if (Number.isNaN(quantity) || quantity === 0) {
+    const embed = errorEmbed('Quantidade inválida', 'A quantidade tem de ser um número inteiro diferente de zero.');
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'ERROR' });
+  }
+  if (Math.abs(quantity) > MAX_ADJUSTMENT) {
+    const embed = errorEmbed('Quantidade excede o limite', `O ajuste máximo permitido é **${MAX_ADJUSTMENT.toLocaleString('pt-PT')}** unidades.`);
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'ERROR' });
+  }
+
+  const currentStock = await inventoryRepo.getStockForItem(pending.itemId).catch(() => 0);
+  if (currentStock + quantity < 0) {
+    const embed = errorEmbed('Stock insuficiente', `Saldo actual: **${currentStock}**. Não podes descontar **${Math.abs(quantity)}** unidades.`);
+    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'ERROR' });
+  }
 
   try {
     await adjustStock({ itemId: pending.itemId, quantity, notes, createdBy: interaction.user.id });
     pendingItemSelections.delete(interaction.user.id);
     const embed = successEmbed('Stock Ajustado', `Ajuste de **${quantity}** aplicado.\nRazão: ${notes}`);
-    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
+    return replySafe(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
     return safeReply(interaction, { content: ERRORS.WITH_DETAIL(e.message) }, { messageClass: 'ERROR' });
   }
@@ -244,7 +260,7 @@ async function handleGerirActionSelect(interaction) {
     }
 
     const embed = brandEmbed().setTitle('Catálogo de Materiais').setDescription(lines.join('\n'));
-    return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
+    return replySafe(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
   }
 
   if (action === 'add') {
@@ -748,7 +764,7 @@ async function _refreshCartPanel(interaction, cart, { extraNote } = {}) {
 async function handleCartAdd(interaction) {
   if (isDuplicate(interaction.id)) return;
   const tipo = interaction.customId.split('::')[2];
-  const cart = require('./bairristaCart').getCart(interaction.user.id);
+  const cart = await require('./bairristaCart').getCart(interaction.user.id);
   if (!cart || cart.tipo !== tipo) {
     return safeReply(
       interaction,
@@ -888,7 +904,7 @@ async function handleCartQtyModal(interaction) {
   const itemId = parseInt(parts[3]);
 
   const bairristaCart = require('./bairristaCart');
-  const cart = bairristaCart.getCart(interaction.user.id);
+  const cart = await bairristaCart.getCart(interaction.user.id);
   if (!cart || cart.tipo !== tipo) {
     return safeReply(
       interaction,
@@ -952,15 +968,14 @@ async function handleCartQtyModal(interaction) {
     }
   }
 
-  bairristaCart.addLine(cart, {
+  await bairristaCart.addLine(cart, {
     itemId: item.id,
     itemName: item.name,
     category: item.category,
     quantity: qty,
     unitPrice,
     basePrice,
-  });
-  bairristaCart.saveCart(interaction.user.id, cart);
+  }, interaction.user.id);
 
   return _refreshCartPanel(interaction, cart);
 }
@@ -973,7 +988,7 @@ async function handleCartLineAction(interaction) {
   const [action, idxStr] = value.split(':');
 
   const bairristaCart = require('./bairristaCart');
-  const cart = bairristaCart.getCart(interaction.user.id);
+  const cart = await bairristaCart.getCart(interaction.user.id);
   if (!cart || cart.tipo !== tipo) {
     return safeReply(
       interaction,
@@ -984,8 +999,7 @@ async function handleCartLineAction(interaction) {
 
   if (action === 'remove') {
     const idx = parseInt(idxStr);
-    bairristaCart.removeLine(cart, idx);
-    bairristaCart.saveCart(interaction.user.id, cart);
+    await bairristaCart.removeLine(cart, idx, interaction.user.id);
   }
   return _refreshCartPanel(interaction, cart);
 }
@@ -994,7 +1008,7 @@ async function handleCartLineAction(interaction) {
 async function handleCartNotesButton(interaction) {
   if (isDuplicate(interaction.id)) return;
   const tipo = interaction.customId.split('::')[2];
-  const cart = require('./bairristaCart').getCart(interaction.user.id);
+  const cart = await require('./bairristaCart').getCart(interaction.user.id);
   if (!cart) {
     return safeReply(
       interaction,
@@ -1027,20 +1041,19 @@ async function handleCartNotesModal(interaction) {
   parentStore.setParent(interaction.user.id, interaction);
   const tipo = interaction.customId.split('::')[2];
   const bairristaCart = require('./bairristaCart');
-  const cart = bairristaCart.getCart(interaction.user.id);
+  const cart = await bairristaCart.getCart(interaction.user.id);
   if (!cart || cart.tipo !== tipo) {
     return safeReply(interaction, { content: `${EMOJI.PENDENTE} Carrinho expirado.` }, { messageClass: 'BANAL' });
   }
   const notes = getModalField(interaction, 'notes') || '';
-  bairristaCart.setNotes(cart, notes);
-  bairristaCart.saveCart(interaction.user.id, cart);
+  await bairristaCart.setNotes(cart, notes, interaction.user.id);
   return _refreshCartPanel(interaction, cart);
 }
 
 // ── Cancelar carrinho ───────────────────────────────────────────────────────
 async function handleCartCancel(interaction) {
   if (isDuplicate(interaction.id)) return;
-  require('./bairristaCart').clearCart(interaction.user.id);
+  await require('./bairristaCart').clearCart(interaction.user.id);
   parentStore.clearParent(interaction.user.id);
   return safeUpdate(
     interaction,
@@ -1058,7 +1071,7 @@ async function handleCartRepeat(interaction) {
   if (isDuplicate(interaction.id)) return;
   const tipo = interaction.customId.split('::')[2];
   const bairristaCart = require('./bairristaCart');
-  const cart = bairristaCart.getCart(interaction.user.id);
+  const cart = await bairristaCart.getCart(interaction.user.id);
   if (!cart || cart.tipo !== tipo) {
     return safeReply(
       interaction,
@@ -1088,16 +1101,15 @@ async function handleCartRepeat(interaction) {
   for (const line of last.lines) {
     const item = await inventoryRepo.getItemById(line.item_id).catch(() => null);
     if (!item) continue;
-    bairristaCart.addLine(cart, {
+    await bairristaCart.addLine(cart, {
       itemId: line.item_id,
       itemName: line.item_name,
       category: line.category,
       quantity: line.quantity,
       unitPrice: null, // não re-usa preço custom antigo
       basePrice: parseFloat(item.estimated_value) || 0,
-    });
+    }, interaction.user.id);
   }
-  bairristaCart.saveCart(interaction.user.id, cart);
   return _refreshCartPanel(interaction, cart, {
     extraNote: `🔁 _Pré-preenchido com ${last.lines.length} linha(s) da última submissão. Preços actualizados._`,
   });
@@ -1108,7 +1120,7 @@ async function handleCartPreview(interaction) {
   if (isDuplicate(interaction.id)) return;
   const tipo = interaction.customId.split('::')[2];
   const bairristaCart = require('./bairristaCart');
-  const cart = bairristaCart.getCart(interaction.user.id);
+  const cart = await bairristaCart.getCart(interaction.user.id);
   if (!cart || cart.tipo !== tipo) {
     return safeReply(
       interaction,
@@ -1154,7 +1166,7 @@ async function handleCartPreviewBack(interaction) {
   if (isDuplicate(interaction.id)) return;
   const tipo = interaction.customId.split('::')[2];
   const bairristaCart = require('./bairristaCart');
-  const cart = bairristaCart.getCart(interaction.user.id);
+  const cart = await bairristaCart.getCart(interaction.user.id);
   if (!cart || cart.tipo !== tipo) {
     return safeReply(
       interaction,
@@ -1170,7 +1182,7 @@ async function handleCartBack(interaction) {
   if (isDuplicate(interaction.id)) return;
   const tipo = interaction.customId.split('::')[2];
   const bairristaCart = require('./bairristaCart');
-  const cart = bairristaCart.getCart(interaction.user.id);
+  const cart = await bairristaCart.getCart(interaction.user.id);
   if (!cart || cart.tipo !== tipo) {
     return safeReply(
       interaction,
@@ -1187,7 +1199,7 @@ async function handleCartSubmit(interaction) {
 
   const tipo = interaction.customId.split('::')[2];
   const bairristaCart = require('./bairristaCart');
-  const cart = bairristaCart.getCart(interaction.user.id);
+  const cart = await bairristaCart.getCart(interaction.user.id);
   if (!cart || cart.tipo !== tipo) {
     return safeUpdate(
       interaction,
@@ -1213,7 +1225,7 @@ async function handleCartSubmit(interaction) {
     unitPrice: l.unitPrice,
   }));
   const globalNotesSnapshot = cart.globalNotes;
-  bairristaCart.clearCart(interaction.user.id);
+  await bairristaCart.clearCart(interaction.user.id);
   parentStore.clearParent(interaction.user.id);
 
   const { createDeliveryRequest } = require('./inventoryEngine');
@@ -1322,7 +1334,7 @@ async function handleDeliveryApproverSelect(interaction) {
 
   const approverId = interaction.values[0];
   const bairristaCart = require('./bairristaCart');
-  const cart = bairristaCart.getCart(interaction.user.id);
+  const cart = await bairristaCart.getCart(interaction.user.id);
   if (!cart || cart.tipo !== 'entrega') {
     return safeReply(
       interaction,
@@ -1374,7 +1386,7 @@ async function handleDeliveryApproverSelect(interaction) {
     );
   }
 
-  bairristaCart.clearCart(interaction.user.id);
+  await bairristaCart.clearCart(interaction.user.id);
   parentStore.clearParent(interaction.user.id);
 
   try {

@@ -19,6 +19,7 @@ async function saveWeeklyRanking(row) {
     survivalRate = 0,
     performanceScore = 0,
     hybridScore = 0,
+    normalizedScore = 0,
   } = row;
 
   const res = await query(
@@ -27,8 +28,8 @@ async function saveWeeklyRanking(row) {
         operations_count, weighted_value, return_rate,
         kills_count, wins_count, loss_count,
         net_profit_generated, survival_rate,
-        performance_score, hybrid_score)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        performance_score, hybrid_score, normalized_score)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
      ON CONFLICT (member_id, week_start) DO UPDATE SET
        week_end             = EXCLUDED.week_end,
        deliveries           = EXCLUDED.deliveries,
@@ -42,7 +43,8 @@ async function saveWeeklyRanking(row) {
        net_profit_generated = EXCLUDED.net_profit_generated,
        survival_rate        = EXCLUDED.survival_rate,
        performance_score    = EXCLUDED.performance_score,
-       hybrid_score         = EXCLUDED.hybrid_score
+       hybrid_score         = EXCLUDED.hybrid_score,
+       normalized_score     = EXCLUDED.normalized_score
      RETURNING *`,
     [
       memberId,
@@ -60,20 +62,21 @@ async function saveWeeklyRanking(row) {
       survivalRate,
       performanceScore,
       hybridScore,
+      normalizedScore,
     ]
   );
   return res.rows[0];
 }
 
 async function getWeekRanking(weekStart, limit = 10) {
-  // Ordena por hybrid_score (desc). Fallback para weighted_value se hybrid=0.
+  // Ordena por normalized_score (desc). Fallback para hybrid_score/weighted_value.
   const res = await query(
     `
     SELECT wr.*, m.discord_id, m.display_name, m.role
     FROM weekly_rankings wr
     JOIN members m ON m.id = wr.member_id
     WHERE wr.week_start = $1
-    ORDER BY GREATEST(wr.hybrid_score, wr.weighted_value) DESC
+    ORDER BY COALESCE(wr.normalized_score, GREATEST(wr.hybrid_score, wr.weighted_value)) DESC
     LIMIT $2
   `,
     [weekStart, limit]
@@ -88,7 +91,7 @@ async function getWeekRankingByRole(weekStart, role, limit = 10) {
     FROM weekly_rankings wr
     JOIN members m ON m.id = wr.member_id
     WHERE wr.week_start = $1 AND m.role = $2
-    ORDER BY GREATEST(wr.hybrid_score, wr.weighted_value) DESC
+    ORDER BY COALESCE(wr.normalized_score, GREATEST(wr.hybrid_score, wr.weighted_value)) DESC
     LIMIT $3
   `,
     [weekStart, role, limit]

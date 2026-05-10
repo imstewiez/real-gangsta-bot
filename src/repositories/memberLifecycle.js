@@ -4,6 +4,7 @@
  */
 
 const { query, queryWithTransaction } = require('../db');
+const { NotFoundError, ConflictError } = require('../shared/errors');
 
 const VALID_TRANSITIONS = Object.freeze({
   pending: ['active', 'removed'],
@@ -28,11 +29,11 @@ async function getState(memberId) {
 async function transition({ memberId, newState, changedBy, reason }) {
   return queryWithTransaction(async client => {
     const cur = await client.query('SELECT lifecycle_state FROM members WHERE id = $1', [memberId]);
-    if (!cur.rows.length) throw new Error('Membro não encontrado.');
+    if (!cur.rows.length) throw new NotFoundError('Membro não encontrado.', { code: 'MEMBER_NOT_FOUND' });
     const oldState = cur.rows[0].lifecycle_state;
     if (oldState === newState) return { oldState, newState, changed: false };
     if (!canTransition(oldState, newState)) {
-      throw new Error(`Transição inválida: ${oldState} → ${newState}`);
+      throw new ConflictError(`Transição inválida: ${oldState} → ${newState}`, { code: 'INVALID_LIFECYCLE_TRANSITION' });
     }
 
     await client.query(

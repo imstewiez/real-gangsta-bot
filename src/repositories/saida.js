@@ -4,6 +4,7 @@
  * preservado para minimizar risco de migrations). Semanticamente saídas.
  */
 const { query, queryWithTransaction } = require('../db');
+const { guardColumns } = require('../shared/sqlColumnGuard');
 
 async function create({
   date,
@@ -16,8 +17,10 @@ async function create({
   maxParticipants = 12,
   notes = '',
   createdBy,
+  client = null,
 }) {
-  const res = await query(
+  const runner = client || { query: (sql, values) => query(sql, values) };
+  const res = await runner.query(
     `INSERT INTO operations (date, scheduled_time, spot, spot_type, operation_type, leader_id, group_number, max_participants, notes, created_by)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
     [date, scheduledTime, spot, spotType || '', saidaType, leaderId, groupNumber, maxParticipants, notes, createdBy]
@@ -101,12 +104,22 @@ async function findActive() {
 }
 
 async function updateStatus(id, status, extras = {}) {
+  const ALLOWED = new Set([
+    'leader_id', 'date', 'scheduled_time', 'spot', 'spot_type', 'operation_type',
+    'group_number', 'max_participants', 'notes', 'result', 'had_fight', 'had_craft',
+    'had_domination', 'enemy_name', 'enemy_faction', 'enemy_count', 'our_kills',
+    'survivors', 'deaths', 'returned_count', 'returned_to_bairro_count',
+    'supplied_value', 'returned_value', 'lost_value', 'consumed_value',
+    'gross_value', 'net_value', 'was_profitable', 'crafted_value',
+    'characterized_count', 'workers_count', 'result_notes',
+    'session_message_id', 'session_channel_id', 'end_time',
+    'updated_at', 'status',
+  ]);
+  const safe = guardColumns(extras, ALLOWED);
   const sets = ['status = $1', 'updated_at = NOW()'];
   const values = [status];
   let i = 2;
-  for (const [key, value] of Object.entries(extras)) {
-    // updated_at já está no SET via NOW() — filtrar para evitar
-    // "multiple assignments to same column" em Postgres.
+  for (const [key, value] of Object.entries(safe)) {
     if (key === 'updated_at' || key === 'status') continue;
     sets.push(`${key} = $${i}`);
     values.push(value);
@@ -203,10 +216,16 @@ async function countCharacterized(saidaId) {
 
 async function updateParticipant(saidaId, memberId, fields) {
   if (!Object.keys(fields).length) return null;
+  const ALLOWED = new Set([
+    'role_in_op', 'brought_own_material', 'received_org_material',
+    'participant_type', 'own_weapon', 'weapon_item_id', 'notes',
+    'kills', 'deaths', 'survived', 'returned_weapon',
+  ]);
+  const safe = guardColumns(fields, ALLOWED);
   const sets = [];
   const values = [];
   let i = 1;
-  for (const [key, value] of Object.entries(fields)) {
+  for (const [key, value] of Object.entries(safe)) {
     sets.push(`${key} = $${i}`);
     values.push(value);
     i++;
@@ -317,6 +336,8 @@ async function deleteById(id) {
   return res.rows[0] || null;
 }
 
+const deleteSaida = deleteById;
+
 module.exports = {
   create,
   findById,
@@ -338,4 +359,5 @@ module.exports = {
   getParticipantMaterialTotals,
   countParticipationsByMember,
   deleteById,
+  deleteSaida,
 };

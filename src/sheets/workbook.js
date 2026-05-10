@@ -33,7 +33,18 @@ const TABS_BY_KEY = Object.fromEntries(TABS.map(t => [t.key, t]));
  * na ordem canónica. Nunca apaga nada — o user pode ter coisas manuais.
  */
 async function ensureTabs(sheets, spreadsheetId) {
-  const meta = await sheets.spreadsheets.get({ spreadsheetId });
+  let meta = null;
+  let lastError = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      meta = await sheets.spreadsheets.get({ spreadsheetId });
+      break;
+    } catch (e) {
+      lastError = e;
+      if (attempt === 3) throw e;
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
   const existing = new Map();
   for (const s of meta.data.sheets || []) {
     existing.set(s.properties.title, s.properties.sheetId);

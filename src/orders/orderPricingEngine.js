@@ -8,6 +8,7 @@
 
 const { inventoryRepo } = require('../repositories');
 const craftRecipeRepo = require('../repositories/craftRecipe');
+const { NotFoundError } = require('../shared/errors');
 
 // ── Multiplicadores por rank/tier ──────────────────────────────────────────
 // Bairristas: diferenciados por tier com incrementos de ~0.5%.
@@ -80,7 +81,7 @@ async function calculateIngredientsForOrder(itemId, quantity) {
  */
 async function calculateOrderPricing({ itemId, quantity, memberRole, memberTier }) {
   const item = await inventoryRepo.getItemById(itemId);
-  if (!item) throw new Error('Item não encontrado.');
+  if (!item) throw new NotFoundError('Item não encontrado.', { code: 'ITEM_NOT_FOUND' });
 
   const unitPrice = parseFloat(item.estimated_value) || 0;
   const { ingredients, hasRecipe } = await calculateIngredientsForOrder(itemId, quantity);
@@ -114,7 +115,7 @@ async function calculateOrderPricing({ itemId, quantity, memberRole, memberTier 
  */
 async function calculateSellPrice({ itemId, memberRole, memberTier, quantity = 1 }) {
   const item = await inventoryRepo.getItemById(itemId);
-  if (!item) throw new Error('Item não encontrado.');
+  if (!item) throw new NotFoundError('Item não encontrado.', { code: 'ITEM_NOT_FOUND' });
 
   const unitPrice = parseFloat(item.estimated_value) || 0;
   const multiplier = getRankMultiplier(memberRole, 'sell', memberTier);

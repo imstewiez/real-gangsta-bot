@@ -266,16 +266,27 @@ class BatchWriter {
     }
   }
 
-  /** Flush — manda tudo em 1 chamada. */
+  /** Flush — manda tudo em 1 ou mais chamadas se necessário. */
   async flush() {
     if (!this.requests.length) return { replies: [] };
-    this.validate();
-    const res = await this.sheets.spreadsheets.batchUpdate({
-      spreadsheetId: this.spreadsheetId,
-      requestBody: { requests: this.requests },
-    });
+    const MAX_REQUESTS = 900; // Google Sheets API: limite prático ~1000
+    const allReplies = [];
+    const batches = [];
+    while (this.requests.length) {
+      batches.push(this.requests.splice(0, MAX_REQUESTS));
+    }
+    for (const chunk of batches) {
+      const batch = new BatchWriter(this.sheets, this.spreadsheetId);
+      batch.requests = chunk;
+      batch.validate();
+      const res = await this.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: this.spreadsheetId,
+        requestBody: { requests: chunk },
+      });
+      if (res.data.replies) allReplies.push(...res.data.replies);
+    }
     this.requests = [];
-    return res.data;
+    return { replies: allReplies };
   }
 
   /** Quantas requests pendentes. */

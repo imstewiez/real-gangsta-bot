@@ -1,5 +1,8 @@
 'use strict';
+const { hostname } = require('os');
 const { publishWeeklyTop, publishDailySummary, publishBairristaWeeklyPrize } = require('../rankings/rankingJobs');
+const { processRetries } = require('./sheetsRetryJob');
+const { runNotificationJob } = require('./notificationJob');
 const {
   publishBairristaDailySummary,
   publishBairristaWeeklySummary,
@@ -12,31 +15,81 @@ const CONFIG = require('../config');
 
 const jobs = [];
 let _client = null;
+const _activeJobs = new Map();
+const _heartbeats = new Map();
+let _shuttingDown = false;
+
+const JOB_TIMEOUT_MS = parseInt(process.env.JOB_TIMEOUT_MS, 10) || 60000;
+const INSTANCE_ID = `${hostname()}:${process.pid}:${Date.now()}`;
 
 function registerJob(name, intervalMs, fn, opts = {}) {
   jobs.push({ name, intervalMs, fn, timer: null, _running: false, runOnStart: opts.runOnStart || false });
 }
 
 async function runJob(job) {
+  if (_shuttingDown) {
+    log(`[SCHEDULER] Job '${job.name}' skipped — shutdown in progress.`);
+    return;
+  }
   if (job._running) {
     log(`[SCHEDULER] Job '${job.name}' still running — skipped overlap.`);
     return;
   }
   job._running = true;
-  const jobId = await jobRepo.startJob(job.name);
-  metrics.jobRunsTotal.inc();
-  metrics.jobsByName.inc({ job: job.name });
+  const promise = (async () => {
+    let jobId = await jobRepo.pickJob(job.name, INSTANCE_ID);
+    if (!jobId) {
+      jobId = await jobRepo.startJob(job.name, INSTANCE_ID);
+    }
+    metrics.jobRunsTotal.inc();
+    metrics.jobsByName.inc({ job: job.name });
 
-  try {
-    const result = await job.fn(_client);
-    await jobRepo.completeJob(jobId, result || {});
-  } catch (e) {
-    metrics.jobErrorsTotal.inc();
-    await jobRepo.failJob(jobId, e.message);
-    warn(`[SCHEDULER] Job '${job.name}' failed: ${e.message}`);
-  } finally {
-    job._running = false;
+    const heartbeat = setInterval(async () => {
+      try {
+        await jobRepo.renewLease(jobId);
+      } catch (e) {
+        warn(`[SCHEDULER] Heartbeat failed for job '${job.name}': ${e.message}`);
+      }
+    }, 60000);
+    _heartbeats.set(job.name, heartbeat);
+
+    try {
+      await Promise.race([
+        job.fn(_client),
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`Job ${job.name} timeout após ${JOB_TIMEOUT_MS}ms`)), JOB_TIMEOUT_MS))
+      ]);
+      await jobRepo.completeJob(jobId, {});
+    } catch (e) {
+      metrics.jobErrorsTotal.inc();
+      await jobRepo.failJob(jobId, e.message);
+      warn(`[SCHEDULER] Job '${job.name}' failed: ${e.message}`);
+    } finally {
+      const hb = _heartbeats.get(job.name);
+      if (hb) {
+        clearInterval(hb);
+        _heartbeats.delete(job.name);
+      }
+      job._running = false;
+    }
+  })();
+  _activeJobs.set(job.name, promise);
+  try { await promise; } finally { _activeJobs.delete(job.name); }
+}
+
+async function drainActiveJobs(timeoutMs = 30000) {
+  _shuttingDown = true;
+  for (const [name, hb] of _heartbeats) {
+    clearInterval(hb);
+    _heartbeats.delete(name);
   }
+  if (!_activeJobs.size) return;
+  log(`[SCHEDULER] Draining ${_activeJobs.size} active jobs...`);
+  await Promise.all(
+    Array.from(_activeJobs.values()).map(p =>
+      Promise.race([p, new Promise(r => setTimeout(r, timeoutMs))])
+    )
+  );
+  log('[SCHEDULER] Drain complete.');
 }
 
 function startAll(client) {
@@ -73,6 +126,14 @@ function startAll(client) {
   // (Sheets sync periódico removido — a projecção é event-driven em
   // src/sheets/projections.js, que debounce eventos de domínio em syncs
   // por tab. Ver docs/ARCHITECTURE.md.)
+
+  // DLQ retry para falhas de sync do Google Sheets
+  registerJob('sheets_retry', 60 * 1000, async () => {
+    return processRetries();
+  });
+
+  // Notification queue processor
+  registerJob('notification_queue', 30 * 1000, runNotificationJob);
 
   // Retention — corre 1x por dia (24h interval). Remove audit_logs > 365d,
   // job_runs > 90d, radio_history > 365d. Soft-delete availability > 180d.
@@ -277,7 +338,7 @@ function startAll(client) {
   );
 
   // Price list embed refresh — DESACTIVADO.
-  // Os preços são agora consultados de forma interativa (botão "Preçários & Fórmulas"
+  // Os preços são agora consultados de forma interactiva (botão "Preçários & Fórmulas"
   // no painel do bairrista), para não expor preços sensíveis que variam por rank.
   // registerJob(
   //   'price_list_refresh',
@@ -315,4 +376,4 @@ function stopAll() {
   log('[SCHEDULER] All jobs stopped.');
 }
 
-module.exports = { startAll, stopAll, registerJob };
+module.exports = { startAll, stopAll, registerJob, drainActiveJobs };

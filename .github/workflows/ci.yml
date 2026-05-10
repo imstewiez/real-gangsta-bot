@@ -16,6 +16,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Audit dependencies
+        run: npm audit --audit-level=moderate || true
       - name: Lint
         run: npm run lint
       - name: Format check
@@ -57,6 +59,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Audit dependencies
+        run: npm audit --audit-level=moderate || true
       - name: Apply migrations
         run: npm run db:migrate
         env:

@@ -16,6 +16,7 @@
 const { brandEmbed, applyLogo, COLOR, sectionDivider, setFooterText } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { button, buttonRow } = require('../shared/ui/buttons');
+const { ValidationError } = require('../shared/errors');
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // EMBED BUILDERS
@@ -138,6 +139,9 @@ function formatSection({ title, lines, inline = false }) {
  * @returns {Array<ActionRowBuilder>}
  */
 function buildButtonGrid(buttons) {
+  if (buttons.length > 25) {
+    throw new ValidationError('Máximo 25 botões por mensagem.');
+  }
   const rows = [];
   for (let i = 0; i < buttons.length; i += 5) {
     const chunk = buttons.slice(i, i + 5);
@@ -172,7 +176,7 @@ function buildButtonRowsByCategory(categories) {
  * Formata idade relativa: "2 min", "1 h", "3 dias".
  */
 function formatAge(date) {
-  const ms = Date.now() - new Date(date).getTime();
+  const ms = Math.max(0, Date.now() - new Date(date).getTime());
   const min = Math.floor(ms / 60_000);
   if (min < 1) return 'agora';
   if (min < 60) return `${min} min`;

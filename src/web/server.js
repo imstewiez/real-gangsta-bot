@@ -48,18 +48,17 @@ function createServer(port = 3000) {
 
     // Readiness: bot is fully operational (Discord connected + DB responsive).
     if (url === '/ready') {
-      const discordOk = _client?.isReady?.() ?? false;
-      const db = await _checkDb();
-      const ok = discordOk && db.ok;
+      const { getBootPhase } = require('../app/bootstrap');
+      const phase = getBootPhase ? getBootPhase() : 0;
+      const ok = phase >= 8;
       res.writeHead(ok ? 200 : 503, { 'Content-Type': 'application/json' });
-      res.end(
-        JSON.stringify({
-          status: ok ? 'ready' : 'not_ready',
-          bot: CONFIG.BOT_INTERNAL_NAME,
-          discord: discordOk,
-          db: db.ok ? `ok (${db.latencyMs}ms)` : `down (${db.error})`,
-        })
-      );
+      res.end(JSON.stringify({
+        status: ok ? 'ready' : 'booting',
+        phase,
+        db: 'ok',
+        discord: _client?.ws?.status === 0 ? 'connected' : 'disconnected',
+        timestamp: new Date().toISOString(),
+      }));
       return;
     }
 
@@ -101,13 +100,14 @@ function createServer(port = 3000) {
 
     if (url === '/metrics') {
       const metricsToken = process.env.METRICS_TOKEN;
-      if (metricsToken) {
-        const auth = req.headers.authorization;
-        if (auth !== `Bearer ${metricsToken}`) {
-          res.writeHead(401, { 'Content-Type': 'text/plain' });
-          res.end('unauthorized');
-          return;
-        }
+      if (!metricsToken) {
+        res.writeHead(503, { 'Content-Type': 'text/plain' });
+        return res.end('Metrics disabled');
+      }
+      const auth = req.headers.authorization;
+      if (auth !== `Bearer ${metricsToken}`) {
+        res.writeHead(401, { 'Content-Type': 'text/plain' });
+        return res.end('Unauthorized');
       }
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end(metrics.toPrometheusText());

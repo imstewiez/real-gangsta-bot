@@ -10,6 +10,8 @@ const { weekBounds } = require('../util');
 const { warn, log } = require('../logger');
 const eventBus = require('../core/eventBus');
 const { MOVEMENT_TYPE } = require('../shared/movementTypes');
+const { ValidationError, ConflictError, NotFoundError } = require('../shared/errors');
+const { touchBalance } = require('../repositories/inventoryBalance');
 
 // Janela para desfazer uma submission (desde o último insert). 5 min é
 // suficiente para "ups, engano" sem permitir manipulação de stats
@@ -27,12 +29,12 @@ async function recordDelivery({
   createdBy,
 }) {
   const member = await memberRepo.findByDiscordId(discordId);
-  if (!member) throw new Error('Membro não encontrado.');
+  if (!member) throw new NotFoundError('Membro não encontrado.', { code: 'MEMBER_NOT_FOUND' });
 
   const item = await inventoryRepo.getItemById(itemId);
-  if (!item) throw new Error('Item não encontrado no catálogo.');
+  if (!item) throw new NotFoundError('Item não encontrado no catálogo.', { code: 'ITEM_NOT_FOUND' });
 
-  if (quantity <= 0) throw new Error('Quantidade deve ser positiva.');
+  if (quantity <= 0) throw new ValidationError('Quantidade deve ser positiva.', { code: 'INVALID_QUANTITY' });
 
   const movement = await inventoryRepo.recordMovement({
     movementType,
@@ -129,13 +131,13 @@ async function recordDelivery({
 async function enrichCartLines(tipo, lines) {
   const enrichedLines = [];
   for (const line of lines) {
-    if (!line?.itemId) throw new Error('Line sem itemId.');
+    if (!line?.itemId) throw new ValidationError('Line sem itemId.', { code: 'INVALID_LINE' });
     const qty = Number(line.quantity);
     if (!Number.isFinite(qty) || qty <= 0) {
-      throw new Error(`Quantidade inválida para item ${line.itemId}.`);
+      throw new ValidationError(`Quantidade inválida para item ${line.itemId}.`, { code: 'INVALID_QUANTITY' });
     }
     const item = await inventoryRepo.getItemById(line.itemId);
-    if (!item) throw new Error(`Item ${line.itemId} não encontrado.`);
+    if (!item) throw new NotFoundError(`Item ${line.itemId} não encontrado.`, { code: 'ITEM_NOT_FOUND' });
 
     const basePrice = parseFloat(item.estimated_value) || 0;
     const customRaw = tipo === 'venda' ? Number(line.unitPrice) : null;
@@ -256,7 +258,7 @@ async function afterBatchCommitted({
     } catch (e) {
       warn(`[BAIRRISTA-BATCH] log notify falhou: ${e.message}`);
     }
-  })();
+  })().catch(() => {});
 
   return { totalQty, totalValue };
 }
@@ -286,14 +288,14 @@ async function afterBatchCommitted({
  */
 async function recordDeliveryBatch({ discordId, tipo, lines, globalNotes = '', createdBy }) {
   if (!Array.isArray(lines) || lines.length === 0) {
-    throw new Error('Carrinho vazio — adiciona pelo menos 1 item antes de submeter.');
+    throw new ValidationError('Carrinho vazio — adiciona pelo menos 1 item antes de submeter.', { code: 'EMPTY_CART' });
   }
   if (!['entrega', 'venda'].includes(tipo)) {
-    throw new Error(`Tipo inválido: ${tipo}`);
+    throw new ValidationError(`Tipo inválido: ${tipo}`, { code: 'INVALID_TYPE' });
   }
 
   const member = await memberRepo.findByDiscordId(discordId);
-  if (!member) throw new Error('Membro não encontrado.');
+  if (!member) throw new NotFoundError('Membro não encontrado.', { code: 'MEMBER_NOT_FOUND' });
 
   // Resolve movement_type: oficiais fazem entrega_oficial; bairristas
   // fazem entrega_bairrista. Vendas: apenas venda_bairrista (oficiais
@@ -309,13 +311,13 @@ async function recordDeliveryBatch({ discordId, tipo, lines, globalNotes = '', c
   // erro limpo sem abrir BEGIN/ROLLBACK desnecessário.
   const enrichedLines = [];
   for (const line of lines) {
-    if (!line?.itemId) throw new Error('Line sem itemId.');
+    if (!line?.itemId) throw new ValidationError('Line sem itemId.', { code: 'INVALID_LINE' });
     const qty = Number(line.quantity);
     if (!Number.isFinite(qty) || qty <= 0) {
-      throw new Error(`Quantidade inválida para item ${line.itemId}.`);
+      throw new ValidationError(`Quantidade inválida para item ${line.itemId}.`, { code: 'INVALID_QUANTITY' });
     }
     const item = await inventoryRepo.getItemById(line.itemId);
-    if (!item) throw new Error(`Item ${line.itemId} não encontrado.`);
+    if (!item) throw new NotFoundError(`Item ${line.itemId} não encontrado.`, { code: 'ITEM_NOT_FOUND' });
 
     // Preço efectivo: custom (só vendas) ou estimated_value do catálogo.
     const basePrice = parseFloat(item.estimated_value) || 0;
@@ -335,16 +337,25 @@ async function recordDeliveryBatch({ discordId, tipo, lines, globalNotes = '', c
     });
   }
 
+  const { totalQty, totalValue } = batchTotals(enrichedLines);
   const submissionId = crypto.randomUUID();
 
-  // Transacção atómica — se um insert falha, nada persiste.
-  const movements = await queryWithTransaction(async client => {
-    const out = [];
-    for (const l of enrichedLines) {
-      const m = await inventoryRepo.recordMovement({
+  // Transacção atómica — header + bulk movements + balance update.
+  let movements;
+  try {
+    movements = await queryWithTransaction(async client => {
+      // 1. Header row
+      await client.query(
+        `INSERT INTO delivery_batches
+         (id, member_id, tipo, total_qty, total_value, global_notes, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [submissionId, member.id, tipo, totalQty, totalValue, globalNotes || '', createdBy]
+      );
+
+      // 2. Bulk insert movements
+      const rows = await inventoryRepo.recordMovementsBulk({
+        lines: enrichedLines,
         movementType,
-        itemId: l.itemId,
-        quantity: l.quantity,
         memberId: member.id,
         memberRole: member.role,
         origin: 'membro',
@@ -354,13 +365,19 @@ async function recordDeliveryBatch({ discordId, tipo, lines, globalNotes = '', c
         operationId: null,
         createdBy,
         submissionId,
-        unitPrice: l.unitPrice, // NULL se preço base; valor se custom
         client,
       });
-      out.push(m);
-    }
-    return out;
-  });
+
+      // 3. Update materialized balance for each line
+      for (const l of enrichedLines) {
+        await touchBalance(l.itemId, 'armazem', l.quantity, client);
+      }
+
+      return rows;
+    });
+  } catch (err) {
+    throw new ConflictError(`Falha ao registar batch: ${err.message}`, { code: 'BATCH_INSERT_FAILED' });
+  }
 
   metrics.inventoryMovements.inc(enrichedLines.length);
 
@@ -383,8 +400,8 @@ async function recordDeliveryBatch({ discordId, tipo, lines, globalNotes = '', c
         effectivePrice: l.effectivePrice,
         value: l.lineValue,
       })),
-      totalQty: enrichedLines.reduce((a, l) => a + l.quantity, 0),
-      totalValue: enrichedLines.reduce((a, l) => a + l.lineValue, 0),
+      totalQty,
+      totalValue,
     },
     context: globalNotes,
   });
@@ -413,9 +430,6 @@ async function recordDeliveryBatch({ discordId, tipo, lines, globalNotes = '', c
       })
       .catch(e => warn(`[EVENT] material.registered: ${e.message}`));
   }
-
-  const totalQty = enrichedLines.reduce((a, l) => a + l.quantity, 0);
-  const totalValue = enrichedLines.reduce((a, l) => a + l.lineValue, 0);
 
   log(
     `[BAIRRISTA-BATCH] ${member.display_name} (${tipo}) submetteu ${enrichedLines.length} linhas, ${totalQty} qty, ${totalValue}€ — submission=${submissionId}`
@@ -452,7 +466,7 @@ async function recordDeliveryBatch({ discordId, tipo, lines, globalNotes = '', c
     } catch (e) {
       warn(`[BAIRRISTA-BATCH] log notify falhou: ${e.message}`);
     }
-  })();
+  })().catch(() => {});
 
   return {
     submissionId,
@@ -475,11 +489,11 @@ async function createDeliveryRequest({
   tipo = 'entrega',
 }) {
   if (!Array.isArray(lines) || lines.length === 0) {
-    throw new Error('Carrinho vazio — adiciona pelo menos 1 item antes de submeter.');
+    throw new ValidationError('Carrinho vazio — adiciona pelo menos 1 item antes de submeter.', { code: 'EMPTY_CART' });
   }
 
   const member = await memberRepo.findByDiscordId(discordId);
-  if (!member) throw new Error('Membro não encontrado.');
+  if (!member) throw new NotFoundError('Membro não encontrado.', { code: 'MEMBER_NOT_FOUND' });
 
   const enrichedLines = await enrichCartLines(tipo, lines);
   const { totalQty, totalValue } = batchTotals(enrichedLines);
@@ -694,7 +708,7 @@ async function undoSubmission({ submissionId, requesterDiscordId, client = null 
       } catch (e) {
         warn(`[BAIRRISTA-UNDO] edit log falhou: ${e.message}`);
       }
-    })();
+    })().catch(() => {});
   }
 
   return { undone: true, deletedCount: deleted, linesSummary, totalQty, totalValue };
@@ -702,11 +716,11 @@ async function undoSubmission({ submissionId, requesterDiscordId, client = null 
 
 async function adjustStock({ itemId, quantity, notes, createdBy }) {
   if (!Number.isFinite(quantity) || quantity === 0) {
-    throw new Error('Quantidade inválida. Tem de ser um número diferente de zero.');
+    throw new ValidationError('Quantidade inválida. Tem de ser um número diferente de zero.', { code: 'INVALID_QUANTITY' });
   }
 
   const item = await inventoryRepo.getItemById(itemId);
-  if (!item) throw new Error('Item não encontrado.');
+  if (!item) throw new NotFoundError('Item não encontrado.', { code: 'ITEM_NOT_FOUND' });
 
   // Guard: não permitir ajuste que deixe stock negativo. Permite descontar
   // (quantity < 0) desde que saldo actual + quantity >= 0.
@@ -714,9 +728,10 @@ async function adjustStock({ itemId, quantity, notes, createdBy }) {
     const current = await inventoryRepo.getStockForItem(itemId).catch(() => 0);
     const balance = Number(current ?? 0);
     if (balance + quantity < 0) {
-      throw new Error(
+      throw new ConflictError(
         `Stock insuficiente para **${item.name}** — saldo actual ${balance}, ajuste pedido ${quantity}. ` +
-          `Máximo que podes descontar: ${balance}.`
+          `Máximo que podes descontar: ${balance}.`,
+        { code: 'INSUFFICIENT_STOCK' }
       );
     }
   }
@@ -776,7 +791,7 @@ async function getStockForItem(itemId) {
 async function registerSale({ memberId, itemName, quantity, price = null, note = '' }) {
   const stockManager = require('./stockManager');
   const item = await stockManager.findItemByName(itemName);
-  if (!item) throw new Error(`Item não encontrado: ${itemName}`);
+  if (!item) throw new NotFoundError(`Item não encontrado: ${itemName}`, { code: 'ITEM_NOT_FOUND' });
 
   const result = await recordDelivery({
     discordId: memberId,
@@ -792,7 +807,7 @@ async function registerSale({ memberId, itemName, quantity, price = null, note =
 async function transferStock({ itemName, quantity, from, to, actorId }) {
   const stockManager = require('./stockManager');
   const item = await stockManager.findItemByName(itemName);
-  if (!item) throw new Error(`Item não encontrado: ${itemName}`);
+  if (!item) throw new NotFoundError(`Item não encontrado: ${itemName}`, { code: 'ITEM_NOT_FOUND' });
 
   const result = await stockManager.transferStock({
     itemId: item.id,

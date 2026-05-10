@@ -18,7 +18,10 @@ const metrics = require('../../lib/metrics');
 const ctx = require('../../shared/requestContext');
 const rateLimiter = require('../../shared/rateLimiter');
 const { safeReply } = require('../../shared/interactionHelpers');
+const { isDraining } = require('../../instanceCoordinator');
 const { ERRORS } = require('../../content');
+const { UserError, InternalError } = require('../../shared/errors');
+const { errorEmbed } = require('../../shared/embedBuilders');
 
 const { handleAutocomplete } = require('./routers/autocomplete');
 const { handleSlash } = require('./routers/slash');
@@ -65,6 +68,18 @@ async function dispatch(interaction) {
     );
   }
 
+  // ── DeferReply global (idempotente com handlers que já deferem) ────────
+  if (!interaction.deferred && !interaction.replied) {
+    if (
+      interaction.isChatInputCommand?.() ||
+      interaction.isButton?.() ||
+      interaction.isStringSelectMenu?.() ||
+      interaction.isUserSelectMenu?.()
+    ) {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    }
+  }
+
   // ── Dispatch por tipo ──────────────────────────────────────────────────
   if (interaction.isChatInputCommand()) {
     metrics.commandInvocationsTotal.inc();
@@ -81,6 +96,13 @@ async function dispatch(interaction) {
  * Envolve dispatch() com requestContext + error envelope.
  */
 async function onInteraction(interaction) {
+  if (isDraining()) {
+    return safeReply(
+      interaction,
+      { content: '⛔ Bot está a reiniciar. Tenta daqui a uns segundos.', flags: MessageFlags.Ephemeral },
+      { messageClass: 'WARN' }
+    );
+  }
   metrics.discordEventsTotal.inc();
   const action = actionKeyFor(interaction);
 
@@ -99,26 +121,44 @@ async function onInteraction(interaction) {
         log(`${ctx.tag()} done ${action} · ${ctx.elapsed()}ms`);
       } catch (e) {
         metrics.interactionErrorsTotal.inc();
-        warn(`${ctx.tag()} failed ${action} · ${e.message} · ${ctx.elapsed()}ms`);
-        error(`[INTERACTION] Unhandled (${typeTagFor(interaction)}, user=${interaction.user?.id}): ${e.message}`, e);
-        try {
-          if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({
-              content: ERRORS.INTERNAL(cid),
-              flags: MessageFlags.Ephemeral,
-            });
-          } else {
-            await safeReply(
-              interaction,
-              {
-                content: ERRORS.INTERNAL(cid),
-                flags: MessageFlags.Ephemeral,
-              },
-              { messageClass: 'ERROR' }
-            );
+        if (e instanceof UserError) {
+          warn(`${ctx.tag()} userError ${action} · ${e.code} · ${e.message} · ${ctx.elapsed()}ms`);
+          const embed = errorEmbed(e.message, e.context?.detail || '').setFooter({ text: `Código: ${e.code}` });
+          try {
+            if (interaction.replied || interaction.deferred) {
+              await interaction.followUp({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            } else {
+              await safeReply(
+                interaction,
+                { embeds: [embed], flags: MessageFlags.Ephemeral },
+                { messageClass: 'ERROR' }
+              );
+            }
+          } catch (_) {
+            /* ignore */
           }
-        } catch (_) {
-          /* ignore */
+        } else {
+          error(
+            `[INTERACTION] Unhandled (${typeTagFor(interaction)}, user=${interaction.user?.id}, cid=${cid}): ${e.message}`,
+            e
+          );
+          const code = e instanceof InternalError ? e.code : 'UNKNOWN';
+          const embed = errorEmbed('Ocorreu um erro inesperado. Tenta mais tarde.', '').setFooter({
+            text: `Ref: ${cid} · Código: ${code}`,
+          });
+          try {
+            if (interaction.replied || interaction.deferred) {
+              await interaction.followUp({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            } else {
+              await safeReply(
+                interaction,
+                { embeds: [embed], flags: MessageFlags.Ephemeral },
+                { messageClass: 'ERROR' }
+              );
+            }
+          } catch (_) {
+            /* ignore */
+          }
         }
       }
     }

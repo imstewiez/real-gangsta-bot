@@ -41,6 +41,7 @@ async function saveMonthly(row) {
     survivalRate = 0,
     performanceScore = 0,
     hybridScore = 0,
+    normalizedScore = 0,
   } = row;
 
   const res = await query(
@@ -49,8 +50,8 @@ async function saveMonthly(row) {
         operations_count, weighted_value, return_rate,
         kills_count, wins_count, loss_count,
         net_profit_generated, survival_rate,
-        performance_score, hybrid_score)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        performance_score, hybrid_score, normalized_score)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
      ON CONFLICT (member_id, month_start) DO UPDATE SET
        month_end            = EXCLUDED.month_end,
        deliveries           = EXCLUDED.deliveries,
@@ -65,6 +66,7 @@ async function saveMonthly(row) {
        survival_rate        = EXCLUDED.survival_rate,
        performance_score    = EXCLUDED.performance_score,
        hybrid_score         = EXCLUDED.hybrid_score,
+       normalized_score     = EXCLUDED.normalized_score,
        updated_at           = NOW()
      RETURNING *`,
     [
@@ -83,6 +85,7 @@ async function saveMonthly(row) {
       survivalRate,
       performanceScore,
       hybridScore,
+      normalizedScore,
     ]
   );
   return res.rows[0];
@@ -95,7 +98,7 @@ async function getMonthly(monthStart, limit = 50) {
     FROM monthly_rankings mr
     JOIN members m ON m.id = mr.member_id
     WHERE mr.month_start = $1
-    ORDER BY mr.hybrid_score DESC, mr.weighted_value DESC
+    ORDER BY COALESCE(mr.normalized_score, mr.hybrid_score, mr.weighted_value) DESC
     LIMIT $2`,
     [monthStart, limit]
   );

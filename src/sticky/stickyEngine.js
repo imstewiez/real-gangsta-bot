@@ -79,11 +79,27 @@ async function refreshUpdate(client, sticky) {
   if (!message) return postFresh(client, sticky); // mensagem sumiu, recria
 
   const payload = await renderPayload(client, sticky);
-  await message.edit({
-    content: payload.content,
-    embeds: payload.embeds || [],
-    components: payload.components || [],
-  });
+  try {
+    await message.edit({
+      content: payload.content,
+      embeds: payload.embeds || [],
+      components: payload.components || [],
+    });
+  } catch (e) {
+    if (e.code === 10008) {
+      // Unknown Message — recria
+      warn(`[STICKY] Mensagem desconhecida (10008) em ${sticky.source_key}, a recriar.`);
+      await logAudit({
+        action: 'STICKY_RECREATED',
+        entityType: 'sticky',
+        entityId: String(sticky.id),
+        actorId: 'system',
+        context: `Unknown message (10008) in ${sticky.source_key}`,
+      });
+      return postFresh(client, sticky);
+    }
+    throw e;
+  }
   return message;
 }
 
@@ -173,7 +189,7 @@ async function runTimeBasedRefresh(client) {
   for (const s of all) {
     if (s.mode !== 'repost') continue;
     if (!s.threshold_minutes) continue;
-    const ageMs = Date.now() - new Date(s.last_posted_at).getTime();
+    const ageMs = Math.max(0, Date.now() - new Date(s.last_posted_at).getTime());
     if (ageMs >= s.threshold_minutes * 60 * 1000) {
       try {
         await postFresh(client, s);

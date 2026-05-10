@@ -27,7 +27,7 @@ const VALID_TABS = new Set(['dashboard', 'resumo', 'membros', 'saidas', 'stock',
 
 function _formatAge(ts) {
   if (!ts) return 'nunca';
-  const ms = Date.now() - new Date(ts).getTime();
+  const ms = Math.max(0, Date.now() - new Date(ts).getTime());
   if (!Number.isFinite(ms) || ms < 0) return '?';
   const s = Math.floor(ms / 1000);
   if (s < 60) return `${s}s`;

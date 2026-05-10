@@ -1,5 +1,6 @@
 'use strict';
 const { query, queryWithTransaction } = require('../db');
+const { guardColumns } = require('../shared/sqlColumnGuard');
 
 async function findByDiscordId(discordId) {
   const res = await query('SELECT * FROM members WHERE discord_id = $1', [discordId]);
@@ -34,12 +35,16 @@ async function create({ discordId, username, displayName, role = 'bairrista', ch
 }
 
 async function update(id, fields) {
+  const ALLOWED = new Set([
+    'discord_id', 'username', 'display_name', 'role', 'channel_id',
+    'status', 'tier', 'notes', 'promoted_at', 'demoted_at',
+    'nickname', 'updated_at',
+  ]);
+  const safe = guardColumns(fields, ALLOWED);
   const sets = [];
   const values = [];
   let i = 1;
-  for (const [key, value] of Object.entries(fields)) {
-    // updated_at é sempre adicionado via NOW() abaixo — filtrar para evitar
-    // "multiple assignments to same column" em Postgres.
+  for (const [key, value] of Object.entries(safe)) {
     if (key === 'updated_at') continue;
     sets.push(`${key} = $${i}`);
     values.push(value);

@@ -1,7 +1,7 @@
 'use strict';
 const CONFIG = require('../config');
 const { memberRepo } = require('../repositories');
-const { sqlIn, CONTRIBUTION_TYPES } = require('../shared/movementTypes');
+const { CONTRIBUTION_TYPES } = require('../shared/movementTypes');
 const { buildItemPointsCase } = require('./itemPoints');
 const { logAudit, sendAuditToChannel } = require('../audit/auditEngine');
 const { queueMemberOp, queueChannelOp } = require('../discordQueue');
@@ -139,8 +139,8 @@ async function checkAndPromote(discordId, guild, client) {
          FROM inventory_movements im
          JOIN items i ON i.id = im.item_id
         WHERE im.member_id = $1
-          AND im.movement_type IN (${sqlIn(CONTRIBUTION_TYPES)})`,
-      [liveMember.id]
+          AND im.movement_type = ANY($2::text[])`,
+      [liveMember.id, CONTRIBUTION_TYPES]
     );
     const totalPoints = Number(ptsRes.rows[0].total_points) || 0;
     if (totalPoints < threshold) return null;

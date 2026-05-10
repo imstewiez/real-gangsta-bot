@@ -10,6 +10,8 @@
 const { query, queryWithTransaction } = require('../db');
 const eventBus = require('../core/eventBus');
 const { warn } = require('../logger');
+const { assertArray } = require('../shared/validators');
+const { NotFoundError } = require('../shared/errors');
 
 async function create({
   memberId,
@@ -23,6 +25,7 @@ async function create({
   moneyCost = null,
   ingredientsJson = null,
 }) {
+  assertArray('order.ingredients', ingredientsJson);
   const res = await query(
     `INSERT INTO orders (member_id, item_id, quantity, unit_price, total_price, status, notes, payment_mode, material_cost, money_cost, ingredients_json)
      VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $10)
@@ -85,7 +88,7 @@ const STATUS_META_COLS = {
 async function updateStatus(id, { status, actorDiscordId, notes = null }) {
   return queryWithTransaction(async client => {
     const current = await client.query('SELECT status FROM orders WHERE id = $1 FOR UPDATE', [id]);
-    if (!current.rows[0]) throw new Error('Encomenda não encontrada.');
+    if (!current.rows[0]) throw new NotFoundError('Encomenda não encontrada.', { code: 'ORDER_NOT_FOUND' });
     const oldStatus = current.rows[0].status;
 
     const meta = STATUS_META_COLS[status] || {};

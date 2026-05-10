@@ -6,6 +6,7 @@ const { queueMemberOp, queueChannelOp } = require('../discordQueue');
 const { warn } = require('../logger');
 const eventBus = require('../core/eventBus');
 const CONFIG = require('../config');
+const { ValidationError } = require('../shared/errors');
 
 const ALLOWED_ROLES = Object.freeze(['bairrista', 'patrao_di_zona', 'oficial', 'chefia', 'inativo']);
 
@@ -204,7 +205,7 @@ async function promoteToOficial(guildMember, _client, _promotedBy) {
 async function promoteMember(memberId, newRole, opts = {}) {
   const { guildMember, client, reason = '', actorTag = 'system', actorId = 'system', changedBy = 'system' } = opts;
   if (!ALLOWED_ROLES.includes(newRole)) {
-    throw new Error(`Cargo inválido: ${newRole}. Permitidos: ${ALLOWED_ROLES.join(', ')}`);
+    throw new ValidationError(`Cargo inválido: ${newRole}. Permitidos: ${ALLOWED_ROLES.join(', ')}`, { code: 'INVALID_ROLE' });
   }
 
   const dbMember = await memberRepo.findById(memberId);
@@ -271,7 +272,7 @@ async function promoteMember(memberId, newRole, opts = {}) {
 async function demoteMember(memberId, newRole, opts = {}) {
   const { guildMember, client, reason = '', actorTag = 'system', actorId = 'system', changedBy = 'system' } = opts;
   if (!ALLOWED_ROLES.includes(newRole)) {
-    throw new Error(`Cargo inválido: ${newRole}. Permitidos: ${ALLOWED_ROLES.join(', ')}`);
+    throw new ValidationError(`Cargo inválido: ${newRole}. Permitidos: ${ALLOWED_ROLES.join(', ')}`, { code: 'INVALID_ROLE' });
   }
 
   const dbMember = await memberRepo.findById(memberId);

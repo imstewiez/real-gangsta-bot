@@ -18,6 +18,7 @@ const path = require('path');
 const { pool } = require('./db');
 
 const MIGRATIONS_DIR = path.resolve(__dirname, '..', 'migrations');
+const MIGRATION_LOCK_ID = 884729105;
 
 function loadMigrations() {
   if (!fs.existsSync(MIGRATIONS_DIR)) return [];
@@ -40,9 +41,34 @@ function loadMigrations() {
     .filter(Boolean);
 }
 
+async function checkPendingMigrations() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    const applied = await client.query('SELECT id FROM schema_migrations ORDER BY id');
+    const appliedIds = new Set(applied.rows.map(r => r.id));
+    const migrations = loadMigrations();
+    const pending = migrations.filter(m => !appliedIds.has(m.id));
+    return pending;
+  } finally {
+    client.release();
+  }
+}
+
 async function runMigrations() {
   const client = await pool.connect();
   try {
+    const lockRes = await client.query('SELECT pg_try_advisory_lock($1) as acquired', [MIGRATION_LOCK_ID]);
+    if (!lockRes.rows[0].acquired) {
+      throw new Error('[MIGRATE] Outra instância está a correr migrations. Abortando.');
+    }
+
     await client.query(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
         id          INTEGER PRIMARY KEY,
@@ -87,6 +113,7 @@ async function runMigrations() {
     // usar spot_cooldowns ou recordSheetSync falha por column missing.
     await ensureCriticalSchema(client);
   } finally {
+    await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_ID]);
     client.release();
   }
 }
@@ -221,4 +248,4 @@ async function ensureCriticalSchema(client) {
   console.log(`[DB:Migrate] ensureCriticalSchema: ${applied}/${ddls.length} DDLs idempotentes OK.`);
 }
 
-module.exports = { runMigrations, loadMigrations, ensureCriticalSchema };
+module.exports = { runMigrations, checkPendingMigrations, loadMigrations, ensureCriticalSchema };

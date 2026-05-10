@@ -11,6 +11,7 @@ const CONFIG = require('../config');
 // const { EmbedBuilder } = require('discord.js');
 const eventBus = require('../core/eventBus');
 const { warn } = require('../logger');
+const { ValidationError, ConflictError, NotFoundError, PermissionError } = require('../shared/errors');
 
 // Estados de saída em que é coerente registar kills.
 const KILL_ALLOWED_SAIDA_STATUSES = new Set(['em_preparacao', 'em_curso', 'em_liquidacao', 'concluida']);
@@ -28,20 +29,37 @@ async function recordKill({
   confirmedBy = null,
   createdBy,
 }) {
-  if (!victimName?.trim()) throw new Error('Nome da vítima obrigatório.');
+  if (!victimName?.trim()) throw new ValidationError('Nome da vítima obrigatório.', { code: 'MISSING_VICTIM_NAME' });
+
+  // Self-kill prevention
+  if (killerDiscordId === victimDiscordId) {
+    throw new ConflictError('Auto-kill não permitido.', { code: 'SELF_KILL' });
+  }
 
   const killer = await memberRepo.findByDiscordId(killerDiscordId);
-  if (!killer) throw new Error('Killer não encontrado na base de membros.');
+  if (!killer) throw new NotFoundError('Killer não encontrado na base de membros.', { code: 'KILLER_NOT_FOUND' });
+
+  // Active member verification
+  if (killer.status === 'removed' || killer.lifecycle_state === 'removed') {
+    throw new PermissionError('Membro removido — não pode registar kills.', { code: 'MEMBER_REMOVED' });
+  }
+
+  // Daily rate limit
+  const dailyCount = await killRepo.countKillsToday(killer.id);
+  const limit = CONFIG.KILL_DAILY_LIMIT || 50;
+  if (dailyCount >= limit) {
+    throw new ConflictError(`Limite diário de kills atingido (${limit}/dia).`, { code: 'DAILY_KILL_LIMIT' });
+  }
 
   // Guards para kill com saidaId — standalone (saidaId=null) continua livre.
   if (saidaId !== null && saidaId !== undefined) {
     const saida = await saidaRepo.findById(saidaId);
-    if (!saida) throw new Error(`Saída #${saidaId} não existe.`);
+    if (!saida) throw new NotFoundError(`Saída #${saidaId} não existe.`, { code: 'SAIDA_NOT_FOUND' });
 
     // Guard 1: saída tem de estar iniciada ou concluída (kills em saída
     // 'aberta' ainda não arrancada são nonsense).
     if (!KILL_ALLOWED_SAIDA_STATUSES.has(saida.status)) {
-      throw new Error(`Saída #${saidaId} está em estado que não permite kills.`);
+      throw new ConflictError(`Saída #${saidaId} está em estado que não permite kills.`, { code: 'SAIDA_INVALID_STATE' });
     }
 
     // Guard 2: killer tem de ser participante desta saída (atribuição
@@ -49,8 +67,9 @@ async function recordKill({
     const participants = await saidaRepo.getParticipants(saidaId);
     const isParticipant = participants.some(p => p.member_id === killer.id);
     if (!isParticipant) {
-      throw new Error(
-        `${killer.display_name || 'Membro'} não é participante da saída #${saidaId}. Inscreve-te primeiro ou regista o kill sem saída.`
+      throw new ConflictError(
+        `${killer.display_name || 'Membro'} não é participante da saída #${saidaId}. Inscreve-te primeiro ou regista o kill sem saída.`,
+        { code: 'KILL_NOT_PARTICIPANT' }
       );
     }
   }

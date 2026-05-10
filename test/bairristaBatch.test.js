@@ -82,13 +82,42 @@ require.cache[resolved('db.js')] = {
       const inserts = [];
       const client = {
         query: async (sql, values) => {
+          if (/INSERT INTO delivery_batches/.test(sql)) {
+            return { rows: [{ id: values[0] }] };
+          }
+          if (/INSERT INTO inventory_movements/.test(sql) && /UNNEST/.test(sql)) {
+            const itemIds = values[1];
+            const quantities = values[2];
+            const memberIds = values[3];
+            const submissionIds = values[11];
+            const unitPrices = values[12];
+            const rows = [];
+            for (let i = 0; i < itemIds.length; i++) {
+              if (_failOnItemId && itemIds[i] === _failOnItemId) {
+                throw new Error(`simulated INSERT failure for item ${itemIds[i]}`);
+              }
+              const row = {
+                id: _insertedMovements.length + inserts.length + 1,
+                movement_type: values[0][i],
+                item_id: itemIds[i],
+                quantity: quantities[i],
+                member_id: memberIds[i],
+                submission_id: submissionIds[i],
+                unit_price: unitPrices[i],
+                created_at: new Date().toISOString(),
+              };
+              inserts.push(row);
+              rows.push(row);
+            }
+            return { rows };
+          }
           if (/INSERT INTO inventory_movements/.test(sql)) {
             const itemId = values[1];
             if (_failOnItemId && itemId === _failOnItemId) {
               throw new Error(`simulated INSERT failure for item ${itemId}`);
             }
             const row = {
-              id: _insertedMovements.length + 1,
+              id: _insertedMovements.length + inserts.length + 1,
               movement_type: values[0],
               item_id: itemId,
               quantity: values[2],
@@ -145,6 +174,35 @@ require.cache[resolved('repositories/index.js')] = {
           values
         );
         return res.rows[0];
+      },
+      recordMovementsBulk: async ({ client, lines, movementType, memberId, memberRole, origin, destination, context, notes, operationId, createdBy, submissionId }) => {
+        const values = [
+          lines.map(() => movementType),
+          lines.map(l => l.itemId),
+          lines.map(l => l.quantity),
+          lines.map(() => memberId),
+          lines.map(() => memberRole),
+          lines.map(() => origin),
+          lines.map(() => destination),
+          lines.map(() => context),
+          lines.map(() => notes),
+          lines.map(() => operationId),
+          lines.map(() => createdBy),
+          lines.map(() => submissionId),
+          lines.map(l => l.unitPrice ?? null),
+        ];
+        const res = await client.query(
+          `INSERT INTO inventory_movements
+            (movement_type, item_id, quantity, member_id, member_role, origin, destination,
+             context, notes, saida_id, created_by, submission_id, unit_price)
+           SELECT * FROM UNNEST(
+             $1::text[], $2::int[], $3::int[], $4::int[], $5::text[], $6::text[], $7::text[],
+             $8::text[], $9::text[], $10::int[], $11::text[], $12::uuid[], $13::numeric[]
+           )
+           RETURNING *`,
+          values
+        );
+        return res.rows;
       },
       getSubmissionMovements: async sid =>
         _submissionRows
@@ -233,6 +291,13 @@ require.cache[resolved('inventory/bairristaNotifier.js')] = {
 };
 require.cache[resolved('core/eventBus.js')] = {
   exports: { emitAsync: async () => {} },
+};
+require.cache[resolved('repositories/inventoryBalance.js')] = {
+  exports: {
+    recalculateBalance: async () => 0,
+    getBalance: async () => 0,
+    touchBalance: async () => 0,
+  },
 };
 
 const {

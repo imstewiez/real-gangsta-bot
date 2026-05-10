@@ -103,7 +103,7 @@ describe('saida state machine — transições', () => {
 
   it('closeSaida numa saída já concluída rejeita', async () => {
     state.status = 'concluida';
-    await assert.rejects(closeSaida(1, { result: 'vitoria' }, 'a'), /Transição proibida/);
+    await assert.rejects(closeSaida(1, { result: 'vitoria' }, 'a'), /já está concluída/);
   });
 
   it('startSaida em cancelada rejeita', async () => {

@@ -1,5 +1,6 @@
 'use strict';
 const { query } = require('../db');
+const { assertJsonSchema } = require('../shared/validators');
 
 async function listActive() {
   const res = await query('SELECT * FROM sticky_messages WHERE active = TRUE ORDER BY id');
@@ -20,6 +21,7 @@ async function getByChannelSource(channelId, sourceKey) {
 }
 
 async function upsert({ channelId, sourceKey, mode, payload, thresholdMsgs, thresholdMinutes, createdBy }) {
+  assertJsonSchema('sticky.payload', payload, { channel_id: 'string', message_id: 'string' });
   const res = await query(
     `INSERT INTO sticky_messages
        (channel_id, source_key, mode, payload, threshold_msgs, threshold_minutes, created_by, active)

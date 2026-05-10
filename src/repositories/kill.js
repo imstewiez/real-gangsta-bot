@@ -31,7 +31,11 @@ async function recordKill({
 
 async function getLeaderboard(limit = 10, windowDays = null) {
   const params = [limit];
-  const window = windowDays ? `AND k.created_at >= NOW() - INTERVAL '${parseInt(windowDays)} days'` : '';
+  let window = '';
+  if (windowDays) {
+    params.push(`${parseInt(windowDays, 10)} days`);
+    window = `AND k.created_at >= NOW() - $${params.length}::interval`;
+  }
   const res = await query(
     `
     SELECT m.display_name, m.discord_id, COUNT(*) as kills
@@ -77,9 +81,22 @@ async function countKillsByMember(memberId, weekStart = null, weekEnd = null) {
   return res.rows[0]?.n || 0;
 }
 
+async function countKillsToday(killerId) {
+  const res = await query(
+    `SELECT COUNT(*)::int AS n FROM kill_logs WHERE killer_id = $1 AND date = CURRENT_DATE`,
+    [killerId]
+  );
+  return res.rows[0]?.n || 0;
+}
+
 async function totalOrgKills(windowDays = null) {
-  const window = windowDays ? `WHERE created_at >= NOW() - INTERVAL '${parseInt(windowDays)} days'` : '';
-  const res = await query(`SELECT COUNT(*)::int AS n FROM kill_logs ${window}`);
+  const params = [];
+  let window = '';
+  if (windowDays) {
+    params.push(`${parseInt(windowDays, 10)} days`);
+    window = `WHERE created_at >= NOW() - $1::interval`;
+  }
+  const res = await query(`SELECT COUNT(*)::int AS n FROM kill_logs ${window}`, params);
   return res.rows[0]?.n || 0;
 }
 
@@ -89,13 +106,20 @@ async function totalOrgKills(windowDays = null) {
  * totalOrgKills sozinho só conta /kill e deixa de fora as saídas.
  */
 async function totalOrgKillsAllSources(windowDays = null) {
-  const logsWindow = windowDays ? `WHERE created_at >= NOW() - INTERVAL '${parseInt(windowDays)} days'` : '';
-  const opsWindow = windowDays ? `WHERE updated_at >= NOW() - INTERVAL '${parseInt(windowDays)} days'` : '';
+  const params = [];
+  let logsWindow = '';
+  let opsWindow = '';
+  if (windowDays) {
+    const interval = `${parseInt(windowDays, 10)} days`;
+    params.push(interval);
+    logsWindow = `WHERE created_at >= NOW() - $1::interval`;
+    opsWindow = `WHERE updated_at >= NOW() - $1::interval`;
+  }
   const r = await query(`
     SELECT
       (SELECT COUNT(*) FROM kill_logs ${logsWindow})::int AS from_logs,
       (SELECT COALESCE(SUM(kills), 0) FROM operation_participants ${opsWindow})::int AS from_saidas
-  `);
+  `, params);
   const row = r.rows[0] || {};
   return (row.from_logs || 0) + (row.from_saidas || 0);
 }
@@ -106,6 +130,7 @@ module.exports = {
   getRecent,
   countKillsBySaida,
   countKillsByMember,
+  countKillsToday,
   totalOrgKills,
   totalOrgKillsAllSources,
 };

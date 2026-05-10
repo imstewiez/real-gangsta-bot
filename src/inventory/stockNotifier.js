@@ -22,9 +22,12 @@ const { CATEGORY_BY_KEY, bold } = require('../discord/structureTemplate');
 const { brandEmbed, COLOR, setFooterText } = require('../shared/embedBuilders');
 const { formatPtDate } = require('../shared/formatPtDate');
 const { log, warn } = require('../logger');
+const { logAudit } = require('../audit/auditEngine');
+const { TtlCache } = require('../shared/ttlCache');
 
 let _client = null;
-const _channelCache = new Map(); // logical key → channelId
+const _channelCache = new TtlCache(); // logical key → channelId
+const CHANNEL_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
 
 function setClient(client) {
   _client = client;
@@ -161,7 +164,7 @@ async function findOrCreateChannel(channelKey) {
     }
   }
 
-  if (channel) _channelCache.set(channelKey, channel.id);
+  if (channel) _channelCache.set(channelKey, channel.id, CHANNEL_CACHE_TTL_MS);
   return channel;
 }
 
@@ -174,6 +177,27 @@ async function findOrCreateChannel(channelKey) {
  *   actorId, context?, balanceAfter?, operationId?
  * }
  */
+async function notifyWithRetry(channel, payload, maxRetries = 3) {
+  const delays = [1000, 2000, 4000];
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await channel.send(payload);
+    } catch (e) {
+      if (attempt === maxRetries) {
+        await logAudit({
+          action: 'NOTIFICATION_FAILED',
+          entityType: 'notification',
+          entityId: channel.id,
+          actorId: 'system',
+          context: JSON.stringify({ error: e.message }),
+        });
+        throw e;
+      }
+      await new Promise(r => setTimeout(r, delays[attempt] || 4000));
+    }
+  }
+}
+
 async function notifyMovement(movement) {
   if (!CONFIG.STOCK_NOTIFY_ENABLED) return;
   if (!_client) return; // boot-safe
@@ -213,9 +237,10 @@ async function notifyMovement(movement) {
       setFooterText(embed, `Registado por <@${movement.actorId}>`);
     }
 
-    await channel.send({ embeds: [embed], allowedMentions: { parse: [] } });
+    const payload = { embeds: [embed], allowedMentions: { parse: [] } };
+    await notifyWithRetry(channel, payload, 3);
   } catch (e) {
-    warn(`[STOCK-NOTIFY] notifyMovement falhou: ${e.message}`);
+    warn(`[STOCK-NOTIFY] notifyMovement falhou após retries: ${e.message}`);
   }
 }
 
@@ -259,7 +284,7 @@ async function publishStockSummary() {
         embed.addFields({ name: `**${category.toUpperCase()}**`, value: '```\n' + lines + '\n```', inline: false });
     }
 
-    await channel.send({ embeds: [embed], allowedMentions: { parse: [] } });
+    await notifyWithRetry(channel, { embeds: [embed], allowedMentions: { parse: [] } }, 3);
     return { posted: true, items: stock.length, totalValue };
   } catch (e) {
     warn(`[STOCK-NOTIFY] publishStockSummary falhou: ${e.message}`);

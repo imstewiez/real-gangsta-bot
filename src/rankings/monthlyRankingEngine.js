@@ -19,8 +19,9 @@
 const { query } = require('../db');
 const { memberRepo, monthlyRankingRepo } = require('../repositories');
 const { computeHybridScore } = require('./rankingEngine');
+const { computePercentileRanks } = require('./normalize');
 const { log, warn } = require('../logger');
-const { sqlIn, DELIVERY_TYPES, SALE_TYPES, CONTRIBUTION_TYPES } = require('../shared/movementTypes');
+const { DELIVERY_TYPES, SALE_TYPES, CONTRIBUTION_TYPES } = require('../shared/movementTypes');
 
 async function _memberMonthStats(memberId, monthStart, monthEnd) {
   const r = await query(
@@ -58,13 +59,13 @@ async function _memberMonthDeliveries(memberId, monthStart, monthEnd) {
   const r = await query(
     `
     SELECT
-      SUM(CASE WHEN movement_type IN (${sqlIn(DELIVERY_TYPES)}) THEN quantity ELSE 0 END)::int AS deliveries,
-      SUM(CASE WHEN movement_type IN (${sqlIn(SALE_TYPES)}) THEN quantity ELSE 0 END)::int AS sales,
-      SUM(CASE WHEN movement_type IN (${sqlIn(CONTRIBUTION_TYPES)})
+      SUM(CASE WHEN movement_type = ANY($4::text[]) THEN quantity ELSE 0 END)::int AS deliveries,
+      SUM(CASE WHEN movement_type = ANY($5::text[]) THEN quantity ELSE 0 END)::int AS sales,
+      SUM(CASE WHEN movement_type = ANY($6::text[])
           THEN quantity ELSE 0 END)::int AS weighted_qty
     FROM inventory_movements
     WHERE member_id = $1 AND created_at >= $2::date AND created_at <= ($3::date + INTERVAL '1 day')`,
-    [memberId, monthStart, monthEnd]
+    [memberId, monthStart, monthEnd, DELIVERY_TYPES, SALE_TYPES, CONTRIBUTION_TYPES]
   );
   const row = r.rows[0] || {};
   return {
@@ -77,10 +78,11 @@ async function _memberMonthDeliveries(memberId, monthStart, monthEnd) {
 async function computeMonthlyRankings(ref = new Date()) {
   const { start, end } = monthlyRankingRepo.monthBounds(ref);
   const members = await memberRepo.findAll('ativo');
-  const results = [];
 
   log(`[MONTHLY-RANK] recompute mês ${start}..${end} · ${members.length} membros`);
 
+  // First pass: compute raw scores
+  const memberData = [];
   for (const member of members) {
     try {
       const deliveries = await _memberMonthDeliveries(member.id, start, end);
@@ -98,26 +100,55 @@ async function computeMonthlyRankings(ref = new Date()) {
         ...saidaStats,
       });
 
+      memberData.push({
+        member,
+        deliveries,
+        saidaStats,
+        perfRaw,
+        hybrid,
+      });
+    } catch (e) {
+      warn(`[MONTHLY-RANK] falha em ${member.display_name}: ${e.message}`);
+    }
+  }
+
+  // Second pass: percentile normalization
+  const forNormalization = memberData.map(md => ({
+    ...md.member,
+    hybridScore: md.hybrid,
+    weightedValue: md.deliveries.weightedValue,
+    deliveries: md.deliveries.deliveries,
+    sales: md.deliveries.sales,
+    performanceScore: md.perfRaw,
+    ...md.saidaStats,
+  }));
+  const normalized = computePercentileRanks(forNormalization);
+
+  // Third pass: persist
+  const results = [];
+  for (const r of normalized) {
+    try {
       const saved = await monthlyRankingRepo.saveMonthly({
-        memberId: member.id,
+        memberId: r.id,
         monthStart: start,
         monthEnd: end,
-        deliveries: deliveries.deliveries,
-        sales: deliveries.sales,
-        weightedValue: deliveries.weightedValue,
-        operationsCount: saidaStats.saidasCount,
-        killsCount: saidaStats.killsCount,
-        winsCount: saidaStats.winsCount,
-        lossCount: saidaStats.lossCount,
-        netProfitGenerated: saidaStats.netProfit,
-        returnRate: saidaStats.returnRate,
-        survivalRate: saidaStats.survivalRate,
-        performanceScore: perfRaw,
-        hybridScore: hybrid,
+        deliveries: r.deliveries,
+        sales: r.sales,
+        weightedValue: r.weightedValue,
+        operationsCount: r.saidasCount,
+        killsCount: r.killsCount,
+        winsCount: r.winsCount,
+        lossCount: r.lossCount,
+        netProfitGenerated: r.netProfit,
+        returnRate: r.returnRate,
+        survivalRate: r.survivalRate,
+        performanceScore: r.performanceScore,
+        hybridScore: r.hybridScore,
+        normalizedScore: r.normalized_score,
       });
       results.push(saved);
     } catch (e) {
-      warn(`[MONTHLY-RANK] falha em ${member.display_name}: ${e.message}`);
+      warn(`[MONTHLY-RANK] falha ao gravar ${r.display_name}: ${e.message}`);
     }
   }
 
@@ -132,9 +163,9 @@ async function recomputeAllTimeStats() {
     WITH inv AS (
       SELECT
         member_id,
-        SUM(CASE WHEN movement_type IN (${sqlIn(DELIVERY_TYPES)}) THEN quantity ELSE 0 END)::int AS deliveries,
-        SUM(CASE WHEN movement_type IN (${sqlIn(SALE_TYPES)}) THEN quantity ELSE 0 END)::int AS sales,
-        SUM(CASE WHEN movement_type IN (${sqlIn(CONTRIBUTION_TYPES)})
+        SUM(CASE WHEN movement_type = ANY($1::text[]) THEN quantity ELSE 0 END)::int AS deliveries,
+        SUM(CASE WHEN movement_type = ANY($2::text[]) THEN quantity ELSE 0 END)::int AS sales,
+        SUM(CASE WHEN movement_type = ANY($3::text[])
             THEN quantity ELSE 0 END)::numeric AS weighted_value,
         MIN(created_at::date) AS first_activity,
         MAX(created_at::date) AS last_activity
@@ -180,7 +211,8 @@ async function recomputeAllTimeStats() {
     FROM members m
     LEFT JOIN inv ON inv.member_id = m.id
     LEFT JOIN sai ON sai.member_id = m.id
-    WHERE m.status = 'ativo' OR m.status IS NULL`);
+    WHERE m.status = 'ativo' OR m.status IS NULL`,
+    [DELIVERY_TYPES, SALE_TYPES, CONTRIBUTION_TYPES]);
 
   for (const row of r.rows) {
     const hybrid = computeHybridScore({

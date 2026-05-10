@@ -4,6 +4,8 @@
  */
 
 const { query, queryWithTransaction } = require('../db');
+const { guardColumns } = require('../shared/sqlColumnGuard');
+const { NotFoundError } = require('../shared/errors');
 
 async function listAll({ active, orderable, category } = {}) {
   const conditions = ['1=1'];
@@ -68,8 +70,15 @@ async function create({
 async function update(id, fields, changedBy) {
   return queryWithTransaction(async client => {
     const current = await client.query('SELECT * FROM items WHERE id = $1', [id]);
-    if (!current.rows.length) throw new Error('Item não encontrado.');
+    if (!current.rows.length) throw new NotFoundError('Item não encontrado.', { code: 'ITEM_NOT_FOUND' });
     const old = current.rows[0];
+
+    const ALLOWED = new Set([
+      'name', 'category', 'unit', 'estimated_value', 'active', 'orderable',
+      'counts_for_stock', 'counts_for_rankings', 'purchase_price', 'min_sale_price',
+      'max_sale_price', 'target_stock', 'supplier', 'notes',
+    ]);
+    const safe = guardColumns(fields, ALLOWED);
 
     const trackedFields = [
       'estimated_value',
@@ -82,18 +91,18 @@ async function update(id, fields, changedBy) {
       'counts_for_rankings',
     ];
     for (const f of trackedFields) {
-      if (fields[f] !== undefined && String(old[f]) !== String(fields[f])) {
+      if (safe[f] !== undefined && String(old[f]) !== String(safe[f])) {
         await client.query(
           `INSERT INTO item_price_history (item_id, field_changed, old_value, new_value, changed_by)
            VALUES ($1,$2,$3,$4,$5)`,
-          [id, f, String(old[f]), String(fields[f]), changedBy]
+          [id, f, String(old[f]), String(safe[f]), changedBy]
         );
       }
     }
 
     const setParts = [];
     const params = [];
-    Object.entries(fields).forEach(([k, v]) => {
+    Object.entries(safe).forEach(([k, v]) => {
       if (v !== undefined) {
         setParts.push(`${k} = $${params.length + 1}`);
         params.push(v);

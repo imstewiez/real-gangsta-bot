@@ -107,7 +107,7 @@ function fmtDate(d) {
 function daysSince(d) {
   if (!d) return 0;
   try {
-    return Math.floor((Date.now() - new Date(d).getTime()) / (1000 * 60 * 60 * 24));
+    return Math.floor((Math.max(0, Date.now() - new Date(d).getTime())) / (1000 * 60 * 60 * 24));
   } catch {
     return 0;
   }

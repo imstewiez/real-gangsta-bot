@@ -139,6 +139,7 @@ function onDomainEvent(event) {
 
 function registerSheetProjections() {
   for (const event of Object.keys(EVENT_TO_TABS)) {
+    eventBus.removeAllListeners(event);
     eventBus.on(event, onDomainEvent(event));
   }
   log(`[PROJ] Subscritos ${Object.keys(EVENT_TO_TABS).length} eventos → sheets projections.`);

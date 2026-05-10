@@ -28,11 +28,11 @@ async function getChefiaMetrics() {
         FROM members
       ),
       top_semana AS (
-        SELECT m.display_name, SUM(im.quantity)::int AS total_qty
+        SELECT m.display_name, COALESCE(SUM(im.quantity), 0)::int AS total_qty
         FROM inventory_movements im
         JOIN members m ON m.id = im.member_id
         WHERE im.movement_type IN ('entrega_morador', 'entrega_oficial')
-          AND im.created_at >= date_trunc('week', NOW())
+          AND im.created_at >= DATE_TRUNC('week', NOW()) AND im.created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
         GROUP BY m.display_name
         ORDER BY total_qty DESC
         LIMIT 1
@@ -40,7 +40,7 @@ async function getChefiaMetrics() {
       pvp AS (
         SELECT COUNT(*)::int AS kills
         FROM kill_logs
-        WHERE created_at >= date_trunc('week', NOW())
+        WHERE created_at >= DATE_TRUNC('week', NOW()) AND created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
       ),
       movimento AS (
         SELECT
@@ -48,7 +48,7 @@ async function getChefiaMetrics() {
           COUNT(*) FILTER (WHERE movement_type = 'venda_morador')::int AS vendas,
           COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_morador','entrega_oficial')), 0)::int AS entregas_qty
         FROM inventory_movements
-        WHERE created_at >= date_trunc('week', NOW())
+        WHERE created_at >= DATE_TRUNC('week', NOW()) AND created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
       ),
       ausencias AS (
         SELECT COUNT(*)::int AS activas
@@ -90,13 +90,14 @@ async function getChefiaMetrics() {
       e.aprovadas AS enc_aprovadas,
       e.entregues AS enc_entregues,
       sc.cnt AS stock_critico
-    FROM saidas s
-    CROSS JOIN membros m
-    CROSS JOIN pvp p
-    CROSS JOIN movimento mv
-    CROSS JOIN ausencias a
-    CROSS JOIN encomendas e
-    CROSS JOIN stock_critico sc
+    FROM (SELECT 1) AS anchor
+    LEFT JOIN saidas s ON true
+    LEFT JOIN membros m ON true
+    LEFT JOIN pvp p ON true
+    LEFT JOIN movimento mv ON true
+    LEFT JOIN ausencias a ON true
+    LEFT JOIN encomendas e ON true
+    LEFT JOIN stock_critico sc ON true
     LEFT JOIN top_semana ts ON true
   `;
   const res = await query(sql);
@@ -123,12 +124,12 @@ async function getOficialMetrics() {
           COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_morador','entrega_oficial')), 0)::int AS entregas_qty,
           COALESCE(SUM(quantity) FILTER (WHERE movement_type = 'venda_morador'), 0)::int AS vendas_qty
         FROM inventory_movements
-        WHERE created_at >= date_trunc('week', NOW())
+        WHERE created_at >= DATE_TRUNC('week', NOW()) AND created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
       ),
       pvp AS (
         SELECT COUNT(*)::int AS kills
         FROM kill_logs
-        WHERE created_at >= date_trunc('week', NOW())
+        WHERE created_at >= DATE_TRUNC('week', NOW()) AND created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
       ),
       membros AS (
         SELECT COUNT(*)::int AS activos
@@ -144,7 +145,11 @@ async function getOficialMetrics() {
       mv.vendas_qty AS vendas_qty,
       p.kills AS kills_semana,
       m.activos AS membros_activos
-    FROM saidas s, movimento mv, pvp p, membros m
+    FROM (SELECT 1) AS anchor
+    LEFT JOIN saidas s ON true
+    LEFT JOIN movimento mv ON true
+    LEFT JOIN pvp p ON true
+    LEFT JOIN membros m ON true
   `;
   const res = await query(sql);
   return res.rows[0];
@@ -166,7 +171,7 @@ async function getBairristaMetrics(discordId) {
         COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_morador','entrega_oficial')), 0)::int AS entregas_qty
       FROM inventory_movements
       WHERE member_id = (SELECT id FROM viewer)
-        AND created_at >= date_trunc('week', NOW())
+        AND created_at >= DATE_TRUNC('week', NOW()) AND created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
     ),
     minhas_encomendas AS (
       SELECT COUNT(*)::int AS pendentes
@@ -175,11 +180,11 @@ async function getBairristaMetrics(discordId) {
         AND status = 'pending'
     ),
     top3 AS (
-      SELECT m.display_name, SUM(im.quantity)::int AS total_qty
+      SELECT m.display_name, COALESCE(SUM(im.quantity), 0)::int AS total_qty
       FROM inventory_movements im
       JOIN members m ON m.id = im.member_id
       WHERE im.movement_type IN ('entrega_morador','entrega_oficial')
-        AND im.created_at >= date_trunc('week', NOW())
+        AND im.created_at >= DATE_TRUNC('week', NOW()) AND im.created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
       GROUP BY m.display_name
       ORDER BY total_qty DESC
       LIMIT 3
@@ -214,7 +219,11 @@ async function getBairristaMetrics(discordId) {
       (SELECT jsonb_agg(jsonb_build_object('nome', t.display_name, 'qty', t.total_qty)) FROM top3 t),
       '[]'::jsonb
     ) AS top3
-    FROM meu_movimento mm, minhas_encomendas me, saidas s, membros m
+    FROM (SELECT 1) AS anchor
+    LEFT JOIN meu_movimento mm ON true
+    LEFT JOIN minhas_encomendas me ON true
+    LEFT JOIN saidas s ON true
+    LEFT JOIN membros m ON true
     LEFT JOIN meu_rank mr ON true
   `;
   const res = await query(sql, [discordId]);
@@ -239,14 +248,14 @@ async function getPatraoMetrics() {
           COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_morador','entrega_oficial')), 0)::int AS entregas_qty,
           COALESCE(SUM(quantity) FILTER (WHERE movement_type = 'venda_morador'), 0)::int AS vendas_qty
         FROM inventory_movements
-        WHERE created_at >= date_trunc('week', NOW())
+        WHERE created_at >= DATE_TRUNC('week', NOW()) AND created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
       ),
       top_zona AS (
-        SELECT m.display_name, SUM(im.quantity)::int AS total_qty
+        SELECT m.display_name, COALESCE(SUM(im.quantity), 0)::int AS total_qty
         FROM inventory_movements im
         JOIN members m ON m.id = im.member_id
         WHERE im.movement_type IN ('entrega_morador','entrega_oficial')
-          AND im.created_at >= date_trunc('week', NOW())
+          AND im.created_at >= DATE_TRUNC('week', NOW()) AND im.created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
         GROUP BY m.display_name
         ORDER BY total_qty DESC
         LIMIT 1
@@ -259,7 +268,7 @@ async function getPatraoMetrics() {
             SELECT 1 FROM inventory_movements im
             WHERE im.member_id = m.id
               AND im.movement_type IN ('entrega_morador','entrega_oficial')
-              AND im.created_at >= date_trunc('week', NOW())
+              AND im.created_at >= DATE_TRUNC('week', NOW()) AND im.created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
           )
         ORDER BY m.display_name
         LIMIT 5
@@ -275,8 +284,9 @@ async function getPatraoMetrics() {
       (SELECT jsonb_agg(jsonb_build_object('nome', i.display_name)) FROM inactivos_semana i),
       '[]'::jsonb
     ) AS inactivos_semana
-    FROM membros mb
-    CROSS JOIN movimento mv
+    FROM (SELECT 1) AS anchor
+    LEFT JOIN membros mb ON true
+    LEFT JOIN movimento mv ON true
     LEFT JOIN top_zona tz ON true
   `;
   const res = await query(sql);
@@ -291,7 +301,7 @@ async function getEntradaMetrics() {
   const sql = `
     SELECT
       COUNT(*) FILTER (WHERE status = 'ativo')::int AS membros_activos,
-      COUNT(*) FILTER (WHERE status = 'ativo' AND joined_at >= date_trunc('week', NOW()))::int AS novos_semana
+      COUNT(*) FILTER (WHERE status = 'ativo' AND joined_at >= DATE_TRUNC('week', NOW()) AND joined_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days')::int AS novos_semana
     FROM members
   `;
   const res = await query(sql);

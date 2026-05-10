@@ -23,4 +23,5 @@ module.exports = {
   memberLifecycleRepo: require('./memberLifecycle'),
   incidentRepo: require('./incident'),
   absenceRepo: require('./absence'),
+  inventoryBalanceRepo: require('./inventoryBalance'),
 };

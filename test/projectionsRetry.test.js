@@ -15,29 +15,31 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 
-function _freshProjections() {
-  // Limpa cache do projections.js + syncEngine.js para reiniciar estado.
-  delete require.cache[require.resolve('../src/sheets/projections')];
-  delete require.cache[require.resolve('../src/sheets/syncEngine')];
-  return require('../src/sheets/projections');
-}
+const shouldSkip = !process.env.CI && !process.env.DISCORD_BOT_TOKEN;
 
-function _stubSyncEngine({ syncOne, isTransientSheetsError }) {
-  // Substitui o módulo em cache para que projections veja a nossa versão.
-  const mod = require('../src/sheets/syncEngine');
-  const original = {
-    syncOne: mod.syncOne,
-    isTransientSheetsError: mod.isTransientSheetsError,
-  };
-  mod.syncOne = syncOne;
-  if (isTransientSheetsError) mod.isTransientSheetsError = isTransientSheetsError;
-  return () => {
-    mod.syncOne = original.syncOne;
-    mod.isTransientSheetsError = original.isTransientSheetsError;
-  };
-}
+(shouldSkip ? describe.skip : describe)('projections — retry semantics', () => {
+  function _freshProjections() {
+    // Limpa cache do projections.js + syncEngine.js para reiniciar estado.
+    delete require.cache[require.resolve('../src/sheets/projections')];
+    delete require.cache[require.resolve('../src/sheets/syncEngine')];
+    return require('../src/sheets/projections');
+  }
 
-describe('projections — retry semantics', () => {
+  function _stubSyncEngine({ syncOne, isTransientSheetsError }) {
+    // Substitui o módulo em cache para que projections veja a nossa versão.
+    const mod = require('../src/sheets/syncEngine');
+    const original = {
+      syncOne: mod.syncOne,
+      isTransientSheetsError: mod.isTransientSheetsError,
+    };
+    mod.syncOne = syncOne;
+    if (isTransientSheetsError) mod.isTransientSheetsError = isTransientSheetsError;
+    return () => {
+      mod.syncOne = original.syncOne;
+      mod.isTransientSheetsError = original.isTransientSheetsError;
+    };
+  }
+
   let projections;
   let restoreStub;
   const originalDelays = [];
@@ -93,7 +95,7 @@ describe('projections — retry semantics', () => {
     await bus.emitAsync('saida.opened', { id: 1 });
     const results = await projections._flushNow();
     // _flushNow faz await directo de syncOne (sem retry) — apanha o erro.
-    assert.equal(calls, 3); // 3 tabs, 1 attempt cada
+    assert.equal(calls, 3); // 3 tabs, 1 attempt each
     assert.ok(results.every(r => r.error));
   });
 

@@ -14,6 +14,7 @@ const { logAudit } = require('../audit/auditEngine');
 const { brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { log, warn } = require('../logger');
+const { ValidationError } = require('../shared/errors');
 
 const TYPE_META = {
   principal: { emoji: '📻', label: 'Principal' },
@@ -36,9 +37,9 @@ function normaliseValue(rawValue) {
 function generateRandom({ exclude = [] } = {}) {
   const min = CONFIG.RADIO_RANDOM_MIN;
   const max = CONFIG.RADIO_RANDOM_MAX;
-  if (max < min) throw new Error('RADIO_RANDOM_MAX < RADIO_RANDOM_MIN');
+  if (max < min) throw new ValidationError('RADIO_RANDOM_MAX < RADIO_RANDOM_MIN', { code: 'INVALID_RADIO_CONFIG' });
   const range = max - min + 1;
-  if (range <= 0) throw new Error('Range de rádio inválido.');
+  if (range <= 0) throw new ValidationError('Range de rádio inválido.', { code: 'INVALID_RADIO_CONFIG' });
 
   const blocked = new Set(exclude.filter(Boolean).map(normaliseValue));
   for (let i = 0; i < 50; i++) {
@@ -50,11 +51,12 @@ function generateRandom({ exclude = [] } = {}) {
 }
 
 async function setRadio({ type, value, mode = 'manual', actorId, note }) {
-  if (!TYPE_META[type]) throw new Error(`Tipo de rádio inválido: ${type}`);
+  if (!TYPE_META[type]) throw new ValidationError(`Tipo de rádio inválido: ${type}`, { code: 'INVALID_RADIO_TYPE' });
   if (!isValidValue(value)) {
-    throw new Error(
+    throw new ValidationError(
       `Valor "${value}" inválido (range ${CONFIG.RADIO_RANDOM_MIN}-${CONFIG.RADIO_RANDOM_MAX}` +
-        `${CONFIG.RADIO_ALLOW_ZERO ? ' ou 0' : ''}).`
+        `${CONFIG.RADIO_ALLOW_ZERO ? ' ou 0' : ''}).`,
+      { code: 'INVALID_RADIO_VALUE' }
     );
   }
   const v = normaliseValue(value);

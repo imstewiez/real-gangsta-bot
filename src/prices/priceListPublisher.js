@@ -14,7 +14,7 @@ const { getRankMultiplier } = require('../orders/orderPricingEngine');
 const { applyLogo } = require('../shared/embedBuilders');
 const { warn } = require('../logger');
 
-const CHANNEL_ID = process.env.PRICE_LIST_CHANNEL_ID || '1493279424840339627';
+const CHANNEL_ID = process.env.PRICE_LIST_CHANNEL_ID;
 
 // ── Categorias e ordem de apresentação ─────────────────────────────────────
 const PRICE_CATEGORIES = [

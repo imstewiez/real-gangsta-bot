@@ -885,7 +885,7 @@ async function handleSessionIniciar(interaction) {
           /* ignore */
         }
       }
-    })();
+    })().catch(() => {});
   }
 
   const summary =
@@ -979,7 +979,7 @@ async function handleSessionPedirJuntar(interaction) {
       } catch (e) {
         warn(`[SAIDA] Alerta-creator falhou para #${saidaId}: ${e.message}`);
       }
-    })();
+    })().catch(() => {});
 
     return safeReply(
       interaction,

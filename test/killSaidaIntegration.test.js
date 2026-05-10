@@ -49,6 +49,7 @@ const stubKillRepo = {
     state.kills.push(kill);
     return kill;
   },
+  countKillsToday: async () => 0,
   getLeaderboard: async (limit, windowDays) => {
     const cutoff = windowDays ? Date.now() - windowDays * 86400000 : 0;
     const counts = new Map();

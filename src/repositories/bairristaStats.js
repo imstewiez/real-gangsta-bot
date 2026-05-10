@@ -11,13 +11,7 @@
  */
 const { query } = require('../db');
 const { weekBounds } = require('../util');
-const { sqlIn, DELIVERY_TYPES, SALE_TYPES, CONTRIBUTION_TYPES } = require('../shared/movementTypes');
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-const DELIVERY_SQL = sqlIn(DELIVERY_TYPES);
-const SALE_SQL = sqlIn(SALE_TYPES);
-const ALL_CONTRIB_SQL = sqlIn(CONTRIBUTION_TYPES);
+const { DELIVERY_TYPES, SALE_TYPES, CONTRIBUTION_TYPES } = require('../shared/movementTypes');
 
 async function _memberId(discordId) {
   const r = await query('SELECT id FROM members WHERE discord_id = $1', [discordId]);
@@ -33,19 +27,19 @@ async function getMaterialStats(discordId, dateFrom, dateTo) {
   const r = await query(
     `
     SELECT
-      SUM(CASE WHEN movement_type IN (${DELIVERY_SQL}) THEN quantity ELSE 0 END)::int AS deliveries,
-      SUM(CASE WHEN movement_type IN (${SALE_SQL}) THEN quantity ELSE 0 END)::int AS sales,
-      SUM(CASE WHEN movement_type IN (${ALL_CONTRIB_SQL}) THEN quantity ELSE 0 END)::int AS total_qty,
-      SUM(CASE WHEN movement_type IN (${ALL_CONTRIB_SQL})
+      SUM(CASE WHEN movement_type = ANY($4::text[]) THEN quantity ELSE 0 END)::int AS deliveries,
+      SUM(CASE WHEN movement_type = ANY($5::text[]) THEN quantity ELSE 0 END)::int AS sales,
+      SUM(CASE WHEN movement_type = ANY($6::text[]) THEN quantity ELSE 0 END)::int AS total_qty,
+      SUM(CASE WHEN movement_type = ANY($6::text[])
           THEN quantity * COALESCE(im.unit_price, i.estimated_value, 0) ELSE 0 END)::numeric AS total_value,
       COUNT(DISTINCT im.created_at::date)::int AS active_days
     FROM inventory_movements im
     JOIN items i ON i.id = im.item_id
     WHERE im.member_id = $1
       AND im.created_at >= $2 AND im.created_at < $3
-      AND im.movement_type IN (${ALL_CONTRIB_SQL})
+      AND im.movement_type = ANY($6::text[])
   `,
-    [memberId, dateFrom, dateTo]
+    [memberId, dateFrom, dateTo, DELIVERY_TYPES, SALE_TYPES, CONTRIBUTION_TYPES]
   );
 
   const row = r.rows[0] || {};
@@ -340,17 +334,17 @@ async function getDailySummary(date = new Date()) {
       m.discord_id, m.display_name,
       SUM(im.quantity)::int AS total_qty,
       SUM(im.quantity * COALESCE(im.unit_price, i.estimated_value, 0))::numeric AS total_value,
-      SUM(CASE WHEN im.movement_type IN (${DELIVERY_TYPES}) THEN im.quantity ELSE 0 END)::int AS deliveries,
-      SUM(CASE WHEN im.movement_type IN (${SALE_TYPES}) THEN im.quantity ELSE 0 END)::int AS sales
+      SUM(CASE WHEN im.movement_type = ANY($3::text[]) THEN im.quantity ELSE 0 END)::int AS deliveries,
+      SUM(CASE WHEN im.movement_type = ANY($4::text[]) THEN im.quantity ELSE 0 END)::int AS sales
     FROM inventory_movements im
     JOIN members m ON m.id = im.member_id
     JOIN items i ON i.id = im.item_id
     WHERE im.created_at >= $1 AND im.created_at <= $2
-      AND im.movement_type IN (${ALL_CONTRIB_SQL})
+      AND im.movement_type = ANY($5::text[])
     GROUP BY m.discord_id, m.display_name
     ORDER BY total_qty DESC
   `,
-    [dayStart.toISOString(), dayEnd.toISOString()]
+    [dayStart.toISOString(), dayEnd.toISOString(), DELIVERY_TYPES, SALE_TYPES, CONTRIBUTION_TYPES]
   );
 
   const totals = r.rows.reduce(
@@ -369,11 +363,11 @@ async function getDailySummary(date = new Date()) {
     FROM inventory_movements im
     JOIN items i ON i.id = im.item_id
     WHERE im.created_at >= $1 AND im.created_at <= $2
-      AND im.movement_type IN (${ALL_CONTRIB_SQL})
+      AND im.movement_type = ANY($3::text[])
     GROUP BY i.name
     ORDER BY qty DESC LIMIT 1
   `,
-    [dayStart.toISOString(), dayEnd.toISOString()]
+    [dayStart.toISOString(), dayEnd.toISOString(), CONTRIBUTION_TYPES]
   );
 
   return {

@@ -5,7 +5,17 @@ Bot de gestão do bairro **Gangsta di Zona / Firma RedWood**. Gere onboarding, h
 ## Stack
 
 - Node.js ≥ 18 · discord.js v14 · PostgreSQL
-- Deploy: Railway (`railway.toml`)
+- Deploy: Railway (`railway.toml`) with CI/CD pipeline
+- Panel System: centralized per-role dashboards (chefia/oficial/bairrista/patrao/entrada)
+- Bairrista Cart: multi-item cart with PostgreSQL session store, atomic batch delivery
+- Delivery Type: entrega/venda differentiation with tipo column
+- Structured Errors: BotError hierarchy with user-facing detection
+- Materialized Balance: inventory_balance table for fast stock reads
+- Advisory Locks: per-member pg_advisory_xact_lock for stock consistency
+- Notification Queue: pending_notifications with retry and priority
+- Sheets DLQ: sync_retries with exponential backoff for Google API failures
+- Bootstrap State Machine: 8-phase boot with /ready readiness probe
+- Coverage: 422 tests, 0 failures
 
 ## Arranque
 

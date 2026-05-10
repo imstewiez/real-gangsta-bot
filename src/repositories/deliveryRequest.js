@@ -1,5 +1,6 @@
 'use strict';
 const { query } = require('../db');
+const { assertArray, assertJsonSchema } = require('../shared/validators');
 
 async function create({
   id,
@@ -13,6 +14,8 @@ async function create({
   totalValue,
   createdBy,
 }) {
+  assertArray('deliveryRequest.lines', lines);
+  for (const line of lines) assertJsonSchema('deliveryRequest.line', line, { item_id: 'number', quantity: 'number', unit_price: 'number' });
   const res = await query(
     `INSERT INTO inventory_delivery_requests
      (id, requester_member_id, requester_discord_id, approver_discord_id,

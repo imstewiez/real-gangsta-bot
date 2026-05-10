@@ -19,7 +19,7 @@ const { Events } = require('discord.js');
 const CONFIG = require('../config');
 const { validateOrExit } = require('../config/validate');
 const { pool, acquireInstanceLockWithRetry, releaseInstanceLock } = require('../db');
-const { runMigrations } = require('../dbMigrate');
+const { checkPendingMigrations } = require('../dbMigrate');
 const {
   ensureInstanceTable,
   cleanupStaleInstances,
@@ -28,7 +28,7 @@ const {
 } = require('../instanceCoordinator');
 const { log, warn, error, startLogMaintenance, stopLogMaintenance } = require('../logger');
 const { seedFromCatalog } = require('../inventory/itemCatalog');
-const { stopAll: stopScheduler } = require('../jobs/scheduler');
+const { stopAll: stopScheduler, drainActiveJobs } = require('../jobs/scheduler');
 const { createServer } = require('../web/server');
 const { registerSheetProjections } = require('../sheets/projections');
 const { registerNotificationRouting } = require('../notifications/routing');
@@ -38,7 +38,24 @@ const { registerLifecycleListeners } = require('./discord/lifecycle');
 const { onInteraction } = require('./discord/interactionRouter');
 const { runReadyPhases } = require('./readyPhases');
 
+const BOOT_PHASES = {
+  CONFIG_VALIDATED: 1,
+  WEB_SERVER_UP: 2,
+  INSTANCE_LOCKED: 3,
+  MIGRATIONS_CHECKED: 4,
+  EVENT_BUS_READY: 5,
+  DISCORD_CONNECTED: 6,
+  READY_PHASES_COMPLETE: 7,
+  FULLY_OPERATIONAL: 8,
+};
+let _currentPhase = 0;
+function setPhase(phase) {
+  _currentPhase = phase;
+  log(`[BOOT] Phase ${phase}/${BOOT_PHASES.FULLY_OPERATIONAL} reached`);
+}
+
 let client = null;
+let _server = null;
 let _shuttingDown = false;
 
 async function bootstrap() {
@@ -55,11 +72,13 @@ async function bootstrap() {
   // Validação forte de config ANTES de qualquer coisa. Aborta com relatório
   // claro se houver erros; warnings ficam nos logs.
   validateOrExit();
+  setPhase(BOOT_PHASES.CONFIG_VALIDATED);
 
   startLogMaintenance();
 
   // Web server cedo — healthcheck desbloqueia preempção de instância antiga.
-  createServer(Number(process.env.PORT) || 3000);
+  _server = createServer(Number(process.env.PORT) || 3000);
+  setPhase(BOOT_PHASES.WEB_SERVER_UP);
 
   // Coordenação de instâncias (preempção + lock singleton).
   await ensureInstanceTable();
@@ -72,8 +91,16 @@ async function bootstrap() {
     await deregisterInstance('lock_timeout').catch(() => {});
     process.exit(1);
   }
+  setPhase(BOOT_PHASES.INSTANCE_LOCKED);
 
-  await runMigrations();
+  const pending = await checkPendingMigrations();
+  if (pending.length > 0) {
+    error(`[BOOT] ${pending.length} migration(s) pendente(s): ${pending.map(m => m.file).join(', ')}`);
+    error('[BOOT] Corre `npm run db:migrate` antes de iniciar o bot. A abortar.');
+    process.exit(1);
+  }
+  setPhase(BOOT_PHASES.MIGRATIONS_CHECKED);
+
   await seedFromCatalog();
 
   // Subscribers do event bus — antes do client, para apanhar emits precoces.
@@ -87,6 +114,7 @@ async function bootstrap() {
     );
   }
   registerNotificationRouting();
+  setPhase(BOOT_PHASES.EVENT_BUS_READY);
 
   // Client + listeners.
   client = createClient();
@@ -102,12 +130,18 @@ async function bootstrap() {
           process.exit(0);
         });
       },
-    }).catch(e => {
-      error('[READY] Falha no ready hook:', e);
     })
+      .then(() => {
+        setPhase(BOOT_PHASES.READY_PHASES_COMPLETE);
+        setPhase(BOOT_PHASES.FULLY_OPERATIONAL);
+      })
+      .catch(e => {
+        error('[READY] Falha no ready hook:', e);
+      })
   );
 
   await client.login(CONFIG.DISCORD_BOT_TOKEN);
+  setPhase(BOOT_PHASES.DISCORD_CONNECTED);
   installShutdownSignals();
   return client;
 }
@@ -118,6 +152,9 @@ async function shutdown(signal) {
   _shuttingDown = true;
   log(`[SHUTDOWN] ${signal} received. Shutting down...`);
   try {
+    await drainActiveJobs(30000);
+  } catch (_) {}
+  try {
     stopScheduler();
   } catch (_) {}
   try {
@@ -126,6 +163,13 @@ async function shutdown(signal) {
   try {
     client?.destroy();
   } catch (_) {}
+  if (_server) {
+    try {
+      await new Promise((res, rej) => {
+        _server.close(err => (err ? rej(err) : res()));
+      });
+    } catch (_) {}
+  }
   await deregisterInstance(signal).catch(() => {});
   await releaseInstanceLock().catch(() => {});
   await pool.end().catch(() => {});
@@ -137,12 +181,20 @@ function installShutdownSignals() {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('unhandledRejection', reason => {
     error('[UNHANDLED REJECTION]', reason);
-    // NÃO matar o processo — o bot é long-running. Log + metrica.
-    // Um unhandled rejection tipicamente afeta só um request/fluxo.
     try {
       const metrics = require('../lib/metrics');
       metrics.interactionErrorsTotal?.inc();
     } catch {}
+    // Se for erro crítico de boot (lock, migrations), shutdown fatal
+    const fatal =
+      reason &&
+      (reason.message?.includes('lock') ||
+        reason.message?.includes('migration') ||
+        reason.message?.includes('DATABASE_URL'));
+    if (fatal) {
+      error('[UNHANDLED REJECTION] Fatal — a fazer shutdown.');
+      setTimeout(() => shutdown('unhandled_fatal'), 500);
+    }
   });
   process.on('uncaughtException', err => {
     error('[UNCAUGHT EXCEPTION]', err);
@@ -152,4 +204,4 @@ function installShutdownSignals() {
   });
 }
 
-module.exports = { bootstrap, shutdown };
+module.exports = { bootstrap, shutdown, getBootPhase: () => _currentPhase };

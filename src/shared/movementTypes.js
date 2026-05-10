@@ -60,11 +60,6 @@ const DELIVERY_TYPES = Object.freeze([MOVEMENT_TYPE.ENTREGA_BAIRRISTA, MOVEMENT_
 // Movimentos de venda
 const SALE_TYPES = Object.freeze([MOVEMENT_TYPE.VENDA_BAIRRISTA]);
 
-// Helper: converte array de tipos para string SQL IN (...)
-function sqlIn(types) {
-  return types.map(t => `'${t}'`).join(',');
-}
-
 module.exports = {
   MOVEMENT_TYPE,
   STOCK_INFLOW_TYPES,
@@ -72,5 +67,4 @@ module.exports = {
   CONTRIBUTION_TYPES,
   DELIVERY_TYPES,
   SALE_TYPES,
-  sqlIn,
 };

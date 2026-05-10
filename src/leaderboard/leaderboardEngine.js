@@ -28,7 +28,8 @@
 
 const { query } = require('../db');
 const { weekBounds } = require('../util');
-const { sqlIn, DELIVERY_TYPES, SALE_TYPES, CONTRIBUTION_TYPES } = require('../shared/movementTypes');
+const { ValidationError } = require('../shared/errors');
+const { DELIVERY_TYPES, SALE_TYPES, CONTRIBUTION_TYPES } = require('../shared/movementTypes');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PERIOD BOUNDS
@@ -71,7 +72,7 @@ function periodBounds(period, refDate = new Date()) {
     const label = new Intl.DateTimeFormat('pt-PT', { month: 'long', year: 'numeric' }).format(start);
     return { start, end, label };
   }
-  throw new Error(`Unknown period: ${period}`);
+  throw new ValidationError(`Unknown period: ${period}`, { code: 'INVALID_PERIOD' });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -91,7 +92,7 @@ async function getActivityLeaders(start, end, limit = 5) {
         FROM inventory_movements im
        WHERE im.member_id IS NOT NULL
          AND im.created_at::date >= $1::date AND im.created_at::date <= $2::date
-         AND im.movement_type IN (${sqlIn(CONTRIBUTION_TYPES)})
+         AND im.movement_type = ANY($4::text[])
        GROUP BY im.member_id
     ),
     sai AS (
@@ -116,7 +117,7 @@ async function getActivityLeaders(start, end, limit = 5) {
      ORDER BY score DESC, saidas DESC, m.display_name ASC
      LIMIT $3
   `,
-    [start, end, limit]
+    [start, end, limit, CONTRIBUTION_TYPES]
   );
   const top = r.rows.map(row => ({
     discordId: row.discord_id,
@@ -207,14 +208,14 @@ async function getMaterialDeliveredLeaders(start, end, limit = 5) {
       FROM inventory_movements im
       JOIN members m ON m.id = im.member_id
       JOIN items i ON i.id = im.item_id
-     WHERE im.movement_type IN (${sqlIn(DELIVERY_TYPES)})
+     WHERE im.movement_type = ANY($4::text[])
        AND im.created_at >= $1 AND im.created_at <= $2
      GROUP BY m.id, m.discord_id, m.display_name
     HAVING SUM(im.quantity) > 0
      ORDER BY total_qty DESC, m.display_name ASC
      LIMIT $3
   `,
-    [start, end, limit]
+    [start, end, limit, DELIVERY_TYPES]
   );
   const top = r.rows.map(row => ({
     discordId: row.discord_id,
@@ -237,14 +238,14 @@ async function getMaterialSoldLeaders(start, end, limit = 5) {
       FROM inventory_movements im
       JOIN members m ON m.id = im.member_id
       JOIN items i ON i.id = im.item_id
-     WHERE im.movement_type IN (${sqlIn(SALE_TYPES)})
+     WHERE im.movement_type = ANY($4::text[])
        AND im.created_at >= $1 AND im.created_at <= $2
      GROUP BY m.id, m.discord_id, m.display_name
     HAVING SUM(im.quantity) > 0
      ORDER BY total_value DESC, total_qty DESC, m.display_name ASC
      LIMIT $3
   `,
-    [start, end, limit]
+    [start, end, limit, SALE_TYPES]
   );
   const top = r.rows.map(row => ({
     discordId: row.discord_id,

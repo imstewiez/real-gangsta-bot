@@ -33,7 +33,7 @@ function getLogPaths() {
   };
 }
 
-const SENSITIVE_KEYS = /token|password|secret|key|authorization|credential|service_account|private_key/i;
+const SENSITIVE_KEYS = /\b(token|password|secret|api_key|auth_key|private_key|secret_key|authorization|credential|service_account|database_url|connection_string)\b/i;
 
 function redactObject(obj, depth = 0) {
   if (depth > 4 || !obj || typeof obj !== 'object') return obj;
@@ -42,6 +42,8 @@ function redactObject(obj, depth = 0) {
   for (const [k, v] of Object.entries(obj)) {
     if (SENSITIVE_KEYS.test(k) && typeof v === 'string') {
       out[k] = v.length > 8 ? v.slice(0, 4) + '***' : '***';
+    } else if (/\b(url|uri)\b/i.test(k) && /(password|pass|pwd)=/i.test(String(v))) {
+      return '[REDACTED]';
     } else if (typeof v === 'object' && v !== null) {
       out[k] = redactObject(v, depth + 1);
     } else {

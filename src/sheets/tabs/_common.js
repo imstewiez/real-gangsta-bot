@@ -440,7 +440,7 @@ function applyRowBanding(rows) {
     if (i % 2 === 0) return row;
     return row.map(c => {
       if (!c || !c.userEnteredFormat) return c;
-      const cloned = JSON.parse(JSON.stringify(c));
+      const cloned = { ...c, userEnteredFormat: { ...c.userEnteredFormat } };
       const bg = cloned.userEnteredFormat.backgroundColor;
       if (!bg) return cloned;
       const isBodyBg = Math.abs(bg.red - COLOR.BG_APP.red) < 0.02 && Math.abs(bg.green - COLOR.BG_APP.green) < 0.02;

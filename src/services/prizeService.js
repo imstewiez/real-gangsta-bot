@@ -13,6 +13,7 @@
 const { prizeRepo } = require('../repositories');
 const { log } = require('../logger');
 const { logAudit } = require('../audit/auditEngine');
+const { NotFoundError } = require('../shared/errors');
 
 async function recordWeeklyWinner({ weekStart, weekEnd, winnerMemberId, hybridScore, metrics }) {
   const prize = await prizeRepo.create({
@@ -28,7 +29,7 @@ async function recordWeeklyWinner({ weekStart, weekEnd, winnerMemberId, hybridSc
 
 async function definePrize({ weekStart, prizeDescription, definedBy, notes = '' }) {
   const prize = await prizeRepo.definePrize(weekStart, { prizeDescription, definedBy, notes });
-  if (!prize) throw new Error('Semana não encontrada ou prémio já entregue.');
+  if (!prize) throw new NotFoundError('Semana não encontrada ou prémio já entregue.', { code: 'PRIZE_NOT_FOUND' });
 
   await logAudit({
     action: 'prize_defined',
@@ -45,7 +46,7 @@ async function definePrize({ weekStart, prizeDescription, definedBy, notes = '' 
 
 async function markDelivered({ weekStart, deliveredBy, notes = '' }) {
   const prize = await prizeRepo.markDelivered(weekStart, { deliveredBy, notes });
-  if (!prize) throw new Error('Semana não encontrada.');
+  if (!prize) throw new NotFoundError('Semana não encontrada.', { code: 'PRIZE_NOT_FOUND' });
 
   await logAudit({
     action: 'prize_delivered',

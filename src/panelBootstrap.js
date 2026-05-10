@@ -145,6 +145,7 @@ async function bootstrapPanel(client, panelDef) {
         } catch {
           failedCount++;
         }
+        await new Promise(r => setTimeout(r, 350));
       }
       lastId = batch.last()?.id;
       if (batch.size < 100) more = false;
@@ -319,7 +320,7 @@ async function backfillResidentPanels(client) {
       });
       await panelMsg.pin().catch(() => {});
       posted++;
-      await new Promise(r => setTimeout(r, 300));
+      await new Promise(r => setTimeout(r, 600));
     } catch (e) {
       failed++;
       warn(`[BACKFILL] ${row.channel_id}: ${e.message}`);

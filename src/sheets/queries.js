@@ -336,7 +336,7 @@ async function getDailyBreakdown(days = 14) {
 }
 
 // ─── Membros (1 query com todos os agregados) ────────────────────────────────
-async function getMembersFull() {
+async function getMembersFull(limit = 2000) {
   // Otimizado: elimina subquery correlacionada (N+1) para last_saida.
   // Substitui por LEFT JOIN com CTE pré-agregada por member_id.
   const r = await query(`
@@ -383,7 +383,8 @@ async function getMembersFull() {
     ) mv ON true
     LEFT JOIN member_saida_stats mss ON mss.member_id = m.id
     LEFT JOIN member_last_saida mls ON mls.member_id = m.id
-    ORDER BY m.display_name`);
+    ORDER BY m.display_name
+    LIMIT $1`, [limit]);
   return r.rows;
 }
 
@@ -535,7 +536,7 @@ async function getKillsKPIs() {
 }
 
 // ─── Spots ───────────────────────────────────────────────────────────────────
-async function getSpotsFull() {
+async function getSpotsFull(limit = 2000) {
   // Otimizado: elimina subquery correlacionada N+1 para last_saida_date.
   const r = await query(`
     WITH last_saida_per_spot AS (
@@ -553,7 +554,8 @@ async function getSpotsFull() {
     FROM spot_stats s
     LEFT JOIN members m ON m.id = s.best_member_id
     LEFT JOIN last_saida_per_spot lsp ON lsp.spot = s.spot
-    ORDER BY s.total_net_value DESC NULLS LAST`);
+    ORDER BY s.total_net_value DESC NULLS LAST
+    LIMIT $1`, [limit]);
   return r.rows;
 }
 
@@ -621,7 +623,7 @@ async function getRankings() {
 }
 
 // ─── Inventário / movimentos ─────────────────────────────────────────────────
-async function getInventoryFull() {
+async function getInventoryFull(limit = 2000) {
   // Otimizado: elimina 3 subqueries correlacionadas (N+1) substituindo por
   // LEFT JOINs com agregações pré-computadas. Escalabilidade: O(n) em vez
   // de O(n²) para N items.
@@ -659,7 +661,8 @@ async function getInventoryFull() {
     JOIN stock_balances sb ON sb.id = i.id
     LEFT JOIN movement_stats ms ON ms.item_id = i.id
     WHERE i.active = true
-    ORDER BY value_total DESC NULLS LAST, i.name`);
+    ORDER BY value_total DESC NULLS LAST, i.name
+    LIMIT $1`, [limit]);
   return r.rows;
 }
 

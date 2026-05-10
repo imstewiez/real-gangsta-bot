@@ -76,6 +76,10 @@ function registerLifecycleListeners(client) {
       error(`[ROLE_UPDATE] Error processing ${newMember?.id}: ${e.message}`, e);
     }
   });
+
+  client.on(Events.Error, err => error('[DISCORD] Client error:', err));
+  client.on(Events.ShardError, err => error('[DISCORD] Shard error:', err));
+  client.on(Events.Invalidated, () => error('[DISCORD] Session invalidated'));
 }
 
 // ── Role resolution helpers ─────────────────────────────────────────────────

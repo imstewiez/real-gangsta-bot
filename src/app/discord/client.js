@@ -15,6 +15,7 @@ function createClient() {
       GatewayIntentBits.GuildMessages,
       GatewayIntentBits.MessageContent,
     ],
+    failIfNotExists: false,
   });
 }
 

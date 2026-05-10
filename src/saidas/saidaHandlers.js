@@ -9,6 +9,7 @@ const {
   UserSelectMenuBuilder,
 } = require('discord.js');
 const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
+const { replySafe } = require('../shared/safeEmbed');
 const { fmtSaidaStatus, fmtSaidaType, fmtParticipantType } = require('../shared/labels');
 const { buildSearchableSelect } = require('../shared/selectSearch');
 const { successEmbed, brandEmbed } = require('../shared/embedBuilders');
@@ -287,7 +288,7 @@ async function handleCreateSaidaModal(interaction) {
         inline: false,
       });
     }
-    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
+    return replySafe(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
     return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'ERROR' });
   }
@@ -711,7 +712,7 @@ async function handleViewSaidasButton(interaction) {
     return `${em}${re} **#${s.id}** — ${fmtSaidaType(s.operation_type)} · ${when} · ${s.spot || '—'} · Líder: ${s.leader_name || '—'}`;
   });
   const embed = brandEmbed('MOVEMENT').setTitle(`${EMOJI.SAIDA} Saídas recentes`).setDescription(lines.join('\n'));
-  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
+  return replySafe(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -797,7 +798,7 @@ async function handleParticipantUsersSelect(interaction) {
   if (errors.length) {
     lines.push('', '**Falhas:**', ...errors);
   }
-  return safeReply(
+  return replySafe(
     interaction,
     { embeds: [successEmbed('Nomes no movimento', lines.join('\n'))], flags: MessageFlags.Ephemeral },
     { messageClass: 'RESULT' }
@@ -982,7 +983,7 @@ async function handleMaterialQtyModal(interaction) {
       'Material registado',
       `**${quantity}×** ${item?.name || 'Item'} — ${dirLabels[ctx.direction]}\nSaída **#${ctx.saidaId}**${notes ? `\nNotas: ${notes}` : ''}`
     );
-    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
+    return replySafe(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
     return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'ERROR' });
   }
@@ -1140,7 +1141,7 @@ async function handleIssueQtyModal(interaction) {
       'Material fornecido',
       `${EMOJI.FORNECER} **${qty}×** ${item?.name || 'Item'} → <@${ctx.participantDiscordId}>\nSaída **#${ctx.saidaId}**${notes ? `\nNotas: ${notes}` : ''}`
     );
-    return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
+    return replySafe(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
     return safeReply(interaction, { content: `${EMOJI.ERRO} ${e.message}` }, { messageClass: 'ERROR' });
   }

@@ -2,6 +2,10 @@
 const { query } = require('../db');
 const { warn } = require('../logger');
 const CONFIG = require('../config');
+const fs = require('fs');
+const path = require('path');
+
+const FALLBACK_PATH = path.join(process.cwd(), 'logs', 'audit-fallback.log');
 
 async function logAudit({
   action,
@@ -30,6 +34,24 @@ async function logAudit({
     );
   } catch (e) {
     warn(`[AUDIT] Falha ao registar: ${action} — ${e.message}`);
+    try {
+      const line =
+        JSON.stringify({
+          timestamp: new Date().toISOString(),
+          action,
+          entityType,
+          entityId: entityId || '',
+          actorId,
+          actorName,
+          beforeState,
+          afterState,
+          context,
+        }) + '\n';
+      fs.mkdirSync(path.dirname(FALLBACK_PATH), { recursive: true });
+      fs.appendFileSync(FALLBACK_PATH, line);
+    } catch (fallbackErr) {
+      warn(`[AUDIT] Fallback também falhou: ${fallbackErr.message}`);
+    }
   }
 }
 
@@ -51,17 +73,58 @@ async function sendAuditToChannel(client, { title, description, fields = [], col
   }
 }
 
-async function getRecentLogs(limit = 50, entityType = null) {
-  let sql = 'SELECT * FROM audit_logs';
+function _buildWhere({ entityType, action, actorId, since, until }) {
+  const conditions = [];
   const params = [];
+  let idx = 0;
   if (entityType) {
-    sql += ' WHERE entity_type = $1';
+    conditions.push(`entity_type = $${++idx}`);
     params.push(entityType);
   }
-  sql += ' ORDER BY created_at DESC LIMIT $' + (params.length + 1);
-  params.push(limit);
-  const res = await query(sql, params);
+  if (action) {
+    conditions.push(`action = $${++idx}`);
+    params.push(action);
+  }
+  if (actorId) {
+    conditions.push(`actor_id = $${++idx}`);
+    params.push(actorId);
+  }
+  if (since) {
+    conditions.push(`created_at >= $${++idx}`);
+    params.push(since);
+  }
+  if (until) {
+    conditions.push(`created_at <= $${++idx}`);
+    params.push(until);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  return { where, params, idx };
+}
+
+async function getLogs({
+  limit = 50,
+  offset = 0,
+  entityType = null,
+  action = null,
+  actorId = null,
+  since = null,
+  until = null,
+} = {}) {
+  const { where, params, idx } = _buildWhere({ entityType, action, actorId, since, until });
+  const sql = `SELECT * FROM audit_logs ${where} ORDER BY created_at DESC LIMIT $${idx + 1} OFFSET $${idx + 2}`;
+  const res = await query(sql, [...params, limit, offset]);
   return res.rows;
 }
 
-module.exports = { logAudit, sendAuditToChannel, getRecentLogs };
+async function getLogsCount({ entityType = null, action = null, actorId = null, since = null, until = null } = {}) {
+  const { where, params } = _buildWhere({ entityType, action, actorId, since, until });
+  const sql = `SELECT COUNT(*)::int AS count FROM audit_logs ${where}`;
+  const res = await query(sql, params);
+  return res.rows[0]?.count || 0;
+}
+
+async function getLogsForActor(actorId, { limit = 50, offset = 0 } = {}) {
+  return getLogs({ limit, offset, actorId });
+}
+
+module.exports = { logAudit, sendAuditToChannel, getLogs, getLogsCount, getLogsForActor };

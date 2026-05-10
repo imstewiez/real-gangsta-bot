@@ -38,6 +38,8 @@ const pool = _DB_URL
       max: POOL_MAX,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 5000,
+      statement_timeout: parseInt(process.env.DB_STATEMENT_TIMEOUT, 10) || 30000,
+      query_timeout: parseInt(process.env.DB_QUERY_TIMEOUT, 10) || 35000,
     })
   : null;
 

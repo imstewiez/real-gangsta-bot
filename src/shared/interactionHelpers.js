@@ -221,9 +221,19 @@ async function safeShowModal(interaction, modal, opts = {}) {
   }
 }
 
+const MAX_DEDUP_ENTRIES = 10000;
+
 function isDuplicate(interactionId, ttlMs = 15000) {
   const until = processedInteractionIds.get(interactionId) || 0;
   if (Date.now() < until) return true;
+
+  if (processedInteractionIds.size >= MAX_DEDUP_ENTRIES) {
+    const now = Date.now();
+    for (const [k, v] of processedInteractionIds) {
+      if (now > v) processedInteractionIds.delete(k);
+    }
+  }
+
   processedInteractionIds.set(interactionId, Date.now() + ttlMs);
   return false;
 }

@@ -3,8 +3,7 @@ builder = "dockerfile"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "node src/index.js"
-healthcheckPath = "/health"
-healthcheckTimeout = 60
+healthcheckPath = "/ready"
+healthcheckTimeout = 120
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 5
+restartPolicyMaxRetries = 3

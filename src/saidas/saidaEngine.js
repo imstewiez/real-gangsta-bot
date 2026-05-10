@@ -18,9 +18,11 @@ const { saidaRepo, memberRepo, inventoryRepo, spotStatsRepo, memberSaidaStatsRep
 const { logAudit } = require('../audit/auditEngine');
 const { notifyMovement } = require('../inventory/stockNotifier');
 const { computeSaidaScores } = require('./saidaScoring');
+const { ALLOWED_TRANSITIONS, assertTransition: _assertTransition } = require('./saidaStateMachine');
 const metrics = require('../lib/metrics');
 const { log, warn } = require('../logger');
 const eventBus = require('../core/eventBus');
+const { NotFoundError, ConflictError, ValidationError } = require('../shared/errors');
 
 // Cliente Discord injectado no boot. Usado apenas para publicar resultados
 // ricos no fecho de saída (fire-and-forget). Se não estiver definido,
@@ -79,11 +81,10 @@ async function createSaida({
     const status = await spotCooldown.getStatus(spot);
     if (status.active) {
       const remaining = spotCooldown.formatRemaining(status.remainingMs);
-      const err = new Error(
-        `Spot "${spot}" em cooldown — ainda faltam ${remaining} (saída anterior #${status.saidaId || '—'}).`
+      throw new ConflictError(
+        `Spot "${spot}" em cooldown — ainda faltam ${remaining} (saída anterior #${status.saidaId || '—'}).`,
+        { code: 'SPOT_COOLDOWN' }
       );
-      err.code = 'SPOT_COOLDOWN';
-      throw err;
     }
   }
 
@@ -157,30 +158,6 @@ async function createSaida({
   return s;
 }
 
-// ── Máquina de estados ─────────────────────────────────────────────────────
-// Transições permitidas. Qualquer outra atira.
-const ALLOWED_TRANSITIONS = {
-  aberta: new Set(['em_preparacao', 'em_curso', 'em_liquidacao', 'cancelada']),
-  em_preparacao: new Set(['em_curso', 'em_liquidacao', 'cancelada']),
-  em_curso: new Set(['em_liquidacao', 'cancelada']),
-  em_liquidacao: new Set(['concluida', 'cancelada']),
-  concluida: new Set([]), // terminal — nunca reverter
-  cancelada: new Set([]), // terminal
-};
-
-async function _assertTransition(saidaId, toStatus) {
-  const saida = await saidaRepo.findById(saidaId);
-  if (!saida) throw new Error(`Saída #${saidaId} não existe.`);
-  const from = saida.status;
-  // Rejeitar quando from == toStatus também — evita re-entrância em cálculos
-  // (ex.: closeSaida duas vezes duplicaria scores/projecções).
-  const allowed = ALLOWED_TRANSITIONS[from];
-  if (!allowed || !allowed.has(toStatus)) {
-    throw new Error(`Transição proibida: saída #${saidaId} está "${from}" e não pode passar a "${toStatus}".`);
-  }
-  return saida;
-}
-
 async function startSaida(saidaId, actorId) {
   await _assertTransition(saidaId, 'em_curso');
   const r = await saidaRepo.updateStatus(saidaId, 'em_curso', { start_time: new Date() });
@@ -223,6 +200,11 @@ async function cancelSaida(saidaId, actorId) {
  * neste estado. Quando staff finaliza, finalizeSaida() faz o resto.
  */
 async function closeSaida(saidaId, resultData, actorId) {
+  const saida = await saidaRepo.findById(saidaId);
+  if (!saida) throw new NotFoundError(`Saída #${saidaId} não existe.`, { code: 'SAIDA_NOT_FOUND' });
+  if (saida.status === 'concluida') {
+    throw new ConflictError(`Saída #${saidaId} já está concluída — não pode ser fechada novamente.`, { code: 'SAIDA_ALREADY_CLOSED' });
+  }
   await _assertTransition(saidaId, 'em_liquidacao');
   const participants = await saidaRepo.getParticipants(saidaId);
 
@@ -451,7 +433,7 @@ async function finalizeSaida(saidaId, actorId) {
         } catch (e) {
           warn(`[SAIDA] cleanup session message #${saidaId} falhou: ${e.message}`);
         }
-      })();
+      })().catch(() => {});
     }
   }
 
@@ -585,7 +567,7 @@ async function expireStaleRequests(client) {
           } catch (_) {
             /* non-fatal */
           }
-        })();
+        })().catch(() => {});
       }
 
       // Refresh painel da saída afectada para remover da lista de requested.
@@ -647,11 +629,11 @@ async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
   const member = await _resolveOrCreateMember(discordId, guild);
 
   const saida = await saidaRepo.findById(saidaId);
-  if (!saida) throw new Error(`Saída #${saidaId} não existe.`);
+  if (!saida) throw new NotFoundError(`Saída #${saidaId} não existe.`, { code: 'SAIDA_NOT_FOUND' });
 
   // Guard 1: status da saída
   if (!PARTICIPATION_ALLOWED_STATUSES.has(saida.status)) {
-    throw new Error(`Saída #${saidaId} já está fechada — inscrições encerradas.`);
+    throw new ConflictError(`Saída #${saidaId} já está fechada — inscrições encerradas.`, { code: 'SAIDA_CLOSED' });
   }
 
   const participantType = data.participantType || 'caracterizado';
@@ -665,9 +647,10 @@ async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
   const existing = (await saidaRepo.getParticipants(saidaId)).find(p => p.member_id === member.id);
   if (existing) {
     const currentType = existing.participant_type;
-    throw new Error(
+    throw new ConflictError(
       `Já estás inscrito como **${currentType}** nesta saída. ` +
-        'Se queres mudar (tipo ou arma), usa **"Cancelar Registo"** no painel da saída e volta a inscrever-te.'
+        'Se queres mudar (tipo ou arma), usa **"Cancelar Registo"** no painel da saída e volta a inscrever-te.',
+      { code: 'SAIDA_ALREADY_REGISTERED' }
     );
   }
 
@@ -676,7 +659,7 @@ async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
     const maxCharacterized = saida.max_participants || 12;
     const currentCount = await saidaRepo.countCharacterized(saidaId);
     if (currentCount >= maxCharacterized) {
-      throw new Error(`Limite de ${maxCharacterized} caracterizados atingido. Regista-te como trabalhador.`);
+      throw new ConflictError(`Limite de ${maxCharacterized} caracterizados atingido. Regista-te como trabalhador.`, { code: 'SAIDA_FULL' });
     }
   }
 
@@ -709,7 +692,7 @@ async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
 
 async function updateParticipantResult(saidaId, discordId, fields, _actorId) {
   const member = await memberRepo.findByDiscordId(discordId);
-  if (!member) throw new Error('Membro não encontrado.');
+  if (!member) throw new NotFoundError('Membro não encontrado.', { code: 'MEMBER_NOT_FOUND' });
   return saidaRepo.updateParticipant(saidaId, member.id, fields);
 }
 
@@ -773,14 +756,14 @@ async function getSaidaSummary(saidaId) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function issueMaterialToParticipant(saidaId, discordId, itemId, quantity, actorId, notes = '', guild = null) {
-  if (!quantity || quantity <= 0) throw new Error('Quantidade inválida.');
+  if (!quantity || quantity <= 0) throw new ValidationError('Quantidade inválida.', { code: 'INVALID_QUANTITY' });
 
   // Guard: saída tem de estar aberta/em_curso/preparação. Não se fornece material
   // a uma saída já fechada ou cancelada.
   const saida = await saidaRepo.findById(saidaId);
-  if (!saida) throw new Error(`Saída #${saidaId} não existe.`);
+  if (!saida) throw new NotFoundError(`Saída #${saidaId} não existe.`, { code: 'SAIDA_NOT_FOUND' });
   if (['concluida', 'cancelada'].includes(saida.status)) {
-    throw new Error(`Saída #${saidaId} está fechada — não aceita mais material.`);
+    throw new ConflictError(`Saída #${saidaId} está fechada — não aceita mais material.`, { code: 'SAIDA_CLOSED' });
   }
 
   const member = await _resolveOrCreateMember(discordId, guild);
@@ -790,8 +773,9 @@ async function issueMaterialToParticipant(saidaId, discordId, itemId, quantity, 
   const participants = await saidaRepo.getParticipants(saidaId);
   const existing = participants.find(p => p.member_id === member.id);
   if (existing && (existing.died === true || existing.settled === true)) {
-    throw new Error(
-      `${member.display_name || discordId} já está ${existing.died ? 'marcado como morto' : 'liquidado'} nesta saída.`
+    throw new ConflictError(
+      `${member.display_name || discordId} já está ${existing.died ? 'marcado como morto' : 'liquidado'} nesta saída.`,
+      { code: 'PARTICIPANT_SETTLED' }
     );
   }
 

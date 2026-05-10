@@ -5,6 +5,10 @@ const { warn } = require('../logger');
 
 let _sheets = null;
 
+function invalidateSheetsClient() {
+  _sheets = null;
+}
+
 function _parseCredentials(raw) {
   const trimmed = raw.trim();
 
@@ -104,4 +108,4 @@ async function appendRows(spreadsheetId, range, values) {
   });
 }
 
-module.exports = { getSheetsClient, readRange, writeRange, clearRange, appendRows };
+module.exports = { getSheetsClient, invalidateSheetsClient, readRange, writeRange, clearRange, appendRows };

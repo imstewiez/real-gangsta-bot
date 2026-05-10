@@ -17,12 +17,14 @@ const { query } = require('../db');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
 const { getAllPeriodsLeaders, getPeriodLeaders, navigatePeriod } = require('./leaderboardEngine');
+const { ValidationError } = require('../shared/errors');
 const {
   buildLeaderboardEmbed,
   buildLeaderboardComponents,
   buildDetailsEmbed,
   buildDetailsComponents,
 } = require('./leaderboardPanel');
+const { TtlCache } = require('../shared/ttlCache');
 
 let _client = null;
 function setClient(client) {
@@ -88,7 +90,7 @@ async function publishOrRefresh(client = _client, { force = false } = {}) {
   // quando já há refresh recente).
   if (!force) {
     const cached = await _loadState(channelId).catch(() => null);
-    if (cached && Date.now() - new Date(cached.last_refreshed_at).getTime() < GLOBAL_DEBOUNCE_MS) {
+    if (cached && Math.max(0, Date.now() - new Date(cached.last_refreshed_at).getTime()) < GLOBAL_DEBOUNCE_MS) {
       return { skipped: 'debounced', messageId: cached.message_id };
     }
   }
@@ -142,7 +144,7 @@ async function publishOrRefresh(client = _client, { force = false } = {}) {
 // RATE-LIMITED MANUAL REFRESH
 // ═══════════════════════════════════════════════════════════════════════════
 
-const _userRefreshCooldown = new Map(); // discord_id → last refresh timestamp
+const _userRefreshCooldown = new TtlCache(); // discord_id → last refresh timestamp
 const REFRESH_COOLDOWN_MS = 30_000;
 
 function canUserRefresh(discordId) {
@@ -155,7 +157,7 @@ function canUserRefresh(discordId) {
 }
 
 function markUserRefresh(discordId) {
-  _userRefreshCooldown.set(discordId, Date.now());
+  _userRefreshCooldown.set(discordId, Date.now(), REFRESH_COOLDOWN_MS);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -172,7 +174,7 @@ async function buildDetailsForCustomRange(startStr, endStr) {
   const start = new Date(startStr + 'T00:00:00');
   const end = new Date(endStr + 'T23:59:59.999');
   if (isNaN(start.getTime()) || isNaN(end.getTime()) || start > end) {
-    throw new Error('Datas inválidas ou intervalo incorrecto.');
+    throw new ValidationError('Datas inválidas ou intervalo incorrecto.', { code: 'INVALID_DATE_RANGE' });
   }
 
   const [activity, mvp, kda, delivered, sold] = await Promise.all([

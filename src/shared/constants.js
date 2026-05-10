@@ -1,58 +1,48 @@
 'use strict';
 /**
- * Constants globais do projeto — tempos, limites, thresholds.
- *
- * Evita magic numbers espalhados pelo código.
+ * Constantes centrais — elimina magic numbers espalhados pelo codebase.
  */
 
-const MS_PER_SECOND = 1000;
-const MS_PER_MINUTE = 60 * MS_PER_SECOND;
-const MS_PER_HOUR = 60 * MS_PER_MINUTE;
-const MS_PER_DAY = 24 * MS_PER_HOUR;
-const MS_PER_WEEK = 7 * MS_PER_DAY;
+const Time = Object.freeze({
+  SECOND: 1_000,
+  MINUTE: 60_000,
+  HOUR: 60 * 60_000,
+  DAY: 24 * 60 * 60_000,
+  CART_TTL_MINUTES: 15,
+  SESSION_TTL_MINUTES: 30,
+  SPOT_COOLDOWN_MINUTES: 30,
+  COLLECTOR_TIMEOUT_MS: 5 * 60_000,
+  JOB_TIMEOUT_MS: 60_000,
+  HEARTBEAT_INTERVAL_MS: 15_000,
+  STALE_HEARTBEAT_SECONDS: 45,
+});
 
-// Timeouts e TTLs
-const INTERACTION_TTL_MS = 15 * MS_PER_MINUTE; // Discord interaction token lifetime
-const SESSION_TTL_MS = 15 * MS_PER_MINUTE; // Bairrista cart / item search
-const UNDO_WINDOW_MS = 5 * MS_PER_MINUTE; // Desfazer entrega/venda
-const RATE_LIMIT_WINDOW_MS = 10 * MS_PER_SECOND;
+const Limits = Object.freeze({
+  MAX_ADJUSTMENT: 999_999,
+  MAX_EMBED_TITLE: 256,
+  MAX_EMBED_DESCRIPTION: 4096,
+  MAX_EMBED_FIELD_NAME: 256,
+  MAX_EMBED_FIELD_VALUE: 1024,
+  MAX_EMBED_TOTAL: 6000,
+  MAX_EMBED_FOOTER: 2048,
+  MAX_BUTTONS_PER_MESSAGE: 25,
+  MAX_BUTTONS_PER_ROW: 5,
+  MAX_DEDUP_ENTRIES: 10_000,
+  KILL_DAILY_LIMIT: 50,
+  MAX_NOTES_LENGTH: 500,
+  MAX_CART_LINES: 50,
+});
 
-// Limites
-const RATE_LIMIT_DEFAULT = 10;
-const RATE_LIMIT_ADMIN = 30;
-const MAX_CART_LINES = 25; // Discord select menu limit
-const MAX_MODAL_FIELDS = 5; // Discord modal limit
-const MAX_EMBED_FIELDS = 25;
-const MAX_EMBED_DESCRIPTION = 4096;
+const Sheets = Object.freeze({
+  CIRCUIT_FAILURE_THRESHOLD: 3,
+  CIRCUIT_COOLDOWN_MS: 5 * 60_000,
+  BATCH_CHUNK_SIZE: 900,
+  RATE_LIMIT_REQUESTS: 90,
+  RATE_LIMIT_WINDOW_MS: 100_000,
+  PRE_SYNC_MIN_ROWS: 3000,
+  PRE_SYNC_MIN_COLS: 30,
+  RETRY_DELAYS_MS: [1000, 3000, 9000],
+  SYNC_LOCK_TIMEOUT_MS: 30_000,
+});
 
-// Sanidade
-const SANITY_MAX_QTY = 10000; // Aviso se qty > isto
-const SANITY_MAX_PRICE = 1_000_000; // Máximo preço custom em vendas
-
-// Stock thresholds
-const STOCK_CRITICAL_THRESHOLD = 4;
-const STOCK_LOW_THRESHOLD = 10;
-const STOCK_HIGH_THRESHOLD = 50;
-
-module.exports = {
-  MS_PER_SECOND,
-  MS_PER_MINUTE,
-  MS_PER_HOUR,
-  MS_PER_DAY,
-  MS_PER_WEEK,
-  INTERACTION_TTL_MS,
-  SESSION_TTL_MS,
-  UNDO_WINDOW_MS,
-  RATE_LIMIT_WINDOW_MS,
-  RATE_LIMIT_DEFAULT,
-  RATE_LIMIT_ADMIN,
-  MAX_CART_LINES,
-  MAX_MODAL_FIELDS,
-  MAX_EMBED_FIELDS,
-  MAX_EMBED_DESCRIPTION,
-  SANITY_MAX_QTY,
-  SANITY_MAX_PRICE,
-  STOCK_CRITICAL_THRESHOLD,
-  STOCK_LOW_THRESHOLD,
-  STOCK_HIGH_THRESHOLD,
-};
+module.exports = { Time, Limits, Sheets };

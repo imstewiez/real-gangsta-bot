@@ -12,7 +12,7 @@
  *      botão "↩ Desfazer (5 min)".
  *
  * State:
- *   - `cartStore` = sessionStore TTL 15min (limpa carts abandonados).
+ *   - `cartStore` = PostgreSQL-backed repo (limpa carts abandonados via TTL).
  *   - Key = discordId; value = { tipo, lines, globalNotes, updatedAt }.
  */
 
@@ -24,38 +24,46 @@ const {
   StringSelectMenuOptionBuilder,
   UserSelectMenuBuilder,
 } = require('discord.js');
-const { createSessionStore } = require('../shared/sessionStore');
+const { ValidationError } = require('../shared/errors');
 const { brandEmbed, COLOR, headerLine, statusPill, itemList, setFooterText } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
-
-const cartStore = createSessionStore('bairristaCart', { ttlMs: 15 * 60 * 1000 });
+const cartStore = require('../repositories/cartStore');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // STATE OPS
 // ═══════════════════════════════════════════════════════════════════════════
 
-function createCart(discordId, tipo) {
+async function createCart(discordId, tipo) {
   const cart = {
     tipo, // 'entrega' | 'venda'
     lines: [],
     globalNotes: '',
     updatedAt: Date.now(),
   };
-  cartStore.set(discordId, cart);
+  await cartStore.saveCart(discordId, cart);
   return cart;
 }
 
-function getCart(discordId) {
-  return cartStore.get(discordId) || null;
+async function getCart(discordId) {
+  return cartStore.getCart(discordId);
 }
 
-function saveCart(discordId, cart) {
+async function saveCart(discordId, cart) {
   cart.updatedAt = Date.now();
-  cartStore.set(discordId, cart);
+  cart.expires_at = Date.now() + 15 * 60 * 1000;
+  await cartStore.saveCart(discordId, cart);
 }
 
-function clearCart(discordId) {
-  cartStore.delete(discordId);
+async function clearCart(discordId) {
+  await cartStore.clearCart(discordId);
+}
+
+function normalizePrice(price) {
+  const n = Number(price);
+  if (!Number.isFinite(n) || n < 0 || n > 999999.99) {
+    throw new ValidationError('Preço inválido.', { code: 'INVALID_PRICE' });
+  }
+  return Math.round(n * 100) / 100;
 }
 
 /**
@@ -63,8 +71,13 @@ function clearCart(discordId) {
  * (com o mesmo preço custom), soma a quantity; senão adiciona nova linha.
  * Fundir evita duplicados visuais quando o user adiciona o mesmo item 2×.
  */
-function addLine(cart, { itemId, itemName, category, quantity, unitPrice, basePrice }) {
-  const existing = cart.lines.find(l => l.itemId === itemId && (l.unitPrice ?? null) === (unitPrice ?? null));
+async function addLine(cart, { itemId, itemName, category, quantity, unitPrice, basePrice }, discordId) {
+  let normalizedUnitPrice = unitPrice ?? null;
+  if (normalizedUnitPrice !== null) {
+    normalizedUnitPrice = normalizePrice(normalizedUnitPrice);
+  }
+
+  const existing = cart.lines.find(l => l.itemId === itemId && (l.unitPrice ?? null) === (normalizedUnitPrice ?? null));
   if (existing) {
     existing.quantity += quantity;
   } else {
@@ -73,23 +86,31 @@ function addLine(cart, { itemId, itemName, category, quantity, unitPrice, basePr
       itemName,
       category,
       quantity,
-      unitPrice: unitPrice ?? null,
+      unitPrice: normalizedUnitPrice,
       basePrice,
     });
   }
   cart.updatedAt = Date.now();
+  if (discordId) await saveCart(discordId, cart);
 }
 
-function removeLine(cart, index) {
+async function removeLine(cart, index, discordId) {
   if (index < 0 || index >= cart.lines.length) return false;
   cart.lines.splice(index, 1);
   cart.updatedAt = Date.now();
+  if (discordId) await saveCart(discordId, cart);
   return true;
 }
 
-function setNotes(cart, notes) {
-  cart.globalNotes = String(notes || '').slice(0, 500);
+async function setNotes(cart, notes, discordId) {
+  const text = String(notes || '').trim();
+  const MAX_NOTES = 500;
+  if (text.length > MAX_NOTES) {
+    throw new ValidationError(`Notas excedem ${MAX_NOTES} caracteres (${text.length} inseridos).`, { code: 'NOTES_TOO_LONG' });
+  }
+  cart.globalNotes = text;
   cart.updatedAt = Date.now();
+  if (discordId) await saveCart(discordId, cart);
 }
 
 function totals(cart) {
@@ -424,7 +445,6 @@ function buildDeliveryDecisionComponents(requestId) {
 }
 
 module.exports = {
-  cartStore,
   createCart,
   getCart,
   saveCart,

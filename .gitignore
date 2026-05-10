@@ -16,3 +16,9 @@ debug-logs/
 snapshots/
 .claude/
 .DS_Store
+railway-vars.txt
+railway_login.txt
+railway_login_err.txt
+railway_login_out.txt
+google-credentials*.json
+service-account*.json

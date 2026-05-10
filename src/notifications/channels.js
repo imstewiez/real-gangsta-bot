@@ -17,6 +17,7 @@
 const CONFIG = require('../config');
 const { warn } = require('../logger');
 const { DISCOVERED } = require('../discord/structureTemplate');
+const { TtlCache } = require('../shared/ttlCache');
 
 // Mapeamento família → variável ENV preferida → defaultId (pin direto)
 // → slugs candidatos. Resolução: env → fallbackEnvs → defaultId → slug match.
@@ -101,7 +102,8 @@ function _resolveFromGuild(client, slugs) {
  * Resolve o canal de uma família. Devolve o Discord channel ID (string) ou
  * null se não existir. Cache simples em memória (válida para a instância).
  */
-const _cache = new Map();
+const _cache = new TtlCache();
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
 
 function resolveChannelId(client, family) {
   const cfg = FAMILY_CONFIG[family];
@@ -116,20 +118,20 @@ function resolveChannelId(client, family) {
   for (const key of envIds) {
     const id = _resolveFromEnv(key);
     if (id) {
-      _cache.set(family, id);
+      _cache.set(family, id, CACHE_TTL_MS);
       return id;
     }
   }
 
   // Fallback explícito por ID canónico antes do slug match
   if (cfg.defaultId) {
-    _cache.set(family, cfg.defaultId);
+    _cache.set(family, cfg.defaultId, CACHE_TTL_MS);
     return cfg.defaultId;
   }
 
   const id = _resolveFromGuild(client, cfg.slugs || []);
   if (id) {
-    _cache.set(family, id);
+    _cache.set(family, id, CACHE_TTL_MS);
     return id;
   }
 

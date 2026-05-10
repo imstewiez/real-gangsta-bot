@@ -19,7 +19,10 @@ const ERRORS = {
 
   // Falha interna com correlation ID — o correlation vem do requestContext
   // e permite grep nos logs. Standardiza a linguagem entre todos os handlers.
-  INTERNAL: cid => `${E.ERRO} Falha interna. Ref: \`${cid}\`.`,
+  INTERNAL: (cid, { retryable = true, context = 'operação' } = {}) =>
+    `${E.ERRO} Falha interna na ${context}. ` +
+    `${retryable ? 'Tenta novamente dentro de momentos.' : 'Contacta administração.'} ` +
+    `Ref: \`${String(cid).slice(0, 8)}\``,
 
   DUPLICATE_REQUEST: () => `${E.DUPLICADO} Calma — já tinhas feito isso.`,
 

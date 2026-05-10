@@ -15,6 +15,7 @@ const { query } = require('../db');
 const { weekBounds } = require('../util');
 const { log, warn } = require('../logger');
 const eventBus = require('../core/eventBus');
+const { computePercentileRanks } = require('./normalize');
 
 // Pesos dos 3 eixos do hybrid_score
 const WEIGHTS = { contribuicao: 0.4, performance: 0.4, fiabilidade: 0.2 };
@@ -83,8 +84,8 @@ async function computeWeeklyRankings(weekDate = new Date()) {
   const movements = await inventoryRepo.getWeeklyMovements(start, end);
   const members = await memberRepo.findAll('ativo');
 
-  const rankings = [];
-
+  // First pass: compute raw scores for all members
+  const memberData = [];
   for (const member of members) {
     const movData = movements.find(m => m.member_id === member.id);
     const deliveries = parseInt(movData?.deliveries || 0);
@@ -104,28 +105,55 @@ async function computeWeeklyRankings(weekDate = new Date()) {
       ...stats,
     });
 
-    const saved = await rankingRepo.saveWeeklyRanking({
-      memberId: member.id,
-      weekStart,
-      weekEnd,
+    memberData.push({
+      member,
       deliveries,
       sales,
-      saidasCount: stats.saidasCount,
       weightedValue,
-      returnRate: stats.returnRate,
-      killsCount: stats.killsCount,
-      winsCount: stats.winsCount,
-      lossCount: stats.lossCount,
-      netProfitGenerated: stats.netProfit,
-      survivalRate: stats.survivalRate,
-      performanceScore: performanceRaw,
-      hybridScore: hybrid,
+      stats,
+      performanceRaw,
+      hybrid,
     });
-
-    rankings.push({ ...saved, discord_id: member.discord_id, display_name: member.display_name, role: member.role });
   }
 
-  rankings.sort((a, b) => (b.hybrid_score || b.weighted_value) - (a.hybrid_score || a.weighted_value));
+  // Second pass: percentile normalization
+  const forNormalization = memberData.map(md => ({
+    ...md.member,
+    hybridScore: md.hybrid,
+    weightedValue: md.weightedValue,
+    deliveries: md.deliveries,
+    sales: md.sales,
+    performanceScore: md.performanceRaw,
+    ...md.stats,
+  }));
+  const normalized = computePercentileRanks(forNormalization);
+
+  // Third pass: persist
+  const rankings = [];
+  for (const r of normalized) {
+    const saved = await rankingRepo.saveWeeklyRanking({
+      memberId: r.id,
+      weekStart,
+      weekEnd,
+      deliveries: r.deliveries,
+      sales: r.sales,
+      saidasCount: r.saidasCount,
+      weightedValue: r.weightedValue,
+      returnRate: r.returnRate,
+      killsCount: r.killsCount,
+      winsCount: r.winsCount,
+      lossCount: r.lossCount,
+      netProfitGenerated: r.netProfit,
+      survivalRate: r.survivalRate,
+      performanceScore: r.performanceScore,
+      hybridScore: r.hybridScore,
+      normalizedScore: r.normalized_score,
+    });
+
+    rankings.push({ ...saved, discord_id: r.discord_id, display_name: r.display_name, role: r.role });
+  }
+
+  rankings.sort((a, b) => (b.normalized_score || 0) - (a.normalized_score || 0));
   log(`[RANKINGS] ${rankings.length} rankings computados para semana ${weekStart}.`);
 
   eventBus
@@ -134,7 +162,7 @@ async function computeWeeklyRankings(weekDate = new Date()) {
       weekEnd,
       count: rankings.length,
       topMemberId: rankings[0]?.member_id || null,
-      topScore: rankings[0]?.hybrid_score || null,
+      topScore: rankings[0]?.normalized_score || null,
       at: new Date(),
     })
     .catch(e => warn(`[EVENT] ranking.updated: ${e.message}`));

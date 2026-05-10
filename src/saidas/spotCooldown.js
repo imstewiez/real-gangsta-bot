@@ -74,15 +74,16 @@ function formatRemaining(ms) {
  * @param {number} [opts.minutes]      Override do default.
  * @returns {Promise<{ expiresAt: Date, messageId: string|null }>}
  */
-async function startCooldown({ spot, saidaId, saidaType, leaderName, minutes } = {}) {
+async function startCooldown({ spot, saidaId, saidaType, leaderName, minutes, client = null } = {}) {
   if (!spot) return { expiresAt: null, messageId: null };
 
   const mins = Number(minutes ?? CONFIG.SPOT_COOLDOWN_MINUTES ?? 30);
   const expiresAt = new Date(Date.now() + mins * 60_000);
   const channelId = CONFIG.SPOT_COOLDOWN_CHANNEL_ID;
+  const runner = client || { query: (sql, values) => query(sql, values) };
 
   // UPSERT: se já havia cooldown, prolonga (reset para o novo saidaId).
-  await query(
+  await runner.query(
     `INSERT INTO spot_cooldowns (spot, started_at, expires_at, saida_id, notification_channel_id)
      VALUES ($1, NOW(), $2, $3, $4)
      ON CONFLICT (spot) DO UPDATE
@@ -121,7 +122,7 @@ async function startCooldown({ spot, saidaId, saidaType, leaderName, minutes } =
         });
         if (msg) {
           messageId = msg.id;
-          await query('UPDATE spot_cooldowns SET notification_msg_id = $1 WHERE spot = $2', [messageId, spot]);
+          await runner.query('UPDATE spot_cooldowns SET notification_msg_id = $1 WHERE spot = $2', [messageId, spot]);
         }
       } else {
         warn(`[SPOT-COOLDOWN] SPOT_COOLDOWN_CHANNEL_ID (${channelId}) não acessível.`);

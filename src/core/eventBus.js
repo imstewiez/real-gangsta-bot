@@ -6,8 +6,9 @@
  *   bus.emit('saida.closed', { saidaId, result, totals });
  *   bus.on('saida.closed', async (payload) => { ... });
  *
- * Subscritores async são awaitados em série dentro do emit; erros de um
- * subscritor não interrompem os outros (log + continuar).
+ * Subscritores async são awaitados em paralelo via Promise.allSettled.
+ * Erros de subscritores CRITICAL propagam como AggregateError;
+ * erros de subscritores não-críticos são logados mas não interrompem.
  *
  * Eventos canónicos (ver docs/events.md quando existir):
  *   - saida.closed          — saída fechada com resultado + totais
@@ -33,20 +34,40 @@ class DomainEventBus extends EventEmitter {
   }
 
   /**
+   * Regista um listener. Pode ser marcado como CRITICAL via terceiro arg:
+   *   bus.on('event', fn, { critical: true })
+   */
+  on(event, fn, opts = {}) {
+    if (typeof fn === 'function') {
+      fn._critical = opts.critical === true;
+    }
+    return super.on(event, fn);
+  }
+
+  /**
    * Emit awaiting all async listeners. Erros isolados — cada subscritor
-   * é robusto em relação aos outros.
+   * é robusto em relação aos outros. CRITICAL failures propagam.
    */
   async emitAsync(event, payload = {}) {
     eventsByName.inc({ event });
     const listeners = this.listeners(event);
     if (!listeners.length) return;
     log(`[EVENT] ${event} · ${listeners.length} listener(s)`);
-    for (const listener of listeners) {
-      try {
-        await listener(payload);
-      } catch (e) {
-        warn(`[EVENT:${event}] listener falhou: ${e.message}`);
+    const results = await Promise.allSettled(listeners.map(listener => listener(payload)));
+    const criticalFailures = [];
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
+      const listener = listeners[i];
+      if (result.status === 'rejected') {
+        if (listener._critical) {
+          criticalFailures.push(result.reason);
+        } else {
+          warn(`[EVENT:${event}] listener falhou: ${result.reason?.message || result.reason}`);
+        }
       }
+    }
+    if (criticalFailures.length) {
+      throw new AggregateError(criticalFailures, `One or more critical listeners for '${event}' failed`);
     }
   }
 }

@@ -206,7 +206,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName('gerir-itens')
     .setDescription('Administrar catálogo de itens (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addSubcommand(sc => sc.setName('listar').setDescription('Listar itens'))
     .addSubcommand(sc =>
       sc
@@ -258,7 +258,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName('promover')
     .setDescription('Painel de promoções (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addSubcommand(sc => sc.setName('proximos').setDescription('Quem está próximo de promoção'))
     .addSubcommand(sc =>
       sc
@@ -303,7 +303,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName('painel-pendencias')
     .setDescription('Cockpit de pendências da chefia (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   // ── Meu painel pessoal ──
   new SlashCommandBuilder().setName('meu-painel').setDescription('O teu centro de notificações pessoal'),
@@ -312,7 +312,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName('relatorio')
     .setDescription('Relatório de actividade (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addStringOption(o =>
       o
         .setName('periodo')
@@ -329,7 +329,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName('manutencao')
     .setDescription('Modo manutenção (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addSubcommand(sc => sc.setName('status').setDescription('Ver estado'))
     .addSubcommand(sc =>
       sc
@@ -343,7 +343,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName('incidentes')
     .setDescription('Gestão de incidentes (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addSubcommand(sc =>
       sc
         .setName('listar')
@@ -458,7 +458,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName('simular-permissoes')
     .setDescription('Simular permissões de um cargo (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addStringOption(o =>
       o
         .setName('cargo')
@@ -477,7 +477,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName('tarefas')
     .setDescription('Gestão de tarefas')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addSubcommand(sc =>
       sc
         .setName('listar')
@@ -530,7 +530,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName('reputacao')
     .setDescription('Ver reputação interna de um membro (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addUserOption(o => o.setName('membro').setDescription('Membro').setRequired(true)),
 
   // ── Ausências ──
@@ -579,7 +579,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName('exportar')
     .setDescription('Exportar dados (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addStringOption(o =>
       o
         .setName('tipo')
@@ -598,7 +598,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName('audit-trail')
     .setDescription('Histórico por objeto (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addStringOption(o =>
       o
         .setName('tipo')
@@ -620,13 +620,13 @@ const commands = [
   new SlashCommandBuilder()
     .setName('dashboard')
     .setDescription('Dashboard operacional da chefia (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   // ── Painel de erros ──
   new SlashCommandBuilder()
     .setName('erros')
     .setDescription('Erros e incidentes recentes (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   // ── Primeira utilização ──
   new SlashCommandBuilder().setName('primeira-vez').setDescription('Guia de primeira utilização'),

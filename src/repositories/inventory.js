@@ -1,6 +1,7 @@
 'use strict';
 const { query } = require('../db');
 const { MOVEMENT_TYPE, STOCK_INFLOW_TYPES, STOCK_OUTFLOW_TYPES } = require('../shared/movementTypes');
+const { guardColumns } = require('../shared/sqlColumnGuard');
 
 async function getItems(activeOnly = true) {
   const sql = activeOnly
@@ -64,10 +65,16 @@ async function createItem({ name, category = 'outros', unit = 'unidade', estimat
 }
 
 async function updateItem(id, fields) {
+  const ALLOWED = new Set([
+    'name', 'category', 'unit', 'estimated_value', 'active', 'orderable',
+    'counts_for_stock', 'counts_for_rankings', 'purchase_price', 'min_sale_price',
+    'max_sale_price', 'target_stock', 'supplier', 'notes',
+  ]);
+  const safe = guardColumns(fields, ALLOWED);
   const sets = [];
   const values = [];
   let i = 1;
-  for (const [key, value] of Object.entries(fields)) {
+  for (const [key, value] of Object.entries(safe)) {
     sets.push(`${key} = $${i}`);
     values.push(value);
     i++;
@@ -118,6 +125,57 @@ async function recordMovement({
     ]
   );
   return res.rows[0];
+}
+
+/**
+ * Bulk insert de movements numa única query (UNNEST).
+ * Usado por recordDeliveryBatch para atomicidade e performance.
+ */
+async function recordMovementsBulk({
+  lines,
+  movementType,
+  memberId,
+  memberRole,
+  origin,
+  destination,
+  context,
+  notes,
+  operationId,
+  createdBy,
+  submissionId,
+  client = null,
+}) {
+  const runner = client || { query: (sql, values) => query(sql, values) };
+  const movementTypes = lines.map(() => movementType);
+  const itemIds = lines.map(l => l.itemId);
+  const quantities = lines.map(l => l.quantity);
+  const memberIds = lines.map(() => memberId);
+  const memberRoles = lines.map(() => memberRole);
+  const origins = lines.map(() => origin);
+  const destinations = lines.map(() => destination);
+  const contexts = lines.map(() => context);
+  const notesArray = lines.map(() => notes);
+  const operationIds = lines.map(() => operationId);
+  const createdBys = lines.map(() => createdBy);
+  const submissionIds = lines.map(() => submissionId);
+  const unitPrices = lines.map(l => l.unitPrice ?? null);
+
+  const res = await runner.query(
+    `INSERT INTO inventory_movements
+      (movement_type, item_id, quantity, member_id, member_role, origin, destination,
+       context, notes, saida_id, created_by, submission_id, unit_price)
+     SELECT * FROM UNNEST(
+       $1::text[], $2::int[], $3::int[], $4::int[], $5::text[], $6::text[], $7::text[],
+       $8::text[], $9::text[], $10::int[], $11::text[], $12::uuid[], $13::numeric[]
+     )
+     RETURNING *`,
+    [
+      movementTypes, itemIds, quantities, memberIds, memberRoles,
+      origins, destinations, contexts, notesArray, operationIds,
+      createdBys, submissionIds, unitPrices,
+    ]
+  );
+  return res.rows;
 }
 
 /**
@@ -207,6 +265,7 @@ async function getLastSubmissionForMember(memberId, movementType) {
       WHERE member_id = $1
         AND submission_id IS NOT NULL
         AND movement_type = $2
+        AND created_at > NOW() - INTERVAL '24 hours'
       GROUP BY submission_id
       ORDER BY last_at DESC
       LIMIT 1`,
@@ -368,6 +427,7 @@ module.exports = {
   createItem,
   updateItem,
   recordMovement,
+  recordMovementsBulk,
   getStock,
   getStockForItem,
   getMemberMovements,

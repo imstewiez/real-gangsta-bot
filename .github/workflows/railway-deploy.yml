@@ -1,65 +1,47 @@
-name: Railway Force Deploy
+name: Deploy to Railway
 
 on:
-  workflow_dispatch:
-
-env:
-  RAILWAY_SERVICE: bot-di-zona
+  push:
+    branches: [main]
 
 jobs:
-  deploy:
-    name: Force Redeploy
+  migrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DB_SSL_MODE: require
+        run: npm run db:migrate
 
-      - name: Setup Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy via railway up
+  deploy:
+    needs: migrate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Railway
+        run: |
+          npm install -g @railway/cli
+          railway up --service bot-di-zona
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: Smoke test
         run: |
-          echo "Deploying via railway up..."
-          railway up --service "$RAILWAY_SERVICE" --detach
-
-      - name: Wait and fetch build logs
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          echo "Waiting 60s for build to start..."
-          sleep 60
-          echo "=== Build logs (latest deployment) ==="
-          railway logs --service "$RAILWAY_SERVICE" --build --lines 200 --latest || true
-
-      - name: Watch deploy
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          echo "Watching deployment..."
-          for i in {1..80}; do
-            railway deployment list --service "$RAILWAY_SERVICE" --json > status.json 2>/dev/null || true
-            STATUS=$(cat status.json 2>/dev/null | jq -r '.[0].status // "UNKNOWN"' 2>/dev/null || echo "UNKNOWN")
-            STOPPED=$(cat status.json 2>/dev/null | jq -r '.[0].deploymentStopped // false' 2>/dev/null || echo "false")
-            echo "Iteration $i: status=$STATUS, stopped=$STOPPED"
-            if [ "$STATUS" = "SUCCESS" ]; then
-              echo "Deployment reached SUCCESS!"
+          echo "Waiting for deploy..."
+          sleep 30
+          for i in {1..20}; do
+            HEALTH=$(curl -sf https://${{ secrets.RAILWAY_URL }}/ready && echo "OK" || echo "FAIL")
+            if [ "$HEALTH" = "OK" ]; then
+              echo "Smoke test passed!"
               exit 0
             fi
-            if [ "$STOPPED" = "true" ]; then
-              echo "Deployment was stopped!"
-              railway logs --service "$RAILWAY_SERVICE" --build --lines 200 --latest || true
-              exit 1
-            fi
-            if [ "$STATUS" = "FAILED" ]; then
-              echo "Deployment FAILED!"
-              railway logs --service "$RAILWAY_SERVICE" --build --lines 200 --latest || true
-              exit 1
-            fi
-            sleep 15
+            sleep 10
           done
-          echo "Timed out waiting for deployment. Fetching latest logs..."
-          railway logs --service "$RAILWAY_SERVICE" --build --lines 200 --latest || true
+          echo "Smoke test FAILED"
           exit 1

@@ -10,6 +10,7 @@ const { getRankMultiplier, RANK_MULTIPLIERS } = require('../orders/orderPricingE
 const { brandEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { safeReply } = require('../shared/interactionHelpers');
+const { withTimeout } = require('../shared/collectorDefaults');
 const { query } = require('../db');
 
 // ── Abreviações de materiais para caber em linha única ─────────────────────
@@ -293,10 +294,9 @@ async function sendPaginatedEmbeds(interaction, embeds, titlePrefix) {
     return msg;
   }
 
-  const collector = msg.createMessageComponentCollector({
+  const collector = msg.createMessageComponentCollector(withTimeout({
     filter: i => i.user.id === interaction.user.id,
-    time: 300_000,
-  });
+  }));
 
   collector.on('collect', async i => {
     try {

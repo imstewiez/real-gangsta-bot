@@ -2,21 +2,19 @@
 const { MessageFlags } = require('discord.js');
 const { memberRepo, inventoryRepo } = require('../repositories');
 const { safeReply } = require('../shared/interactionHelpers');
+const { replySafe } = require('../shared/safeEmbed');
 const { memberProfileEmbed, brandEmbed, progressBar, rankBadge } = require('../shared/embedBuilders');
 const { EMOJI, ERRORS, RANKINGS } = require('../content');
 const { formatPtDate } = require('../shared/formatPtDate');
 const { fmtMovementType } = require('../shared/labels');
+const { NotFoundError } = require('../shared/errors');
 
 async function handleMemberCommand(interaction) {
   const targetUser = interaction.options.getUser('membro') || interaction.user;
   const member = await memberRepo.findByDiscordId(targetUser.id);
 
   if (!member) {
-    return safeReply(
-      interaction,
-      { content: ERRORS.MEMBER_NOT_FOUND(), flags: MessageFlags.Ephemeral },
-      { messageClass: 'BANAL' }
-    );
+    throw new NotFoundError('Esse nome não está na casa.', { code: 'MEMBER_NOT_FOUND' });
   }
 
   const embed = memberProfileEmbed(member);
@@ -39,17 +37,13 @@ async function handleMemberCommand(interaction) {
     });
   }
 
-  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
+  return replySafe(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
 }
 
 async function handleMemberHistoryButton(interaction) {
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {
-    return safeReply(
-      interaction,
-      { content: ERRORS.MEMBER_NOT_FOUND(), flags: MessageFlags.Ephemeral },
-      { messageClass: 'BANAL' }
-    );
+    throw new NotFoundError('Esse nome não está na casa.', { code: 'MEMBER_NOT_FOUND' });
   }
 
   const movements = await inventoryRepo.getMemberMovements(member.id, 20);
@@ -70,17 +64,13 @@ async function handleMemberHistoryButton(interaction) {
     .setTitle(`${EMOJI.AUDIT} O teu histórico`)
     .setDescription(lines.join('\n').slice(0, 3900));
 
-  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
+  return replySafe(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
 }
 
 async function handleMemberTotalsButton(interaction) {
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) {
-    return safeReply(
-      interaction,
-      { content: ERRORS.MEMBER_NOT_FOUND(), flags: MessageFlags.Ephemeral },
-      { messageClass: 'BANAL' }
-    );
+    throw new NotFoundError('Esse nome não está na casa.', { code: 'MEMBER_NOT_FOUND' });
   }
 
   const totals = await inventoryRepo.getMemberTotals(member.id);
@@ -122,14 +112,14 @@ async function handleMemberTotalsButton(interaction) {
     }
   }
 
-  return safeReply(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
+  return replySafe(interaction, { embeds: [embed], flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
 }
 
 async function handleProgressButton(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const member = await memberRepo.findByDiscordId(interaction.user.id);
-  if (!member) return safeReply(interaction, { content: ERRORS.MEMBER_NOT_FOUND() }, { messageClass: 'BANAL' });
+  if (!member) throw new NotFoundError('Esse nome não está na casa.', { code: 'MEMBER_NOT_FOUND' });
 
   const { getPromotionProgress } = require('./autoPromotionEngine');
   const progress = await getPromotionProgress(interaction.user.id);
@@ -179,7 +169,7 @@ async function handleProgressButton(interaction) {
     });
   }
 
-  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
+  return replySafe(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 async function handleTopSemanalButton(interaction) {
@@ -229,7 +219,7 @@ async function handleTopSemanalButton(interaction) {
     .setTitle(RANKINGS.TITLE('Topo da Semana', weekLabel))
     .setDescription(lines.join('\n'));
 
-  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
+  return replySafe(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 module.exports = {

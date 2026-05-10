@@ -3,6 +3,7 @@
 const STATE_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
 const processedInteractionIds = new Map();
+const MAX_DEDUP_ENTRIES = 10000;
 const recentModalOpenByUser = new Map();
 const panelMessages = new Map();
 

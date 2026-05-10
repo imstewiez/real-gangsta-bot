@@ -14,7 +14,7 @@
  */
 const { randomUUID } = require('crypto');
 const os = require('os');
-const { query } = require('./db');
+const { query, queryWithTransaction } = require('./db');
 const { log, warn } = require('./logger');
 const pkg = require('../package.json');
 
@@ -22,6 +22,7 @@ const HEARTBEAT_MS = 15000;
 const STALE_SECONDS = 120;
 
 let _state = null;
+let _isDraining = false;
 
 async function ensureInstanceTable() {
   await query(`
@@ -40,8 +41,8 @@ async function ensureInstanceTable() {
 
 async function cleanupStaleInstances() {
   const res = await query(
-    "DELETE FROM bot_instances WHERE last_heartbeat < NOW() - ($1 || ' seconds')::interval RETURNING instance_id",
-    [String(STALE_SECONDS)]
+    'DELETE FROM bot_instances WHERE last_heartbeat < NOW() - $1::interval RETURNING instance_id',
+    [String(STALE_SECONDS) + ' seconds']
   );
   if (res.rowCount > 0)
     log(`[INSTANCE] Removidas ${res.rowCount} instâncias stale (>${STALE_SECONDS}s sem heartbeat).`);
@@ -120,6 +121,32 @@ function stopHeartbeat() {
   }
 }
 
+async function verifyLease() {
+  if (!_state) return false;
+  try {
+    const res = await query('SELECT instance_id, last_heartbeat FROM bot_instances WHERE instance_id = $1', [
+      _state.instanceId,
+    ]);
+    if (res.rowCount === 0) return false;
+    const row = res.rows[0];
+    const age = Math.max(0, Date.now() - new Date(row.last_heartbeat).getTime());
+    return row.instance_id === _state.instanceId && age < STALE_SECONDS * 2 * 1000;
+  } catch (e) {
+    return false;
+  }
+}
+
+function isDraining() {
+  return _isDraining;
+}
+
+async function enterDrainMode(reason = 'SIGTERM') {
+  _isDraining = true;
+  log(`[INSTANCE] Entering drain mode (${reason})...`);
+  stopHeartbeat();
+  await deregisterInstance(`drain:${reason}`);
+}
+
 async function deregisterInstance(reason = 'shutdown') {
   if (!_state) return;
   stopHeartbeat();
@@ -137,9 +164,12 @@ module.exports = {
   cleanupStaleInstances,
   registerInstance,
   getCurrentInstance,
+  verifyLease,
   startHeartbeat,
   stopHeartbeat,
   deregisterInstance,
+  isDraining,
+  enterDrainMode,
   HEARTBEAT_MS,
   STALE_SECONDS,
 };

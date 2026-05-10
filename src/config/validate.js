@@ -29,6 +29,13 @@ function validateConfig(config = CONFIG) {
   if (!config.DATABASE_URL) {
     err('DATABASE_URL', 'Em falta — obrigatório em produção (Railway). Sem DB não arranca.');
   }
+  if (config.DATABASE_URL) {
+    try {
+      new URL(config.DATABASE_URL);
+    } catch {
+      err('DATABASE_URL', 'Formato inválido — deve ser uma URI PostgreSQL válida (postgresql://...)');
+    }
+  }
 
   // ── Role IDs core ──
   const coreRoles = [
@@ -72,6 +79,9 @@ function validateConfig(config = CONFIG) {
   if (!config.AUDIT_LOG_CHANNEL_ID) {
     warn('AUDIT_LOG_CHANNEL_ID', 'Sem canal de audit — logs ficam apenas na DB.');
   }
+  if (!config.PRICE_LIST_CHANNEL_ID) {
+    warn('PRICE_LIST_CHANNEL_ID', 'Em falta — price list não será publicada.');
+  }
 
   // ── Categorias ──
   if (!config.BAIRRISTA_TOPICOS_CATEGORY_ID) {
@@ -103,6 +113,20 @@ function validateConfig(config = CONFIG) {
       sheetsCredsSet ? 'SPREADSHEET_ID' : 'GOOGLE_SERVICE_ACCOUNT_JSON',
       'Configuração Sheets parcial — precisas de ambos (creds + spreadsheet id) ou nenhum.'
     );
+  }
+  if (config.SPREADSHEET_ID && !/^[a-zA-Z0-9_-]{20,}$/.test(config.SPREADSHEET_ID)) {
+    err('SPREADSHEET_ID', 'Formato inválido');
+  }
+  if (config.GOOGLE_SERVICE_ACCOUNT_JSON) {
+    try {
+      const raw = config.GOOGLE_SERVICE_ACCOUNT_JSON.trim().startsWith('{')
+        ? JSON.parse(config.GOOGLE_SERVICE_ACCOUNT_JSON)
+        : JSON.parse(Buffer.from(config.GOOGLE_SERVICE_ACCOUNT_JSON, 'base64').toString());
+      if (!raw.client_email || !raw.private_key)
+        err('GOOGLE_SERVICE_ACCOUNT_JSON', 'JSON deve conter client_email e private_key');
+    } catch (e) {
+      err('GOOGLE_SERVICE_ACCOUNT_JSON', `Inválido: ${e.message}`);
+    }
   }
 
   // ── Availability ──

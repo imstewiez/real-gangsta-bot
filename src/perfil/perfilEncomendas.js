@@ -121,7 +121,7 @@ async function handle(interaction) {
 }
 
 function ageLabel(ts) {
-  const ms = Date.now() - new Date(ts).getTime();
+  const ms = Math.max(0, Date.now() - new Date(ts).getTime());
   const h = Math.floor(ms / (60 * 60 * 1000));
   if (h < 1) return `${Math.max(1, Math.floor(ms / 60000))}min`;
   if (h < 24) return `${h}h`;
