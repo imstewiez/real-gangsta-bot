@@ -36,12 +36,15 @@ const saidaWizard = require('../../../saidas/saidaSettlementWizard');
 const saidaStats = require('../../../saidas/saidaStatsHandlers');
 const saidaIndividual = require('../../../saidas/saidaIndividualResult');
 const saidaSession = require('../../../saidas/saidaSession');
+const saidaRegistrationFlow = require('../../../saidas/saidaRegistrationFlow');
 const { handleRankingSelect } = require('../../../members/bairristaHandlers');
 const { handleVoteSelect: availHandleVoteSelect } = require('../../../availability/availabilityHandlers');
 const perfilMaterial = require('../../../perfil/perfilMaterial');
 const perfilHistorico = require('../../../perfil/perfilHistorico');
 const { handlePanelGerirSelect } = require('../../../panels/chefiaActions');
 const orderManagement = require('../../../orders/orderManagement');
+const orderManagementPanel = require('../../../orders/orderManagementPanel');
+const orderTrackingService = require('../../../orders/orderTrackingService');
 
 const exact = (id, handler) => ({ match: x => x === id, handler });
 const prefix = (p, handler) => ({ match: x => x.startsWith(p), handler });
@@ -110,12 +113,30 @@ const SELECT_ROUTES = [
   // Caracterizado self-serve — weapon pick (step 3 do fluxo)
   prefix('saida::weapon_pick::', saidaSession.handleCaracterizadoWeaponPick),
 
+  // Saída v3.0 — weapon pick via novo fluxo de registo
+  prefix('saida::reg_weapon::', interaction => {
+    const parts = interaction.customId.split('::');
+    const saidaId = parseInt(parts[2], 10);
+    const source = parts[3]; // 'own' | 'org'
+    return saidaRegistrationFlow.handleWeaponPick(interaction, saidaId, source);
+  }),
+
   // Session management — admin swap + approve request picks
   prefix('saida::session_swap_pick::', saidaSession.handleSessionSwapPick),
   prefix('saida::session_approve_pick::', saidaSession.handleSessionApprovePick),
 
-  // Order management — chefia select actions
+  // Order management — chefia select actions (legacy + new panel)
   exact('order::manage_action', orderManagement.handleOrderManageSelect),
+  exact('ordermanage::action', orderManagementPanel.handleOrderAction),
+
+  // Order tracking detail
+  prefix('ordertrack::detail::', interaction => {
+    const orderId = parseInt(interaction.values[0], 10);
+    return orderTrackingService.showOrderDetail(interaction, orderId);
+  }),
+
+  // Quick quantity select
+  prefix('orderqty::', orderHandlers.handleOrderQtySelect),
 
   // Cancelamento de encomenda pelo bairrista
   exact('order::cancel_select', orderHandlers.handleOrderCancelSelect),

@@ -146,7 +146,9 @@ async function publishDailySummary(client) {
 
     const todayOps = await saidaRepo.findByDate(today);
     const concluidas = todayOps.filter(o => o.status === 'concluida').length;
-    const emCurso = todayOps.filter(o => ['aberta', 'em_preparacao', 'em_curso'].includes(o.status)).length;
+    const emCurso = todayOps.filter(o =>
+      ['criada', 'trancagem', 'em_preparacao', 'em_curso'].includes(o.status)
+    ).length;
 
     const killsRes = await query('SELECT COUNT(*)::int AS n FROM kill_logs WHERE date = $1', [today]);
     const killsToday = killsRes.rows[0]?.n || 0;

@@ -242,6 +242,7 @@ async function closeSaida(saidaId, resultData, actorId) {
     survivors: resultData.survivors || 0,
     characterized_count,
     workers_count,
+    liquidation_started_at: new Date(),
   });
 
   await logAudit({
@@ -318,6 +319,7 @@ async function finalizeSaida(saidaId, actorId) {
         performance_score: p.performance_score,
         discipline_score: p.discipline_score,
         mvp_flag: p.mvp_flag,
+        rating_delta: p.rating_delta,
       })
     )
   );
@@ -543,7 +545,7 @@ async function expireStaleRequests(client) {
        JOIN members m ON m.id = op.member_id
       WHERE op.participant_type = 'requested'
         AND op.created_at < NOW() - ($1::int * INTERVAL '1 minute')
-        AND o.status IN ('aberta','em_preparacao','em_curso')`,
+        AND o.status IN ('criada','em_preparacao','em_curso')`,
     [ttlMin]
   );
 
@@ -638,7 +640,7 @@ async function _resolveOrCreateMember(discordId, guild = null) {
 
 // Estados em que inscrição é permitida — só enquanto a saída está aberta
 // ou em preparação. Em curso/concluída/cancelada = rejeita.
-const PARTICIPATION_ALLOWED_STATUSES = new Set(['aberta', 'em_preparacao']);
+const PARTICIPATION_ALLOWED_STATUSES = new Set(['criada', 'em_preparacao']);
 
 async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
   const member = await _resolveOrCreateMember(discordId, guild);

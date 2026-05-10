@@ -22,6 +22,7 @@ const { createSessionStore } = require('../shared/sessionStore');
 const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const { formatMoney } = require('../shared/formatMoney');
+const orderCartEmbedBuilder = require('./orderCartEmbedBuilder');
 
 const cartStore = createSessionStore('orderCart', { ttlMs: 15 * 60 * 1000 });
 
@@ -103,32 +104,22 @@ function totals(cart) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 function buildCartEmbed(cart, { memberName } = {}) {
-  const { totalQty, totalPrice, materials } = totals(cart);
+  const embed = orderCartEmbedBuilder.buildCartLinesEmbed(cart, { memberName });
+  const mats = orderCartEmbedBuilder.buildMaterialsSummaryEmbed(cart);
+  const costs = orderCartEmbedBuilder.buildCostBreakdownEmbed(cart);
 
-  const embed = brandEmbed('HOUSE').setTitle(`${EMOJI.ENCOMENDA} Carrinho de Encomendas`).setColor(COLOR.PRIMARY);
-
-  if (!cart.lines.length) {
-    embed.setDescription('O carrinho está vazio.\n\nClica em **➕ Adicionar** para começar.');
-    return embed;
-  }
-
-  const lines = [];
-  for (let i = 0; i < cart.lines.length; i++) {
-    const l = cart.lines[i];
-    lines.push(`**${i + 1}.** ${l.itemName} · **${l.quantity}×** · **${formatMoney(l.finalPrice)}**`);
-  }
-
-  lines.push('', `**Total:** ${totalQty} unidades · **${formatMoney(totalPrice)}**`);
-
-  if (materials.length) {
-    lines.push('', '📋 **Materiais a entregar:**');
-    for (const m of materials) {
-      lines.push(`  • ${m.name}: **${m.qty}×**`);
+  if (mats.data.fields?.length) {
+    for (const f of mats.data.fields) {
+      if ((embed.data.fields?.length || 0) >= 25) break;
+      embed.addFields(f);
     }
   }
-
-  embed.setDescription(lines.join('\n'));
-  if (memberName) embed.setFooter({ text: `— ${memberName}` });
+  if (costs.data.fields?.length) {
+    for (const f of costs.data.fields) {
+      if ((embed.data.fields?.length || 0) >= 25) break;
+      embed.addFields(f);
+    }
+  }
   return embed;
 }
 

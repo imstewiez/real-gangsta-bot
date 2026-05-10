@@ -48,7 +48,7 @@ const GLOSSARY = {
 // Tradução dos estados técnicos para linguagem de bairro.
 const STATUS = {
   // Saídas
-  aberta: 'Aberta',
+  criada: 'Criada',
   em_preparacao: 'A preparar',
   em_curso: 'Na rua',
   concluida: 'Fechada',

@@ -89,7 +89,10 @@ async function buildBairristaPanel() {
       { customId: 'bairrista::top_semanal', label: 'Topo Semanal', style: 'Primary', emoji: EMOJI.TOPO },
     ],
     // Row 3 — Pessoal
-    [{ customId: 'bairrista::meu_resumo', label: 'Meu Resumo', style: 'Secondary', emoji: EMOJI.INFO }],
+    [
+      { customId: 'bairrista::minhas_encomendas', label: 'As Minhas Encomendas', style: 'Secondary', emoji: '📋' },
+      { customId: 'bairrista::meu_resumo', label: 'Meu Resumo', style: 'Secondary', emoji: EMOJI.INFO },
+    ],
   ]);
 
   return { embeds: [embed], components };

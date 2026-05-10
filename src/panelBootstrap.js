@@ -1,5 +1,5 @@
 'use strict';
-const { ChannelType } = require('discord.js');
+const { ChannelType, Events } = require('discord.js');
 const CONFIG = require('./config');
 const { getStateKey, setStateKey } = require('./state');
 const { log, warn } = require('./logger');
@@ -11,6 +11,10 @@ const { buildPatraoDiZonaPanel } = require('./panels/patraoDiZonaPanel');
 const { buildEntradaPanel } = require('./panels/entradaPanel');
 const { buildRadioPanel } = require('./panels/radioPanel');
 const { CATEGORY_BY_KEY, bold } = require('./discord/structureTemplate');
+
+const { BottomPinEngine } = require('./messages/bottomPinEngine');
+const { PanelSyncEngine } = require('./messages/panelSyncEngine');
+const stickyEngine = require('./sticky/stickyEngine');
 
 // Auto-discover: se PANEL_*_CHANNEL_ID não estiver definido, procura o canal
 // dedicado pelo nome canónico na categoria esperada. A função acepta uma lista
@@ -103,7 +107,7 @@ async function resolveChannelId(client, panelDef) {
   return { channelId: null, source: null };
 }
 
-async function bootstrapPanel(client, panelDef) {
+async function bootstrapPanel(client, panelDef, bottomPinEngine) {
   const { channelId, source } = await resolveChannelId(client, panelDef);
   if (!channelId) {
     return {
@@ -119,9 +123,6 @@ async function bootstrapPanel(client, panelDef) {
       warn(`[PANELS] Canal ${panelDef.channelKey} (${channelId}) não encontrado.`);
       return { key: panelDef.key, status: 'failed', reason: `canal ${channelId} não encontrado (bot sem acesso?)` };
     }
-
-    // build() pode ser sync ou async (radio lê DB). Await tolera ambos.
-    const payload = await panelDef.build();
 
     // Apaga TODAS as mensagens do bot no canal para garantir rebuild limpo.
     // Nunca editamos — sempre criamos mensagens novas. Assim cada deploy
@@ -154,7 +155,22 @@ async function bootstrapPanel(client, panelDef) {
       log(`[PANELS] ${deletedCount} mensagem(ns) apagada(s), ${failedCount} falha(s) em #${channel.name}.`);
     }
 
-    const newMsg = await channel.send(payload);
+    // Fallback para painéis sem stickySource (não deve acontecer)
+    if (!panelDef.stickySource || !bottomPinEngine) {
+      const payload = await panelDef.build();
+      const newMsg = await channel.send(payload);
+      const panelMessages = await getStateKey('panelMessages', {});
+      panelMessages[panelDef.key] = newMsg.id;
+      await setStateKey('panelMessages', panelMessages);
+      log(`[PANELS] Painel '${panelDef.key}' publicado (msg ${newMsg.id}, fonte ${source}).`);
+      return { key: panelDef.key, status: 'created', channelId, messageId: newMsg.id, source };
+    }
+
+    const newMsg = await bottomPinEngine.registerPin(channelId, panelDef.stickySource, {});
+    if (!newMsg) {
+      return { key: panelDef.key, status: 'failed', reason: 'registerPin devolveu null' };
+    }
+
     const panelMessages = await getStateKey('panelMessages', {});
     panelMessages[panelDef.key] = newMsg.id;
     await setStateKey('panelMessages', panelMessages);
@@ -163,39 +179,6 @@ async function bootstrapPanel(client, panelDef) {
   } catch (e) {
     warn(`[PANELS] Falha ao publicar '${panelDef.key}': ${e.message}`);
     return { key: panelDef.key, status: 'failed', reason: e.message };
-  }
-}
-
-/**
- * Se PANELS_STICKY_MODE != 'none', regista o painel como sticky activo —
- * sempre que houver X mensagens novas no canal, o sticky engine republica
- * o painel no fundo. Fire-and-forget; não bloqueia o bootstrap.
- */
-async function upsertPanelSticky(panelDef, channelId, actorId = 'system:panel-bootstrap') {
-  const mode = (CONFIG.PANELS_STICKY_MODE || 'repost').toLowerCase();
-  if (mode === 'none') return null;
-  if (!['repost', 'update'].includes(mode)) {
-    warn(`[PANELS] PANELS_STICKY_MODE inválido: '${mode}' — a ignorar sticky.`);
-    return null;
-  }
-  if (!panelDef.stickySource) return null;
-
-  try {
-    const { setSticky } = require('./sticky/stickyEngine');
-    await setSticky({
-      channelId,
-      sourceKey: panelDef.stickySource,
-      mode,
-      payload: {},
-      thresholdMsgs: CONFIG.PANELS_STICKY_THRESHOLD_MSGS || 5,
-      thresholdMinutes: 0,
-      createdBy: actorId,
-    });
-    log(
-      `[PANELS] Sticky activa para '${panelDef.stickySource}' em ${channelId} (${mode}, thr=${CONFIG.PANELS_STICKY_THRESHOLD_MSGS}).`
-    );
-  } catch (e) {
-    warn(`[PANELS] Falha a registar sticky de '${panelDef.key}': ${e.message}`);
   }
 }
 
@@ -221,13 +204,26 @@ async function _maybeForceRebuild() {
 async function bootstrapAll(client) {
   log('[PANELS] A inicializar painéis...');
   await _maybeForceRebuild();
+
+  // Instancia os novos engines de gestão centralizada de mensagens
+  const bottomPinEngine = new BottomPinEngine({ client, renderers: stickyEngine.renderers });
+  const panelSyncEngine = new PanelSyncEngine({ client });
+  panelSyncEngine.useBottomPinEngine(bottomPinEngine);
+  stickyEngine.setPanelSyncEngine(panelSyncEngine);
+
+  // Listener de bump para painéis geridos pelo BottomPinEngine
+  client.on(Events.MessageCreate, async message => {
+    try {
+      await bottomPinEngine.onMessageCreate(message);
+    } catch (e) {
+      warn(`[BOTTOM_PIN] onMessageCreate erro: ${e.message}`);
+    }
+  });
+
   const results = [];
   for (const panel of PANELS) {
-    const r = await bootstrapPanel(client, panel);
+    const r = await bootstrapPanel(client, panel, bottomPinEngine);
     results.push(r);
-    if (r.status === 'created' || r.status === 'edited') {
-      await upsertPanelSticky(panel, r.channelId);
-    }
   }
   const counts = results.reduce((acc, r) => {
     acc[r.status] = (acc[r.status] || 0) + 1;

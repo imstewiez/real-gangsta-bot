@@ -55,6 +55,8 @@ const saidaWizard = require('../../../saidas/saidaSettlementWizard');
 const saidaStats = require('../../../saidas/saidaStatsHandlers');
 const saidaSession = require('../../../saidas/saidaSession');
 const saidaIndividual = require('../../../saidas/saidaIndividualResult');
+const saidaRegistrationFlow = require('../../../saidas/saidaRegistrationFlow');
+const saidaResultFlow = require('../../../saidas/saidaResultFlow');
 const {
   handleVoteAll: availHandleVoteAll,
   handleSummary: availHandleSummary,
@@ -86,6 +88,9 @@ const perfilEncomendas = require('../../../perfil/perfilEncomendas');
 const perfilHistorico = require('../../../perfil/perfilHistorico');
 const perfilProgressao = require('../../../perfil/perfilProgressao');
 const orderManagement = require('../../../orders/orderManagement');
+const orderCheckoutFlow = require('../../../orders/orderCheckoutFlow');
+const orderTrackingService = require('../../../orders/orderTrackingService');
+const orderManagementPanel = require('../../../orders/orderManagementPanel');
 
 // ── Match helpers ──────────────────────────────────────────────────────────
 const exact = (id, handler) => ({ match: x => x === id, handler });
@@ -138,8 +143,37 @@ const BUTTON_ROUTES = [
   prefix('saida::session_approve_open::', saidaSession.handleSessionApproveOpen),
   prefix('saida::session_approve_decide::', saidaSession.handleSessionApproveDecide),
 
+  // Saída v3.0 — novo fluxo de registo + resultado
+  prefix('saida::reg_choice::', interaction => {
+    const parts = interaction.customId.split('::');
+    const saidaId = parseInt(parts[2], 10);
+    const type = parts[3]; // 'fighter' | 'worker'
+    return saidaRegistrationFlow.handleTypeChoice(interaction, saidaId, type);
+  }),
+  prefix('saida::reg_cancel::', interaction => {
+    const saidaId = parseInt(interaction.customId.split('::')[2], 10);
+    return saidaRegistrationFlow.handleCancelRegistration(interaction, saidaId);
+  }),
+  prefix('saida::reg_source::', async interaction => {
+    const parts = interaction.customId.split('::');
+    const saidaId = parseInt(parts[2], 10);
+    const currentSource = parts[3]; // 'own' | 'org'
+    const newSource = currentSource === 'own' ? 'org' : 'own';
+    const { buildWeaponPicker } = require('../../../saidas/saidaWeaponPicker');
+    const { safeUpdate } = require('../../../shared/interactionHelpers');
+    const rows = await buildWeaponPicker({ saidaId, source: newSource, searchPrefix: 'saida::weapon_pick' });
+    return safeUpdate(
+      interaction,
+      {
+        content: `**Saída #${saidaId}** — escolhe a tua arma (${newSource === 'own' ? 'própria' : 'da org'}):`,
+        components: rows,
+      },
+      { messageClass: 'FLOW' }
+    );
+  }),
+
   // Saída — resultado individual (self-service) + weapon return queue
-  prefix('saida::submit_result::', saidaIndividual.handleOpenSubmitResult),
+  prefix('saida::submit_result::', saidaResultFlow.openResultModal),
   prefix('saida::reping::', saidaIndividual.handleRepingPendentes),
   prefix('saida::weapon_queue::', saidaIndividual.handleOpenWeaponQueue),
   prefix('saida::weapon_decide::', saidaIndividual.handleWeaponDecide),
@@ -184,6 +218,7 @@ const BUTTON_ROUTES = [
   exact('bairrista::encomendar', orderHandlers.handleEncomendasButton),
   prefix('ordercart::add', orderHandlers.handleOrderCartAdd),
   exact('ordercart::checkout', orderHandlers.handleOrderCartCheckout),
+  exact('ordercart::confirm_checkout', orderCheckoutFlow.executeCheckout),
   exact('ordercart::clear', orderHandlers.handleOrderCartClear),
   exact('ordercart::back', orderHandlers.handleOrderCartBack),
   exact('order::cancel', orderHandlers.handleOrderCancelButton),
@@ -201,6 +236,7 @@ const BUTTON_ROUTES = [
   exact('bairrista::catalogo', buttonAdapters.handleCatalogoButton),
   exact('bairrista::precarios', buttonAdapters.handlePrecariosButton),
   exact('bairrista::saidas', buttonAdapters.handleMinhasSaidasButton),
+  exact('bairrista::minhas_encomendas', interaction => orderTrackingService.showTrackingPanel(interaction)),
   exact('bairrista::meu_resumo', buttonAdapters.handleMeuResumoButton),
 
   // Movimento no Bairro — drill-downs do cockpit
@@ -233,8 +269,34 @@ const BUTTON_ROUTES = [
   exact('chefia::inactivos', buttonAdapters.handleInactivosButton),
   exact('chefia::sync_sheets', buttonAdapters.handleSyncSheetsButton),
   exact('chefia::republicar_paineis', chefiaActions.republicarTodosPaineis),
-  exact('chefia::gerir_encomendas', orderManagement.handleGerirEncomendas),
+  exact('chefia::gerir_encomendas', interaction => orderManagementPanel.showManagementPanel(interaction)),
   exact('chefia::gerir_stock_v3', stockV3Handlers.handleGerirStockV3),
+
+  // Order management panel (new)
+  prefix('ordermanage::tab::', interaction => {
+    const tab = interaction.customId.split('::')[2];
+    return orderManagementPanel.showManagementPanel(interaction, { tab });
+  }),
+  prefix('ordermanage::page::', interaction => {
+    const parts = interaction.customId.split('::');
+    const tab = parts[2];
+    const page = parseInt(parts[3], 10);
+    return orderManagementPanel.showManagementPanel(interaction, { tab, page });
+  }),
+
+  // Order tracking
+  prefix('ordertrack::page::', interaction => {
+    const parts = interaction.customId.split('::');
+    const page = parseInt(parts[3], 10);
+    const statusFilter = parts[4] === 'all' ? null : parts[4];
+    return orderTrackingService.showTrackingPanel(interaction, { page, statusFilter });
+  }),
+  prefix('ordertrack::filter::', interaction => {
+    const parts = interaction.customId.split('::');
+    const statusFilter = parts[3] === 'all' ? null : parts[3];
+    return orderTrackingService.showTrackingPanel(interaction, { statusFilter });
+  }),
+  prefix('ordertrack::back::', interaction => orderTrackingService.showTrackingPanel(interaction)),
 
   // Stock v3
   exact('stockv3::entrada', stockV3Handlers.handleEntradaButton),

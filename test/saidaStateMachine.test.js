@@ -15,7 +15,7 @@ function resolved(rel) {
   return require.resolve(path.join(__dirname, '..', 'src', rel));
 }
 
-const state = { status: 'aberta' };
+const state = { status: 'criada' };
 
 require.cache[resolved('db.js')] = {
   exports: {
@@ -63,12 +63,12 @@ const { startSaida, closeSaida, _assertTransition, ALLOWED_TRANSITIONS } = requi
 
 describe('saida state machine — transições', () => {
   beforeEach(() => {
-    state.status = 'aberta';
+    state.status = 'criada';
   });
 
   it('ALLOWED_TRANSITIONS mapeia estados corretamente', () => {
-    assert.ok(ALLOWED_TRANSITIONS.aberta.has('em_curso'));
-    assert.ok(ALLOWED_TRANSITIONS.aberta.has('cancelada'));
+    assert.ok(ALLOWED_TRANSITIONS.criada.has('trancagem'));
+    assert.ok(ALLOWED_TRANSITIONS.criada.has('cancelada'));
     assert.ok(ALLOWED_TRANSITIONS.em_curso.has('em_liquidacao'));
     assert.ok(ALLOWED_TRANSITIONS.em_liquidacao.has('concluida'));
     assert.ok(ALLOWED_TRANSITIONS.em_liquidacao.has('cancelada'));
@@ -76,15 +76,15 @@ describe('saida state machine — transições', () => {
     assert.equal(ALLOWED_TRANSITIONS.cancelada.size, 0);
   });
 
-  it('aberta → em_curso: ok', async () => {
-    state.status = 'aberta';
-    const r = await _assertTransition(1, 'em_curso');
-    assert.equal(r.status, 'aberta');
+  it('criada → trancagem: ok', async () => {
+    state.status = 'criada';
+    const r = await _assertTransition(1, 'trancagem');
+    assert.equal(r.status, 'criada');
   });
 
-  it('concluida → aberta: proibido', async () => {
+  it('concluida → criada: proibido', async () => {
     state.status = 'concluida';
-    await assert.rejects(_assertTransition(1, 'aberta'), /Transição proibida/);
+    await assert.rejects(_assertTransition(1, 'criada'), /Transição proibida/);
   });
 
   it('cancelada → concluida: proibido', async () => {

@@ -30,7 +30,14 @@ const { setClient: setBairristaLogClient } = require('../inventory/bairristaNoti
 const { setClient: setSaidaClient } = require('../saidas/saidaEngine');
 const { setClient: setNotifRouterClient } = require('../notifications/routing');
 const { setClient: setSpotCooldownClient } = require('../saidas/spotCooldown');
+const { SessionLifecycle } = require('../saidas/saidaLifecycle');
 const { registerCommands } = require('./discord/registerCommands');
+
+// Singleton registry para aceder ao lifecycle de saídas de qualquer handler
+let _saidaLifecycle = null;
+function getSaidaLifecycle() {
+  return _saidaLifecycle;
+}
 
 async function registerSlashCommandsPhase(client) {
   await registerCommands(client);
@@ -46,6 +53,18 @@ function injectClientPhase(client) {
   setSaidaClient(client);
   setNotifRouterClient(client);
   setSpotCooldownClient(client);
+}
+
+async function saidaLifecyclePhase(client) {
+  try {
+    const lifecycle = new SessionLifecycle({ client });
+    await lifecycle.restoreCountdowns();
+    _saidaLifecycle = lifecycle;
+    log(`[BOOT:SAIDAS] SessionLifecycle restaurado (${lifecycle.getActiveCountdowns().length} countdowns activos).`);
+  } catch (e) {
+    warn(`[BOOT:SAIDAS] Falha a restaurar lifecycle: ${e.message}`);
+    // Non-fatal — bot continua operacional
+  }
 }
 
 async function panelBootstrapPhase(client) {
@@ -115,6 +134,7 @@ async function runReadyPhases(client, { onPreempt }) {
     ['registerSlashCommands', () => registerSlashCommandsPhase(client)],
     ['stickyRenderers', () => stickyRenderersPhase()],
     ['injectClient', () => injectClientPhase(client)],
+    ['saidaLifecycle', () => saidaLifecyclePhase(client)],
     ['panelBootstrap', () => panelBootstrapPhase(client)],
     ['warmup', () => warmupPhase()],
     ['scheduler', () => schedulerPhase(client)],
@@ -141,10 +161,12 @@ async function runReadyPhases(client, { onPreempt }) {
 
 module.exports = {
   runReadyPhases,
+  getSaidaLifecycle,
   // Exports individuais para testes
   registerSlashCommandsPhase,
   stickyRenderersPhase,
   injectClientPhase,
+  saidaLifecyclePhase,
   panelBootstrapPhase,
   warmupPhase,
   schedulerPhase,

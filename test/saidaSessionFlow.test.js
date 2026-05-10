@@ -109,7 +109,7 @@ require.cache[resolved('core/eventBus.js')] = {
 require.cache[resolved('repositories/index.js')] = {
   exports: {
     saidaRepo: {
-      findById: async id => (id === 42 ? { id: 42, spot: 'Bairro', status: 'aberta' } : null),
+      findById: async id => (id === 42 ? { id: 42, spot: 'Bairro', status: 'criada' } : null),
       getParticipants: async () => _participants.filter(p => p.operation_id === 42),
       updateParticipant: async () => null,
       updateStatus: async (id, status) => ({ id, status }),
@@ -235,7 +235,7 @@ describe('expireStaleRequests — job de expiry', () => {
         member_id: 5,
         discord_id: '111',
         display_name: 'Alice',
-        status: 'aberta',
+        status: 'criada',
         spot: 'Bairro',
         _stale: true,
       },

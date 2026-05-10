@@ -171,7 +171,8 @@ async function syncConfig(batch, sheetId) {
   });
   row = tableHeader(batch, sheetId, row, ['Estado', 'Descricao', 'Badge', '', '']);
   const lifecycle = [
-    ['aberta', 'inscricoes abertas — membros podem entrar', badgeCell('ABERTA', COLOR.GREEN_DEEP)],
+    ['criada', 'inscricoes abertas — membros podem entrar', badgeCell('CRIADA', COLOR.GREEN_DEEP)],
+    ['trancagem', 'inscricoes fechadas — selecao de equipa', badgeCell('TRANCAGEM', COLOR.YELLOW_DEEP)],
     ['em_preparacao', 'a preparar — material a ser emitido', badgeCell('PREP', COLOR.YELLOW_DEEP)],
     ['em_curso', 'na rua — saida activa', badgeCell('CURSO', COLOR.RED_DEEP)],
     ['em_liquidacao', 'a fechar — participantes a submeter resultados', badgeCell('LIQUID.', COLOR.GOLD)],

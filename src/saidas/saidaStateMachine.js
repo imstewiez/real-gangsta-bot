@@ -9,8 +9,9 @@ const { saidaRepo } = require('../repositories');
 const { NotFoundError, ConflictError } = require('../shared/errors');
 
 const ALLOWED_TRANSITIONS = {
-  aberta: new Set(['em_preparacao', 'em_curso', 'em_liquidacao', 'cancelada']),
-  em_preparacao: new Set(['em_curso', 'em_liquidacao', 'cancelada']),
+  criada: new Set(['trancagem', 'cancelada']),
+  trancagem: new Set(['em_preparacao', 'cancelada']),
+  em_preparacao: new Set(['em_curso', 'cancelada']),
   em_curso: new Set(['em_liquidacao', 'cancelada']),
   em_liquidacao: new Set(['concluida', 'cancelada']),
   concluida: new Set([]), // terminal — nunca reverter
@@ -18,12 +19,13 @@ const ALLOWED_TRANSITIONS = {
 };
 
 const STATUS_METADATA = {
-  aberta: { terminal: false, color: '#3498db', label: 'Aberta' },
-  em_preparacao: { terminal: false, color: '#f39c12', label: 'Em preparação' },
-  em_curso: { terminal: false, color: '#2ecc71', label: 'Em curso' },
-  em_liquidacao: { terminal: false, color: '#9b59b6', label: 'Em liquidação' },
-  concluida: { terminal: true, color: '#27ae60', label: 'Concluída' },
-  cancelada: { terminal: true, color: '#e74c3c', label: 'Cancelada' },
+  criada: { terminal: false, color: '#3498db', label: 'Criada', emoji: '📝' },
+  trancagem: { terminal: false, color: '#e67e22', label: 'Trancagem', emoji: '🔒' },
+  em_preparacao: { terminal: false, color: '#f39c12', label: 'Em preparação', emoji: '🛠️' },
+  em_curso: { terminal: false, color: '#2ecc71', label: 'Em curso', emoji: '⚔️' },
+  em_liquidacao: { terminal: false, color: '#9b59b6', label: 'Em liquidação', emoji: '💰' },
+  concluida: { terminal: true, color: '#27ae60', label: 'Concluída', emoji: '✅' },
+  cancelada: { terminal: true, color: '#e74c3c', label: 'Cancelada', emoji: '❌' },
 };
 
 function canTransition(from, to) {

@@ -11,5 +11,48 @@
     "P90",
     "Carabina Especial",
     "Pistola .50"
+  ],
+  "categories": [
+    {
+      "name": "Armas Orange",
+      "emoji": "🟠",
+      "weapons": ["Micro SMG", "Machine Pistol", "Pistola Tec", "SMG", "Assault SMG", "Combat PDW", "Mini SMG"]
+    },
+    {
+      "name": "Armas Red",
+      "emoji": "🔴",
+      "weapons": [
+        "Compact Rifle",
+        "Carabina Especial",
+        "Gusenberg",
+        "P90",
+        "Assault Rifle",
+        "Bullpup Rifle",
+        "Advanced Rifle",
+        "Compact Grenade Launcher",
+        "Espingarda de Assalto",
+        "Sawed-Off Shotgun",
+        "Assault Shotgun",
+        "Heavy Shotgun"
+      ]
+    },
+    {
+      "name": "Pistolas SNS",
+      "emoji": "🔫",
+      "weapons": [
+        "SNS Pistol",
+        "SNS Pistol Mk II",
+        "Heavy Pistol",
+        "Vintage Pistol",
+        "AP Pistola",
+        "Pistola .50",
+        "Heavy Revolver"
+      ]
+    },
+    {
+      "name": "Armas Brancas",
+      "emoji": "🔪",
+      "weapons": ["Faca", "Bastão", "Martelo", "Machadinha", "Faca de Combate", "Bottle", "Knuckle Duster"]
+    }
   ]
 }

@@ -23,6 +23,8 @@
  *     desde que tenha kills > 0 OU sobrevivido+disciplina≥70%
  */
 
+const { calculateSessionDelta } = require('./saidaPvPRating');
+
 function computeSaidaScores({ participants, result, _suppliedTotal }) {
   const isWin = result === 'vitoria';
   const isLoss = result === 'derrota';
@@ -57,6 +59,14 @@ function computeSaidaScores({ participants, result, _suppliedTotal }) {
       discipline_score = 100; // não recebeu → disciplina neutra/total
     }
 
+    const rating_delta = calculateSessionDelta({
+      kills,
+      survived,
+      victory: isWin,
+      mvp: false,
+      hadFight: result !== 'sem_conflito',
+    });
+
     return {
       ...p,
       kills,
@@ -70,6 +80,7 @@ function computeSaidaScores({ participants, result, _suppliedTotal }) {
       net_material_delta,
       performance_score,
       discipline_score,
+      rating_delta,
       mvp_flag: false, // definido abaixo
     };
   });
@@ -80,7 +91,17 @@ function computeSaidaScores({ participants, result, _suppliedTotal }) {
     eligible.sort((a, b) => b.performance_score - a.performance_score);
     const top = eligible[0];
     const idx = scored.findIndex(p => p.member_id === top.member_id);
-    if (idx >= 0) scored[idx].mvp_flag = true;
+    if (idx >= 0) {
+      scored[idx].mvp_flag = true;
+      // Recomputa rating_delta com bónus MVP
+      scored[idx].rating_delta = calculateSessionDelta({
+        kills: scored[idx].kills,
+        survived: scored[idx].survived,
+        victory: isWin,
+        mvp: true,
+        hadFight: result !== 'sem_conflito',
+      });
+    }
   }
 
   return scored;

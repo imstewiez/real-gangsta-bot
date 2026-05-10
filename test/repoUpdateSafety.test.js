@@ -69,7 +69,7 @@ describe('repository update — updated_at safety', () => {
   });
 
   it('saidaRepo.updateStatus — status não é duplicado se for passado nos extras', async () => {
-    await saidaRepo.updateStatus(1, 'aberta', { status: 'seria_bug' });
+    await saidaRepo.updateStatus(1, 'criada', { status: 'seria_bug' });
     const last = _captured[_captured.length - 1];
     assert.equal(countOccurrences(last.sql, 'status = $'), 1);
   });

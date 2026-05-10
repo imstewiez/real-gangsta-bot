@@ -106,7 +106,8 @@ function resultBadge(r) {
 }
 function statusBadge(s) {
   const map = {
-    aberta: { label: 'ABERTA', bg: COLOR.GREEN_DEEP },
+    criada: { label: 'CRIADA', bg: COLOR.GREEN_DEEP },
+    trancagem: { label: 'TRANCAGEM', bg: COLOR.YELLOW_DEEP },
     em_preparacao: { label: 'PREP', bg: COLOR.YELLOW_DEEP },
     em_curso: { label: 'CURSO', bg: COLOR.RED_DEEP },
     em_liquidacao: { label: 'LIQUID.', bg: COLOR.GOLD },

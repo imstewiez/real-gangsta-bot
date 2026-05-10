@@ -1253,8 +1253,6 @@ async function handleCartSubmit(interaction) {
     unitPrice: l.unitPrice,
   }));
   const globalNotesSnapshot = cart.globalNotes;
-  await bairristaCart.clearCart(interaction.user.id);
-  parentStore.clearParent(interaction.user.id);
 
   const { createDeliveryRequest } = require('./inventoryEngine');
   let requestResult;
@@ -1274,6 +1272,11 @@ async function handleCartSubmit(interaction) {
       { messageClass: 'ERROR' }
     );
   }
+
+  // Só limpa o carrinho DEPOIS de criar o pedido com sucesso.
+  // Se falhar, o utilizador pode corrigir e re-submeter.
+  await bairristaCart.clearCart(interaction.user.id);
+  parentStore.clearParent(interaction.user.id);
 
   // Notificar canal de staff (INVENTORY_EVENTS → CH_MATERIAL_ENTREG 1491506821599330545)
   try {

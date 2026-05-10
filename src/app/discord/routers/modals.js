@@ -22,6 +22,7 @@ const {
 } = require('../../../saidas/saidaHandlers');
 const saidaWizard = require('../../../saidas/saidaSettlementWizard');
 const saidaIndividual = require('../../../saidas/saidaIndividualResult');
+const saidaResultFlow = require('../../../saidas/saidaResultFlow');
 const { handleKillModal } = require('../../../kills/killHandlers');
 const { handleLeaderboardCustomModal } = require('../../../leaderboard/leaderboardHandlers');
 
@@ -62,6 +63,7 @@ const MODAL_ROUTES = [
   exact('saida::issue_modal_qty', handleIssueQtyModal),
   prefix('saida::wz_modal::', saidaWizard.handleSettleModal),
   prefix('saida::submit_result_modal::', saidaIndividual.handleSubmitResultModal),
+  prefix('saida::result_modal::', saidaResultFlow.handleResultModal),
 
   // Kill
   exact('kill::modal', handleKillModal),

@@ -17,7 +17,7 @@ async function getChefiaMetrics() {
     WITH
       saidas AS (
         SELECT
-          COUNT(*) FILTER (WHERE status IN ('aberta', 'em_curso'))::int AS activas,
+          COUNT(*) FILTER (WHERE status IN ('criada', 'trancagem', 'em_preparacao', 'em_curso'))::int AS activas,
           COUNT(*) FILTER (WHERE status = 'concluida')::int AS concluidas
         FROM operations
       ),
@@ -113,7 +113,7 @@ async function getOficialMetrics() {
     WITH
       saidas AS (
         SELECT
-          COUNT(*) FILTER (WHERE status IN ('aberta', 'em_curso'))::int AS activas,
+          COUNT(*) FILTER (WHERE status IN ('criada', 'trancagem', 'em_preparacao', 'em_curso'))::int AS activas,
           COUNT(*) FILTER (WHERE status = 'concluida')::int AS concluidas
         FROM operations
       ),
@@ -192,7 +192,7 @@ async function getBairristaMetrics(discordId) {
     saidas AS (
       SELECT COUNT(*)::int AS activas
       FROM operations
-      WHERE status IN ('aberta', 'em_curso')
+      WHERE status IN ('criada', 'trancagem', 'em_preparacao', 'em_curso')
     ),
     membros AS (
       SELECT COUNT(*)::int AS activos

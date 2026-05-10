@@ -171,7 +171,7 @@ async function removeStock({
     return { id: r.rows[0].id };
   };
 
-  return withAdvisoryLock(`stock-transfer:${itemId}:${fromLocation}`, run);
+  return withAdvisoryLock(`stock-remove:${itemId}:${location}`, run);
 }
 
 async function transferStock({ itemId, quantity, fromLocation, toLocation, actor, memberId = null, notes = '' }) {

@@ -1,7 +1,7 @@
 'use strict';
 const crypto = require('crypto');
 const { inventoryRepo, memberRepo, bairristaStatsRepo, deliveryRequestRepo } = require('../repositories');
-const { queryWithTransaction } = require('../db');
+const { queryWithTransaction, withAdvisoryLock } = require('../db');
 const { logAudit } = require('../audit/auditEngine');
 const { notifyMovement } = require('./stockNotifier');
 const { notifyBairristaMovement, notifyBairristaBatch } = require('./bairristaNotifier');
@@ -724,62 +724,77 @@ async function adjustStock({ itemId, quantity, notes, createdBy }) {
   const item = await inventoryRepo.getItemById(itemId);
   if (!item) throw new NotFoundError('Item não encontrado.', { code: 'ITEM_NOT_FOUND' });
 
-  // Guard: não permitir ajuste que deixe stock negativo. Permite descontar
-  // (quantity < 0) desde que saldo actual + quantity >= 0.
-  if (quantity < 0) {
-    const current = await inventoryRepo.getStockForItem(itemId).catch(() => 0);
-    const balance = Number(current ?? 0);
-    if (balance + quantity < 0) {
-      throw new ConflictError(
-        `Stock insuficiente para **${item.name}** — saldo actual ${balance}, ajuste pedido ${quantity}. ` +
-          `Máximo que podes descontar: ${balance}.`,
-        { code: 'INSUFFICIENT_STOCK' }
+  return withAdvisoryLock(`stock-adjust:${itemId}`, async client => {
+    // Guard: não permitir ajuste que deixe stock negativo. Permite descontar
+    // (quantity < 0) desde que saldo actual + quantity >= 0.
+    // Cálculo feito DENTRO do lock+transacção para evitar race condition.
+    if (quantity < 0) {
+      const currentRes = await client.query(
+        `SELECT COALESCE(SUM(
+          CASE
+            WHEN movement_type = ANY($2::text[]) THEN quantity
+            WHEN movement_type = ANY($3::text[]) THEN -quantity
+            WHEN movement_type = $4 THEN quantity
+            ELSE 0
+          END
+        ), 0)::int AS balance
+        FROM inventory_movements WHERE item_id = $1`,
+        [itemId, STOCK_INFLOW_TYPES, STOCK_OUTFLOW_TYPES, MOVEMENT_TYPE.AJUSTE_MANUAL]
       );
+      const balance = currentRes.rows[0]?.balance || 0;
+      if (balance + quantity < 0) {
+        throw new ConflictError(
+          `Stock insuficiente para **${item.name}** — saldo actual ${balance}, ajuste pedido ${quantity}. ` +
+            `Máximo que podes descontar: ${balance}.`,
+          { code: 'INSUFFICIENT_STOCK' }
+        );
+      }
     }
-  }
 
-  const movement = await inventoryRepo.recordMovement({
-    movementType: 'ajuste_manual',
-    itemId,
-    quantity,
-    createdBy,
-    notes,
-  });
-
-  await logAudit({
-    action: 'stock_adjustment',
-    entityType: 'inventory',
-    entityId: String(movement.id),
-    actorId: createdBy,
-    afterState: { itemName: item.name, quantity, notes },
-  });
-
-  const balanceAfter = await inventoryRepo.getStockForItem(itemId).catch(() => null);
-  notifyMovement({
-    movementType: 'ajuste_manual',
-    itemName: item.name,
-    quantity,
-    actorId: createdBy,
-    balanceAfter,
-    context: notes,
-  }).catch(() => {});
-
-  // Event bus — notification routing publica em INVENTORY_EVENTS.
-  eventBus
-    .emitAsync('material.adjusted', {
-      movementId: movement.id,
+    const movement = await inventoryRepo.recordMovement({
+      movementType: 'ajuste_manual',
       itemId,
+      quantity,
+      createdBy,
+      notes,
+      client,
+    });
+
+    await logAudit({
+      action: 'stock_adjustment',
+      entityType: 'inventory',
+      entityId: String(movement.id),
+      actorId: createdBy,
+      afterState: { itemName: item.name, quantity, notes },
+    });
+
+    const balanceAfter = await inventoryRepo.getStockForItem(itemId).catch(() => null);
+    notifyMovement({
+      movementType: 'ajuste_manual',
       itemName: item.name,
-      itemValue: parseFloat(item.estimated_value) || 0,
       quantity,
       actorId: createdBy,
       balanceAfter,
-      notes,
-      at: new Date(),
-    })
-    .catch(e => warn(`[EVENT] material.adjusted: ${e.message}`));
+      context: notes,
+    }).catch(() => {});
 
-  return movement;
+    // Event bus — notification routing publica em INVENTORY_EVENTS.
+    eventBus
+      .emitAsync('material.adjusted', {
+        movementId: movement.id,
+        itemId,
+        itemName: item.name,
+        itemValue: parseFloat(item.estimated_value) || 0,
+        quantity,
+        actorId: createdBy,
+        balanceAfter,
+        notes,
+        at: new Date(),
+      })
+      .catch(e => warn(`[EVENT] material.adjusted: ${e.message}`));
+
+    return movement;
+  });
 }
 
 async function getCurrentStock() {

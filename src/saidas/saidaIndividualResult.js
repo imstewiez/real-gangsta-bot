@@ -1,5 +1,9 @@
 'use strict';
 /**
+ * ⚠️ DEPRECATED — Individual result submission (legacy self-service flow).
+ * Replaced by saidaResultFlow.js (unified self-service + staff confirmation).
+ * This file is kept for backward compatibility but will be removed in v3.1.
+ *
  * Resultado individual do participante (self-service) + confirmação de
  * devolução de arma por staff OG+.
  *
@@ -51,6 +55,7 @@ const { isChefia, isOficial } = require('../permissions/permissionEngine');
 const { logAudit } = require('../audit/auditEngine');
 const eventBus = require('../core/eventBus');
 const { warn, log } = require('../logger');
+warn('[DEPRECATED] saidaIndividualResult.js carregado — usar saidaResultFlow.js (v3.0).');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // A. RESULTADO INDIVIDUAL (participante) — 1 STEP: botão → modal directo

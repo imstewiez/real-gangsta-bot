@@ -73,7 +73,7 @@ async function findOpen() {
     SELECT o.*, m.display_name as leader_name
     FROM operations o
     LEFT JOIN members m ON m.id = o.leader_id
-    WHERE o.status IN ('aberta', 'em_preparacao', 'em_curso')
+    WHERE o.status IN ('criada', 'em_preparacao', 'em_curso')
     ORDER BY o.date DESC, o.group_number
   `);
   return res.rows;
@@ -97,7 +97,7 @@ async function findActive() {
     SELECT o.*, m.display_name as leader_name, m.discord_id as leader_discord_id
     FROM operations o
     LEFT JOIN members m ON m.id = o.leader_id
-    WHERE o.status IN ('aberta', 'em_preparacao', 'em_curso', 'em_liquidacao')
+    WHERE o.status IN ('criada', 'em_preparacao', 'em_curso', 'em_liquidacao')
     ORDER BY o.date DESC, o.group_number
   `);
   return res.rows;

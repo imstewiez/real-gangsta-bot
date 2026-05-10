@@ -1,5 +1,9 @@
 'use strict';
 /**
+ * ⚠️ DEPRECATED — Settlement wizard (legacy staff-per-participant flow).
+ * Replaced by saidaResultFlow.js (unified self-service + staff confirmation).
+ * This file is kept for backward compatibility but will be removed in v3.1.
+ *
  * Settlement wizard — UI de fecho de saída por participante.
  *
  * Fluxo:
@@ -37,6 +41,7 @@ const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 const { SAIDAS, EMOJI, RESULT_LABEL } = require('../content');
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
+warn('[DEPRECATED] saidaSettlementWizard.js carregado — usar saidaResultFlow.js (v3.0).');
 
 async function _renderWizardMessage(saidaId) {
   const participants = await saidaRepo.getParticipants(saidaId);

@@ -32,6 +32,19 @@ const {
 const { formatPtDateOnly } = require('../shared/formatPtDate');
 const { warn } = require('../logger');
 
+// Novos fluxos v3.0 — re-exportados para compatibilidade dos routers
+const saidaRegistrationFlow = require('./saidaRegistrationFlow');
+const saidaResultFlow = require('./saidaResultFlow');
+
+// Deprecation warnings — só mostra uma vez por função
+const _warned = new Set();
+function _deprecate(fnName) {
+  if (!_warned.has(fnName)) {
+    warn(`[DEPRECATED] saidaHandlers.${fnName} é legacy. Usar saidaRegistrationFlow / saidaResultFlow.`);
+    _warned.add(fnName);
+  }
+}
+
 // Context efémero por user durante fluxos multi-step.
 // TTL de 15 minutos — limpa entradas abandonadas automaticamente.
 const { createSessionStore } = require('../shared/sessionStore');
@@ -264,7 +277,7 @@ async function handleCreateSaidaModal(interaction) {
     const dateDisplay = formatPtDateOnly(date);
     const timeDisplay = time && time !== '00:00' ? ` · ${time}` : '';
     const embed = brandEmbed('MOVEMENT')
-      .setTitle(`${EMOJI.SAIDA} Saída #${s.id} aberta`)
+      .setTitle(`${EMOJI.SAIDA} Saída #${s.id} criada`)
       .addFields(
         { name: 'Tipo', value: `**${SAIDA_TYPE[type] || type}**`, inline: true },
         { name: 'Data', value: `**${dateDisplay}**${timeDisplay}`, inline: true },
@@ -276,7 +289,7 @@ async function handleCreateSaidaModal(interaction) {
     const sessionMsg = await publishSessionEmbed(interaction.client, s.id);
     if (sessionMsg) {
       embed.addFields({
-        name: '→ sessão aberta',
+        name: '→ sessão criada',
         value: `Sessão publicada em <#${sessionMsg.channelId}>. Os membros podem registar-se directamente.`,
         inline: false,
       });
@@ -299,6 +312,7 @@ async function handleCreateSaidaModal(interaction) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function handleCloseSaidaButton(interaction) {
+  _deprecate('handleCloseSaidaButton');
   if (!(await requirePermission(interaction, isChefia))) return;
   const open = await saidaRepo.findOpen();
   if (!open.length) {
@@ -329,16 +343,17 @@ async function handleCloseSaidaButton(interaction) {
  * (já estamos nela) e vai logo para o select de resultado.
  */
 async function handleCloseSessionDirect(interaction) {
+  _deprecate('handleCloseSessionDirect');
   if (isDuplicate(interaction.id)) return;
   if (!(await requirePermission(interaction, isChefia))) return;
 
   const saidaId = parseInt(interaction.customId.split('::')[2], 10);
   const saida = await saidaRepo.findById(saidaId);
-  if (!saida || !['aberta', 'em_preparacao', 'em_curso'].includes(saida.status)) {
+  if (!saida || !['criada', 'em_preparacao', 'em_curso'].includes(saida.status)) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.WARN} Saída #${saidaId} já não está aberta (estado: ${fmtSaidaStatus(saida?.status) || 'não encontrada'}).`,
+        content: `${EMOJI.WARN} Saída #${saidaId} já não está criada (estado: ${fmtSaidaStatus(saida?.status) || 'não encontrada'}).`,
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'WARN' }
@@ -377,6 +392,7 @@ async function handleCloseSessionDirect(interaction) {
 }
 
 async function handleCloseSaidaSelect(interaction) {
+  _deprecate('handleCloseSaidaSelect');
   if (isDuplicate(interaction.id)) return;
   const saidaId = parseInt(interaction.values[0], 10);
   if (Number.isNaN(saidaId)) {
@@ -413,6 +429,7 @@ async function handleCloseSaidaSelect(interaction) {
 // em texto livre, craft, notas). Sem dropdown de facção — user pediu
 // "por escrita" para ser mais directo.
 async function handleCloseResultSelect(interaction) {
+  _deprecate('handleCloseResultSelect');
   if (isDuplicate(interaction.id)) return;
   const result = interaction.values[0];
   const ctx = pendingSaidaContext.get(interaction.user.id) || {};
@@ -470,6 +487,7 @@ async function handleCloseResultSelect(interaction) {
 }
 
 async function handleCloseSaidaModal(interaction) {
+  _deprecate('handleCloseSaidaModal');
   if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const ctx = pendingSaidaContext.get(interaction.user.id);
@@ -540,6 +558,7 @@ async function handleCloseSaidaModal(interaction) {
  * Corre scoring com dados reais, actualiza stats, publica resultados.
  */
 async function handleFinalizeSaidaButton(interaction) {
+  _deprecate('handleFinalizeSaidaButton');
   if (isDuplicate(interaction.id)) return;
 
   if (!(await requirePermission(interaction, isChefia))) return;
@@ -693,7 +712,7 @@ async function handleViewSaidasButton(interaction) {
   if (!list.length)
     return safeReply(interaction, { content: `${EMOJI.INFO} Sem saídas registadas.` }, { messageClass: 'BANAL' });
   const statusEmoji = {
-    aberta: EMOJI.ABERTO,
+    criada: EMOJI.ABERTO,
     em_preparacao: EMOJI.PREPARACAO,
     em_curso: EMOJI.EM_CURSO,
     em_liquidacao: EMOJI.LIQUIDACAO,
@@ -1279,5 +1298,11 @@ module.exports = {
   handleIssueParticipantSelect,
   handleIssueItemSelect,
   handleIssueQtyModal,
+  // Novos fluxos v3.0 — re-exportados para routers
+  handleRegTypeChoice: saidaRegistrationFlow.handleTypeChoice,
+  handleRegWeaponPick: saidaRegistrationFlow.handleWeaponPick,
+  handleRegCancel: saidaRegistrationFlow.handleCancelRegistration,
+  openResultModal: saidaResultFlow.openResultModal,
+  handleResultModal: saidaResultFlow.handleResultModal,
   pendingSaidaContext,
 };

@@ -32,6 +32,9 @@ const { inventoryRepo } = require('../repositories');
 const { ordersRepo } = require('../repositories');
 const { calculateOrderPricing } = require('./orderPricingEngine');
 const orderCart = require('./orderCart');
+const orderCartEmbedBuilder = require('./orderCartEmbedBuilder');
+const orderCheckoutFlow = require('./orderCheckoutFlow');
+const { buildItemPreviewEmbed, buildQuickQuantityRow } = require('./orderPreviewEmbedBuilder');
 const orderCatalog = require('./orderCatalog');
 const { createSessionStore } = require('../shared/sessionStore');
 
@@ -56,9 +59,9 @@ async function handleEncomendasButton(interaction) {
   let cart = orderCart.getCart(interaction.user.id);
   if (!cart) cart = orderCart.createCart(interaction.user.id);
 
-  const embed = orderCart.buildCartEmbed(cart, { memberName: member.display_name });
+  const { embeds } = orderCartEmbedBuilder.buildCartMessagePayload(cart, { memberName: member.display_name });
   const components = orderCart.buildCartComponents(cart);
-  return safeReply(interaction, { embeds: [embed], components }, { messageClass: 'COCKPIT' });
+  return safeReply(interaction, { embeds, components }, { messageClass: 'COCKPIT' });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -186,22 +189,8 @@ async function handleOrderItemSelect(interaction) {
     memberTier: member.tier,
   });
 
-  const embed = brandEmbed('HOUSE').setTitle(`📦 ${item.name}`).setColor(COLOR.PRIMARY);
-
-  const descLines = [];
-  descLines.push(`**💰 Preço:** ${formatMoney(pricing.finalPrice)} por unidade`);
-  descLines.push('💵 **Pagamento:** Dinheiro sujo + materiais');
-
-  if (pricing.hasRecipe) {
-    descLines.push('', '🛠️ **Materiais obrigatórios por unidade:**');
-    for (const ing of pricing.ingredients) {
-      descLines.push(`  • ${ing.name}: **${ing.qty}×**`);
-    }
-  }
-
-  descLines.push('', `💳 Multiplicador: **${(pricing.multiplier * 100).toFixed(1)}%** (${member.role})`);
-  embed.setDescription(descLines.join('\n'));
-
+  const embed = buildItemPreviewEmbed({ item, pricing, memberTier: member.tier, memberRole: member.role });
+  const qtyRow = buildQuickQuantityRow(itemId);
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`ordermode::materials_money::${itemId}`)
@@ -210,7 +199,7 @@ async function handleOrderItemSelect(interaction) {
     new ButtonBuilder().setCustomId('ordercart::add').setLabel('🔙 Voltar').setStyle(ButtonStyle.Secondary)
   );
 
-  await safeUpdate(interaction, { embeds: [embed], components: [row] });
+  await safeUpdate(interaction, { embeds: [embed], components: [qtyRow, row] });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -324,7 +313,7 @@ async function handleOrderQtyModal(interaction) {
   pendingSelections.delete(interaction.user.id);
 
   // Volta ao carrinho — substitui a mensagem original
-  const embed = orderCart.buildCartEmbed(cart, { memberName: member.display_name });
+  const { embeds } = orderCartEmbedBuilder.buildCartMessagePayload(cart, { memberName: member.display_name });
   const components = orderCart.buildCartComponents(cart);
 
   if (notes) {
@@ -333,7 +322,7 @@ async function handleOrderQtyModal(interaction) {
   }
 
   await interaction.deferUpdate();
-  return interaction.editReply({ embeds: [embed], components });
+  return interaction.editReply({ embeds, components });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -357,9 +346,9 @@ async function handleOrderCartRemove(interaction) {
   orderCart.saveCart(interaction.user.id, cart);
 
   const member = await memberRepo.findByDiscordId(interaction.user.id).catch(() => null);
-  const embed = orderCart.buildCartEmbed(cart, { memberName: member?.display_name });
+  const { embeds } = orderCartEmbedBuilder.buildCartMessagePayload(cart, { memberName: member?.display_name });
   const components = orderCart.buildCartComponents(cart);
-  return safeUpdate(interaction, { embeds: [embed], components });
+  return safeUpdate(interaction, { embeds, components });
 }
 
 async function handleOrderCartClear(interaction) {
@@ -368,9 +357,9 @@ async function handleOrderCartClear(interaction) {
 
   const cart = orderCart.createCart(interaction.user.id);
   const member = await memberRepo.findByDiscordId(interaction.user.id).catch(() => null);
-  const embed = orderCart.buildCartEmbed(cart, { memberName: member?.display_name });
+  const { embeds } = orderCartEmbedBuilder.buildCartMessagePayload(cart, { memberName: member?.display_name });
   const components = orderCart.buildCartComponents(cart);
-  return safeUpdate(interaction, { embeds: [embed], components });
+  return safeUpdate(interaction, { embeds, components });
 }
 
 async function handleOrderCartBack(interaction) {
@@ -386,20 +375,70 @@ async function handleOrderCartBack(interaction) {
   }
 
   const member = await memberRepo.findByDiscordId(interaction.user.id).catch(() => null);
-  const embed = orderCart.buildCartEmbed(cart, { memberName: member?.display_name });
+  const { embeds } = orderCartEmbedBuilder.buildCartMessagePayload(cart, { memberName: member?.display_name });
   const components = orderCart.buildCartComponents(cart);
-  return safeUpdate(interaction, { embeds: [embed], components });
+  return safeUpdate(interaction, { embeds, components });
 }
 
 async function handleOrderCartCheckout(interaction) {
-  if (isDuplicate(interaction.id)) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  return orderCheckoutFlow.showConfirmation(interaction);
+}
 
-  const cart = orderCart.getCart(interaction.user.id);
-  if (!cart || !cart.lines.length) {
+// ═══════════════════════════════════════════════════════════════════════════
+// QUICK QUANTITY — selecção rápida de quantidade
+// ═══════════════════════════════════════════════════════════════════════════
+
+async function handleOrderQtySelect(interaction) {
+  if (isDuplicate(interaction.id)) return;
+
+  const itemId = parseInt(interaction.customId.split('::')[1], 10);
+  const value = interaction.values[0];
+
+  const pending = pendingSelections.get(interaction.user.id);
+  if (!pending || !pending.pricing || pending.itemId !== itemId) {
     return safeReply(
       interaction,
-      { content: `${EMOJI.WARN} Carrinho vazio.`, flags: MessageFlags.Ephemeral },
+      { content: `${EMOJI.WARN} Sessão expirada. Volta a começar.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
+  }
+
+  if (value === 'custom') {
+    pending.mode = 'materials_money';
+    pendingSelections.set(interaction.user.id, pending);
+
+    const modal = new ModalBuilder()
+      .setCustomId('inv::modal_order_qty')
+      .setTitle(`Encomendar ${pending.itemName}`)
+      .addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('quantity')
+            .setLabel(`Quantidade (preço: ${formatMoney(pending.pricing.finalPrice)}/un)`)
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true)
+            .setMaxLength(5)
+            .setPlaceholder('Ex: 1')
+        ),
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder()
+            .setCustomId('notes')
+            .setLabel('Notas (opcional)')
+            .setStyle(TextInputStyle.Paragraph)
+            .setRequired(false)
+            .setMaxLength(300)
+        )
+      );
+
+    await safeShowModal(interaction, modal);
+    return;
+  }
+
+  const quantity = parseInt(value, 10);
+  if (isNaN(quantity) || quantity <= 0 || quantity > SANITY_MAX_QTY) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.WARN} Quantidade inválida.`, flags: MessageFlags.Ephemeral },
       { messageClass: 'BANAL' }
     );
   }
@@ -408,61 +447,38 @@ async function handleOrderCartCheckout(interaction) {
   if (!member) {
     return safeReply(
       interaction,
-      { content: 'Não estás registado.', flags: MessageFlags.Ephemeral },
+      { content: 'Não estás registado no sistema.', flags: MessageFlags.Ephemeral },
       { messageClass: 'BANAL' }
     );
   }
 
-  const createdOrders = [];
-  for (const line of cart.lines) {
-    const order = await ordersRepo.create({
-      memberId: member.id,
-      itemId: line.itemId,
-      quantity: line.quantity,
-      unitPrice: line.unitPrice,
-      totalPrice: line.finalPrice,
-      notes: cart.globalNotes || '',
-      paymentMode: 'materials_money',
-      materialCost: null,
-      moneyCost: line.finalPrice,
-      ingredientsJson: line.ingredients ? JSON.stringify(line.ingredients) : null,
-    });
-    createdOrders.push(order);
-  }
+  const pricing = await calculateOrderPricing({
+    itemId: pending.itemId,
+    quantity,
+    memberRole: member.role,
+    memberTier: member.tier,
+  });
 
-  orderCart.clearCart(interaction.user.id);
+  let cart = orderCart.getCart(interaction.user.id);
+  if (!cart) cart = orderCart.createCart(interaction.user.id);
 
-  // Notifica chefia
-  const eventBus = require('../core/eventBus');
-  for (let i = 0; i < createdOrders.length; i++) {
-    const order = createdOrders[i];
-    const line = cart.lines[i];
-    eventBus
-      .emitAsync('order.created', {
-        orderId: order.id,
-        itemName: line.itemName,
-        quantity: line.quantity,
-        memberDiscordId: interaction.user.id,
-        actorId: interaction.user.id,
-        status: 'pending',
-        paymentMode: line.mode,
-        totalPrice: line.finalPrice,
-        createdAt: order.created_at,
-        at: new Date(),
-      })
-      .catch(() => {});
-  }
+  orderCart.addLine(cart, {
+    itemId: pending.itemId,
+    itemName: pending.itemName,
+    category: pending.category,
+    quantity,
+    mode: 'materials_money',
+    unitPrice: pricing.unitPrice,
+    finalPrice: pricing.finalPrice,
+    ingredients: pricing.ingredients.map(i => ({ name: i.name, qty: i.qty })),
+  });
 
-  // Embed de sucesso
-  const { totalPrice } = orderCart.totals({ lines: cart.lines });
-  const lines = createdOrders.map((o, i) => `**#${o.id}** · ${cart.lines[i].quantity}× ${cart.lines[i].itemName}`);
+  orderCart.saveCart(interaction.user.id, cart);
+  pendingSelections.delete(interaction.user.id);
 
-  const embed = brandEmbed('HOUSE')
-    .setTitle(`${EMOJI.OK} Encomendas Registadas`)
-    .setColor(COLOR.SUCCESS)
-    .setDescription(`${lines.join('\n')}\n\n**Total:** ${formatMoney(totalPrice)}\n\nA chefia será notificada.`);
-
-  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
+  const { embeds } = orderCartEmbedBuilder.buildCartMessagePayload(cart, { memberName: member.display_name });
+  const components = orderCart.buildCartComponents(cart);
+  return safeUpdate(interaction, { embeds, components });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -561,4 +577,5 @@ module.exports = {
   handleOrderCartCheckout,
   handleOrderCancelButton,
   handleOrderCancelSelect,
+  handleOrderQtySelect,
 };

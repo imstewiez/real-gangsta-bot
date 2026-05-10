@@ -15,7 +15,7 @@ function resolved(rel) {
   return require.resolve(path.join(__dirname, '..', '..', '..', 'src', rel));
 }
 
-const state = { status: 'aberta' };
+const state = { status: 'criada' };
 
 require.cache[resolved('db.js')] = {
   exports: {
@@ -43,12 +43,13 @@ const {
 
 describe('saidaStateMachine', () => {
   beforeEach(() => {
-    state.status = 'aberta';
+    state.status = 'criada';
   });
 
   it('ALLOWED_TRANSITIONS mapeia estados corretamente', () => {
-    assert.ok(ALLOWED_TRANSITIONS.aberta.has('em_curso'));
-    assert.ok(ALLOWED_TRANSITIONS.aberta.has('cancelada'));
+    assert.ok(ALLOWED_TRANSITIONS.criada.has('trancagem'));
+    assert.ok(ALLOWED_TRANSITIONS.criada.has('cancelada'));
+    assert.ok(ALLOWED_TRANSITIONS.trancagem.has('em_preparacao'));
     assert.ok(ALLOWED_TRANSITIONS.em_curso.has('em_liquidacao'));
     assert.ok(ALLOWED_TRANSITIONS.em_liquidacao.has('concluida'));
     assert.ok(ALLOWED_TRANSITIONS.em_liquidacao.has('cancelada'));
@@ -66,20 +67,21 @@ describe('saidaStateMachine', () => {
   });
 
   it('canTransition permite transições válidas', () => {
-    assert.ok(canTransition('aberta', 'em_curso'));
+    assert.ok(canTransition('criada', 'trancagem'));
+    assert.ok(canTransition('trancagem', 'em_preparacao'));
     assert.ok(canTransition('em_liquidacao', 'concluida'));
   });
 
   it('canTransition rejeita transições inválidas', () => {
-    assert.equal(canTransition('concluida', 'aberta'), false);
+    assert.equal(canTransition('concluida', 'criada'), false);
     assert.equal(canTransition('cancelada', 'em_curso'), false);
-    assert.equal(canTransition('aberta', 'aberta'), false);
+    assert.equal(canTransition('criada', 'criada'), false);
   });
 
   it('assertTransition retorna saida em transição válida', async () => {
-    state.status = 'aberta';
-    const saida = await assertTransition(1, 'em_curso');
-    assert.equal(saida.status, 'aberta');
+    state.status = 'criada';
+    const saida = await assertTransition(1, 'trancagem');
+    assert.equal(saida.status, 'criada');
   });
 
   it('assertTransition rejeita transição para o mesmo estado', async () => {
@@ -89,7 +91,7 @@ describe('saidaStateMachine', () => {
 
   it('assertTransition rejeita transição inválida', async () => {
     state.status = 'concluida';
-    await assert.rejects(assertTransition(1, 'aberta'), /Transição proibida/);
+    await assert.rejects(assertTransition(1, 'criada'), /Transição proibida/);
   });
 
   it('assertTransition rejeita saida inexistente', async () => {

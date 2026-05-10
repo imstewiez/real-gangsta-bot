@@ -66,7 +66,7 @@ function fmtOrderStatus(raw) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const SAIDA_STATUS = {
-  aberta: { label: 'Aberta', emoji: '📢', color: 'green' },
+  criada: { label: 'Criada', emoji: '📢', color: 'green' },
   em_preparacao: { label: 'A preparar', emoji: '📋', color: 'yellow' },
   em_curso: { label: 'Na rua', emoji: '🚗', color: 'blue' },
   em_liquidacao: { label: 'Em liquidação', emoji: E.FECHAR, color: 'purple' },
