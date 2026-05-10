@@ -26,7 +26,8 @@ function isValidValue(rawValue) {
   if (!/^\d+$/.test(s)) return false;
   const n = parseInt(s, 10);
   if (n === 0) return CONFIG.RADIO_ALLOW_ZERO;
-  if (n < CONFIG.RADIO_RANDOM_MIN || n > CONFIG.RADIO_RANDOM_MAX) return false;
+  const HARD_MAX = 5000;
+  if (n < CONFIG.RADIO_RANDOM_MIN || n > Math.min(CONFIG.RADIO_RANDOM_MAX, HARD_MAX)) return false;
   return true;
 }
 
