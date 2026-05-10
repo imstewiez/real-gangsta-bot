@@ -26,9 +26,13 @@ async function handle(interaction) {
   try {
     const qty = interaction.options.getInteger('quantidade');
     if (!qty || qty <= 0 || qty > 999999) {
-      return safeReply(interaction, {
-        content: `${EMOJI.ERRO} Quantidade inválida. Deve ser entre 1 e 999999.`,
-      }, { messageClass: 'ERROR' });
+      return safeReply(
+        interaction,
+        {
+          content: `${EMOJI.ERRO} Quantidade inválida. Deve ser entre 1 e 999999.`,
+        },
+        { messageClass: 'ERROR' }
+      );
     }
     const de = interaction.options.getString('de');
     const para = interaction.options.getString('para');

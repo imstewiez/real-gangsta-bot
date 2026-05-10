@@ -338,6 +338,7 @@ async function handleAusenciaModalSubmit(interaction) {
 }
 
 async function handleCriarIncidenteModalSubmit(interaction) {
+  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const titulo = interaction.fields.getTextInputValue('titulo');
   const descricao = interaction.fields.getTextInputValue('descricao') || null;
@@ -360,6 +361,7 @@ async function handleCriarIncidenteModalSubmit(interaction) {
 }
 
 async function handleTransferirModalSubmit(interaction) {
+  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const { SANITY_MAX_QTY } = require('../shared/constants');
   const item = interaction.fields.getTextInputValue('item');
@@ -486,6 +488,7 @@ async function handlePromoverCargoSelect(interaction) {
 }
 
 async function handlePromoverModalSubmit(interaction) {
+  if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const parts = interaction.customId.split('::');
   const memberIdInput = parts.length >= 5 ? parts[3] : interaction.fields.getTextInputValue('member_id');

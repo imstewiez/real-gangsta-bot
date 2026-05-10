@@ -7,7 +7,7 @@ async function getStateKey(key, defaultValue = {}) {
     if (result.rows.length === 0) return defaultValue;
     return result.rows[0].value;
   } catch (err) {
-    console.error(`[State] Erro ao ler chave '${key}':`, err.message);
+    require('./logger').error(`[State] Erro ao ler chave '${key}':`, err.message);
     return defaultValue;
   }
 }

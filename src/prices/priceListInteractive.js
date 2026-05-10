@@ -309,7 +309,7 @@ async function sendPaginatedEmbeds(interaction, embeds, titlePrefix) {
       }
       await i.update(buildReply());
     } catch (err) {
-      console.error('[PRECARIOS] Erro na paginação:', err);
+      require('../logger').error('[PRECARIOS] Erro na paginação:', err);
       await i
         .reply({ content: `${EMOJI.ERRO} Erro ao mudar de página.`, flags: MessageFlags.Ephemeral })
         .catch(() => {});
@@ -848,7 +848,7 @@ async function handlePrecariosButton(interaction) {
     const embeds = await buildPriceEmbedsForMember(memberRole, memberTier);
     return sendPaginatedEmbeds(interaction, embeds, 'Preçário');
   } catch (e) {
-    console.error('[PRECARIOS] Erro:', e);
+    require('../logger').error('[PRECARIOS] Erro:', e);
     return await interaction
       .editReply({ content: `${EMOJI.ERRO} Erro ao gerar preçário: ${e.message}` })
       .catch(() => {});

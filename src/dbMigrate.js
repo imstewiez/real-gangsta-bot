@@ -84,25 +84,25 @@ async function runMigrations() {
     let count = 0;
     for (const migration of migrations) {
       if (appliedIds.has(migration.id)) continue;
-      console.log(`[DB:Migrate] Applying migration ${migration.id}: ${migration.name} (${migration.file})...`);
+      require('./logger').log(`[DB:Migrate] Applying migration ${migration.id}: ${migration.name} (${migration.file})...`);
       await client.query('BEGIN');
       try {
         await client.query(migration.sql);
         await client.query('INSERT INTO schema_migrations (id, name) VALUES ($1, $2)', [migration.id, migration.name]);
         await client.query('COMMIT');
-        console.log(`[DB:Migrate] Migration ${migration.id} applied.`);
+        require('./logger').log(`[DB:Migrate] Migration ${migration.id} applied.`);
         count++;
       } catch (err) {
         await client.query('ROLLBACK');
-        console.error(`[DB:Migrate] Migration ${migration.id} FAILED: ${err.message}`);
+        require('./logger').error(`[DB:Migrate] Migration ${migration.id} FAILED: ${err.message}`);
         throw err;
       }
     }
 
     if (count > 0) {
-      console.log(`[DB:Migrate] ${count} migration(s) applied.`);
+      require('./logger').log(`[DB:Migrate] ${count} migration(s) applied.`);
     } else {
-      console.log('[DB:Migrate] All migrations up to date.');
+      require('./logger').log('[DB:Migrate] All migrations up to date.');
     }
 
     // Safety net — re-executa DDL idempotente de tabelas/colunas críticas em
@@ -242,10 +242,10 @@ async function ensureCriticalSchema(client) {
       await client.query(sql);
       applied += 1;
     } catch (e) {
-      console.warn(`[DB:Migrate] ensureCriticalSchema '${name}' falhou (non-fatal): ${e.message}`);
+      require('./logger').warn(`[DB:Migrate] ensureCriticalSchema '${name}' falhou (non-fatal): ${e.message}`);
     }
   }
-  console.log(`[DB:Migrate] ensureCriticalSchema: ${applied}/${ddls.length} DDLs idempotentes OK.`);
+  require('./logger').log(`[DB:Migrate] ensureCriticalSchema: ${applied}/${ddls.length} DDLs idempotentes OK.`);
 }
 
 module.exports = { runMigrations, checkPendingMigrations, loadMigrations, ensureCriticalSchema };

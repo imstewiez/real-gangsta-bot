@@ -163,6 +163,7 @@ async function handleAdjustSelect(interaction) {
 }
 
 async function handleAdjustModal(interaction) {
+  if (!(await requirePermission(interaction, isChefia))) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const pending = pendingItemSelections.get(interaction.user.id);
@@ -355,6 +356,7 @@ async function handleGerirActionSelect(interaction) {
 }
 
 async function handleAddItemModal(interaction) {
+  if (!(await requirePermission(interaction, isChefia))) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const name = getModalField(interaction, 'name').trim();
@@ -415,6 +417,7 @@ async function handleEditItemSelect(interaction) {
 }
 
 async function handleEditPriceModal(interaction) {
+  if (!(await requirePermission(interaction, isChefia))) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const pending = pendingItemSelections.get(interaction.user.id);
@@ -448,6 +451,7 @@ async function handleEditPriceModal(interaction) {
 }
 
 async function handleDeactivateItemSelect(interaction) {
+  if (!(await requirePermission(interaction, isChefia))) return;
   await interaction.deferUpdate().catch(() => {});
 
   const itemId = parseInt(interaction.values[0]);
@@ -477,6 +481,7 @@ async function handleDeactivateItemSelect(interaction) {
 }
 
 async function handleReactivateItemSelect(interaction) {
+  if (!(await requirePermission(interaction, isChefia))) return;
   await interaction.deferUpdate().catch(() => {});
 
   const itemId = parseInt(interaction.values[0]);

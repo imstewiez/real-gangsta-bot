@@ -10,11 +10,7 @@ const eventBus = require('../core/eventBus');
 const { assertTransition } = require('./saidaStateMachine');
 const { saidaRepo } = require('../repositories');
 const CONFIG = require('../config');
-const {
-  AUTO_LOCK_DELAY_MS,
-  FORCE_CLOSE_DELAY_MS,
-  AUTO_FINALIZE_GRACE_MS,
-} = require('./_constants');
+const { AUTO_LOCK_DELAY_MS, FORCE_CLOSE_DELAY_MS, AUTO_FINALIZE_GRACE_MS } = require('./_constants');
 
 class SessionLifecycle {
   constructor(deps) {
@@ -37,23 +33,31 @@ class SessionLifecycle {
     }
     const fireAt = new Date(Date.now() + AUTO_LOCK_DELAY_MS);
     this._schedule(saidaId, 'auto_lock', fireAt, () => this._executeAutoLock(saidaId));
-    this._persistCountdown(saidaId, 'auto_lock', fireAt).catch(e => warn(`[LIFECYCLE] persist countdown falhou: ${e.message}`));
+    this._persistCountdown(saidaId, 'auto_lock', fireAt).catch(e =>
+      warn(`[LIFECYCLE] persist countdown falhou: ${e.message}`)
+    );
   }
 
   onLiquidacao(saidaId) {
     if (!CONFIG.SAIDA_AUTO_FORCE_CLOSE_ENABLED) {
-      log(`[LIFECYCLE] Auto-force-close desactivado (SAIDA_AUTO_FORCE_CLOSE_ENABLED=false). Saída #${saidaId} sem countdown.`);
+      log(
+        `[LIFECYCLE] Auto-force-close desactivado (SAIDA_AUTO_FORCE_CLOSE_ENABLED=false). Saída #${saidaId} sem countdown.`
+      );
       return;
     }
     const fireAt = new Date(Date.now() + FORCE_CLOSE_DELAY_MS);
     this._schedule(saidaId, 'force_close', fireAt, () => this._executeForceClose(saidaId));
-    this._persistCountdown(saidaId, 'force_close', fireAt).catch(e => warn(`[LIFECYCLE] persist countdown falhou: ${e.message}`));
+    this._persistCountdown(saidaId, 'force_close', fireAt).catch(e =>
+      warn(`[LIFECYCLE] persist countdown falhou: ${e.message}`)
+    );
   }
 
   onAllResultsSubmitted(saidaId) {
     const fireAt = new Date(Date.now() + AUTO_FINALIZE_GRACE_MS);
     this._schedule(saidaId, 'auto_finalize', fireAt, () => this._executeAutoFinalize(saidaId));
-    this._persistCountdown(saidaId, 'auto_finalize', fireAt).catch(e => warn(`[LIFECYCLE] persist countdown falhou: ${e.message}`));
+    this._persistCountdown(saidaId, 'auto_finalize', fireAt).catch(e =>
+      warn(`[LIFECYCLE] persist countdown falhou: ${e.message}`)
+    );
   }
 
   manualLock(saidaId, actorId) {
@@ -86,16 +90,21 @@ class SessionLifecycle {
       if (remaining <= 0) {
         // Já expirou — executa imediatamente
         if (row.countdown_type === 'auto_lock') {
-          this._executeAutoLock(row.saida_id).catch(err => warn(`[LIFECYCLE] Auto-lock imediato falhou para #${row.saida_id}: ${err.message}`));
+          this._executeAutoLock(row.saida_id).catch(err =>
+            warn(`[LIFECYCLE] Auto-lock imediato falhou para #${row.saida_id}: ${err.message}`)
+          );
         } else if (row.countdown_type === 'force_close') {
-          this._executeForceClose(row.saida_id).catch(err => warn(`[LIFECYCLE] Force-close imediato falhou para #${row.saida_id}: ${err.message}`));
+          this._executeForceClose(row.saida_id).catch(err =>
+            warn(`[LIFECYCLE] Force-close imediato falhou para #${row.saida_id}: ${err.message}`)
+          );
         }
         continue;
       }
 
-      const fn = row.countdown_type === 'auto_lock'
-        ? () => this._executeAutoLock(row.saida_id)
-        : () => this._executeForceClose(row.saida_id);
+      const fn =
+        row.countdown_type === 'auto_lock'
+          ? () => this._executeAutoLock(row.saida_id)
+          : () => this._executeForceClose(row.saida_id);
 
       this._schedule(row.saida_id, row.countdown_type, new Date(row.fire_at), fn);
       restored++;
@@ -144,15 +153,19 @@ class SessionLifecycle {
       await refreshSessionEmbed(this.client, saidaId);
 
       // 7. Evento
-      await eventBus.emitAsync('saida.team_selected', {
-        saidaId,
-        fighters: selection.fighters.length,
-        workers: selection.workers.length,
-        actorId,
-        at: new Date(),
-      }).catch(err => warn(`[LIFECYCLE] Evento saida.team_selected falhou: ${err.message}`));
+      await eventBus
+        .emitAsync('saida.team_selected', {
+          saidaId,
+          fighters: selection.fighters.length,
+          workers: selection.workers.length,
+          actorId,
+          at: new Date(),
+        })
+        .catch(err => warn(`[LIFECYCLE] Evento saida.team_selected falhou: ${err.message}`));
 
-      log(`[LIFECYCLE] Saída #${saidaId} locked: ${selection.fighters.length} fighters, ${selection.workers.length} workers`);
+      log(
+        `[LIFECYCLE] Saída #${saidaId} locked: ${selection.fighters.length} fighters, ${selection.workers.length} workers`
+      );
     } catch (e) {
       warn(`[LIFECYCLE] Auto-lock falhou para #${saidaId}: ${e.message}`);
     }
@@ -218,14 +231,18 @@ class SessionLifecycle {
           .setColor(COLOR.SUCCESS)
           .setDescription(
             `Foste selecionado como **Caracterizado** na saída **#${saidaId}**!\n\n` +
-            `${EMOJI.ZONA} Spot: **${saida?.spot || '—'}**\n` +
-            `${EMOJI.ARMA} Arma: **${fighter.weapon_name || '—'}**\n` +
-            `📊 Score de selecção: **${Math.round(fighter.selection_score || 0)}**\n\n` +
-            `_Aguarda instruções da chefia para o início._`
+              `${EMOJI.ZONA} Spot: **${saida?.spot || '—'}**\n` +
+              `${EMOJI.ARMA} Arma: **${fighter.weapon_name || '—'}**\n` +
+              `📊 Score de selecção: **${Math.round(fighter.selection_score || 0)}**\n\n` +
+              `_Aguarda instruções da chefia para o início._`
           );
 
-        await user.send({ embeds: [embed] }).catch(err => warn(`[LIFECYCLE] DM falhou para fighter ${fighter.discord_id}: ${err.message}`));
-      } catch (err) { warn(`[LIFECYCLE] DM falhou para fighter ${fighter.discord_id}: ${err.message}`); }
+        await user
+          .send({ embeds: [embed] })
+          .catch(err => warn(`[LIFECYCLE] DM falhou para fighter ${fighter.discord_id}: ${err.message}`));
+      } catch (err) {
+        warn(`[LIFECYCLE] DM falhou para fighter ${fighter.discord_id}: ${err.message}`);
+      }
     }
 
     for (const worker of selection.workers) {
@@ -238,13 +255,15 @@ class SessionLifecycle {
           .setColor(COLOR.INFO)
           .setDescription(
             `Ficas como **Trabalhador** na saída **#${saidaId}**.\n\n` +
-            `${EMOJI.ZONA} Spot: **${saida?.spot || '—'}**\n` +
-            `📊 Score de selecção: **${Math.round(worker.selection_score || 0)}**\n\n` +
-            `_Não te preocupes — houveram ${selection.fighters.length} com score superior._`
+              `${EMOJI.ZONA} Spot: **${saida?.spot || '—'}**\n` +
+              `📊 Score de selecção: **${Math.round(worker.selection_score || 0)}**\n\n` +
+              `_Não te preocupes — houveram ${selection.fighters.length} com score superior._`
           );
 
         await user.send({ embeds: [embed] }).catch(() => {});
-      } catch { /* non-fatal */ }
+      } catch {
+        /* non-fatal */
+      }
     }
   }
 
@@ -269,7 +288,10 @@ class SessionLifecycle {
   _clearCountdown(saidaId, type) {
     const key = `${saidaId}:${type}`;
     this._clearTimer(key);
-    query(`UPDATE saida_countdowns SET cancelled = TRUE WHERE saida_id = $1 AND countdown_type = $2`, [saidaId, type]).catch(err => warn(`[LIFECYCLE] Cancel countdown falhou para #${saidaId}: ${err.message}`));
+    query(`UPDATE saida_countdowns SET cancelled = TRUE WHERE saida_id = $1 AND countdown_type = $2`, [
+      saidaId,
+      type,
+    ]).catch(err => warn(`[LIFECYCLE] Cancel countdown falhou para #${saidaId}: ${err.message}`));
   }
 
   _clearTimer(key) {

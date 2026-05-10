@@ -45,7 +45,7 @@ const pool = _DB_URL
 
 if (pool) {
   pool.on('error', err => {
-    console.error('[DB] Erro inesperado no pool de conexões:', err.message);
+    require('./logger').error('[DB] Erro inesperado no pool de conexões:', err.message);
   });
 
   // Log pool exhaustion: when all connections are in use and a new acquire
@@ -202,7 +202,7 @@ async function acquireInstanceLockWithRetry(maxWaitMs = 40000) {
     attempt++;
     const acquired = await _acquireInstanceLock().catch(() => false);
     if (acquired) return true;
-    console.log(`[Boot] Lock ocupado (tentativa ${attempt}), a aguardar 4s...`);
+    require('./logger').log(`[Boot] Lock ocupado (tentativa ${attempt}), a aguardar 4s...`);
     await new Promise(r => setTimeout(r, 4000));
   }
   return false;
@@ -236,7 +236,7 @@ async function warmPool(n = 3) {
     // Query leve para forçar o Postgres a responder
     if (clients.length) await clients[0].query('SELECT 1');
   } catch (e) {
-    console.warn(`[DB] Pool warmup falhou (non-fatal): ${e.message}`);
+    require('./logger').warn(`[DB] Pool warmup falhou (non-fatal): ${e.message}`);
   } finally {
     for (const c of clients) c.release();
   }
