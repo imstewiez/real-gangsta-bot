@@ -91,7 +91,7 @@ async function handleKillModal(interaction) {
     victimFaction = sepMatch[2].trim();
   }
 
-  const saidaId = saidaStr ? parseInt(saidaStr) || null : null;
+  const saidaId = saidaStr ? parseInt(saidaStr, 10) || null : null;
 
   try {
     const kill = await engine.recordKill({

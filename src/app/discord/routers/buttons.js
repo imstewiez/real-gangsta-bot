@@ -92,9 +92,20 @@ const exact = (id, handler) => ({ match: x => x === id, handler });
 const prefix = (p, handler) => ({ match: x => x.startsWith(p), handler });
 
 // Alguns handlers recebem payload extraído do customId.
-const approveHandler = interaction =>
-  handleApproveButton(interaction, parseInt(interaction.customId.split('::')[2], 10));
-const denyHandler = interaction => handleDenyButton(interaction, parseInt(interaction.customId.split('::')[2], 10));
+const _parseIdSafe = interaction => {
+  const n = parseInt(interaction.customId.split('::')[2], 10);
+  return Number.isNaN(n) ? null : n;
+};
+const approveHandler = interaction => {
+  const id = _parseIdSafe(interaction);
+  if (id == null) return;
+  return handleApproveButton(interaction, id);
+};
+const denyHandler = interaction => {
+  const id = _parseIdSafe(interaction);
+  if (id == null) return;
+  return handleDenyButton(interaction, id);
+};
 
 // ── Rotas ordenadas por prioridade (prefixos mais específicos primeiro) ───
 const BUTTON_ROUTES = [

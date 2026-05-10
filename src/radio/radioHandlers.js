@@ -158,9 +158,9 @@ async function handleSetModal(interaction) {
 async function handleRandom(interaction) {
   if (await _denyIfNotOG(interaction)) return;
   const [, , type] = parseId(interaction.customId);
+  await interaction.deferUpdate();
   try {
     await setRandom({ type, actorId: interaction.user.id });
-    await interaction.deferUpdate();
     await refreshMessage(interaction);
     notifyStickyChange(interaction.client).catch(() => {});
   } catch (e) {

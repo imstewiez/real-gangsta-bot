@@ -378,7 +378,14 @@ async function handleCloseSessionDirect(interaction) {
 
 async function handleCloseSaidaSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
-  const saidaId = parseInt(interaction.values[0]);
+  const saidaId = parseInt(interaction.values[0], 10);
+  if (Number.isNaN(saidaId)) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.WARN} Saída inválida.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
+  }
   _setContext(interaction.user.id, { saidaId });
 
   // Step 2: resultado predefinido (select, não texto livre)
@@ -746,7 +753,14 @@ async function handleAddParticipantButton(interaction) {
 
 async function handleAddParticipantSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
-  const saidaId = parseInt(interaction.values[0]);
+  const saidaId = parseInt(interaction.values[0], 10);
+  if (Number.isNaN(saidaId)) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.WARN} Saída inválida.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
+  }
   _setContext(interaction.user.id, { saidaId, action: 'add_participant' });
   const userMenu = new ActionRowBuilder().addComponents(
     new UserSelectMenuBuilder()
@@ -1020,7 +1034,14 @@ async function handleIssueToParticipantButton(interaction) {
 
 async function handleIssueSaidaSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
-  const saidaId = parseInt(interaction.values[0]);
+  const saidaId = parseInt(interaction.values[0], 10);
+  if (Number.isNaN(saidaId)) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.WARN} Saída inválida.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
+  }
   _setContext(interaction.user.id, { saidaId, action: 'issue_to_participant' });
   const participants = await saidaRepo.getParticipants(saidaId);
   if (!participants.length) {

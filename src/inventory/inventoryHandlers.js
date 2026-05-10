@@ -152,8 +152,15 @@ async function handleAdjustStockButton(interaction) {
 
 async function handleAdjustSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
-  const itemId = interaction.values[0];
-  _setItemCtx(interaction.user.id, { itemId: parseInt(itemId), movementType: 'ajuste_manual' });
+  const itemId = parseInt(interaction.values[0], 10);
+  if (Number.isNaN(itemId)) {
+    return safeReply(
+      interaction,
+      { content: ERRORS.ITEM_NOT_FOUND(), flags: MessageFlags.Ephemeral },
+      { messageClass: 'ERROR' }
+    );
+  }
+  _setItemCtx(interaction.user.id, { itemId, movementType: 'ajuste_manual' });
   const modal = buildStockAdjustmentModal('inv::modal_ajuste_manual');
   await safeShowModal(interaction, modal);
 }
@@ -654,7 +661,7 @@ async function handleEncomendaModal(interaction) {
 
   const quantityStr = getModalField(interaction, 'quantity');
   const notes = getModalField(interaction, 'notes');
-  const quantity = parseInt(quantityStr);
+  const quantity = parseInt(quantityStr, 10);
 
   const { SANITY_MAX_QTY } = require('../shared/constants');
   if (isNaN(quantity) || quantity <= 0 || quantity > SANITY_MAX_QTY)
@@ -1008,7 +1015,14 @@ async function handleCartLineAction(interaction) {
   }
 
   if (action === 'remove') {
-    const idx = parseInt(idxStr);
+    const idx = parseInt(idxStr, 10);
+    if (Number.isNaN(idx)) {
+      return safeReply(
+        interaction,
+        { content: 'Índice inválido.', flags: MessageFlags.Ephemeral },
+        { messageClass: 'BANAL' }
+      );
+    }
     await bairristaCart.removeLine(cart, idx, interaction.user.id);
   }
   return _refreshCartPanel(interaction, cart);

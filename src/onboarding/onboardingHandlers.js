@@ -481,6 +481,9 @@ async function handleDenyModalSubmit(interaction) {
   }
 
   const requestId = parseInt(interaction.customId.split('::')[2], 10);
+  if (Number.isNaN(requestId)) {
+    return safeReply(interaction, { content: `${EMOJI.ERRO} Pedido inválido.` }, { messageClass: 'BANAL' });
+  }
   const reason = (getModalField(interaction, 'reason') || '').trim() || null;
 
   // Claim atómico — primeiro que submete ganha.

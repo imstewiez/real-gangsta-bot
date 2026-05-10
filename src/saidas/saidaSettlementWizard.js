@@ -114,7 +114,14 @@ async function handleStart(interaction, saidaId) {
 async function handleSelectParticipant(interaction) {
   if (isDuplicate(interaction.id)) return;
   const parts = interaction.customId.split('::');
-  const saidaId = parseInt(parts[2]);
+  const saidaId = parseInt(parts[2], 10);
+  if (Number.isNaN(saidaId)) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.WARN} Saída inválida.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
+  }
   const discordId = interaction.values[0];
   const member = await memberRepo.findByDiscordId(discordId);
   const name = member?.display_name || discordId;
@@ -148,7 +155,14 @@ async function handleSelectParticipant(interaction) {
 async function handleOutcome(interaction) {
   if (isDuplicate(interaction.id)) return;
   const parts = interaction.customId.split('::');
-  const saidaId = parseInt(parts[2]);
+  const saidaId = parseInt(parts[2], 10);
+  if (Number.isNaN(saidaId)) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.WARN} Saída inválida.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
+  }
   const discordId = parts[3];
   const outcome = parts[4]; // 'alive' | 'dead'
 
@@ -199,7 +213,14 @@ async function handleOutcome(interaction) {
 async function handleWeaponDecision(interaction) {
   if (isDuplicate(interaction.id)) return;
   const parts = interaction.customId.split('::');
-  const saidaId = parseInt(parts[2]);
+  const saidaId = parseInt(parts[2], 10);
+  if (Number.isNaN(saidaId)) {
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.WARN} Saída inválida.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
+  }
   const discordId = parts[3];
   const outcome = parts[4]; // 'alive'
   const weaponDecision = parts[5]; // 'returned' | 'not_returned' | 'lost'

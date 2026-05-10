@@ -10,6 +10,7 @@ const { fmtMovementType } = require('../shared/labels');
 const { NotFoundError } = require('../shared/errors');
 
 async function handleMemberCommand(interaction) {
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const targetUser = interaction.options.getUser('membro') || interaction.user;
   const member = await memberRepo.findByDiscordId(targetUser.id);
 

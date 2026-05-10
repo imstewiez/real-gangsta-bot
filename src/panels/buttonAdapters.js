@@ -297,7 +297,7 @@ async function handleVenderModalSubmit(interaction) {
       memberId: interaction.user.id,
       itemName: item,
       quantity: qty,
-      price: preco ? parseFloat(preco) : null,
+      price: preco ? (Number.isNaN(parseFloat(preco)) ? null : parseFloat(preco)) : null,
       note: nota,
     });
 
