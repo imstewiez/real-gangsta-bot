@@ -17,10 +17,25 @@ jobs:
           echo "url=$URL" >> $GITHUB_OUTPUT
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      - name: Apply migrations
+      - name: Start DB tunnel
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+          # Extract host/port from DATABASE_URL
+          HOST=$(echo "${{ steps.db_url.outputs.url }}" | sed -n 's/.*@\([^:]*\):.*/\1/p')
+          PORT=$(echo "${{ steps.db_url.outputs.url }}" | sed -n 's/.*:\([0-9]*\)\/.*/\1/p')
+          # Start tunnel in background
+          railway connect --service bot-di-zona --port 15432 postgres &
+          sleep 5
+          # Apply migrations via localhost tunnel
           PGPASSWORD=$(echo "${{ steps.db_url.outputs.url }}" | sed -n 's/.*:\/\/[^:]*:\([^@]*\)@.*/\1/p') \
-            psql "${{ steps.db_url.outputs.url }}" -f migrations/088_pvp_rating_and_countdowns.sql
+            PGSSLMODE=require \
+            psql "${{ steps.db_url.outputs.url }}" \
+            -h localhost -p 15432 \
+            -f migrations/088_pvp_rating_and_countdowns.sql
           PGPASSWORD=$(echo "${{ steps.db_url.outputs.url }}" | sed -n 's/.*:\/\/[^:]*:\([^@]*\)@.*/\1/p') \
-            psql "${{ steps.db_url.outputs.url }}" -f migrations/089_saidas_refactor_v3.sql
+            PGSSLMODE=require \
+            psql "${{ steps.db_url.outputs.url }}" \
+            -h localhost -p 15432 \
+            -f migrations/089_saidas_refactor_v3.sql
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
