@@ -15,7 +15,7 @@ if (!haveDb()) {
   return;
 }
 
-const { pool, query } = require('../../src/db');
+const { query } = require('../../src/db');
 const inventoryRepo = require('../../src/repositories/inventory');
 
 let _itemId, _memberId;
@@ -104,11 +104,4 @@ describe('integration/inventoryLedger', () => {
   });
 });
 
-describe('integration/inventoryLedger — teardown', () => {
-  after(async () => {
-    await pool.end().catch(() => {});
-  });
-  it('marker para fechar pool', () => {
-    assert.ok(true);
-  });
-});
+

@@ -455,8 +455,6 @@ async function handleEncomendaModal(interaction) {
   const member = await memberRepo.findByDiscordId(interaction.user.id);
   if (!member) return safeReply(interaction, { content: 'Não estás registado no sistema.' }, { messageClass: 'BANAL' });
 
-  const paymentMode = pending.paymentMode || 'materials_money';
-
   // Calculate pricing
   const { calculateOrderPricing } = require('../../orders/orderPricingEngine');
   const pricing = await calculateOrderPricing({

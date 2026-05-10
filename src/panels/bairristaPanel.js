@@ -23,7 +23,7 @@ async function buildBairristaPanel() {
     SELECT m.display_name, SUM(im.quantity)::int AS total_qty
     FROM inventory_movements im
     JOIN members m ON m.id = im.member_id
-    WHERE im.movement_type IN ('entrega_morador','entrega_oficial')
+    WHERE im.movement_type IN ('entrega_bairrista','entrega_oficial')
       AND im.created_at >= date_trunc('week', NOW())
     GROUP BY m.display_name
     ORDER BY total_qty DESC

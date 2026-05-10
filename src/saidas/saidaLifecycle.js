@@ -4,10 +4,9 @@
  * notificações e auto-finalização.
  */
 
-const { query, withAdvisoryLock } = require('../db');
+const { query } = require('../db');
 const { log, warn } = require('../logger');
 const eventBus = require('../core/eventBus');
-const { assertTransition } = require('./saidaStateMachine');
 const { saidaRepo } = require('../repositories');
 const CONFIG = require('../config');
 const { AUTO_LOCK_DELAY_MS, FORCE_CLOSE_DELAY_MS, AUTO_FINALIZE_GRACE_MS } = require('./_constants');
@@ -234,7 +233,7 @@ class SessionLifecycle {
               `${EMOJI.ZONA} Spot: **${saida?.spot || '—'}**\n` +
               `${EMOJI.ARMA} Arma: **${fighter.weapon_name || '—'}**\n` +
               `📊 Score de selecção: **${Math.round(fighter.selection_score || 0)}**\n\n` +
-              `_Aguarda instruções da chefia para o início._`
+              '_Aguarda instruções da chefia para o início._'
           );
 
         await user
@@ -288,7 +287,7 @@ class SessionLifecycle {
   _clearCountdown(saidaId, type) {
     const key = `${saidaId}:${type}`;
     this._clearTimer(key);
-    query(`UPDATE saida_countdowns SET cancelled = TRUE WHERE saida_id = $1 AND countdown_type = $2`, [
+    query('UPDATE saida_countdowns SET cancelled = TRUE WHERE saida_id = $1 AND countdown_type = $2', [
       saidaId,
       type,
     ]).catch(err => warn(`[LIFECYCLE] Cancel countdown falhou para #${saidaId}: ${err.message}`));

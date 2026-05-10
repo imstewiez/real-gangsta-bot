@@ -31,20 +31,21 @@ describe('integration/dbSmoke', () => {
     assert.ok(r.rows[0].n >= 27, `esperam-se >= 27 migrations, actual: ${r.rows[0].n}`);
   });
 
-  it('members.role CHECK constraint rejeita valores legacy', async () => {
-    // Insert directo — tem de falhar por causa do CHECK recriado na 027.
+  it('members.role CHECK constraint rejeita valores inválidos', async () => {
+    // Migration 071 re-adicionou morador/chefe_moradores ao CHECK por
+    // compatibilidade legada — testamos um valor que NUNCA foi válido.
     let error = null;
     try {
       await pool.query('INSERT INTO members (discord_id, username, display_name, role) VALUES ($1, $2, $3, $4)', [
         'legacy-test-1',
         'legacy',
         'Legacy Test',
-        'morador',
+        'role_inexistente',
       ]);
     } catch (e) {
       error = e;
     }
-    assert.ok(error, 'CHECK devia ter rejeitado role=morador');
+    assert.ok(error, 'CHECK devia ter rejeitado role=role_inexistente');
     assert.match(error.message, /members_role_check/i);
   });
 

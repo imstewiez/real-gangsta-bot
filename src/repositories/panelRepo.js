@@ -31,7 +31,7 @@ async function getChefiaMetrics() {
         SELECT m.display_name, COALESCE(SUM(im.quantity), 0)::int AS total_qty
         FROM inventory_movements im
         JOIN members m ON m.id = im.member_id
-        WHERE im.movement_type IN ('entrega_morador', 'entrega_oficial')
+        WHERE im.movement_type IN ('entrega_bairrista', 'entrega_oficial')
           AND im.created_at >= DATE_TRUNC('week', NOW()) AND im.created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
         GROUP BY m.display_name
         ORDER BY total_qty DESC
@@ -44,9 +44,9 @@ async function getChefiaMetrics() {
       ),
       movimento AS (
         SELECT
-          COUNT(*) FILTER (WHERE movement_type IN ('entrega_morador','entrega_oficial'))::int AS entregas,
-          COUNT(*) FILTER (WHERE movement_type = 'venda_morador')::int AS vendas,
-          COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_morador','entrega_oficial')), 0)::int AS entregas_qty
+          COUNT(*) FILTER (WHERE movement_type IN ('entrega_bairrista','entrega_oficial'))::int AS entregas,
+          COUNT(*) FILTER (WHERE movement_type = 'venda_bairrista')::int AS vendas,
+          COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_bairrista','entrega_oficial')), 0)::int AS entregas_qty
         FROM inventory_movements
         WHERE created_at >= DATE_TRUNC('week', NOW()) AND created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
       ),
@@ -119,10 +119,10 @@ async function getOficialMetrics() {
       ),
       movimento AS (
         SELECT
-          COUNT(*) FILTER (WHERE movement_type IN ('entrega_morador','entrega_oficial'))::int AS entregas,
-          COUNT(*) FILTER (WHERE movement_type = 'venda_morador')::int AS vendas,
-          COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_morador','entrega_oficial')), 0)::int AS entregas_qty,
-          COALESCE(SUM(quantity) FILTER (WHERE movement_type = 'venda_morador'), 0)::int AS vendas_qty
+          COUNT(*) FILTER (WHERE movement_type IN ('entrega_bairrista','entrega_oficial'))::int AS entregas,
+          COUNT(*) FILTER (WHERE movement_type = 'venda_bairrista')::int AS vendas,
+          COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_bairrista','entrega_oficial')), 0)::int AS entregas_qty,
+          COALESCE(SUM(quantity) FILTER (WHERE movement_type = 'venda_bairrista'), 0)::int AS vendas_qty
         FROM inventory_movements
         WHERE created_at >= DATE_TRUNC('week', NOW()) AND created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
       ),
@@ -166,9 +166,9 @@ async function getBairristaMetrics(discordId) {
     ),
     meu_movimento AS (
       SELECT
-        COUNT(*) FILTER (WHERE movement_type IN ('entrega_morador','entrega_oficial'))::int AS entregas,
-        COUNT(*) FILTER (WHERE movement_type = 'venda_morador')::int AS vendas,
-        COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_morador','entrega_oficial')), 0)::int AS entregas_qty
+        COUNT(*) FILTER (WHERE movement_type IN ('entrega_bairrista','entrega_oficial'))::int AS entregas,
+        COUNT(*) FILTER (WHERE movement_type = 'venda_bairrista')::int AS vendas,
+        COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_bairrista','entrega_oficial')), 0)::int AS entregas_qty
       FROM inventory_movements
       WHERE member_id = (SELECT id FROM viewer)
         AND created_at >= DATE_TRUNC('week', NOW()) AND created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
@@ -183,7 +183,7 @@ async function getBairristaMetrics(discordId) {
       SELECT m.display_name, COALESCE(SUM(im.quantity), 0)::int AS total_qty
       FROM inventory_movements im
       JOIN members m ON m.id = im.member_id
-      WHERE im.movement_type IN ('entrega_morador','entrega_oficial')
+      WHERE im.movement_type IN ('entrega_bairrista','entrega_oficial')
         AND im.created_at >= DATE_TRUNC('week', NOW()) AND im.created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
       GROUP BY m.display_name
       ORDER BY total_qty DESC
@@ -245,8 +245,8 @@ async function getPatraoMetrics() {
       ),
       movimento AS (
         SELECT
-          COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_morador','entrega_oficial')), 0)::int AS entregas_qty,
-          COALESCE(SUM(quantity) FILTER (WHERE movement_type = 'venda_morador'), 0)::int AS vendas_qty
+          COALESCE(SUM(quantity) FILTER (WHERE movement_type IN ('entrega_bairrista','entrega_oficial')), 0)::int AS entregas_qty,
+          COALESCE(SUM(quantity) FILTER (WHERE movement_type = 'venda_bairrista'), 0)::int AS vendas_qty
         FROM inventory_movements
         WHERE created_at >= DATE_TRUNC('week', NOW()) AND created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
       ),
@@ -254,7 +254,7 @@ async function getPatraoMetrics() {
         SELECT m.display_name, COALESCE(SUM(im.quantity), 0)::int AS total_qty
         FROM inventory_movements im
         JOIN members m ON m.id = im.member_id
-        WHERE im.movement_type IN ('entrega_morador','entrega_oficial')
+        WHERE im.movement_type IN ('entrega_bairrista','entrega_oficial')
           AND im.created_at >= DATE_TRUNC('week', NOW()) AND im.created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
         GROUP BY m.display_name
         ORDER BY total_qty DESC
@@ -267,7 +267,7 @@ async function getPatraoMetrics() {
           AND NOT EXISTS (
             SELECT 1 FROM inventory_movements im
             WHERE im.member_id = m.id
-              AND im.movement_type IN ('entrega_morador','entrega_oficial')
+              AND im.movement_type IN ('entrega_bairrista','entrega_oficial')
               AND im.created_at >= DATE_TRUNC('week', NOW()) AND im.created_at < DATE_TRUNC('week', NOW()) + INTERVAL '7 days'
           )
         ORDER BY m.display_name

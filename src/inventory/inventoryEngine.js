@@ -9,7 +9,7 @@ const metrics = require('../lib/metrics');
 const { weekBounds } = require('../util');
 const { warn, log } = require('../logger');
 const eventBus = require('../core/eventBus');
-const { MOVEMENT_TYPE } = require('../shared/movementTypes');
+const { MOVEMENT_TYPE, STOCK_INFLOW_TYPES, STOCK_OUTFLOW_TYPES } = require('../shared/movementTypes');
 const { ValidationError, ConflictError, NotFoundError } = require('../shared/errors');
 const { touchBalance } = require('../repositories/inventoryBalance');
 

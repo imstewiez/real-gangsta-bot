@@ -22,7 +22,6 @@ const {
   headerBlock,
   sectionHeader,
   spacer,
-  divider,
   miniKPIRow,
   tableHeader,
   tableBody,
@@ -42,10 +41,6 @@ const { getAllPricing } = require('../../inventory/v3/stockPricing');
 
 const CATALOG = getCatalog();
 const COL_COUNT = 8;
-
-function fmtNum(n) {
-  return Math.round(Number(n) || 0).toLocaleString('pt-PT');
-}
 
 function movementTypeBadge(type) {
   if (type === 'entrada') return badgeCell('ENTRADA', COLOR.GREEN_DEEP);
@@ -208,7 +203,6 @@ async function syncStock(batch, sheetId) {
   row = tableHeader(batch, sheetId, row, reportHeaders);
 
   const fmtEuro = v => numCell(v, NUM_FMT.EURO);
-  const fmtInt = v => numCell(v, NUM_FMT.INT);
 
   const reportRows = [
     [

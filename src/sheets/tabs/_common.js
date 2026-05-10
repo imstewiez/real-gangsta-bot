@@ -42,9 +42,6 @@ const {
   kpiLabelCell,
   kpiValueCell,
   kpiDeltaCell,
-  miniKPILabelCell,
-  miniKPIValueCell,
-  miniKPIDeltaCell,
   rankCell,
 } = require('../theme');
 
@@ -230,7 +227,6 @@ function compactRankingRow(batch, sheetId, row, items, columnCount) {
     const sub = it.sub || '';
     const fullText = sub ? `${label}\n${valStr}\n${sub}` : `${label}\n${valStr}`;
 
-    const rankC = rankCell(it.rank || i + 1);
     // Merge rank + texto numa célula só com wrap
     rowCells[col] = {
       userEnteredValue: { stringValue: fullText },

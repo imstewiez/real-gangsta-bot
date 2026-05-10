@@ -9,7 +9,7 @@
  */
 
 const { query } = require('../db');
-const { log, warn } = require('../logger');
+const { log } = require('../logger');
 const {
   MAX_FIGHTERS,
   W_PVP_RATING,

@@ -4,7 +4,7 @@
  */
 
 const { query } = require('../../db');
-const { getUnitCost, getItemName } = require('./stockCatalog');
+const { getUnitCost } = require('./stockCatalog');
 
 async function getBalance(itemKey) {
   const res = await query(

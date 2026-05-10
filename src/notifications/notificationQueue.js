@@ -23,7 +23,7 @@ async function dequeueBatch(limit = 10) {
 }
 
 async function markSent(id) {
-  await query(`UPDATE pending_notifications SET sent_at = NOW() WHERE id = $1`, [id]);
+  await query('UPDATE pending_notifications SET sent_at = NOW() WHERE id = $1', [id]);
 }
 
 async function markFailed(id, error) {

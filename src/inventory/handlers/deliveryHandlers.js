@@ -1,6 +1,6 @@
 'use strict';
 const { MessageFlags } = require('discord.js');
-const { safeReply, safeUpdate } = require('../../shared/interactionHelpers');
+const { safeReply } = require('../../shared/interactionHelpers');
 const { brandEmbed, COLOR } = require('../../shared/embedBuilders');
 const { canOpenSession, isPatraoDiZona } = require('../../permissions/permissionEngine');
 const { EMOJI } = require('../../content');
@@ -165,7 +165,6 @@ async function handleDeliveryDecision(interaction) {
   try {
     const bairristaUser = await interaction.client.users.fetch(result.member.discord_id).catch(() => null);
     if (bairristaUser) {
-      const tipoLabel = result.request?.tipo === 'venda' ? 'venda' : 'entrega';
       const isVenda = result.request?.tipo === 'venda';
       if (approve) {
         const embed = brandEmbed('MOVEMENT')

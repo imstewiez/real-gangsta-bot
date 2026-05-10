@@ -28,7 +28,6 @@ const {
   miniKPIRow,
   tableHeader,
   tableBody,
-  rankingBlock,
   totalRow,
   footerBlock,
   autoResizeAll,
@@ -90,7 +89,7 @@ function _rankingBlockCompact(batch, sheetId, row, { title, hint, items, columns
 }
 
 async function syncResumo(batch, sheetId) {
-  const [{ current, previous, bounds }, daily14, trend, rk, spots, bairristaRk] = await Promise.all([
+  const [{ current, previous, bounds }, daily14, _trend, rk, spots, bairristaRk] = await Promise.all([
     getWeeklySummary(),
     getDailyBreakdown(14),
     getTrending(),

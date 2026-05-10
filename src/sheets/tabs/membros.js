@@ -395,7 +395,6 @@ async function syncMembros(batch, sheetId) {
   });
 
   if (rows.length) {
-    const N = row - firstDataRow;
     batch.addRule(
       conditionalGradient(
         sheetId,

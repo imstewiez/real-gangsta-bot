@@ -16,13 +16,11 @@ const {
 } = require('discord.js');
 const { getCatalog, getItemName } = require('./stockCatalog');
 const {
-  getAllBalances,
-  getRecentMovements,
   getWeeklyReport,
   getMonthlyReport,
   getDailyAverage,
 } = require('./stockManager');
-const { getAllPricing } = require('./stockPricing');
+
 const { applyLogo, brandEmbed, COLOR } = require('../../shared/embedBuilders');
 const { EMOJI } = require('../../content');
 

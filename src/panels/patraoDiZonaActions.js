@@ -20,12 +20,6 @@ const { formatPtDateOnly } = require('../shared/formatPtDate');
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-const TIER_EMOJI = {
-  young_blood: '🔰',
-  o_gunao: '⭐',
-  gangster_fodido: '🔥',
-};
-
 const TIER_ABBR = {
   young_blood: 'YB',
   o_gunao: 'OG',

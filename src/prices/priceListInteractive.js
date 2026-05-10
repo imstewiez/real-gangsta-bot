@@ -253,7 +253,7 @@ function chunkEmbedsIntoPages(embeds) {
   return pages;
 }
 
-async function sendPaginatedEmbeds(interaction, embeds, titlePrefix) {
+async function sendPaginatedEmbeds(interaction, embeds, _titlePrefix) {
   const pages = chunkEmbedsIntoPages(embeds);
   if (!pages.length) {
     return interaction.editReply({ content: `${EMOJI.ERRO} Não há preços disponíveis de momento.` });
@@ -791,7 +791,7 @@ async function buildPriceEmbedsForChefia() {
         return `\`${item.name.padEnd(22).slice(0, 22)}\` Custo ${fmtPrice(materialCost).padStart(8)} | ${prices.join(' | ')} | Margem ${marginPct.toFixed(0)}%`;
       });
 
-      embed.addFields({ name: `\u200b`, value: '```\n' + lines.join('\n') + '\n```', inline: false });
+      embed.addFields({ name: '\u200b', value: '```\n' + lines.join('\n') + '\n```', inline: false });
       embeds.push(embed);
     }
   }
@@ -849,7 +849,7 @@ async function handlePrecariosButton(interaction) {
     return sendPaginatedEmbeds(interaction, embeds, 'Preçário');
   } catch (e) {
     require('../logger').error('[PRECARIOS] Erro:', e);
-    return await interaction
+    return interaction
       .editReply({ content: `${EMOJI.ERRO} Erro ao gerar preçário: ${e.message}` })
       .catch(() => {});
   }
@@ -863,7 +863,7 @@ async function handlePrecariosChefiaButton(interaction) {
     return sendPaginatedEmbeds(interaction, embeds, 'Preçário Chefia');
   } catch (e) {
     console.error('[PRECARIOS-CHEFIA] Erro:', e);
-    return await interaction
+    return interaction
       .editReply({ content: `${EMOJI.ERRO} Erro ao gerar preçário: ${e.message}` })
       .catch(() => {});
   }

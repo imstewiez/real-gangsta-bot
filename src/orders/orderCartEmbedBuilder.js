@@ -123,7 +123,7 @@ function buildMaterialsSummaryEmbed(cart) {
 /**
  * Mostra o split entre dinheiro e materiais.
  */
-function buildCostBreakdownEmbed(cart, { memberRole, memberTier } = {}) {
+function buildCostBreakdownEmbed(cart, { memberRole, memberTier: _memberTier } = {}) {
   const { totalQty, totalPrice, materials } = totals(cart);
   const embed = brandEmbed('HOUSE').setTitle(`${EMOJI.DINHEIRO} Desdobramento de Custos`).setColor(COLOR.GOLD);
 

@@ -5,7 +5,7 @@ const content = require('../content');
 const { formatPtDateOnly } = require('./formatPtDate');
 const { fmtSaidaType, fmtSaidaStatus, fmtRole } = require('./labels');
 
-const { EMOJI, footer, ROLE, STATUS, SAIDA_TYPE, ONBOARDING, INVENTORY, RANKINGS } = content;
+const { EMOJI, footer, STATUS, ONBOARDING, INVENTORY, RANKINGS } = content;
 
 // ── Colour palette ──────────────────────────────────────────────────────────
 // Canonical hex por estado semântico. Antes espalhado em ~39 sítios como

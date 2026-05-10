@@ -23,7 +23,7 @@ async function cleanState(query) {
       operations,
       weekly_rankings,
       monthly_rankings,
-      member_all_time_stats,
+      all_time_stats,
       audit_logs,
       tag_requests,
       resident_channels,

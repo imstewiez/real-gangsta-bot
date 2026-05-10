@@ -12,7 +12,7 @@
  */
 
 const { query } = require('../db');
-const { log, warn } = require('../logger');
+const { log } = require('../logger');
 const {
   BASE_RATING,
   RATING_FLOOR,

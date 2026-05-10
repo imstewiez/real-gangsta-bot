@@ -24,7 +24,7 @@ const { totals } = require('./orderCart');
 
 // ── Item Preview ───────────────────────────────────────────────────────────
 
-function buildItemPreviewEmbed({ item, pricing, memberTier, memberRole }) {
+function buildItemPreviewEmbed({ item, pricing, memberTier: _memberTier, memberRole }) {
   const embed = brandEmbed('HOUSE').setTitle(`${EMOJI.ENCOMENDA} ${item.name}`).setColor(COLOR.PRIMARY);
 
   const descLines = [];

@@ -181,7 +181,7 @@ async function _handleMemberRoleChange(oldMember, newMember, client) {
 
 // ── Tier change within bairrista branch ─────────────────────────────────────
 
-async function _handleBairristaTierRoleChange(oldMember, newMember, resolvedTier) {
+async function _handleBairristaTierRoleChange(oldMember, newMember, _resolvedTier) {
   const tierIds = CONFIG.BAIRRISTA_TIER_ROLE_IDS;
   const added = tierIds.some(id => id && !oldMember.roles.cache.has(id) && newMember.roles.cache.has(id));
   const removed = tierIds.some(id => id && oldMember.roles.cache.has(id) && !newMember.roles.cache.has(id));

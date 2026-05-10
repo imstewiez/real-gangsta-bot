@@ -14,7 +14,7 @@
  */
 const { randomUUID } = require('crypto');
 const os = require('os');
-const { query, queryWithTransaction } = require('./db');
+const { query } = require('./db');
 const { log, warn } = require('./logger');
 const pkg = require('../package.json');
 

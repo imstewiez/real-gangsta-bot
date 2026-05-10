@@ -34,13 +34,11 @@ const TABS_BY_KEY = Object.fromEntries(TABS.map(t => [t.key, t]));
  */
 async function ensureTabs(sheets, spreadsheetId) {
   let meta = null;
-  let lastError = null;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       meta = await sheets.spreadsheets.get({ spreadsheetId });
       break;
     } catch (e) {
-      lastError = e;
       if (attempt === 3) throw e;
       await new Promise(r => setTimeout(r, 1000));
     }

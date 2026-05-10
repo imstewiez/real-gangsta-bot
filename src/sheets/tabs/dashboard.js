@@ -245,7 +245,7 @@ async function syncDashboard(batch, sheetId) {
     const cur = Number(series.current) || 0;
     const prev = Number(series.previous) || 0;
     const absDelta = cur - prev;
-    const { value: pctVal, direction, arrow } = formatDelta(prev, cur, 'pct');
+    const { value: pctVal, direction } = formatDelta(prev, cur, 'pct');
     const deltaFont =
       direction === 'up'
         ? { fontFamily: 'Inter', fontSize: 10, bold: true, foregroundColor: COLOR.GREEN_DEEP }

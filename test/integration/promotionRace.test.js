@@ -16,6 +16,13 @@ const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { haveDb, cleanState } = require('./_helpers');
 
+process.env.DISCORD_BOT_TOKEN ||= 'test-token';
+process.env.DISCORD_GUILD_ID ||= 'test-guild';
+process.env.DATABASE_URL ||= 'postgresql://test:test@localhost:5432/test_db';
+process.env.YOUNG_BLOOD_ROLE_ID ||= 'young-blood-role-id';
+process.env.O_GUNAO_ROLE_ID ||= 'o-gunao-role-id';
+process.env.GANGSTER_FODIDO_ROLE_ID ||= 'gangster-fodido-role-id';
+
 if (!haveDb()) {
   describe('integration/promotionRace', { skip: 'DATABASE_URL em falta' }, () => {});
   return;
@@ -85,10 +92,15 @@ describe('integration/promotionRace', () => {
   });
 
   after(async () => {
-    await query('DELETE FROM inventory_movements WHERE member_id = $1', [_memberId]);
-    await query("DELETE FROM members WHERE discord_id = 'race-test-user'");
+    // Limpa todos os movimentos do item de teste (incluindo os de testes concorrentes).
+    const itemRes = await query("SELECT id FROM items WHERE name = 'race-test-item'");
+    if (itemRes.rows[0]) {
+      await query('DELETE FROM inventory_movements WHERE item_id = $1', [itemRes.rows[0].id]);
+    }
+    await query("DELETE FROM members WHERE discord_id LIKE 'race-test%'");
     await query("DELETE FROM items WHERE name = 'race-test-item'");
-    // Não fechamos pool aqui — outro teste (inventoryLedger) faz isso.
+    await query("DELETE FROM audit_logs WHERE entity_id LIKE 'race-test%'");
+    // Não fechamos pool aqui — pool é partilhado entre todos os integration tests.
   });
 
   it('N invocações concorrentes → só 1 promove, outras retornam null', async () => {

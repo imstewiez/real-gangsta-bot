@@ -93,7 +93,7 @@ class BottomPinEngine {
 
     for (const sourceKey of sourceKeys) {
       const key = `${channelId}:${sourceKey}`;
-      let count = (this.counters.get(key) || 0) + 1;
+      const count = (this.counters.get(key) || 0) + 1;
       this.counters.set(key, count);
 
       if (count >= BUMP_THRESHOLD) {

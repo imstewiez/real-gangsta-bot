@@ -21,9 +21,9 @@ async function create({
 }) {
   const runner = client || { query: (sql, values) => query(sql, values) };
   const res = await runner.query(
-    `INSERT INTO operations (date, scheduled_time, spot, spot_type, operation_type, leader_id, group_number, max_participants, notes, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-    [date, scheduledTime, spot, spotType || '', saidaType, leaderId, groupNumber, maxParticipants, notes, createdBy]
+    `INSERT INTO operations (date, scheduled_time, spot, spot_type, operation_type, leader_id, group_number, max_participants, notes, status, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+    [date, scheduledTime, spot, spotType || '', saidaType, leaderId, groupNumber, maxParticipants, notes, 'criada', createdBy]
   );
   return res.rows[0];
 }
@@ -134,9 +134,14 @@ async function updateStatus(id, status, extras = {}) {
     'net_value',
     'was_profitable',
     'crafted_value',
+    'craft_amount',
     'characterized_count',
     'workers_count',
+    'fighters_count',
     'result_notes',
+    'start_time',
+    'team_selected_at',
+    'liquidation_started_at',
     'session_message_id',
     'session_channel_id',
     'end_time',
@@ -254,8 +259,28 @@ async function updateParticipant(saidaId, memberId, fields) {
     'notes',
     'kills',
     'deaths',
+    'deaths_count',
     'survived',
+    'returned',
     'returned_weapon',
+    'returned_material',
+    'material_returned_qty',
+    'material_lost_qty',
+    'material_source',
+    'died',
+    'weapon_return_status',
+    'individual_result_submitted',
+    'individual_result_at',
+    'issued_value',
+    'returned_value',
+    'lost_value',
+    'consumed_value',
+    'net_material_delta',
+    'performance_score',
+    'discipline_score',
+    'mvp_flag',
+    'rating_delta',
+    'settled',
   ]);
   const safe = guardColumns(fields, ALLOWED);
   const sets = [];

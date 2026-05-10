@@ -28,7 +28,7 @@ async function startJob(jobName, instanceId) {
 }
 
 async function renewLease(id) {
-  await query(`UPDATE job_runs SET lease_expires_at = NOW() + INTERVAL '5 minutes' WHERE id = $1`, [id]);
+  await query('UPDATE job_runs SET lease_expires_at = NOW() + INTERVAL \'5 minutes\' WHERE id = $1', [id]);
 }
 
 async function completeJob(id, result = {}) {

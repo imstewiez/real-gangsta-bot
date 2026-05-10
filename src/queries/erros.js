@@ -4,7 +4,7 @@ const { query } = require('../db');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
 const { requirePermission } = require('../shared/requirePermission');
-const { fmtOrderStatus, fmtSaidaStatus } = require('../shared/labels');
+const { fmtOrderStatus } = require('../shared/labels');
 
 async function handle(interaction) {
   if (!(await requirePermission(interaction, { minRole: 'OG' }))) return;

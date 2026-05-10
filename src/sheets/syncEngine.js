@@ -420,10 +420,10 @@ async function syncOne(key) {
       await _syncLocks.get(key);
     } catch {}
   }
-  let resolveLock, rejectLock;
+  let resolveLock, _rejectLock;
   const lockPromise = new Promise((res, rej) => {
     resolveLock = res;
-    rejectLock = rej;
+    _rejectLock = rej;
   });
   _syncLocks.set(key, lockPromise);
 

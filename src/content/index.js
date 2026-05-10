@@ -40,6 +40,7 @@ const RANKINGS = require('./rankings');
 const STICKY = require('./sticky');
 const MEMBER_STATS = require('./memberStats');
 const BAIRRISTAS = require('./bairristas');
+const { SAIDA_TYPE } = require('../shared/labels');
 
 module.exports = {
   EMOJI,
@@ -65,4 +66,5 @@ module.exports = {
   STICKY,
   MEMBER_STATS,
   BAIRRISTAS,
+  SAIDA_TYPE,
 };

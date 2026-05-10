@@ -17,7 +17,7 @@ const { queryWithTransaction } = require('../db');
 const { saidaRepo, memberRepo } = require('../repositories');
 const { log, warn } = require('../logger');
 const eventBus = require('../core/eventBus');
-const { NotFoundError, ConflictError, ValidationError } = require('../shared/errors');
+const { NotFoundError, ConflictError } = require('../shared/errors');
 const { computeSaidaScores } = require('./saidaScoring');
 const { assertTransition } = require('./saidaStateMachine');
 

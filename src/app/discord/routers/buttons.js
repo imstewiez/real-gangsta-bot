@@ -103,12 +103,12 @@ const _parseIdSafe = interaction => {
 };
 const approveHandler = interaction => {
   const id = _parseIdSafe(interaction);
-  if (id == null) return;
+  if (id === null) return;
   return handleApproveButton(interaction, id);
 };
 const denyHandler = interaction => {
   const id = _parseIdSafe(interaction);
-  if (id == null) return;
+  if (id === null) return;
   return handleDenyButton(interaction, id);
 };
 

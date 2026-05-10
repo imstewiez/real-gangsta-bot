@@ -20,6 +20,9 @@ const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { haveDb, cleanState } = require('./_helpers');
 
+process.env.DISCORD_BOT_TOKEN ||= 'test-token';
+process.env.DISCORD_GUILD_ID ||= 'test-guild';
+
 if (!haveDb()) {
   describe('integration/saidaFlow', { skip: 'DATABASE_URL em falta' }, () => {});
   return;
@@ -30,6 +33,7 @@ const { query } = require('../../src/db');
 // Stubs Discord — saidaEngine emite eventos + usa client para notificações.
 // Substituir os getters no engine evita chamadas reais à Discord API.
 const saidaEngine = require('../../src/saidas/saidaEngine');
+const saidaRepo = require('../../src/repositories/saida');
 const spotCooldown = require('../../src/saidas/spotCooldown');
 
 function makeNoopClient() {
@@ -185,6 +189,11 @@ describe('integration/saidaFlow — end-to-end', () => {
   });
 
   it('5. closeSaida transita em_liquidacao + guarda metadata', async () => {
+    // Avançar pelo state machine: criada → trancagem → em_preparacao → em_curso
+    await saidaRepo.updateStatus(_saidaId, 'trancagem');
+    await saidaRepo.updateStatus(_saidaId, 'em_preparacao');
+    await saidaEngine.startSaida(_saidaId, STAFF_ID);
+
     await saidaEngine.closeSaida(
       _saidaId,
       {

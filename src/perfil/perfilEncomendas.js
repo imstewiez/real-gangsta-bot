@@ -16,8 +16,6 @@ const { buttonRow, button } = require('../shared/ui/buttons');
 const { formatPtDate } = require('../shared/formatPtDate');
 const { formatMoney } = require('../shared/formatMoney');
 
-const fmt = n => (Number(n) || 0).toLocaleString('pt-PT');
-
 function _fmtIngredients(json) {
   if (!json) return '';
   try {

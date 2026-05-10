@@ -1,11 +1,11 @@
 'use strict';
 const { MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const { safeReply, safeShowModal, getModalField } = require('../../shared/interactionHelpers');
-const { successEmbed, errorEmbed } = require('../../shared/embedBuilders');
+const { successEmbed } = require('../../shared/embedBuilders');
 const { inventoryRepo } = require('../../repositories');
 const { isChefia } = require('../../permissions/permissionEngine');
 const { requirePermission } = require('../../shared/requirePermission');
-const { EMOJI, ERRORS } = require('../../content');
+const { ERRORS } = require('../../content');
 const { pendingItemSelections, _setItemCtx } = require('./stockHandlers');
 
 async function handleAddItemModal(interaction) {

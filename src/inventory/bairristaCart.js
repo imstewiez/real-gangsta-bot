@@ -25,7 +25,7 @@ const {
   UserSelectMenuBuilder,
 } = require('discord.js');
 const { ValidationError } = require('../shared/errors');
-const { brandEmbed, COLOR, headerLine, statusPill, itemList, setFooterText } = require('../shared/embedBuilders');
+const { brandEmbed, COLOR, headerLine, statusPill, setFooterText } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
 const cartStore = require('../repositories/cartStore');
 

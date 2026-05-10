@@ -19,9 +19,6 @@ const {
   StringSelectMenuOptionBuilder,
 } = require('discord.js');
 const { createSessionStore } = require('../shared/sessionStore');
-const { brandEmbed, COLOR } = require('../shared/embedBuilders');
-const { EMOJI } = require('../content');
-const { formatMoney } = require('../shared/formatMoney');
 const orderCartEmbedBuilder = require('./orderCartEmbedBuilder');
 
 const cartStore = createSessionStore('orderCart', { ttlMs: 15 * 60 * 1000 });

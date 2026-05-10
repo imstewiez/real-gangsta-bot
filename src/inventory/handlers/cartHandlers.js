@@ -7,13 +7,12 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  EmbedBuilder,
 } = require('discord.js');
 const { safeReply, safeUpdate, safeShowModal, getModalField } = require('../../shared/interactionHelpers');
 const { replySafe } = require('../../shared/safeEmbed');
-const { successEmbed, errorEmbed, brandEmbed, applyLogo, COLOR } = require('../../shared/embedBuilders');
+const { brandEmbed, COLOR } = require('../../shared/embedBuilders');
 const { inventoryRepo, memberRepo } = require('../../repositories');
-const { EMOJI, ERRORS, INVENTORY } = require('../../content');
+const { EMOJI, ERRORS } = require('../../content');
 const parentStore = require('../../shared/parentInteractionStore');
 const { buildRawMaterialSelectMenu, buildItemSelectMenuForCategory } = require('../inventoryMenus');
 

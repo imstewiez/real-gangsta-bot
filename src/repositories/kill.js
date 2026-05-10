@@ -33,7 +33,7 @@ async function getLeaderboard(limit = 10, windowDays = null) {
   const params = [limit];
   let window = '';
   if (windowDays) {
-    params.push(`${parseInt(windowDays, 10)} days`);
+    params.push(parseInt(windowDays, 10) + ' days');
     window = `AND k.created_at >= NOW() - $${params.length}::interval`;
   }
   const res = await query(
@@ -82,7 +82,7 @@ async function countKillsByMember(memberId, weekStart = null, weekEnd = null) {
 }
 
 async function countKillsToday(killerId) {
-  const res = await query(`SELECT COUNT(*)::int AS n FROM kill_logs WHERE killer_id = $1 AND date = CURRENT_DATE`, [
+  const res = await query('SELECT COUNT(*)::int AS n FROM kill_logs WHERE killer_id = $1 AND date = CURRENT_DATE', [
     killerId,
   ]);
   return res.rows[0]?.n || 0;
@@ -92,8 +92,8 @@ async function totalOrgKills(windowDays = null) {
   const params = [];
   let window = '';
   if (windowDays) {
-    params.push(`${parseInt(windowDays, 10)} days`);
-    window = `WHERE created_at >= NOW() - $1::interval`;
+    params.push(parseInt(windowDays, 10) + ' days');
+    window = 'WHERE created_at >= NOW() - $1::interval';
   }
   const res = await query(`SELECT COUNT(*)::int AS n FROM kill_logs ${window}`, params);
   return res.rows[0]?.n || 0;
@@ -111,8 +111,8 @@ async function totalOrgKillsAllSources(windowDays = null) {
   if (windowDays) {
     const interval = `${parseInt(windowDays, 10)} days`;
     params.push(interval);
-    logsWindow = `WHERE created_at >= NOW() - $1::interval`;
-    opsWindow = `WHERE updated_at >= NOW() - $1::interval`;
+    logsWindow = 'WHERE created_at >= NOW() - $1::interval';
+    opsWindow = 'WHERE updated_at >= NOW() - $1::interval';
   }
   const r = await query(
     `
