@@ -8,5 +8,5 @@ CREATE TABLE IF NOT EXISTS session_carts (
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '15 minutes'
 );
-CREATE INDEX idx_session_carts_discord ON session_carts(discord_id) WHERE expires_at > NOW();
-CREATE INDEX idx_session_carts_expires ON session_carts(expires_at) WHERE expires_at <= NOW();
+CREATE INDEX idx_session_carts_discord ON session_carts(discord_id);
+CREATE INDEX idx_session_carts_expires ON session_carts(expires_at);
