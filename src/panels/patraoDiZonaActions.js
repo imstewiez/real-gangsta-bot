@@ -162,9 +162,9 @@ async function _listarBairristasInner(interaction, t0) {
   const weekLabel = `*Semana: ${formatPtDateOnly(start)} a ${formatPtDateOnly(end)}*`;
 
   function fmtBairrista(r, idx) {
-    const tier = TIER_ABBR[r.tier] || '—';
+    const tier = TIER_ABBR[r.tier] || '-';
     const emoji = TIER_EMOJI[r.tier] || '👤';
-    const rank = r.rank_pos > 0 ? `#${r.rank_pos}` : '—';
+    const rank = r.rank_pos > 0 ? `#${r.rank_pos}` : '-';
     const entTotal = fmtNum(r.deliveries_total);
     const entSem = r.deliveries_week || 0;
     const vndSem = r.sales_week || 0;
@@ -172,8 +172,8 @@ async function _listarBairristasInner(interaction, t0) {
     const lastSaida = daysAgo(r.last_saida);
 
     const line1 = `${emoji} **${truncateName(r.display_name, 18)}**  \`${tier}\`  ·  Rank ${rank}  ·  Score ${fmtNum(r.score)}`;
-    const line2 = `⠀⠀📦 Entregas: **${entTotal}** total  |  **${entSem}** esta semana  |  💰 Vendas: **${vndSem}**`;
-    const line3 = `⠀⠀📅 Última entrega: **${lastEnt}**  |  🎯 Última saída: **${lastSaida}**`;
+    const line2 = `> 📦 **${entTotal}** total  |  **${entSem}** sem  |  💰 **${vndSem}**`;
+    const line3 = `> 📅 **${lastEnt}**  |  🎯 **${lastSaida}**`;
 
     return [line1, line2, line3].join('\n');
   }
@@ -184,16 +184,16 @@ async function _listarBairristasInner(interaction, t0) {
   // ── Legenda + Ativos (Embed 1) ──
   const lines1 = [];
   lines1.push('**📖 Legenda**');
-  lines1.push('🩸 YB = Young Blood  |  🔫 OG = O Gunão  |  👑 GF = Gangster Fodido');
-  lines1.push('📦 = Entregas (total | semana)  |  💰 = Vendas (semana)');
-  lines1.push('📅 = Última entrega  |  🎯 = Última saída');
+  lines1.push('> 🩸 YB = Young Blood  |  🔫 OG = O Gunao  |  👑 GF = Gangster Fodido');
+  lines1.push('> 📦 = Entregas (total | semana)  |  💰 = Vendas (semana)');
+  lines1.push('> 📅 = Ultima entrega  |  🎯 = Ultima saida');
   lines1.push('');
   lines1.push(weekLabel);
   lines1.push('');
 
   if (ativos.length > 0) {
-    lines1.push(`**🟢 Com movimento esta semana — ${ativos.length}**`);
-    lines1.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    lines1.push(`**-- Com movimento esta semana -- ${ativos.length}**`);
+    lines1.push('');
     ativos.forEach((r, i) => lines1.push(fmtBairrista(r, i)));
     lines1.push('');
   }
@@ -201,8 +201,8 @@ async function _listarBairristasInner(interaction, t0) {
   // Adiciona os primeiros inativos que couberem
   let inativosRestantes = [];
   if (inativos.length > 0) {
-    lines1.push(`**🔴 Sem movimento esta semana — ${inativos.length}**`);
-    lines1.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    lines1.push(`**-- Sem movimento esta semana -- ${inativos.length}**`);
+    lines1.push('');
 
     for (let i = 0; i < inativos.length; i++) {
       const candidate = fmtBairrista(inativos[i], i);
@@ -227,8 +227,8 @@ async function _listarBairristasInner(interaction, t0) {
   // ── Inativos restantes (Embed 2, se necessário) ──
   if (inativosRestantes.length > 0) {
     const lines2 = [];
-    lines2.push(`**🔴 Sem movimento esta semana (cont.) — ${inativosRestantes.length}**`);
-    lines2.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    lines2.push(`**-- Sem movimento esta semana (cont.) -- ${inativosRestantes.length}**`);
+    lines2.push('');
 
     let omitted = 0;
     for (let i = 0; i < inativosRestantes.length; i++) {
@@ -243,17 +243,27 @@ async function _listarBairristasInner(interaction, t0) {
 
     const embed2 = brandEmbed()
       .setColor(COLOR.WARNING_SOFT)
-      .setTitle('🔴 Bairristas Inativos (cont.)')
+      .setTitle('Sem movimento (cont.)')
       .setDescription(lines2.join('\n'));
 
     if (omitted > 0) {
-      embed2.setFooter({ text: `… e mais ${omitted} bairrista(s) não mostrados.` });
+      embed2.setFooter({ text: `… e mais ${omitted} bairrista(s) nao mostrados.` });
     }
 
     embeds.push(embed2);
   }
 
-  return safeReply(interaction, { embeds }, { messageClass: 'BANAL' });
+  // DEBUG: tenta editReply directamente para capturar erro exacto
+  try {
+    return await interaction.editReply({ embeds });
+  } catch (discordErr) {
+    warn(`[listarBairristas] Discord REJECT: code=${discordErr.code} msg=${discordErr.message}`);
+    warn(`[listarBairristas] Embed count=${embeds.length} desc1_len=${embeds[0]?.data?.description?.length || 0}`);
+    // fallback: envia mensagem de texto simples
+    return interaction.editReply({
+      content: `❌ Erro ao mostrar embeds (${discordErr.message}). Tenta de novo.`,
+    });
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
