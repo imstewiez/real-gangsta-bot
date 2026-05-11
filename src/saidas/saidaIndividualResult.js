@@ -1,37 +1,33 @@
-'use strict';
+﻿'use strict';
 /**
- * ⚠️ DEPRECATED — Individual result submission (legacy self-service flow).
- * Replaced by saidaResultFlow.js (unified self-service + staff confirmation).
- * This file is kept for backward compatibility but will be removed in v3.1.
- *
- * Resultado individual do participante (self-service) + confirmação de
- * devolução de arma por staff OG+.
+ * Resultado individual do participante (self-service) + confirma├º├úo de
+ * devolu├º├úo de arma por staff OG+.
  *
  * Fluxos:
  *
- *  A. Participante → saida::submit_result::<saidaId>
+ *  A. Participante ÔåÆ saida::submit_result::<saidaId>
  *     abre modal:
- *       · Sobrevivi / Morri
- *       · Kills
- *       · Devolvi arma? (S/N)   [ignorado se morreu]
- *       · Notas
- *     → actualiza operation_participants:
+ *       ┬À Sobrevivi / Morri
+ *       ┬À Kills
+ *       ┬À Devolvi arma? (S/N)   [ignorado se morreu]
+ *       ┬À Notas
+ *     ÔåÆ actualiza operation_participants:
  *         individual_result_submitted = true
  *         died, kills, notes
  *         weapon_return_status =
- *            "not_applicable"      se own_weapon=true (levou arma própria)
+ *            "not_applicable"      se own_weapon=true (levou arma pr├│pria)
  *            "confirmed_not_returned" se died=true
- *            "declared_returned"   se declarou devolução (pendente OG+)
- *            "none"                se declarou não devolveu
+ *            "declared_returned"   se declarou devolu├º├úo (pendente OG+)
+ *            "none"                se declarou n├úo devolveu
  *
- *  B. Staff OG+ → saida::weapon_queue::<saidaId>
+ *  B. Staff OG+ ÔåÆ saida::weapon_queue::<saidaId>
  *     mostra lista de participantes com weapon_return_status = declared_returned.
  *     Por cada um, select com:
- *       · ✅ Confirmar devolução
- *       · ⛔ Rejeitar (não devolveu)
- *       · ⏱️ Marcar inconclusivo
- *     → actualiza weapon_return_status + disciplina/stats
- *     → emite eventos weapon.return_confirmed / weapon.return_rejected
+ *       ┬À Ô£à Confirmar devolu├º├úo
+ *       ┬À Ôøö Rejeitar (n├úo devolveu)
+ *       ┬À ÔÅ▒´©Å Marcar inconclusivo
+ *     ÔåÆ actualiza weapon_return_status + disciplina/stats
+ *     ÔåÆ emite eventos weapon.return_confirmed / weapon.return_rejected
  */
 
 const {
@@ -46,7 +42,7 @@ const {
 
 const { query } = require('../db');
 const { saidaRepo, memberRepo } = require('../repositories');
-const { safeReply, safeShowModal, getModalField } = require('../shared/interactionHelpers');
+const { safeReply, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
 const { buildSearchableSelect } = require('../shared/selectSearch');
 const { brandEmbed, errorEmbed, successEmbed, COLOR, headerLine } = require('../shared/embedBuilders');
 const { EMOJI } = require('../content');
@@ -55,11 +51,10 @@ const { isChefia, isOficial } = require('../permissions/permissionEngine');
 const { logAudit } = require('../audit/auditEngine');
 const eventBus = require('../core/eventBus');
 const { warn, log } = require('../logger');
-warn('[DEPRECATED] saidaIndividualResult.js carregado — usar saidaResultFlow.js (v3.0).');
 
-// ═══════════════════════════════════════════════════════════════════════════
-// A. RESULTADO INDIVIDUAL (participante) — 1 STEP: botão → modal directo
-// ═══════════════════════════════════════════════════════════════════════════
+// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+// A. RESULTADO INDIVIDUAL (participante) ÔÇö 1 STEP: bot├úo ÔåÆ modal directo
+// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
 
 // Normalizador S/N para campos de texto do modal
 function _parseSN(value) {
@@ -72,10 +67,11 @@ function _parseSN(value) {
 }
 
 /**
- * Handler do botão "Preencher o meu Resultado" — abre modal DIRECTO.
- * Sem botões intermediários. Tudo num só modal de 3-5 campos.
+ * Handler do bot├úo "Preencher o meu Resultado" ÔÇö abre modal DIRECTO.
+ * Sem bot├Áes intermedi├írios. Tudo num s├│ modal de 3-5 campos.
  */
 async function handleOpenSubmitResult(interaction) {
+  if (isDuplicate(interaction.id)) return;
   const saidaId = parseInt(interaction.customId.split('::')[2], 10);
 
   const member = await memberRepo.findByDiscordId(interaction.user.id);
@@ -83,7 +79,7 @@ async function handleOpenSubmitResult(interaction) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.ERRO} Não estás registado na firma.`,
+        content: `${EMOJI.ERRO} N├úo est├ís registado na firma.`,
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'WARN' }
@@ -96,7 +92,7 @@ async function handleOpenSubmitResult(interaction) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.ERRO} Não fizeste parte desta saída.`,
+        content: `${EMOJI.ERRO} N├úo fizeste parte desta sa├¡da.`,
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'WARN' }
@@ -108,20 +104,20 @@ async function handleOpenSubmitResult(interaction) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.BLOQUEADO} A sessão ainda não foi fechada pela staff.`,
+        content: `${EMOJI.BLOQUEADO} A sess├úo ainda n├úo foi fechada pela staff.`,
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'WARN' }
     );
   }
 
-  // Se já submeteu e a saída está concluida → bloqueia (scoring já feito).
-  // Se já submeteu mas está em em_liquidacao → permite editar (scoring ainda não correu).
+  // Se j├í submeteu e a sa├¡da est├í concluida ÔåÆ bloqueia (scoring j├í feito).
+  // Se j├í submeteu mas est├í em em_liquidacao ÔåÆ permite editar (scoring ainda n├úo correu).
   if (me.individual_result_submitted && saida.status === 'concluida') {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.OK} Já preencheste o teu resultado e a saída já foi finalizada — não pode ser alterado.`,
+        content: `${EMOJI.OK} J├í preencheste o teu resultado e a sa├¡da j├í foi finalizada ÔÇö n├úo pode ser alterado.`,
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'BANAL' }
@@ -135,7 +131,7 @@ async function handleOpenSubmitResult(interaction) {
   // Flag no customId: 'w' = needs weapon question, 'n' = no weapon question
   const wFlag = needsWeaponQ ? 'w' : 'n';
 
-  // Pré-preencher com valores anteriores se for edição
+  // Pr├®-preencher com valores anteriores se for edi├º├úo
   const prevSurvived = isEdit ? (me.survived ? 'S' : 'N') : '';
   const prevKills = isEdit ? String(me.kills || 0) : '0';
   const prevNotes = isEdit ? me.notes || '' : '';
@@ -195,7 +191,7 @@ async function handleOpenSubmitResult(interaction) {
     )
   );
 
-  const modalTitle = isEdit ? `Editar Resultado — #${saidaId}` : `Resultado — Saída #${saidaId}`;
+  const modalTitle = isEdit ? `Editar Resultado ÔÇö #${saidaId}` : `Resultado ÔÇö Sa├¡da #${saidaId}`;
   const modal = new ModalBuilder()
     .setCustomId(`saida::submit_result_modal::${saidaId}::${wFlag}`)
     .setTitle(modalTitle.slice(0, 45))
@@ -210,6 +206,7 @@ async function handleOpenSubmitResult(interaction) {
  * wFlag: 'w' = had weapon question, 'n' = no weapon question
  */
 async function handleSubmitResultModal(interaction) {
+  if (isDuplicate(interaction.id)) return;
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const parts = interaction.customId.split('::');
@@ -221,7 +218,7 @@ async function handleSubmitResultModal(interaction) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.ERRO} Não estás registado.`,
+        content: `${EMOJI.ERRO} N├úo est├ís registado.`,
       },
       { messageClass: 'WARN' }
     );
@@ -233,7 +230,7 @@ async function handleSubmitResultModal(interaction) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.ERRO} Não és participante desta saída.`,
+        content: `${EMOJI.ERRO} N├úo ├®s participante desta sa├¡da.`,
       },
       { messageClass: 'WARN' }
     );
@@ -251,7 +248,7 @@ async function handleSubmitResultModal(interaction) {
   if (wFlag === 'w') {
     // Tinham arma da org
     if (died) {
-      weaponReturnStatus = 'confirmed_not_returned'; // morreu → arma perdida
+      weaponReturnStatus = 'confirmed_not_returned'; // morreu ÔåÆ arma perdida
     } else {
       const returned = _parseSN(getModalField(interaction, 'weapon_returned'));
       weaponReturnStatus = returned ? 'declared_returned' : 'confirmed_not_returned';
@@ -260,11 +257,11 @@ async function handleSubmitResultModal(interaction) {
     weaponReturnStatus = 'not_applicable';
   }
 
-  // Verificar se a saída ainda permite edição (em_liquidacao = sim, concluida = não)
+  // Verificar se a sa├¡da ainda permite edi├º├úo (em_liquidacao = sim, concluida = n├úo)
   const saida = await saidaRepo.findById(saidaId);
   const allowEdit = saida?.status === 'em_liquidacao';
 
-  // Persiste — se em_liquidacao permite overwrite (edição); se concluida só aceita primeiro submit
+  // Persiste ÔÇö se em_liquidacao permite overwrite (edi├º├úo); se concluida s├│ aceita primeiro submit
   const upd = await query(
     `
     UPDATE operation_participants
@@ -287,7 +284,9 @@ async function handleSubmitResultModal(interaction) {
     return safeReply(
       interaction,
       {
-        embeds: [errorEmbed('Não foi possível', 'A saída já foi finalizada — o resultado não pode ser alterado.')],
+        embeds: [
+          errorEmbed('N├úo foi poss├¡vel', 'A sa├¡da j├í foi finalizada ÔÇö o resultado n├úo pode ser alterado.'),
+        ],
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'WARN' }
@@ -320,19 +319,19 @@ async function handleSubmitResultModal(interaction) {
   const saidaSession = require('./saidaSession');
   saidaSession.refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
 
-  // Feedback ao participante — embed rico
+  // Feedback ao participante ÔÇö embed rico
   const lines = [
     `${died ? `${EMOJI.MORTE} Morreste` : `${EMOJI.OK} Sobreviveste`}`,
     `${EMOJI.KILL} **${kills}** kill${kills === 1 ? '' : 's'}`,
   ];
   if (weaponReturnStatus === 'declared_returned') {
-    lines.push(`${EMOJI.ARMA} Arma declarada devolvida — **aguarda confirmação staff**`);
+    lines.push(`${EMOJI.ARMA} Arma declarada devolvida ÔÇö **aguarda confirma├º├úo staff**`);
   } else if (weaponReturnStatus === 'confirmed_not_returned') {
-    lines.push(`${EMOJI.ARMA} Arma não devolvida (${died ? 'morreste com ela' : 'declaraste'})`);
+    lines.push(`${EMOJI.ARMA} Arma n├úo devolvida (${died ? 'morreste com ela' : 'declaraste'})`);
   }
 
   const feedbackEmbed = successEmbed(
-    `${EMOJI.OK} Resultado ${isEdit ? 'editado' : 'registado'} — Saída #${saidaId}`,
+    `${EMOJI.OK} Resultado ${isEdit ? 'editado' : 'registado'} ÔÇö Sa├¡da #${saidaId}`,
     lines.join('\n')
   );
 
@@ -343,9 +342,10 @@ async function handleSubmitResultModal(interaction) {
 }
 
 /**
- * Handler do botão "Lembrar Pendentes" — re-pinga participantes que faltam.
+ * Handler do bot├úo "Lembrar Pendentes" ÔÇö re-pinga participantes que faltam.
  */
 async function handleRepingPendentes(interaction) {
+  if (isDuplicate(interaction.id)) return;
   if (!isChefia(interaction.member) && !isOficial(interaction.member)) {
     return safeReply(
       interaction,
@@ -365,7 +365,7 @@ async function handleRepingPendentes(interaction) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.WARN} Saída não está em liquidação.`,
+        content: `${EMOJI.WARN} Sa├¡da n├úo est├í em liquida├º├úo.`,
       },
       { messageClass: 'BANAL' }
     );
@@ -378,19 +378,19 @@ async function handleRepingPendentes(interaction) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.OK} Todos os participantes já preencheram!`,
+        content: `${EMOJI.OK} Todos os participantes j├í preencheram!`,
       },
       { messageClass: 'BANAL' }
     );
   }
 
-  // Enviar nova mensagem no canal da sessão com @ dos pendentes
+  // Enviar nova mensagem no canal da sess├úo com @ dos pendentes
   const channelId = saida.session_channel_id;
   if (!channelId) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.WARN} Canal de sessão não configurado.`,
+        content: `${EMOJI.WARN} Canal de sess├úo n├úo configurado.`,
       },
       { messageClass: 'BANAL' }
     );
@@ -401,7 +401,7 @@ async function handleRepingPendentes(interaction) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.WARN} Canal de sessão não acessível.`,
+        content: `${EMOJI.WARN} Canal de sess├úo n├úo acess├¡vel.`,
       },
       { messageClass: 'BANAL' }
     );
@@ -413,24 +413,24 @@ async function handleRepingPendentes(interaction) {
   const pendingLines = pending.map(p => {
     const typeTag =
       p.participant_type === 'trabalhador' ? `${EMOJI.TRABALHADOR} trabalhador` : `${EMOJI.ARMA} caracterizado`;
-    const weaponTag = !p.own_weapon && p.received_org_material ? ` · ${EMOJI.MATERIAL} arma da org` : '';
-    return `• ${EMOJI.PENDENTE} <@${p.discord_id}> — ${typeTag}${weaponTag}`;
+    const weaponTag = !p.own_weapon && p.received_org_material ? ` ┬À ${EMOJI.MATERIAL} arma da org` : '';
+    return `ÔÇó ${EMOJI.PENDENTE} <@${p.discord_id}> ÔÇö ${typeTag}${weaponTag}`;
   });
 
   const { brandEmbed: bEmbed } = require('../shared/embedBuilders');
   const embed = bEmbed('MOVEMENT')
     .setColor(COLOR.DANGER)
-    .setTitle(`${EMOJI.WARN} Saída #${saidaId} — Faltam ${pending.length} resultado(s)!`)
+    .setTitle(`${EMOJI.WARN} Sa├¡da #${saidaId} ÔÇö Faltam ${pending.length} resultado(s)!`)
     .setDescription(
-      `**Preencham o vosso resultado!** Cliquem no botão **"${EMOJI.OK} Preencher o meu Resultado"** acima ↑\n` +
+      `**Preencham o vosso resultado!** Cliquem no bot├úo **"${EMOJI.OK} Preencher o meu Resultado"** acima Ôåæ\n` +
         headerLine(EMOJI.PENDENTE, 'Pendentes') +
         pendingLines.join('\n') +
-        '\n\n_A sessão não fecha sem os vossos dados._'
+        '\n\n_A sess├úo n├úo fecha sem os vossos dados._'
     );
 
   await channel
     .send({
-      content: `${EMOJI.WARN} **Lembrete** — ${mentions}`,
+      content: `${EMOJI.WARN} **Lembrete** ÔÇö ${mentions}`,
       embeds: [embed],
       allowedMentions: { users: discordIds },
     })
@@ -445,24 +445,25 @@ async function handleRepingPendentes(interaction) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
+// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
 // B. WEAPON RETURN QUEUE (staff OG+)
-// ═══════════════════════════════════════════════════════════════════════════
+// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
 
 function _canConfirmWeapon(member) {
   return isOficial(member);
 }
 
 /**
- * Handler do botão "Confirmar Devoluções de Arma" no painel da sessão.
- * Mostra lista de devoluções pendentes com select por participante.
+ * Handler do bot├úo "Confirmar Devolu├º├Áes de Arma" no painel da sess├úo.
+ * Mostra lista de devolu├º├Áes pendentes com select por participante.
  */
 async function handleOpenWeaponQueue(interaction) {
+  if (isDuplicate(interaction.id)) return;
   if (!_canConfirmWeapon(interaction.member)) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.BLOQUEADO} Apenas staff OG+ pode confirmar devoluções.`,
+        content: `${EMOJI.BLOQUEADO} Apenas staff OG+ pode confirmar devolu├º├Áes.`,
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'WARN' }
@@ -477,19 +478,19 @@ async function handleOpenWeaponQueue(interaction) {
 
   const embed = brandEmbed('MOVEMENT')
     .setColor(COLOR.WARNING_SOFT)
-    .setTitle(`${EMOJI.ARMA} Devoluções pendentes — Saída #${saidaId}`);
+    .setTitle(`${EMOJI.ARMA} Devolu├º├Áes pendentes ÔÇö Sa├¡da #${saidaId}`);
 
   if (!pending.length) {
     embed.setDescription(
-      'Não há devoluções pendentes de confirmação para esta saída.\n' +
-        'Todas as armas já foram marcadas ou os participantes ainda não preencheram resultado.'
+      'N├úo h├í devolu├º├Áes pendentes de confirma├º├úo para esta sa├¡da.\n' +
+        'Todas as armas j├í foram marcadas ou os participantes ainda n├úo preencheram resultado.'
     );
     return safeReply(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   }
 
   const lines = pending.map(
     p =>
-      `• <@${p.discord_id}> — ${p.display_name || ''} · declarou devolução em \`${formatPtDate(p.individual_result_at)}\``
+      `ÔÇó <@${p.discord_id}> ÔÇö ${p.display_name || ''} ┬À declarou devolu├º├úo em \`${formatPtDate(p.individual_result_at)}\``
   );
   embed.setDescription(lines.join('\n'));
 
@@ -513,9 +514,10 @@ async function handleOpenWeaponQueue(interaction) {
 }
 
 /**
- * Handler do select "escolhe participante" → mostra botões de decisão.
+ * Handler do select "escolhe participante" ÔåÆ mostra bot├Áes de decis├úo.
  */
 async function handleWeaponConfirmPick(interaction) {
+  if (isDuplicate(interaction.id)) return;
   if (!_canConfirmWeapon(interaction.member)) return;
 
   await interaction.deferUpdate().catch(() => {});
@@ -528,7 +530,7 @@ async function handleWeaponConfirmPick(interaction) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.ERRO} Participante não encontrado.`,
+        content: `${EMOJI.ERRO} Participante n├úo encontrado.`,
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'WARN' }
@@ -537,22 +539,22 @@ async function handleWeaponConfirmPick(interaction) {
 
   const embed = brandEmbed('MOVEMENT')
     .setColor(COLOR.INFO)
-    .setTitle(`${EMOJI.ARMA} Decisão — <@${p.discord_id}>`)
+    .setTitle(`${EMOJI.ARMA} Decis├úo ÔÇö <@${p.discord_id}>`)
     .setDescription(
-      `**${p.display_name || 'Participante'}** declarou devolução em ` +
+      `**${p.display_name || 'Participante'}** declarou devolu├º├úo em ` +
         `\`${formatPtDate(p.individual_result_at)}\`.\n` +
-        'Escolhe a decisão:'
+        'Escolhe a decis├úo:'
     );
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId(`saida::weapon_decide::${saidaId}::${memberId}::confirmed`)
-      .setLabel('Confirmar devolução')
+      .setLabel('Confirmar devolu├º├úo')
       .setStyle(ButtonStyle.Success)
       .setEmoji(EMOJI.OK),
     new ButtonBuilder()
       .setCustomId(`saida::weapon_decide::${saidaId}::${memberId}::rejected`)
-      .setLabel('Não devolveu')
+      .setLabel('N├úo devolveu')
       .setStyle(ButtonStyle.Danger)
       .setEmoji(EMOJI.ERRO),
     new ButtonBuilder()
@@ -566,14 +568,15 @@ async function handleWeaponConfirmPick(interaction) {
 }
 
 /**
- * Handler da decisão — aplica status + emite evento.
+ * Handler da decis├úo ÔÇö aplica status + emite evento.
  */
 async function handleWeaponDecide(interaction) {
+  if (isDuplicate(interaction.id)) return;
   if (!_canConfirmWeapon(interaction.member)) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.BLOQUEADO} Sem permissão.`,
+        content: `${EMOJI.BLOQUEADO} Sem permiss├úo.`,
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'WARN' }
@@ -594,12 +597,12 @@ async function handleWeaponDecide(interaction) {
   };
   const newStatus = statusMap[decision];
   if (!newStatus) {
-    return safeReply(interaction, { content: 'Decisão inválida.' }, { messageClass: 'ERROR' });
+    return safeReply(interaction, { content: 'Decis├úo inv├ílida.' }, { messageClass: 'ERROR' });
   }
 
-  // Guard: só podemos confirmar/rejeitar/inconclusivo se houve, de facto,
-  // arma emitida pela org. Se o participante foi com arma própria
-  // (own_weapon=true) ou se não recebeu material, não há arma a devolver.
+  // Guard: s├│ podemos confirmar/rejeitar/inconclusivo se houve, de facto,
+  // arma emitida pela org. Se o participante foi com arma pr├│pria
+  // (own_weapon=true) ou se n├úo recebeu material, n├úo h├í arma a devolver.
   const partRow = await query(
     `SELECT own_weapon, received_org_material, weapon_return_status
        FROM operation_participants WHERE operation_id = $1 AND member_id = $2`,
@@ -610,7 +613,7 @@ async function handleWeaponDecide(interaction) {
     return safeReply(
       interaction,
       {
-        embeds: [errorEmbed('Participante não encontrado', 'Esta pessoa já não está inscrita na saída.')],
+        embeds: [errorEmbed('Participante n├úo encontrado', 'Esta pessoa j├í n├úo est├í inscrita na sa├¡da.')],
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'WARN' }
@@ -623,7 +626,7 @@ async function handleWeaponDecide(interaction) {
         embeds: [
           errorEmbed(
             'Sem arma a devolver',
-            'Este participante foi com arma própria ou não recebeu material da org — nada a confirmar.'
+            'Este participante foi com arma pr├│pria ou n├úo recebeu material da org ÔÇö nada a confirmar.'
           ),
         ],
         flags: MessageFlags.Ephemeral,
@@ -649,7 +652,7 @@ async function handleWeaponDecide(interaction) {
     return safeReply(
       interaction,
       {
-        embeds: [errorEmbed('Já resolvido', 'A devolução deste participante já foi confirmada por outro oficial.')],
+        embeds: [errorEmbed('J├í resolvido', 'A devolu├º├úo deste participante j├í foi confirmada por outro oficial.')],
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'WARN' }
@@ -684,36 +687,36 @@ async function handleWeaponDecide(interaction) {
   const saidaSession = require('./saidaSession');
   saidaSession.refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
 
-  // Uma confirmação de arma pode ter sido a última peça em falta — se todos
-  // submeteram E já não há declared_returned, o auto-finalize devia arrancar
-  // aqui. Antes só arrancava em handleSubmitResultModal, deixando saídas
-  // em limbo se o último resultado submetido tinha arma a confirmar.
+  // Uma confirma├º├úo de arma pode ter sido a ├║ltima pe├ºa em falta ÔÇö se todos
+  // submeteram E j├í n├úo h├í declared_returned, o auto-finalize devia arrancar
+  // aqui. Antes s├│ arrancava em handleSubmitResultModal, deixando sa├¡das
+  // em limbo se o ├║ltimo resultado submetido tinha arma a confirmar.
   _checkAllResultsSubmitted(interaction.client, saidaId).catch(() => {});
 
   const decisionLabel = {
-    confirmed: `${EMOJI.OK} **Confirmada** — arma devolvida`,
-    rejected: `${EMOJI.ERRO} **Rejeitada** — não devolveu`,
-    inconclusive: `${EMOJI.TEMPO} **Inconclusivo** — precisa rever`,
+    confirmed: `${EMOJI.OK} **Confirmada** ÔÇö arma devolvida`,
+    rejected: `${EMOJI.ERRO} **Rejeitada** ÔÇö n├úo devolveu`,
+    inconclusive: `${EMOJI.TEMPO} **Inconclusivo** ÔÇö precisa rever`,
   }[decision];
 
   log(`[WEAPON-RETURN] saida #${saidaId} member=${memberId} decision=${decision} by=${interaction.user.id}`);
   return safeReply(
     interaction,
     {
-      content: `${decisionLabel} — registado na saída #${saidaId}.`,
+      content: `${decisionLabel} ÔÇö registado na sa├¡da #${saidaId}.`,
     },
     { messageClass: 'BANAL' }
   );
 }
 
 /**
- * _checkAllResultsSubmitted — quando o último participante submete,
- * finaliza automaticamente a saída (antes era trigger de embed "todos
- * preencheram"; agora é auto-finalize).
+ * _checkAllResultsSubmitted ÔÇö quando o ├║ltimo participante submete,
+ * finaliza automaticamente a sa├¡da (antes era trigger de embed "todos
+ * preencheram"; agora ├® auto-finalize).
  *
  * Fluxo novo:
- *   - após cada submit, chama getResultProgress
- *   - se allDone e saída ainda em_liquidacao → finalizeSaida com actor 'system:auto'
+ *   - ap├│s cada submit, chama getResultProgress
+ *   - se allDone e sa├¡da ainda em_liquidacao ÔåÆ finalizeSaida com actor 'system:auto'
  *   - finalize corre scoring, publica embed de resultados, e deleta o
  *     session_message (cleanup do canal operacional)
  */
@@ -721,52 +724,52 @@ async function _checkAllResultsSubmitted(client, saidaId) {
   try {
     const saida = await saidaRepo.findById(saidaId);
     if (!saida) {
-      warn(`[AUTO-FINALIZE] Saída #${saidaId} não encontrada.`);
+      warn(`[AUTO-FINALIZE] Sa├¡da #${saidaId} n├úo encontrada.`);
       return;
     }
     if (saida.status !== 'em_liquidacao') {
-      log(`[AUTO-FINALIZE] Saída #${saidaId} status=${saida.status}, skip (já tratada ou não em liquidação).`);
+      log(`[AUTO-FINALIZE] Sa├¡da #${saidaId} status=${saida.status}, skip (j├í tratada ou n├úo em liquida├º├úo).`);
       return;
     }
 
     const saidaEngine = require('./saidaEngine');
     const progress = await saidaEngine.getResultProgress(saidaId);
     log(
-      `[AUTO-FINALIZE] Saída #${saidaId} progress: ${progress.submitted}/${progress.total} pendingWeapons=${progress.pendingWeapons} allDone=${progress.allDone}`
+      `[AUTO-FINALIZE] Sa├¡da #${saidaId} progress: ${progress.submitted}/${progress.total} pendingWeapons=${progress.pendingWeapons} allDone=${progress.allDone}`
     );
     if (!progress.allDone) {
-      // Caso específico: todos submeteram mas há armas em declared_returned
-      // à espera de confirmação OG+. Não auto-finalize — staff tem de
+      // Caso espec├¡fico: todos submeteram mas h├í armas em declared_returned
+      // ├á espera de confirma├º├úo OG+. N├úo auto-finalize ÔÇö staff tem de
       // confirmar armas primeiro via "Confirmar Armas".
       if (progress.submitted >= progress.total && progress.pendingWeapons > 0) {
         log(
-          `[AUTO-FINALIZE] Saída #${saidaId} tem ${progress.pendingWeapons} arma(s) por confirmar — skip auto-finalize.`
+          `[AUTO-FINALIZE] Sa├¡da #${saidaId} tem ${progress.pendingWeapons} arma(s) por confirmar ÔÇö skip auto-finalize.`
         );
       }
       return;
     }
 
-    log(`[AUTO-FINALIZE] Saída #${saidaId} — a finalizar (todos submeteram + armas confirmadas).`);
+    log(`[AUTO-FINALIZE] Sa├¡da #${saidaId} ÔÇö a finalizar (todos submeteram + armas confirmadas).`);
     await saidaEngine.finalizeSaida(saidaId, 'system:auto');
-    log(`[AUTO-FINALIZE] Saída #${saidaId} finalizada com sucesso.`);
+    log(`[AUTO-FINALIZE] Sa├¡da #${saidaId} finalizada com sucesso.`);
   } catch (e) {
     // Log verboso para diagnosticar erros de auto-finalize que antes eram
     // engolidos silenciosamente (.catch(() => {}) no call site).
-    warn(`[AUTO-FINALIZE] Saída #${saidaId} falhou: ${e.message}\n${e.stack || ''}`);
+    warn(`[AUTO-FINALIZE] Sa├¡da #${saidaId} falhou: ${e.message}\n${e.stack || ''}`);
   }
 }
 
 /**
- * dmParticipantsForResults — envia DM a cada participante da saída com um
- * botão para preencher o resultado. Chamado pelo handleCloseSaidaModal
- * em vez do antigo ping público (removido em phase 4).
+ * dmParticipantsForResults ÔÇö envia DM a cada participante da sa├¡da com um
+ * bot├úo para preencher o resultado. Chamado pelo handleCloseSaidaModal
+ * em vez do antigo ping p├║blico (removido em phase 4).
  *
- * Cada DM tem um embed com o resultado (Vitória/Derrota/…) e um botão
- * `saida::submit_result::<saidaId>`. Mesmo customId do botão no painel
- * da sessão — handler único (handleOpenSubmitResult).
+ * Cada DM tem um embed com o resultado (Vit├│ria/Derrota/ÔÇª) e um bot├úo
+ * `saida::submit_result::<saidaId>`. Mesmo customId do bot├úo no painel
+ * da sess├úo ÔÇö handler ├║nico (handleOpenSubmitResult).
  *
- * Se o user tiver DMs desligadas, a mensagem falha silenciosamente — o
- * user pode sempre usar o painel da sessão no canal.
+ * Se o user tiver DMs desligadas, a mensagem falha silenciosamente ÔÇö o
+ * user pode sempre usar o painel da sess├úo no canal.
  */
 async function dmParticipantsForResults(client, saidaId, resultLabel) {
   if (!client) return;
@@ -782,13 +785,13 @@ async function dmParticipantsForResults(client, saidaId, resultLabel) {
       if (!user) continue;
       const embed = brandEmbed('MOVEMENT')
         .setColor(COLOR.WARNING)
-        .setTitle(`${EMOJI.SAIDA} Saída #${saidaId} — ${resultLabel}`)
+        .setTitle(`${EMOJI.SAIDA} Sa├¡da #${saidaId} ÔÇö ${resultLabel}`)
         .setDescription(
-          `A sessão **#${saidaId}** (spot: **${saida.spot || '—'}**) foi fechada pela chefia.\n\n` +
-            'Preenche o teu resultado individual aqui — o modal pergunta:\n' +
-            '• **Sobreviveste?**\n• **Quantas kills fizeste?**\n' +
-            (p.received_org_material && !p.own_weapon ? '• **Arma devolvida?** (tinhas arma da org)\n' : '') +
-            '\nQuando todos submetem, a saída fecha-se automaticamente.'
+          `A sess├úo **#${saidaId}** (spot: **${saida.spot || 'ÔÇö'}**) foi fechada pela chefia.\n\n` +
+            'Preenche o teu resultado individual aqui ÔÇö o modal pergunta:\n' +
+            'ÔÇó **Sobreviveste?**\nÔÇó **Quantas kills fizeste?**\n' +
+            (p.received_org_material && !p.own_weapon ? 'ÔÇó **Arma devolvida?** (tinhas arma da org)\n' : '') +
+            '\nQuando todos submetem, a sa├¡da fecha-se automaticamente.'
         );
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()

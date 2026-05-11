@@ -1,17 +1,17 @@
-'use strict';
+﻿'use strict';
 /**
- * Saída engine — motor do domínio "saídas" (antes operations).
+ * Sa├¡da engine ÔÇö motor do dom├¡nio "sa├¡das" (antes operations).
  *
  * Responsabilidades:
- *   - ciclo de vida da saída (criar, iniciar, cancelar, fechar)
- *   - cadeia de custódia de material por participante
- *   - no fecho: cálculo de valores económicos (supplied/returned/lost/consumed/
+ *   - ciclo de vida da sa├¡da (criar, iniciar, cancelar, fechar)
+ *   - cadeia de cust├│dia de material por participante
+ *   - no fecho: c├ílculo de valores econ├│micos (supplied/returned/lost/consumed/
  *     gross/net/was_profitable), scores de performance e disciplina, MVP,
- *     actualização de spot_stats e member_saida_stats
- *   - reconciliação (material unaccounted)
+ *     actualiza├º├úo de spot_stats e member_saida_stats
+ *   - reconcilia├º├úo (material unaccounted)
  *
- * Nomes de movement_type e de tabelas mantêm-se operation_* na DB (decisão
- * de baixo risco) — semanticamente são saídas.
+ * Nomes de movement_type e de tabelas mant├¬m-se operation_* na DB (decis├úo
+ * de baixo risco) ÔÇö semanticamente s├úo sa├¡das.
  */
 
 const { saidaRepo, memberRepo, inventoryRepo, spotStatsRepo, memberSaidaStatsRepo } = require('../repositories');
@@ -22,18 +22,17 @@ const { ALLOWED_TRANSITIONS, assertTransition: _assertTransition } = require('./
 const metrics = require('../lib/metrics');
 const { log, warn } = require('../logger');
 const eventBus = require('../core/eventBus');
-const { queryWithTransaction } = require('../db');
 const { NotFoundError, ConflictError, ValidationError } = require('../shared/errors');
 
 // Cliente Discord injectado no boot. Usado apenas para publicar resultados
-// ricos no fecho de saída (fire-and-forget). Se não estiver definido,
-// closeSaida funciona na mesma e o publish é no-op silencioso.
+// ricos no fecho de sa├¡da (fire-and-forget). Se n├úo estiver definido,
+// closeSaida funciona na mesma e o publish ├® no-op silencioso.
 let _client = null;
 function setClient(client) {
   _client = client;
 }
 
-// Movement types ligados a saídas (renomeados pela migration #11)
+// Movement types ligados a sa├¡das (renomeados pela migration #11)
 const MOVEMENT_TYPE_BY_DIRECTION = {
   fornecido: 'fornecimento_org',
   devolvido: 'devolucao_saida',
@@ -75,15 +74,15 @@ async function createSaida({
   createdBy,
   force = false,
 }) {
-  // Spot cooldown guard: se há cooldown activo neste spot, bloquear
-  // (excepto com force=true — reservado para comandos staff-only).
+  // Spot cooldown guard: se h├í cooldown activo neste spot, bloquear
+  // (excepto com force=true ÔÇö reservado para comandos staff-only).
   if (spot && !force) {
     const spotCooldown = require('./spotCooldown');
     const status = await spotCooldown.getStatus(spot);
     if (status.active) {
       const remaining = spotCooldown.formatRemaining(status.remainingMs);
       throw new ConflictError(
-        `Spot "${spot}" em cooldown — ainda faltam ${remaining} (saída anterior #${status.saidaId || '—'}).`,
+        `Spot "${spot}" em cooldown ÔÇö ainda faltam ${remaining} (sa├¡da anterior #${status.saidaId || 'ÔÇö'}).`,
         { code: 'SPOT_COOLDOWN' }
       );
     }
@@ -94,81 +93,69 @@ async function createSaida({
     const leader = await memberRepo.findByDiscordId(leaderDiscordId);
     if (leader) leaderId = leader.id;
   }
+  const s = await saidaRepo.create({
+    date,
+    scheduledTime,
+    spot,
+    spotType,
+    saidaType,
+    leaderId,
+    groupNumber,
+    maxParticipants,
+    notes,
+    createdBy,
+  });
+  metrics.operationsCreated.inc();
+  await logAudit({
+    action: 'saida_created',
+    entityType: 'saida',
+    entityId: String(s.id),
+    actorId: createdBy,
+    afterState: { saidaType, spot, spotType, date, groupNumber },
+  });
 
-  let createdId = null;
-  try {
-    const s = await queryWithTransaction(async client => {
-      const created = await saidaRepo.create({
-        date,
-        scheduledTime,
-        spot,
-        spotType,
-        saidaType,
-        leaderId,
-        groupNumber,
-        maxParticipants,
-        notes,
-        createdBy,
-        client,
-      });
-      createdId = created.id;
-      metrics.operationsCreated.inc();
-      await logAudit({
-        action: 'saida_created',
-        entityType: 'saida',
-        entityId: String(created.id),
-        actorId: createdBy,
-        afterState: { saidaType, spot, spotType, date, groupNumber },
-      });
-
-      if (spot) {
-        const spotCooldown = require('./spotCooldown');
-        const { SAIDA_TYPE } = require('../content');
-        let leaderName = '—';
-        if (leaderId) {
-          const leader = await memberRepo.findById(leaderId).catch(() => null);
-          if (leader) leaderName = leader.display_name || leader.username;
-        } else if (createdBy) {
-          const creator = await memberRepo.findByDiscordId(createdBy).catch(() => null);
-          if (creator) leaderName = creator.display_name || creator.username;
-        }
-        await spotCooldown.startCooldown({
-          spot,
-          saidaId: created.id,
-          saidaType: SAIDA_TYPE[saidaType] || saidaType,
-          leaderName,
-          client,
-        });
-      }
-
-      return created;
-    });
-
-    // Event bus — notification routing publica em SAIDAS_EVENTS.
-    eventBus
-      .emitAsync('saida.opened', {
-        saidaId: s.id,
-        date,
-        scheduledTime,
-        spot,
-        spotType,
-        saidaType,
-        leaderId: leaderDiscordId,
-        groupNumber,
-        maxParticipants,
-        actorId: createdBy,
-        notes,
-        at: new Date(),
-      })
-      .catch(e => warn(`[EVENT] saida.opened: ${e.message}`));
-
-    return s;
-  } catch (e) {
-    if (createdId) {
-      await saidaRepo.deleteSaida(createdId).catch(() => {});
+  // Arranca cooldown do spot + posta notifica├º├úo p├║blica.
+  // Fire-and-forget: se falha, n├úo aborta a cria├º├úo (sa├¡da j├í foi gravada).
+  if (spot) {
+    const spotCooldown = require('./spotCooldown');
+    const { SAIDA_TYPE } = require('../content');
+    let leaderName = 'ÔÇö';
+    if (leaderId) {
+      const leader = await memberRepo.findById(leaderId).catch(() => null);
+      if (leader) leaderName = leader.display_name || leader.username;
+    } else if (createdBy) {
+      const creator = await memberRepo.findByDiscordId(createdBy).catch(() => null);
+      if (creator) leaderName = creator.display_name || creator.username;
     }
-    throw e;
+    spotCooldown
+      .startCooldown({
+        spot,
+        saidaId: s.id,
+        saidaType: SAIDA_TYPE[saidaType] || saidaType,
+        leaderName,
+      })
+      .catch(e => warn(`[SAIDA] Cooldown falhou para "${spot}": ${e.message}`));
   }
+
+  // Event bus ÔÇö notification routing publica em SAIDAS_EVENTS.
+  eventBus
+    .emitAsync('saida.opened', {
+      saidaId: s.id,
+      date,
+      scheduledTime,
+      spot,
+      spotType,
+      saidaType,
+      leaderId: leaderDiscordId,
+      groupNumber,
+      maxParticipants,
+      actorId: createdBy,
+      notes,
+      at: new Date(),
+    })
+    .catch(e => warn(`[EVENT] saida.opened: ${e.message}`));
+
+  return s;
 }
 
 async function startSaida(saidaId, actorId) {
@@ -194,8 +181,8 @@ async function cancelSaida(saidaId, actorId) {
     actorId,
   });
 
-  // Liberta o cooldown do spot (se ainda pertencer a esta saída) — sem isto
-  // ficaria bloqueado até expirar o TTL, mesmo já cancelada.
+  // Liberta o cooldown do spot (se ainda pertencer a esta sa├¡da) ÔÇö sem isto
+  // ficaria bloqueado at├® expirar o TTL, mesmo j├í cancelada.
   if (before.spot) {
     const spotCooldown = require('./spotCooldown');
     spotCooldown
@@ -207,16 +194,16 @@ async function cancelSaida(saidaId, actorId) {
 }
 
 /**
- * Fecha saída — transita para 'em_liquidacao'. Guarda metadata de resultado
- * (enemy, had_fight, craft, etc.) mas NÃO faz scoring, NÃO publica, NÃO
+ * Fecha sa├¡da ÔÇö transita para 'em_liquidacao'. Guarda metadata de resultado
+ * (enemy, had_fight, craft, etc.) mas N├âO faz scoring, N├âO publica, N├âO
  * actualiza stats. Os participantes preenchem os seus resultados individuais
  * neste estado. Quando staff finaliza, finalizeSaida() faz o resto.
  */
 async function closeSaida(saidaId, resultData, actorId) {
   const saida = await saidaRepo.findById(saidaId);
-  if (!saida) throw new NotFoundError(`Saída #${saidaId} não existe.`, { code: 'SAIDA_NOT_FOUND' });
+  if (!saida) throw new NotFoundError(`Sa├¡da #${saidaId} n├úo existe.`, { code: 'SAIDA_NOT_FOUND' });
   if (saida.status === 'concluida') {
-    throw new ConflictError(`Saída #${saidaId} já está concluída — não pode ser fechada novamente.`, {
+    throw new ConflictError(`Sa├¡da #${saidaId} j├í est├í conclu├¡da ÔÇö n├úo pode ser fechada novamente.`, {
       code: 'SAIDA_ALREADY_CLOSED',
     });
   }
@@ -242,7 +229,6 @@ async function closeSaida(saidaId, resultData, actorId) {
     survivors: resultData.survivors || 0,
     characterized_count,
     workers_count,
-    liquidation_started_at: new Date(),
   });
 
   await logAudit({
@@ -258,9 +244,9 @@ async function closeSaida(saidaId, resultData, actorId) {
     },
   });
 
-  log(`[SAIDA] Saída #${saidaId} em liquidação. result=${resultData.result} participantes=${participants.length}`);
+  log(`[SAIDA] Sa├¡da #${saidaId} em liquida├º├úo. result=${resultData.result} participantes=${participants.length}`);
 
-  // Event bus — notifica que a saída entrou em liquidação
+  // Event bus ÔÇö notifica que a sa├¡da entrou em liquida├º├úo
   eventBus
     .emitAsync('saida.em_liquidacao', {
       saidaId,
@@ -275,7 +261,7 @@ async function closeSaida(saidaId, resultData, actorId) {
 }
 
 /**
- * Finaliza saída — transita de 'em_liquidacao' para 'concluida'.
+ * Finaliza sa├¡da ÔÇö transita de 'em_liquidacao' para 'concluida'.
  * Calcula scores com dados reais dos participantes (kills, deaths, weapon
  * return), actualiza projections (spot_stats, member_saida_stats) e publica
  * resultados ricos.
@@ -286,7 +272,7 @@ async function finalizeSaida(saidaId, actorId) {
   const participants = await saidaRepo.getParticipants(saidaId);
   const saida = await saidaRepo.findById(saidaId);
 
-  // Valores económicos
+  // Valores econ├│micos
   const supplied = summary.fornecido?.weightedTotal || 0;
   const returned = summary.devolvido?.weightedTotal || 0;
   const lost = summary.perdido?.weightedTotal || 0;
@@ -300,7 +286,7 @@ async function finalizeSaida(saidaId, actorId) {
   const totalDeaths = participants.filter(p => p.died).length;
   const totalSurvivors = participants.filter(p => !p.died).length;
 
-  // Scores + MVP (delegado a saidaScoring) — agora com dados REAIS
+  // Scores + MVP (delegado a saidaScoring) ÔÇö agora com dados REAIS
   const scoredParticipants = computeSaidaScores({
     participants,
     result: saida.result || 'sem_conflito',
@@ -319,7 +305,6 @@ async function finalizeSaida(saidaId, actorId) {
         performance_score: p.performance_score,
         discipline_score: p.discipline_score,
         mvp_flag: p.mvp_flag,
-        rating_delta: p.rating_delta,
       })
     )
   );
@@ -374,7 +359,7 @@ async function finalizeSaida(saidaId, actorId) {
       .catch(e => warn(`[SAIDA] spotStats falhou: ${e.message}`));
   }
 
-  // Actualiza member_saida_stats (incremental, per-participante — batch paralelo)
+  // Actualiza member_saida_stats (incremental, per-participante ÔÇö batch paralelo)
   await Promise.all(
     scoredParticipants.map(p =>
       memberSaidaStatsRepo
@@ -421,20 +406,20 @@ async function finalizeSaida(saidaId, actorId) {
       totalSurvivors,
       mvp: scoredParticipants.find(p => p.mvp_flag)?.display_name,
     },
-    context: recon.unaccounted > 0 ? `Fechou com ${recon.unaccounted} unidades não contabilizadas.` : undefined,
+    context: recon.unaccounted > 0 ? `Fechou com ${recon.unaccounted} unidades n├úo contabilizadas.` : undefined,
   });
 
   log(
-    `[SAIDA] Saída #${saidaId} finalizada. result=${finalized.result} kills=${totalKills} deaths=${totalDeaths} net=${net.toFixed(2)}€`
+    `[SAIDA] Sa├¡da #${saidaId} finalizada. result=${finalized.result} kills=${totalKills} deaths=${totalDeaths} net=${net.toFixed(2)}Ôé¼`
   );
 
-  // Publica resultados ricos — fire-and-forget
+  // Publica resultados ricos ÔÇö fire-and-forget
   if (_client) {
     const { publishResults } = require('./saidaResultsPublisher');
     publishResults(_client, saidaId).catch(e => warn(`[SAIDA] publishResults: ${e.message}`));
 
     // Cleanup: apaga a mensagem do painel vivo no canal operacional.
-    // Só o embed rico no canal de RESULTS permanece como arquivo. Canal
+    // S├│ o embed rico no canal de RESULTS permanece como arquivo. Canal
     // operacional fica limpo automaticamente no conclude (pedido do user).
     if (saida.session_message_id && saida.session_channel_id) {
       (async () => {
@@ -444,7 +429,7 @@ async function finalizeSaida(saidaId, actorId) {
             const msg = await channel.messages.fetch(saida.session_message_id).catch(() => null);
             if (msg) {
               await msg.delete();
-              log(`[SAIDA] Painel da saída #${saidaId} apagado do canal operacional.`);
+              log(`[SAIDA] Painel da sa├¡da #${saidaId} apagado do canal operacional.`);
             }
           }
         } catch (e) {
@@ -497,12 +482,12 @@ async function finalizeSaida(saidaId, actorId) {
 }
 
 /**
- * Verifica o progresso de liquidação de uma saída.
+ * Verifica o progresso de liquida├º├úo de uma sa├¡da.
  *
  * `allDone` = todos os resultados individuais submetidos **E** nenhuma arma
- * em estado `declared_returned` (que requer confirmação staff OG+ via
- * "Confirmar Armas"). Auto-finalize só arranca quando `allDone = true`;
- * manual finalize pode forçar.
+ * em estado `declared_returned` (que requer confirma├º├úo staff OG+ via
+ * "Confirmar Armas"). Auto-finalize s├│ arranca quando `allDone = true`;
+ * manual finalize pode for├ºar.
  *
  * Retorna { total, submitted, pending, pendingWeapons, allDone, participants }.
  */
@@ -522,14 +507,14 @@ async function getResultProgress(saidaId) {
 }
 
 /**
- * Job periódico: auto-rejeita pedidos `requested` mais antigos que
- * SAIDA_REQUEST_TTL_MINUTES (default 15min). Só actua sobre saídas ainda
- * em estados activos; pedidos de saídas já canceladas/concluídas são
- * deixados em paz (serão limpos por cascade em operations.delete).
+ * Job peri├│dico: auto-rejeita pedidos `requested` mais antigos que
+ * SAIDA_REQUEST_TTL_MINUTES (default 15min). S├│ actua sobre sa├¡das ainda
+ * em estados activos; pedidos de sa├¡das j├í canceladas/conclu├¡das s├úo
+ * deixados em paz (ser├úo limpos por cascade em operations.delete).
  *
- * DM ao requester a avisar — melhor que silêncio.
+ * DM ao requester a avisar ÔÇö melhor que sil├¬ncio.
  *
- * Idempotente: correr N vezes não parte nada.
+ * Idempotente: correr N vezes n├úo parte nada.
  */
 async function expireStaleRequests(client) {
   const CONFIG = require('../config');
@@ -575,7 +560,7 @@ async function expireStaleRequests(client) {
               await user
                 .send({
                   content:
-                    `⏱️ O teu pedido para entrar na saída #${row.operation_id}${row.spot ? ` (${row.spot})` : ''} ` +
+                    `ÔÅ▒´©Å O teu pedido para entrar na sa├¡da #${row.operation_id}${row.spot ? ` (${row.spot})` : ''} ` +
                     `expirou (> ${ttlMin} min sem resposta da chefia).\n` +
                     'Se ainda queres juntar-te, clica **"Pedir para Juntar"** outra vez no painel.',
                 })
@@ -587,7 +572,7 @@ async function expireStaleRequests(client) {
         })().catch(() => {});
       }
 
-      // Refresh painel da saída afectada para remover da lista de requested.
+      // Refresh painel da sa├¡da afectada para remover da lista de requested.
       if (client) {
         const saidaSession = require('./saidaSession');
         saidaSession.refreshSessionEmbed(client, row.operation_id).catch(() => {});
@@ -597,7 +582,7 @@ async function expireStaleRequests(client) {
     }
   }
 
-  if (expired > 0) log(`[SAIDA-REQUEST-EXPIRER] ${expired} pedido(s) expirado(s) após ${ttlMin}min.`);
+  if (expired > 0) log(`[SAIDA-REQUEST-EXPIRER] ${expired} pedido(s) expirado(s) ap├│s ${ttlMin}min.`);
   return { expired };
 }
 
@@ -634,39 +619,41 @@ async function _resolveOrCreateMember(discordId, guild = null) {
     displayName: display || username || `member-${discordId}`,
     role: 'bairrista',
   });
-  warn(`[SAIDA] Membro ${discordId} não estava na DB — criado automaticamente.`);
+  warn(`[SAIDA] Membro ${discordId} n├úo estava na DB ÔÇö criado automaticamente.`);
   return member;
 }
 
-// Estados em que inscrição é permitida — só enquanto a saída está aberta
-// ou em preparação. Em curso/concluída/cancelada = rejeita.
+// Estados em que inscri├º├úo ├® permitida ÔÇö s├│ enquanto a sa├¡da est├í aberta
+// ou em prepara├º├úo. Em curso/conclu├¡da/cancelada = rejeita.
 const PARTICIPATION_ALLOWED_STATUSES = new Set(['criada', 'em_preparacao']);
 
 async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
   const member = await _resolveOrCreateMember(discordId, guild);
 
   const saida = await saidaRepo.findById(saidaId);
-  if (!saida) throw new NotFoundError(`Saída #${saidaId} não existe.`, { code: 'SAIDA_NOT_FOUND' });
+  if (!saida) throw new NotFoundError(`Sa├¡da #${saidaId} n├úo existe.`, { code: 'SAIDA_NOT_FOUND' });
 
-  // Guard 1: status da saída
+  // Guard 1: status da sa├¡da
   if (!PARTICIPATION_ALLOWED_STATUSES.has(saida.status)) {
-    throw new ConflictError(`Saída #${saidaId} já está fechada — inscrições encerradas.`, { code: 'SAIDA_CLOSED' });
+    throw new ConflictError(`Sa├¡da #${saidaId} j├í est├í fechada ÔÇö inscri├º├Áes encerradas.`, {
+      code: 'SAIDA_CLOSED',
+    });
   }
 
   const participantType = data.participantType || 'caracterizado';
 
-  // Guard 2: dupla inscrição silenciosa. Se o user já está inscrito
+  // Guard 2: dupla inscri├º├úo silenciosa. Se o user j├í est├í inscrito
   // (qualquer tipo, qualquer arma), rejeita. Tem de cancelar o registo
-  // primeiro via "Cancelar Registo" no painel da saída.
-  // Antes, ON CONFLICT DO UPDATE permitia re-inscrição → mudança de
+  // primeiro via "Cancelar Registo" no painel da sa├¡da.
+  // Antes, ON CONFLICT DO UPDATE permitia re-inscri├º├úo ÔåÆ mudan├ºa de
   // tipo / arma sem audit. Ex.: inscrito com "Arma da Org: Bullpup Rifle"
-  // → clica outra vez → pica "Arma Própria: X" → fica com X sem audit.
+  // ÔåÆ clica outra vez ÔåÆ pica "Arma Pr├│pria: X" ÔåÆ fica com X sem audit.
   const existing = (await saidaRepo.getParticipants(saidaId)).find(p => p.member_id === member.id);
   if (existing) {
     const currentType = existing.participant_type;
     throw new ConflictError(
-      `Já estás inscrito como **${currentType}** nesta saída. ` +
-        'Se queres mudar (tipo ou arma), usa **"Cancelar Registo"** no painel da saída e volta a inscrever-te.',
+      `J├í est├ís inscrito como **${currentType}** nesta sa├¡da. ` +
+        'Se queres mudar (tipo ou arma), usa **"Cancelar Registo"** no painel da sa├¡da e volta a inscrever-te.',
       { code: 'SAIDA_ALREADY_REGISTERED' }
     );
   }
@@ -695,7 +682,7 @@ async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
     afterState: { memberId: member.id, displayName: member.display_name, participantType },
   });
 
-  // Event bus — dispara projection para sheet 'saidas' (debounce 5s).
+  // Event bus ÔÇö dispara projection para sheet 'saidas' (debounce 5s).
   eventBus
     .emitAsync('saida.participant_added', {
       saidaId,
@@ -711,7 +698,7 @@ async function addParticipant(saidaId, discordId, data, actorId, guild = null) {
 
 async function updateParticipantResult(saidaId, discordId, fields, _actorId) {
   const member = await memberRepo.findByDiscordId(discordId);
-  if (!member) throw new NotFoundError('Membro não encontrado.', { code: 'MEMBER_NOT_FOUND' });
+  if (!member) throw new NotFoundError('Membro n├úo encontrado.', { code: 'MEMBER_NOT_FOUND' });
   return saidaRepo.updateParticipant(saidaId, member.id, fields);
 }
 
@@ -732,9 +719,9 @@ async function registerSaidaMaterial(saidaId, itemId, direction, quantity, disco
     memberRole: '',
     origin: direction === 'fornecido' ? 'org' : 'saida',
     destination: direction === 'devolvido' ? 'org' : 'saida',
-    context: `Saída #${saidaId}`,
+    context: `Sa├¡da #${saidaId}`,
     notes,
-    operationId: saidaId, // a coluna está renomeada para saida_id na DB
+    operationId: saidaId, // a coluna est├í renomeada para saida_id na DB
     createdBy: actorId,
   });
 
@@ -770,30 +757,32 @@ async function getSaidaSummary(saidaId) {
   };
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// CADEIA DE CUSTÓDIA POR PARTICIPANTE
-// ═══════════════════════════════════════════════════════════════════════════
+// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+// CADEIA DE CUST├ôDIA POR PARTICIPANTE
+// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
 
 async function issueMaterialToParticipant(saidaId, discordId, itemId, quantity, actorId, notes = '', guild = null) {
-  if (!quantity || quantity <= 0) throw new ValidationError('Quantidade inválida.', { code: 'INVALID_QUANTITY' });
+  if (!quantity || quantity <= 0) throw new ValidationError('Quantidade inv├ílida.', { code: 'INVALID_QUANTITY' });
 
-  // Guard: saída tem de estar aberta/em_curso/preparação. Não se fornece material
-  // a uma saída já fechada ou cancelada.
+  // Guard: sa├¡da tem de estar aberta/em_curso/prepara├º├úo. N├úo se fornece material
+  // a uma sa├¡da j├í fechada ou cancelada.
   const saida = await saidaRepo.findById(saidaId);
-  if (!saida) throw new NotFoundError(`Saída #${saidaId} não existe.`, { code: 'SAIDA_NOT_FOUND' });
+  if (!saida) throw new NotFoundError(`Sa├¡da #${saidaId} n├úo existe.`, { code: 'SAIDA_NOT_FOUND' });
   if (['concluida', 'cancelada'].includes(saida.status)) {
-    throw new ConflictError(`Saída #${saidaId} está fechada — não aceita mais material.`, { code: 'SAIDA_CLOSED' });
+    throw new ConflictError(`Sa├¡da #${saidaId} est├í fechada ÔÇö n├úo aceita mais material.`, {
+      code: 'SAIDA_CLOSED',
+    });
   }
 
   const member = await _resolveOrCreateMember(discordId, guild);
 
-  // Guard: participante já marcado como morto/liquidado na saída não recebe
-  // mais material. Evita reconciliação falsa em saídas multi-etapa.
+  // Guard: participante j├í marcado como morto/liquidado na sa├¡da n├úo recebe
+  // mais material. Evita reconcilia├º├úo falsa em sa├¡das multi-etapa.
   const participants = await saidaRepo.getParticipants(saidaId);
   const existing = participants.find(p => p.member_id === member.id);
   if (existing && (existing.died === true || existing.settled === true)) {
     throw new ConflictError(
-      `${member.display_name || discordId} já está ${existing.died ? 'marcado como morto' : 'liquidado'} nesta saída.`,
+      `${member.display_name || discordId} j├í est├í ${existing.died ? 'marcado como morto' : 'liquidado'} nesta sa├¡da.`,
       { code: 'PARTICIPANT_SETTLED' }
     );
   }
@@ -815,7 +804,7 @@ async function issueMaterialToParticipant(saidaId, discordId, itemId, quantity, 
     memberRole: member.role,
     origin: 'org',
     destination: `participante:${discordId}`,
-    context: `Saída #${saidaId}`,
+    context: `Sa├¡da #${saidaId}`,
     notes,
     operationId: saidaId,
     createdBy: actorId,
@@ -831,7 +820,7 @@ async function issueMaterialToParticipant(saidaId, discordId, itemId, quantity, 
 
   _notifyMovement({ movementType: 'fornecimento_org', itemId, quantity, memberId: member.id, saidaId, actorId, notes });
 
-  // Event bus — dispara projection para sheets 'saidas' + 'stock'.
+  // Event bus ÔÇö dispara projection para sheets 'saidas' + 'stock'.
   eventBus
     .emitAsync('saida.material_issued', {
       saidaId,
@@ -857,7 +846,7 @@ async function settleParticipantCustody(saidaId, discordId, outcome, actorId, gu
   let totalReturnedQty = 0,
     totalLostQty = 0;
 
-  // Batch paralelo: devoluções
+  // Batch paralelo: devolu├º├Áes
   const returnedPromises = returned
     .filter(r => r.itemId && r.qty && r.qty > 0)
     .map(r => {
@@ -872,7 +861,7 @@ async function settleParticipantCustody(saidaId, discordId, outcome, actorId, gu
           memberRole: member.role,
           origin: `participante:${discordId}`,
           destination: 'org',
-          context: `Saída #${saidaId} — devolução`,
+          context: `Sa├¡da #${saidaId} ÔÇö devolu├º├úo`,
           operationId: saidaId,
           createdBy: actorId,
         }),
@@ -884,7 +873,7 @@ async function settleParticipantCustody(saidaId, discordId, outcome, actorId, gu
           memberId: member.id,
           saidaId,
           actorId,
-          notes: 'devolução',
+          notes: 'devolu├º├úo',
         })
       );
     });
@@ -905,7 +894,7 @@ async function settleParticipantCustody(saidaId, discordId, outcome, actorId, gu
           memberRole: member.role,
           origin: `participante:${discordId}`,
           destination: 'perdido',
-          context: `Saída #${saidaId} — perda`,
+          context: `Sa├¡da #${saidaId} ÔÇö perda`,
           operationId: saidaId,
           createdBy: actorId,
         }),
@@ -938,7 +927,7 @@ async function settleParticipantCustody(saidaId, discordId, outcome, actorId, gu
           memberRole: member.role,
           origin: `participante:${discordId}`,
           destination: 'perdido_morte',
-          context: `Saída #${saidaId} — morto com material`,
+          context: `Sa├¡da #${saidaId} ÔÇö morto com material`,
           operationId: saidaId,
           createdBy: actorId,
         }),
