@@ -144,6 +144,7 @@ async function handleCreateSaidaButton(interaction) {
 // Step 2: tipo seleccionado → dropdown de spots (em vez de ir já ao modal).
 async function handleCreateTypeSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
+  await interaction.deferUpdate();
   const saidaType = interaction.values[0];
   _setContext(interaction.user.id, { saidaType });
 
@@ -163,7 +164,7 @@ async function handleCreateTypeSelect(interaction) {
 
   // TTL 30s — se user não pica o spot em 30s, dropdown auto-desaparece.
   // handleCreateSpotSelect também tenta delete imediato após showModal.
-  return safeUpdate(
+  return safeReply(
     interaction,
     {
       content: `${EMOJI.SAIDA} Escolhe o spot da saída:`,
