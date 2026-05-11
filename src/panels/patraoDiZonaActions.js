@@ -33,7 +33,7 @@ const TIER_EMOJI = {
   gangster_fodido: '👑',
 };
 
-function truncateName(name = '', max = 13) {
+function truncateName(name = '', max = 16) {
   const s = String(name).trim();
   return s.length > max ? s.slice(0, max - 1) + '…' : s;
 }
@@ -159,66 +159,101 @@ async function _listarBairristasInner(interaction, t0) {
     return safeReply(interaction, { content: 'Sem bairristas registados.' }, { messageClass: 'BANAL' });
   }
 
-  // ── Formato: um único embed com descrição em markdown (evita limites de fields/embeds) ──
   const weekLabel = `*Semana: ${formatPtDateOnly(start)} a ${formatPtDateOnly(end)}*`;
 
-  function fmtRow(r) {
+  function fmtBairrista(r, idx) {
     const tier = TIER_ABBR[r.tier] || '—';
+    const emoji = TIER_EMOJI[r.tier] || '👤';
     const rank = r.rank_pos > 0 ? `#${r.rank_pos}` : '—';
     const entTotal = fmtNum(r.deliveries_total);
     const entSem = r.deliveries_week || 0;
     const vndSem = r.sales_week || 0;
     const lastEnt = daysAgo(r.last_delivery);
     const lastSaida = daysAgo(r.last_saida);
-    const inativo = r.deliveries_week === 0 && r.sales_week === 0;
-    const statusDot = inativo ? '🔴' : '🟢';
 
-    return (
-      `${statusDot} **${truncateName(r.display_name, 20)}** \`${tier}\` · Rank ${rank} · Score ${fmtNum(r.score)}\n` +
-      `   📦 ${entTotal} total (${entSem} sem) · 💰 ${vndSem} · 📅 ${lastEnt} · 🎯 ${lastSaida}`
-    );
+    const line1 = `${emoji} **${truncateName(r.display_name, 18)}**  \`${tier}\`  ·  Rank ${rank}  ·  Score ${fmtNum(r.score)}`;
+    const line2 = `⠀⠀📦 Entregas: **${entTotal}** total  |  **${entSem}** esta semana  |  💰 Vendas: **${vndSem}**`;
+    const line3 = `⠀⠀📅 Última entrega: **${lastEnt}**  |  🎯 Última saída: **${lastSaida}**`;
+
+    return [line1, line2, line3].join('\n');
   }
 
-  // Separa em blocos para caber na description (4096 chars limite)
   const ativos = rows.filter(r => r.deliveries_week > 0 || r.sales_week > 0);
   const inativos = rows.filter(r => r.deliveries_week === 0 && r.sales_week === 0);
 
-  const lines = [];
-  lines.push(weekLabel);
-  lines.push('');
+  // ── Legenda + Ativos (Embed 1) ──
+  const lines1 = [];
+  lines1.push('**📖 Legenda**');
+  lines1.push('🩸 YB = Young Blood  |  🔫 OG = O Gunão  |  👑 GF = Gangster Fodido');
+  lines1.push('📦 = Entregas (total | semana)  |  💰 = Vendas (semana)');
+  lines1.push('📅 = Última entrega  |  🎯 = Última saída');
+  lines1.push('');
+  lines1.push(weekLabel);
+  lines1.push('');
 
   if (ativos.length > 0) {
-    lines.push(`**🟢 Com movimento esta semana (${ativos.length})**`);
-    ativos.forEach(r => lines.push(fmtRow(r)));
-    lines.push('');
+    lines1.push(`**🟢 Com movimento esta semana — ${ativos.length}**`);
+    lines1.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    ativos.forEach((r, i) => lines1.push(fmtBairrista(r, i)));
+    lines1.push('');
   }
 
+  // Adiciona os primeiros inativos que couberem
+  let inativosRestantes = [];
   if (inativos.length > 0) {
-    lines.push(`**🔴 Sem movimento esta semana (${inativos.length})**`);
-    inativos.forEach(r => lines.push(fmtRow(r)));
-    lines.push('');
+    lines1.push(`**🔴 Sem movimento esta semana — ${inativos.length}**`);
+    lines1.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+    for (let i = 0; i < inativos.length; i++) {
+      const candidate = fmtBairrista(inativos[i], i);
+      const testLines = [...lines1, candidate];
+      if (testLines.join('\n').length > 3900) {
+        inativosRestantes = inativos.slice(i);
+        break;
+      }
+      lines1.push(candidate);
+    }
   }
 
-  lines.push(`**${rows.length}** bairrista(s) ativo(s) · **${rows.filter(r => r.rank_pos > 0).length}** no ranking`);
+  lines1.push('');
+  lines1.push(
+    `📊 **${rows.length}** bairrista(s) ativo(s)  ·  **${rows.filter(r => r.rank_pos > 0).length}** no ranking`
+  );
 
-  const description = lines.join('\n');
+  const embed1 = brandEmbed().setColor(COLOR.INFO).setTitle('📋 Bairristas Ativos').setDescription(lines1.join('\n'));
 
-  // Se a description exceder 4096 chars, trunca e avisa
-  const MAX_DESC = 4096;
-  let finalDesc = description;
-  let truncated = false;
-  if (description.length > MAX_DESC) {
-    finalDesc = description.slice(0, MAX_DESC - 50) + '\n\n_… lista truncada (muitos bairristas)_';
-    truncated = true;
+  const embeds = [embed1];
+
+  // ── Inativos restantes (Embed 2, se necessário) ──
+  if (inativosRestantes.length > 0) {
+    const lines2 = [];
+    lines2.push(`**🔴 Sem movimento esta semana (cont.) — ${inativosRestantes.length}**`);
+    lines2.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+    let omitted = 0;
+    for (let i = 0; i < inativosRestantes.length; i++) {
+      const candidate = fmtBairrista(inativosRestantes[i], i);
+      const testLines = [...lines2, candidate];
+      if (testLines.join('\n').length > 3900) {
+        omitted = inativosRestantes.length - i;
+        break;
+      }
+      lines2.push(candidate);
+    }
+
+    const embed2 = brandEmbed()
+      .setColor(COLOR.WARNING_SOFT)
+      .setTitle('🔴 Bairristas Inativos (cont.)')
+      .setDescription(lines2.join('\n'));
+
+    if (omitted > 0) {
+      embed2.setFooter({ text: `… e mais ${omitted} bairrista(s) não mostrados.` });
+    }
+
+    embeds.push(embed2);
   }
 
-  const embed = brandEmbed().setColor(COLOR.INFO).setTitle('📋 Bairristas Ativos').setDescription(finalDesc);
-
-  if (truncated) {
-    embed.setFooter({ text: 'Alguns bairristas foram omitidos por limite de tamanho.' });
-  }
-
-  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
+  return safeReply(interaction, { embeds }, { messageClass: 'BANAL' });
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
