@@ -17,6 +17,7 @@ const { DELIVERY_TYPES, SALE_TYPES } = require('../shared/movementTypes');
 const { query } = require('../db');
 const { weekBounds } = require('../util');
 const { formatPtDateOnly } = require('../shared/formatPtDate');
+const { log, warn } = require('../logger');
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -60,6 +61,23 @@ function daysAgo(dateOrNull) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 async function listarBairristas(interaction) {
+  const t0 = Date.now();
+  try {
+    return await _listarBairristasInner(interaction, t0);
+  } catch (e) {
+    warn(`[listarBairristas] ERRO: ${e.message}\n${e.stack}`);
+    return safeReply(
+      interaction,
+      {
+        content: `${ERRORS.GENERIC || '❌ Erro ao carregar bairristas.'} (${e.message.slice(0, 100)})`,
+        flags: MessageFlags.Ephemeral,
+      },
+      { messageClass: 'ERROR' }
+    );
+  }
+}
+
+async function _listarBairristasInner(interaction, t0) {
   if (!isPatraoDiZona(interaction.member)) {
     return safeReply(
       interaction,
@@ -76,7 +94,8 @@ async function listarBairristas(interaction) {
   const weekStart = start.toISOString().split('T')[0];
   const weekEnd = end.toISOString();
 
-  // Query agregada: membros + stats semanais + stats all-time + última actividade
+  // Query otimizada: subqueries correlacionadas só calculam para os bairristas
+  // activos (evita full scans em tabelas grandes).
   const res = await query(
     `
     WITH bairristas AS (
@@ -103,24 +122,6 @@ async function listarBairristas(interaction) {
              ROW_NUMBER() OVER (ORDER BY GREATEST(hybrid_score, weighted_value) DESC) AS pos
       FROM weekly_rankings
       WHERE week_start = $5
-    ),
-    total_deliveries AS (
-      SELECT member_id, SUM(quantity)::int AS total
-      FROM inventory_movements
-      WHERE movement_type = ANY($1)
-      GROUP BY member_id
-    ),
-    last_delivery AS (
-      SELECT member_id, MAX(created_at)::date AS last_at
-      FROM inventory_movements
-      WHERE movement_type = ANY($1)
-      GROUP BY member_id
-    ),
-    last_saida AS (
-      SELECT op.member_id, MAX(o.date) AS last_at
-      FROM operation_participants op
-      JOIN operations o ON o.id = op.operation_id
-      GROUP BY op.member_id
     )
     SELECT
       b.id,
@@ -130,17 +131,21 @@ async function listarBairristas(interaction) {
       b.joined_at,
       COALESCE(wd.total, 0) AS deliveries_week,
       COALESCE(ws.total, 0) AS sales_week,
-      COALESCE(td.total, 0) AS deliveries_total,
-      COALESCE(ld.last_at, NULL) AS last_delivery,
-      COALESCE(ls.last_at, NULL) AS last_saida,
       COALESCE(wr.pos, 0) AS rank_pos,
-      COALESCE(wr.score, 0) AS score
+      COALESCE(wr.score, 0) AS score,
+      COALESCE(
+        (SELECT SUM(quantity)::int FROM inventory_movements im
+         WHERE im.member_id = b.id AND im.movement_type = ANY($1)),
+        0
+      ) AS deliveries_total,
+      (SELECT MAX(im.created_at)::date FROM inventory_movements im
+       WHERE im.member_id = b.id AND im.movement_type = ANY($1)) AS last_delivery,
+      (SELECT MAX(o.date) FROM operation_participants op
+       JOIN operations o ON o.id = op.operation_id
+       WHERE op.member_id = b.id) AS last_saida
     FROM bairristas b
     LEFT JOIN weekly_deliveries wd ON wd.member_id = b.id
     LEFT JOIN weekly_sales ws ON ws.member_id = b.id
-    LEFT JOIN total_deliveries td ON td.member_id = b.id
-    LEFT JOIN last_delivery ld ON ld.member_id = b.id
-    LEFT JOIN last_saida ls ON ls.member_id = b.id
     LEFT JOIN weekly_rank wr ON wr.member_id = b.id
     ORDER BY wr.pos ASC NULLS LAST, b.display_name ASC
     `,
@@ -148,6 +153,8 @@ async function listarBairristas(interaction) {
   );
 
   const rows = res.rows;
+  log(`[listarBairristas] Query devolveu ${rows.length} rows em ${Date.now() - t0}ms`);
+
   if (!rows.length) {
     return safeReply(interaction, { content: 'Sem bairristas registados.' }, { messageClass: 'BANAL' });
   }
