@@ -765,7 +765,7 @@ async function handleSessionIniciar(interaction) {
   const saidaId = parseInt(interaction.customId.split('::')[2]);
 
   const saida = await saidaRepo.findById(saidaId);
-  if (!saida || saida.status !== 'aberta') {
+  if (!saida || saida.status !== 'criada') {
     return safeReply(
       interaction,
       { content: `${EMOJI.ERRO} Sa├¡da #${saidaId} n├úo est├í aberta.` },
