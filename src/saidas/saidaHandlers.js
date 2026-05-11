@@ -10,7 +10,7 @@ const {
 } = require('discord.js');
 const { safeReply, safeUpdate, safeShowModal, getModalField, isDuplicate } = require('../shared/interactionHelpers');
 const { replySafe } = require('../shared/safeEmbed');
-const { fmtSaidaStatus, fmtSaidaType, fmtParticipantType } = require('../shared/labels');
+const { fmtSaidaStatus, fmtSaidaType } = require('../shared/labels');
 const { buildSearchableSelect } = require('../shared/selectSearch');
 const { successEmbed, brandEmbed } = require('../shared/embedBuilders');
 const { buildCategorySelectMenu, buildItemSelectMenuForCategory } = require('../inventory/inventoryMenus');
