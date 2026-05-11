@@ -55,8 +55,7 @@ const saidaWizard = require('../../../saidas/saidaSettlementWizard');
 const saidaStats = require('../../../saidas/saidaStatsHandlers');
 const saidaSession = require('../../../saidas/saidaSession');
 const saidaIndividual = require('../../../saidas/saidaIndividualResult');
-const saidaRegistrationFlow = require('../../../saidas/saidaRegistrationFlow');
-const saidaResultFlow = require('../../../saidas/saidaResultFlow');
+
 const {
   handleVoteAll: availHandleVoteAll,
   handleSummary: availHandleSummary,
@@ -143,37 +142,8 @@ const BUTTON_ROUTES = [
   prefix('saida::session_approve_open::', saidaSession.handleSessionApproveOpen),
   prefix('saida::session_approve_decide::', saidaSession.handleSessionApproveDecide),
 
-  // Saída v3.0 — novo fluxo de registo + resultado
-  prefix('saida::reg_choice::', interaction => {
-    const parts = interaction.customId.split('::');
-    const saidaId = parseInt(parts[2], 10);
-    const type = parts[3]; // 'fighter' | 'worker'
-    return saidaRegistrationFlow.handleTypeChoice(interaction, saidaId, type);
-  }),
-  prefix('saida::reg_cancel::', interaction => {
-    const saidaId = parseInt(interaction.customId.split('::')[2], 10);
-    return saidaRegistrationFlow.handleCancelRegistration(interaction, saidaId);
-  }),
-  prefix('saida::reg_source::', async interaction => {
-    const parts = interaction.customId.split('::');
-    const saidaId = parseInt(parts[2], 10);
-    const currentSource = parts[3]; // 'own' | 'org'
-    const newSource = currentSource === 'own' ? 'org' : 'own';
-    const { buildWeaponPicker } = require('../../../saidas/saidaWeaponPicker');
-    const { safeUpdate } = require('../../../shared/interactionHelpers');
-    const rows = await buildWeaponPicker({ saidaId, source: newSource, searchPrefix: 'saida::weapon_pick' });
-    return safeUpdate(
-      interaction,
-      {
-        content: `**Saída #${saidaId}** — escolhe a tua arma (${newSource === 'own' ? 'própria' : 'da org'}):`,
-        components: rows,
-      },
-      { messageClass: 'FLOW' }
-    );
-  }),
-
   // Saída — resultado individual (self-service) + weapon return queue
-  prefix('saida::submit_result::', saidaResultFlow.openResultModal),
+  prefix('saida::submit_result::', saidaIndividual.handleOpenSubmitResult),
   prefix('saida::reping::', saidaIndividual.handleRepingPendentes),
   prefix('saida::weapon_queue::', saidaIndividual.handleOpenWeaponQueue),
   prefix('saida::weapon_decide::', saidaIndividual.handleWeaponDecide),

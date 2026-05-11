@@ -32,15 +32,11 @@ const {
 const { formatPtDateOnly } = require('../shared/formatPtDate');
 const { warn } = require('../logger');
 
-// Novos fluxos v3.0 — re-exportados para compatibilidade dos routers
-const saidaRegistrationFlow = require('./saidaRegistrationFlow');
-const saidaResultFlow = require('./saidaResultFlow');
-
 // Deprecation warnings — só mostra uma vez por função
 const _warned = new Set();
 function _deprecate(fnName) {
   if (!_warned.has(fnName)) {
-    warn(`[DEPRECATED] saidaHandlers.${fnName} é legacy. Usar saidaRegistrationFlow / saidaResultFlow.`);
+    warn(`[DEPRECATED] saidaHandlers.${fnName} é legacy.`);
     _warned.add(fnName);
   }
 }
@@ -1278,11 +1274,5 @@ module.exports = {
   handleIssueParticipantSelect,
   handleIssueItemSelect,
   handleIssueQtyModal,
-  // Novos fluxos v3.0 — re-exportados para routers
-  handleRegTypeChoice: saidaRegistrationFlow.handleTypeChoice,
-  handleRegWeaponPick: saidaRegistrationFlow.handleWeaponPick,
-  handleRegCancel: saidaRegistrationFlow.handleCancelRegistration,
-  openResultModal: saidaResultFlow.openResultModal,
-  handleResultModal: saidaResultFlow.handleResultModal,
   pendingSaidaContext,
 };

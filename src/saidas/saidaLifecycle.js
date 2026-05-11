@@ -177,9 +177,9 @@ class SessionLifecycle {
 
       log(`[LIFECYCLE] Force-closing saída #${saidaId} (12h deadline)`);
 
-      // Auto-fill resultados em falta
-      const { autoFillMissing } = require('./saidaResultFlow');
-      await autoFillMissing(saidaId);
+      // Auto-fill resultados em falta (stub vazio — desactivado até v3.0 ser implementada)
+      // const { autoFillMissing } = require('./saidaResultFlow');
+      // await autoFillMissing(saidaId);
 
       // Finaliza
       const { SaidaService } = require('./saidaService');
