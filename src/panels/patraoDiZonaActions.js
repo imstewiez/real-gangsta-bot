@@ -8,9 +8,9 @@
  *   - ver_tops          — top semanal dos bairristas
  */
 
-const { MessageFlags } = require('discord.js');
+const { MessageFlags, EmbedBuilder } = require('discord.js');
 const { safeReply } = require('../shared/interactionHelpers');
-const { brandEmbed, rankingEmbed, COLOR } = require('../shared/embedBuilders');
+const { rankingEmbed, COLOR } = require('../shared/embedBuilders');
 const { ERRORS } = require('../content');
 const { isPatraoDiZona } = require('../permissions/permissionEngine');
 const { DELIVERY_TYPES, SALE_TYPES } = require('../shared/movementTypes');
@@ -94,8 +94,6 @@ async function _listarBairristasInner(interaction, t0) {
   const weekStart = start.toISOString().split('T')[0];
   const weekEnd = end.toISOString();
 
-  // Query otimizada: subqueries correlacionadas só calculam para os bairristas
-  // activos (evita full table scans em tabelas grandes).
   const res = await query(
     `
     WITH bairristas AS (
@@ -161,7 +159,7 @@ async function _listarBairristasInner(interaction, t0) {
 
   const weekLabel = `*Semana: ${formatPtDateOnly(start)} a ${formatPtDateOnly(end)}*`;
 
-  function fmtBairrista(r, idx) {
+  function fmtBairrista(r) {
     const tier = TIER_ABBR[r.tier] || '-';
     const emoji = TIER_EMOJI[r.tier] || '👤';
     const rank = r.rank_pos > 0 ? `#${r.rank_pos}` : '-';
@@ -171,95 +169,95 @@ async function _listarBairristasInner(interaction, t0) {
     const lastEnt = daysAgo(r.last_delivery);
     const lastSaida = daysAgo(r.last_saida);
 
-    const line1 = `${emoji} **${truncateName(r.display_name, 18)}**  \`${tier}\`  ·  Rank ${rank}  ·  Score ${fmtNum(r.score)}`;
-    const line2 = `> 📦 **${entTotal}** total  |  **${entSem}** sem  |  💰 **${vndSem}**`;
-    const line3 = `> 📅 **${lastEnt}**  |  🎯 **${lastSaida}**`;
-
-    return [line1, line2, line3].join('\n');
+    return (
+      `${emoji} **${truncateName(r.display_name, 16)}** \`${tier}\`  Rank:${rank}  Score:${fmtNum(r.score)}\n` +
+      `> 📦${entTotal} tot | ${entSem} sem  |  💰${vndSem}  |  📅${lastEnt}  |  🎯${lastSaida}`
+    );
   }
+
+  // ── Construir chunks de embeds (max ~5500 chars por embed para ter margem) ──
+  const MAX_EMBED_TEXT = 5500;
+  const HEADER_LEN = 300; // legenda aproximada
 
   const ativos = rows.filter(r => r.deliveries_week > 0 || r.sales_week > 0);
   const inativos = rows.filter(r => r.deliveries_week === 0 && r.sales_week === 0);
 
-  // ── Legenda + Ativos (Embed 1) ──
-  const lines1 = [];
-  lines1.push('**📖 Legenda**');
-  lines1.push('> 🩸 YB = Young Blood  |  🔫 OG = O Gunao  |  👑 GF = Gangster Fodido');
-  lines1.push('> 📦 = Entregas (total | semana)  |  💰 = Vendas (semana)');
-  lines1.push('> 📅 = Ultima entrega  |  🎯 = Ultima saida');
-  lines1.push('');
-  lines1.push(weekLabel);
-  lines1.push('');
+  const embeds = [];
+  let currentLines = [];
+  let currentLen = 0;
+  let isFirstEmbed = true;
+  let inativosIdx = 0;
 
+  function flushEmbed(forceTitle = null) {
+    if (!currentLines.length) return;
+    const title = forceTitle || (isFirstEmbed ? '📋 Bairristas Ativos' : 'Bairristas (cont.)');
+    const color = isFirstEmbed ? COLOR.INFO : COLOR.WARNING_SOFT;
+    const embed = new EmbedBuilder().setColor(color).setTitle(title).setDescription(currentLines.join('\n'));
+    embeds.push(embed);
+    currentLines = [];
+    currentLen = 0;
+    isFirstEmbed = false;
+  }
+
+  function pushLine(line, extra = 0) {
+    const lineLen = line.length + 1; // +1 for newline
+    if (currentLen + lineLen > MAX_EMBED_TEXT) {
+      flushEmbed();
+    }
+    currentLines.push(line);
+    currentLen += lineLen;
+  }
+
+  // Legenda (só no primeiro embed)
+  pushLine('**📖 Legenda**');
+  pushLine('> 🩸YB Young Blood  |  🔫OG O Gunao  |  👑GF Gangster Fodido');
+  pushLine('> 📦Entregas(tot|sem)  |  💰Vendas(sem)  |  📅Ult.entrega  |  🎯Ult.saida');
+  pushLine('');
+  pushLine(weekLabel);
+  pushLine('');
+
+  // Ativos
   if (ativos.length > 0) {
-    lines1.push(`**-- Com movimento esta semana -- ${ativos.length}**`);
-    lines1.push('');
-    ativos.forEach((r, i) => lines1.push(fmtBairrista(r, i)));
-    lines1.push('');
+    pushLine(`**-- Com movimento -- ${ativos.length}**`);
+    pushLine('');
+    for (const r of ativos) {
+      pushLine(fmtBairrista(r));
+      pushLine('');
+    }
   }
 
-  // Adiciona os primeiros inativos que couberem
-  let inativosRestantes = [];
+  // Inativos
   if (inativos.length > 0) {
-    lines1.push(`**-- Sem movimento esta semana -- ${inativos.length}**`);
-    lines1.push('');
-
-    for (let i = 0; i < inativos.length; i++) {
-      const candidate = fmtBairrista(inativos[i], i);
-      const testLines = [...lines1, candidate];
-      if (testLines.join('\n').length > 3900) {
-        inativosRestantes = inativos.slice(i);
-        break;
-      }
-      lines1.push(candidate);
+    pushLine(`**-- Sem movimento -- ${inativos.length}**`);
+    pushLine('');
+    for (const r of inativos) {
+      pushLine(fmtBairrista(r));
+      pushLine('');
     }
   }
 
-  lines1.push('');
-  lines1.push(
-    `📊 **${rows.length}** bairrista(s) ativo(s)  ·  **${rows.filter(r => r.rank_pos > 0).length}** no ranking`
-  );
+  flushEmbed();
 
-  const embed1 = brandEmbed().setColor(COLOR.INFO).setTitle('📋 Bairristas Ativos').setDescription(lines1.join('\n'));
-
-  const embeds = [embed1];
-
-  // ── Inativos restantes (Embed 2, se necessário) ──
-  if (inativosRestantes.length > 0) {
-    const lines2 = [];
-    lines2.push(`**-- Sem movimento esta semana (cont.) -- ${inativosRestantes.length}**`);
-    lines2.push('');
-
-    let omitted = 0;
-    for (let i = 0; i < inativosRestantes.length; i++) {
-      const candidate = fmtBairrista(inativosRestantes[i], i);
-      const testLines = [...lines2, candidate];
-      if (testLines.join('\n').length > 3900) {
-        omitted = inativosRestantes.length - i;
-        break;
-      }
-      lines2.push(candidate);
-    }
-
-    const embed2 = brandEmbed()
-      .setColor(COLOR.WARNING_SOFT)
-      .setTitle('Sem movimento (cont.)')
-      .setDescription(lines2.join('\n'));
-
-    if (omitted > 0) {
-      embed2.setFooter({ text: `… e mais ${omitted} bairrista(s) nao mostrados.` });
-    }
-
-    embeds.push(embed2);
+  // Adiciona footer com stats ao ultimo embed
+  if (embeds.length > 0) {
+    const last = embeds[embeds.length - 1];
+    last.setFooter({
+      text: `${rows.length} ativos | ${rows.filter(r => r.rank_pos > 0).length} no ranking`,
+    });
   }
 
-  // DEBUG: tenta editReply directamente para capturar erro exacto
+  // DEBUG: loga tamanhos antes de enviar
+  embeds.forEach((e, i) => {
+    log(`[listarBairristas] embed[${i}] title=${e.data.title?.length || 0} desc=${e.data.description?.length || 0}`);
+  });
+
   try {
     return await interaction.editReply({ embeds });
   } catch (discordErr) {
     warn(`[listarBairristas] Discord REJECT: code=${discordErr.code} msg=${discordErr.message}`);
-    warn(`[listarBairristas] Embed count=${embeds.length} desc1_len=${embeds[0]?.data?.description?.length || 0}`);
-    // fallback: envia mensagem de texto simples
+    embeds.forEach((e, i) => {
+      warn(`[listarBairristas] embed[${i}] desc_len=${e.data.description?.length || 0}`);
+    });
     return interaction.editReply({
       content: `❌ Erro ao mostrar embeds (${discordErr.message}). Tenta de novo.`,
     });
@@ -306,7 +304,7 @@ async function verEntregasOuVendas(interaction) {
     );
   }
   const lines = res.rows.map((r, i) => `**${i + 1}.** <@${r.discord_id}> — ${r.total} unidades`);
-  const embed = brandEmbed().setTitle(`${label} por Bairrista`).setDescription(lines.join('\n'));
+  const embed = new EmbedBuilder().setTitle(`${label} por Bairrista`).setDescription(lines.join('\n'));
   return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
