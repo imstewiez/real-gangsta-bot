@@ -471,6 +471,7 @@ async function refreshSessionEmbed(client, saidaId) {
 // ÔöÇÔöÇ STEP 1: Caracterizado ÔåÆ ephemeral com 2 bot├Áes (origem da arma) ÔöÇÔöÇÔöÇÔöÇÔöÇ
 async function handleSessionCaracterizado(interaction) {
   if (isDuplicate(interaction.id)) return;
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const saidaId = parseInt(interaction.customId.split('::')[2]);
 
   // Guard pr├®-fluxo: se j├í est├í inscrito, diz j├í aqui (n├úo deixa come├ºar
@@ -519,6 +520,7 @@ async function handleSessionCaracterizado(interaction) {
 // ÔöÇÔöÇ STEP 2: source picker ÔåÆ abre StringSelect com armas ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 async function handleCaracterizadoSource(interaction) {
   if (isDuplicate(interaction.id)) return;
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const parts = interaction.customId.split('::');
   const saidaId = parseInt(parts[2]);
@@ -1001,6 +1003,7 @@ async function handleSessionPedirJuntar(interaction) {
 
 async function handleSessionSwapOpen(interaction) {
   if (isDuplicate(interaction.id)) return;
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const { isChefia } = require('../permissions/permissionEngine');
   if (!isChefia(interaction.member)) {
     return safeReply(
@@ -1104,6 +1107,7 @@ async function handleSessionSwapPick(interaction) {
 
 async function handleSessionApproveOpen(interaction) {
   if (isDuplicate(interaction.id)) return;
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const { isChefia } = require('../permissions/permissionEngine');
   if (!isChefia(interaction.member)) {
     return safeReply(
@@ -1159,6 +1163,7 @@ async function handleSessionApprovePick(interaction) {
   if (isDuplicate(interaction.id)) return;
   const { isChefia } = require('../permissions/permissionEngine');
   if (!isChefia(interaction.member)) return;
+  await interaction.deferUpdate();
 
   const saidaId = parseInt(interaction.customId.split('::')[2]);
   const memberId = parseInt(interaction.values[0]);
