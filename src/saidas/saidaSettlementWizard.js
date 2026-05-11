@@ -1,23 +1,23 @@
-﻿'use strict';
+'use strict';
 /**
- * Settlement wizard ÔÇö UI de fecho de sa├¡da por participante.
+ * Settlement wizard — UI de fecho de saída por participante.
  *
  * Fluxo:
  *   1. handleStart(interaction, saidaId): publica ephemeral com embed de
- *      estado actual dos participantes + select "pr├│ximo" + bot├úo "Concluir"
- *   2. user escolhe participante no select ÔåÆ abre modal (kills,
+ *      estado actual dos participantes + select "próximo" + botão "Concluir"
+ *   2. user escolhe participante no select → abre modal (kills,
  *      morreu S/N, morreu com material S/N, notas)
  *   3. modal submit: actualiza DB participant (settled=true) + re-renderiza
  *      o embed (participante desaparece do select)
- *   4. user clica "Concluir" quando quiser ÔåÆ auto-liquida restantes como
- *      "vivos sem kills", agrega totais (our_kills, deaths) na sa├¡da,
+ *   4. user clica "Concluir" quando quiser → auto-liquida restantes como
+ *      "vivos sem kills", agrega totais (our_kills, deaths) na saída,
  *      chama saidaEngine.finalizeSaidaSettlement(saidaId) que dispara
  *      os stats updates + publish dos 3 embeds.
  *
  * CustomIds:
- *   saida::wz_select::<saidaId>         - select pr├│ximo participante
+ *   saida::wz_select::<saidaId>         - select próximo participante
  *   saida::wz_modal::<saidaId>::<discId> - modal para esse participante
- *   saida::wz_finish::<saidaId>         - bot├úo Concluir
+ *   saida::wz_finish::<saidaId>         - botão Concluir
  */
 
 const {
@@ -49,18 +49,18 @@ async function _renderWizardMessage(saidaId) {
     SAIDAS.WIZARD_DESC(saidaId),
     saida?.result ? `Resultado: **${RESULT_LABEL[saida.result] || saida.result}**` : '',
     '',
-    `Pendentes: **${pending.length}** ┬À Liquidados: **${settled.length}**`,
+    `Pendentes: **${pending.length}** · Liquidados: **${settled.length}**`,
   ].filter(Boolean);
 
   if (settled.length) {
     lines.push('', `**${EMOJI.OK} Liquidados:**`);
     for (const p of settled.slice(0, 10)) {
       const status = p.died ? `${EMOJI.MORTE} Morto` : `${EMOJI.OK} Vivo`;
-      const typeTag = p.participant_type === 'trabalhador' ? ' ┬À ­ƒøá´©Å' : '';
-      const k = p.kills ? ` ┬À **${p.kills}k**` : '';
-      lines.push(`ÔÇó <@${p.discord_id}>${typeTag} ÔÇö ${status}${k}`);
+      const typeTag = p.participant_type === 'trabalhador' ? ' · 🛠️' : '';
+      const k = p.kills ? ` · **${p.kills}k**` : '';
+      lines.push(`• <@${p.discord_id}>${typeTag} — ${status}${k}`);
     }
-    if (settled.length > 10) lines.push(`_ÔÇª e mais ${settled.length - 10}._`);
+    if (settled.length > 10) lines.push(`_… e mais ${settled.length - 10}._`);
   }
 
   const embed = brandEmbed().setColor(COLOR.PURPLE).setTitle(SAIDAS.WIZARD_TITLE).setDescription(lines.join('\n'));
@@ -69,8 +69,8 @@ async function _renderWizardMessage(saidaId) {
 
   if (pending.length) {
     const options = pending.slice(0, 25).map(p => {
-      const typeLabel = p.participant_type === 'trabalhador' ? '­ƒøá´©Å Trabalhador' : '­ƒÅ┤ Caracterizado';
-      const weapon = p.own_weapon ? ' ┬À arma pr├│pria' : '';
+      const typeLabel = p.participant_type === 'trabalhador' ? '🛠️ Trabalhador' : '🏴 Caracterizado';
+      const weapon = p.own_weapon ? ' · arma própria' : '';
       return {
         label: `${p.display_name || p.discord_id}`.slice(0, 100),
         description: `${typeLabel}${weapon}`.slice(0, 100),
@@ -110,7 +110,7 @@ async function handleStart(interaction, saidaId) {
   );
 }
 
-// STEP 1: staff escolheu participante ÔåÆ ephemeral com "Vivo / Morto" bot├Áes.
+// STEP 1: staff escolheu participante → ephemeral com "Vivo / Morto" botões.
 async function handleSelectParticipant(interaction) {
   if (isDuplicate(interaction.id)) return;
   const parts = interaction.customId.split('::');
@@ -143,8 +143,8 @@ async function handleSelectParticipant(interaction) {
   );
 }
 
-// STEP 2: clicou Vivo/Morto ÔåÆ se caracterizado+org+vivo, pergunta arma;
-// caso contr├írio salta para o modal de kills/notes.
+// STEP 2: clicou Vivo/Morto → se caracterizado+org+vivo, pergunta arma;
+// caso contrário salta para o modal de kills/notes.
 async function handleOutcome(interaction) {
   if (isDuplicate(interaction.id)) return;
   const parts = interaction.customId.split('::');
@@ -157,7 +157,7 @@ async function handleOutcome(interaction) {
   if (!p) {
     return safeReply(
       interaction,
-      { content: `${EMOJI.ERRO} Participante n├úo encontrado.`, flags: MessageFlags.Ephemeral },
+      { content: `${EMOJI.ERRO} Participante não encontrado.`, flags: MessageFlags.Ephemeral },
       { messageClass: 'WARN' }
     );
   }
@@ -175,7 +175,7 @@ async function handleOutcome(interaction) {
         .setEmoji(EMOJI.DEVOLVER),
       new ButtonBuilder()
         .setCustomId(`saida::wz_weapon::${saidaId}::${discordId}::alive::not_returned`)
-        .setLabel('N├úo devolveu')
+        .setLabel('Não devolveu')
         .setStyle(ButtonStyle.Danger)
         .setEmoji(EMOJI.ERRO),
       new ButtonBuilder()
@@ -190,12 +190,12 @@ async function handleOutcome(interaction) {
     });
   }
 
-  // Sem pergunta de arma (morto ou sem arma da org) ÔåÆ modal.
+  // Sem pergunta de arma (morto ou sem arma da org) → modal.
   const weaponDecision = outcome === 'dead' ? 'died_auto' : 'no_org_weapon';
   return _openSettleModal(interaction, saidaId, discordId, outcome, weaponDecision);
 }
 
-// STEP 3: clicou decis├úo da arma ÔåÆ abre modal.
+// STEP 3: clicou decisão da arma → abre modal.
 async function handleWeaponDecision(interaction) {
   if (isDuplicate(interaction.id)) return;
   const parts = interaction.customId.split('::');
@@ -210,7 +210,7 @@ async function _openSettleModal(interaction, saidaId, discordId, outcome, weapon
   const member = await memberRepo.findByDiscordId(discordId);
   const modal = new ModalBuilder()
     .setCustomId(`saida::wz_modal::${saidaId}::${discordId}::${outcome}::${weaponDecision}`)
-    .setTitle(`Liquidar ÔÇö ${member?.display_name || discordId}`.slice(0, 45))
+    .setTitle(`Liquidar — ${member?.display_name || discordId}`.slice(0, 45))
     .addComponents(
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
@@ -248,14 +248,14 @@ async function handleSettleModal(interaction) {
   const kills = Math.max(0, Math.min(parseInt(getModalField(interaction, 'kills')) || 0, 100));
   const died = outcome === 'dead';
   // Se morreu e tinha material da org, assume perda total. Se morreu sem
-  // material, n├úo h├í perda (weaponDecision='died_auto' mas sem issued).
-  // Se sobreviveu: returned ÔåÆ sem perda; not_returned/lost ÔåÆ perda total.
+  // material, não há perda (weaponDecision='died_auto' mas sem issued).
+  // Se sobreviveu: returned → sem perda; not_returned/lost → perda total.
   // const diedWithMat = died;
   const notes = getModalField(interaction, 'notes') || '';
 
   const member = await memberRepo.findByDiscordId(discordId);
   if (!member) {
-    warn(`[WIZARD] member n├úo encontrado: ${discordId}`);
+    warn(`[WIZARD] member não encontrado: ${discordId}`);
     return;
   }
 
@@ -270,9 +270,9 @@ async function handleSettleModal(interaction) {
   const issuedValue = fornecidoRes.rows.reduce((acc, r) => acc + r.quantity * (parseFloat(r.estimated_value) || 0), 0);
   const issuedItems = fornecidoRes.rows.map(r => ({ itemId: r.item_id, qty: r.quantity }));
 
-  // Decis├úo de material baseada em weaponDecision (derivado dos bot├Áes).
-  // Morreu OU sobreviveu e disse "n├úo devolveu"/"perdeu" ÔåÆ material perdido.
-  // Sobreviveu e devolveu ÔåÆ material retornado (sem perda).
+  // Decisão de material baseada em weaponDecision (derivado dos botões).
+  // Morreu OU sobreviveu e disse "não devolveu"/"perdeu" → material perdido.
+  // Sobreviveu e devolveu → material retornado (sem perda).
   const materialLost = weaponDecision !== 'returned' && weaponDecision !== 'no_org_weapon';
 
   let lostValue = 0,
@@ -314,7 +314,7 @@ async function handleSettleModal(interaction) {
     settled: true,
   });
 
-  log(`[WIZARD] sa├¡da #${saidaId} participante ${discordId}: k=${kills} died=${died}`);
+  log(`[WIZARD] saída #${saidaId} participante ${discordId}: k=${kills} died=${died}`);
 
   // Re-renderiza a mensagem com o estado actualizado
   const { embed, components } = await _renderWizardMessage(saidaId);
@@ -330,7 +330,7 @@ async function handleFinish(interaction) {
   const saidaId = parseInt(interaction.customId.split('::')[2]);
   const saidaEngine = require('./saidaEngine');
 
-  // Guard: se a sa├¡da j├í foi finalizada, mostrar resumo
+  // Guard: se a saída já foi finalizada, mostrar resumo
   const currentSaida = await saidaRepo.findById(saidaId);
   if (currentSaida?.status === 'concluida') {
     const v = { net: currentSaida.net_value || 0, was_profitable: currentSaida.was_profitable };
@@ -371,7 +371,7 @@ async function handleFinish(interaction) {
     });
   }
 
-  // Step 1: closeSaida ÔåÆ em_liquidacao (guarda metadata de resultado)
+  // Step 1: closeSaida → em_liquidacao (guarda metadata de resultado)
   const saida = await saidaRepo.findById(saidaId);
   if (!['concluida', 'em_liquidacao'].includes(saida.status)) {
     await saidaEngine.closeSaida(
@@ -390,7 +390,7 @@ async function handleFinish(interaction) {
     );
   }
 
-  // Step 2: finalizeSaida ÔåÆ concluida (scoring + stats + publish)
+  // Step 2: finalizeSaida → concluida (scoring + stats + publish)
   const result = await saidaEngine.finalizeSaida(saidaId, interaction.user.id);
 
   // Refresh session embed

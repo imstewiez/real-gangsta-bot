@@ -1,16 +1,16 @@
-﻿'use strict';
+'use strict';
 /**
- * Whitelist de armas permitidas nos dropdowns de sa├¡da.
+ * Whitelist de armas permitidas nos dropdowns de saída.
  *
- * L├¬ a lista ordenada de `config/saida-weapons.json`. S├│ estas armas
- * aparecem no dropdown ÔÇö tanto para "Arma Pr├│pria" como "Pedir ├á Org".
- * Isto ├® uma regra RP (armas brancas n├úo s├úo usadas em sa├¡das).
+ * Lê a lista ordenada de `config/saida-weapons.json`. Só estas armas
+ * aparecem no dropdown — tanto para "Arma Própria" como "Pedir à Org".
+ * Isto é uma regra RP (armas brancas não são usadas em saídas).
  *
- * A ordem do JSON ├® a ordem que aparece no dropdown. Para mudar a lista
- * ou reordenar, editar o JSON ÔÇö n├úo ├® preciso tocar em c├│digo.
+ * A ordem do JSON é a ordem que aparece no dropdown. Para mudar a lista
+ * ou reordenar, editar o JSON — não é preciso tocar em código.
  *
- * Compara├º├úo ├® case-insensitive + trim para tolerar pequenas varia├º├Áes
- * no cat├ílogo (ex: "Pistola Tec" vs "pistola tec  ").
+ * Comparação é case-insensitive + trim para tolerar pequenas variações
+ * no catálogo (ex: "Pistola Tec" vs "pistola tec  ").
  */
 
 const path = require('path');
@@ -43,8 +43,8 @@ function loadAllowedWeapons() {
 }
 
 /**
- * Filtra uma lista de items do cat├ílogo para s├│ deixar as armas permitidas
- * em sa├¡das, ordenadas segundo o JSON. N├úo preserva o ordering original.
+ * Filtra uma lista de items do catálogo para só deixar as armas permitidas
+ * em saídas, ordenadas segundo o JSON. Não preserva o ordering original.
  *
  * @param {Array<{ id, name, category, ... }>} items
  * @returns {Array<{ id, name, category, ... }>} items filtrados e ordenados
@@ -70,7 +70,7 @@ function isAllowed(name) {
   return orderIndex.has(_normalize(name));
 }
 
-// Apenas para testes ÔÇö permite rehidratar entre testes.
+// Apenas para testes — permite rehidratar entre testes.
 function _resetCache() {
   _cached = null;
 }

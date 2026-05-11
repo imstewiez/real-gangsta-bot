@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 const {
   MessageFlags,
   ModalBuilder,
@@ -32,8 +32,8 @@ const {
 const { formatPtDateOnly } = require('../shared/formatPtDate');
 const { warn } = require('../logger');
 
-// Context ef├®mero por user durante fluxos multi-step.
-// TTL de 15 minutos ÔÇö limpa entradas abandonadas automaticamente.
+// Context efémero por user durante fluxos multi-step.
+// TTL de 15 minutos — limpa entradas abandonadas automaticamente.
 const { createSessionStore } = require('../shared/sessionStore');
 const pendingSaidaContext = createSessionStore('saida', { ttlMs: 15 * 60 * 1000 });
 const parentStore = require('../shared/parentInteractionStore');
@@ -44,7 +44,7 @@ function _setContext(userId, ctx) {
 }
 
 const SAIDA_TYPES = ['craft', 'dominio', 'ataque', 'defesa', 'recolha', 'outra'];
-// VALID_RESULTS, RESULT_NAME, RESULT_EMOJI, RESULT_DESCRIPTION v├¬m do content.
+// VALID_RESULTS, RESULT_NAME, RESULT_EMOJI, RESULT_DESCRIPTION vêm do content.
 
 const SAIDA_TYPE_EMOJI = {
   craft: EMOJI.CRAFT,
@@ -56,7 +56,7 @@ const SAIDA_TYPE_EMOJI = {
 };
 const SAIDA_TYPE_LABEL = {
   craft: 'Craft',
-  dominio: 'Dom├¡nio',
+  dominio: 'Domínio',
   ataque: 'Ataque',
   defesa: 'Defesa',
   recolha: 'Recolha',
@@ -64,18 +64,18 @@ const SAIDA_TYPE_LABEL = {
 };
 
 /**
- * Helper: monta op├º├Áes ricas para selects de sa├¡das abertas.
- * Mostra: tipo (emoji) + spot + data + participantes + l├¡der
+ * Helper: monta opções ricas para selects de saídas abertas.
+ * Mostra: tipo (emoji) + spot + data + participantes + líder
  */
 function buildSaidaSelectOptions(saidas) {
   return saidas.slice(0, 25).map(s => {
     const emoji = SAIDA_TYPE_EMOJI[s.operation_type] || EMOJI.ENCOMENDA;
     const typeLabel = SAIDA_TYPE_LABEL[s.operation_type] || s.operation_type;
     const date = formatPtDateOnly(s.date);
-    const spot = s.spot ? ` ┬À ${s.spot}` : '';
-    const leader = s.leader_name ? ` ┬À ${s.leader_name}` : '';
+    const spot = s.spot ? ` · ${s.spot}` : '';
+    const leader = s.leader_name ? ` · ${s.leader_name}` : '';
     return {
-      label: `#${s.id} ÔÇö ${typeLabel} (${date})`.slice(0, 100),
+      label: `#${s.id} — ${typeLabel} (${date})`.slice(0, 100),
       description: `${fmtSaidaStatus(s.status)}${spot}${leader}`.slice(0, 100) || 'Sem detalhes',
       value: String(s.id),
       emoji,
@@ -83,28 +83,28 @@ function buildSaidaSelectOptions(saidas) {
   });
 }
 
-// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
-// CRIAR SA├ìDA
-// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+// ═══════════════════════════════════════════════════════════════════════════
+// CRIAR SAÍDA
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function handleCreateSaidaButton(interaction) {
-  // Apenas OG para cima (OG, Kingpin, Manda-Chuva) pode abrir sess├úo.
-  // Real Gangster v├¬ o bot├úo no painel Oficiais mas n├úo pode abrir ÔÇö
-  // participa, n├úo abre.
+  // Apenas OG para cima (OG, Kingpin, Manda-Chuva) pode abrir sessão.
+  // Real Gangster vê o botão no painel Oficiais mas não pode abrir —
+  // participa, não abre.
   if (!canOpenSession(interaction.member)) {
     return safeReply(
       interaction,
       {
-        content: ERRORS.NO_PERMISSION('abrir sess├úo de sa├¡da'),
+        content: ERRORS.NO_PERMISSION('abrir sessão de saída'),
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'WARN' }
     );
   }
-  // Step 1: select tipo de sa├¡da ÔÇö UI simplificada para 2 op├º├Áes por
-  // feedback: "Farm" (agrega recolha) e "Craft/Venda" (produ├º├úo + venda).
+  // Step 1: select tipo de saída — UI simplificada para 2 opções por
+  // feedback: "Farm" (agrega recolha) e "Craft/Venda" (produção + venda).
   // Em DB continua a armazenar operation_type IN (craft, dominio, ataque,
-  // defesa, recolha, outra) ÔÇö farmÔåÆrecolha, craft_vendaÔåÆcraft. Enum DB
+  // defesa, recolha, outra) — farm→recolha, craft_venda→craft. Enum DB
   // preservado para retrocompat.
   const options = [
     {
@@ -115,7 +115,7 @@ async function handleCreateSaidaButton(interaction) {
     },
     {
       label: 'Craft / Venda',
-      description: 'Produ├º├úo ou venda no spot',
+      description: 'Produção ou venda no spot',
       value: 'craft',
       emoji: EMOJI.CRAFT,
     },
@@ -131,7 +131,7 @@ async function handleCreateSaidaButton(interaction) {
   await safeReply(
     interaction,
     {
-      content: `${EMOJI.SAIDA} Que tipo de sa├¡da vais criar?`,
+      content: `${EMOJI.SAIDA} Que tipo de saída vais criar?`,
       components: [row],
       flags: MessageFlags.Ephemeral,
     },
@@ -140,7 +140,7 @@ async function handleCreateSaidaButton(interaction) {
   parentStore.setParent(interaction.user.id, interaction);
 }
 
-// Step 2: tipo seleccionado ÔåÆ dropdown de spots (em vez de ir j├í ao modal).
+// Step 2: tipo seleccionado → dropdown de spots (em vez de ir já ao modal).
 async function handleCreateTypeSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const saidaType = interaction.values[0];
@@ -154,26 +154,26 @@ async function handleCreateTypeSelect(interaction) {
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId('saida::select_create_spot')
-      .setPlaceholder('Qual ├® o spot?')
+      .setPlaceholder('Qual é o spot?')
       .setMinValues(1)
       .setMaxValues(1)
       .addOptions(spotOpts)
   );
 
-  // TTL 30s ÔÇö se user n├úo pica o spot em 30s, dropdown auto-desaparece.
-  // handleCreateSpotSelect tamb├®m tenta delete imediato ap├│s showModal.
+  // TTL 30s — se user não pica o spot em 30s, dropdown auto-desaparece.
+  // handleCreateSpotSelect também tenta delete imediato após showModal.
   return safeUpdate(
     interaction,
     {
-      content: `${EMOJI.SAIDA} Escolhe o spot da sa├¡da:`,
+      content: `${EMOJI.SAIDA} Escolhe o spot da saída:`,
       components: [row],
     },
     { messageClass: 'BANAL', ttlMs: 30_000 }
   );
 }
 
-// Step 3: spot seleccionado ÔåÆ abre modal final com data/hora/notas
-// (data e hora pr├®-preenchidas com o momento actual ÔÇö Europe/Lisbon).
+// Step 3: spot seleccionado → abre modal final com data/hora/notas
+// (data e hora pré-preenchidas com o momento actual — Europe/Lisbon).
 async function handleCreateSpotSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const spotKey = interaction.values[0];
@@ -225,8 +225,8 @@ async function handleCreateSpotSelect(interaction) {
           .setMaxLength(F.notes.maxLength)
       )
     );
-  // Fecha o ephemeral do dropdown (spot select) antes do modal abrir ÔÇö
-  // via parent.deleteReply(), o ├║nico m├®todo que funciona para ephemerals.
+  // Fecha o ephemeral do dropdown (spot select) antes do modal abrir —
+  // via parent.deleteReply(), o único método que funciona para ephemerals.
   parentStore.deleteParentEphemeral(interaction.user.id).catch(() => {});
   await safeShowModal(interaction, modal);
 }
@@ -237,7 +237,7 @@ async function handleCreateSaidaModal(interaction) {
   const date = getModalField(interaction, 'date');
   const time = getModalField(interaction, 'time');
   const notes = getModalField(interaction, 'notes');
-  // Tipo + spot v├¬m dos selects (steps anteriores), n├úo do modal.
+  // Tipo + spot vêm dos selects (steps anteriores), não do modal.
   const ctx = pendingSaidaContext.get(interaction.user.id) || {};
   const type = ctx.saidaType || 'outra';
   const spotKey = ctx.spotKey || '';
@@ -245,7 +245,7 @@ async function handleCreateSaidaModal(interaction) {
   const spot = spotEntry ? spotEntry.label : '';
   pendingSaidaContext.delete(interaction.user.id);
   if (!SAIDA_TYPES.includes(type)) {
-    return safeReply(interaction, { content: `${EMOJI.WARN} Tipo inv├ílido.` }, { messageClass: 'BANAL' });
+    return safeReply(interaction, { content: `${EMOJI.WARN} Tipo inválido.` }, { messageClass: 'BANAL' });
   }
   try {
     const s = await saidaEngine.createSaida({
@@ -260,29 +260,29 @@ async function handleCreateSaidaModal(interaction) {
       createdBy: interaction.user.id,
     });
     const { SAIDA_TYPE } = require('../content');
-    // Data no formato can├│nico dd/mm/yyyy; s├│ adiciona hora se n├úo for 00:00.
+    // Data no formato canónico dd/mm/yyyy; só adiciona hora se não for 00:00.
     const dateDisplay = formatPtDateOnly(date);
-    const timeDisplay = time && time !== '00:00' ? ` ┬À ${time}` : '';
+    const timeDisplay = time && time !== '00:00' ? ` · ${time}` : '';
     const embed = brandEmbed('MOVEMENT')
-      .setTitle(`${EMOJI.SAIDA} Sa├¡da #${s.id} aberta`)
+      .setTitle(`${EMOJI.SAIDA} Saída #${s.id} aberta`)
       .addFields(
         { name: 'Tipo', value: `**${SAIDA_TYPE[type] || type}**`, inline: true },
         { name: 'Data', value: `**${dateDisplay}**${timeDisplay}`, inline: true },
-        { name: 'Spot', value: spot ? `**${spot}**` : 'ÔÇö', inline: true }
+        { name: 'Spot', value: spot ? `**${spot}**` : '—', inline: true }
       );
     if (notes) embed.addFields({ name: 'Notas', value: notes, inline: false });
 
-    // Publicar embed de sess├úo interactivo com bot├Áes de registo
+    // Publicar embed de sessão interactivo com botões de registo
     const sessionMsg = await publishSessionEmbed(interaction.client, s.id);
     if (sessionMsg) {
       embed.addFields({
-        name: 'ÔåÆ sess├úo aberta',
-        value: `Sess├úo publicada em <#${sessionMsg.channelId}>. Os membros podem registar-se directamente.`,
+        name: '→ sessão aberta',
+        value: `Sessão publicada em <#${sessionMsg.channelId}>. Os membros podem registar-se directamente.`,
         inline: false,
       });
     } else {
       embed.addFields({
-        name: 'ÔåÆ pr├│ximo passo',
+        name: '→ próximo passo',
         value:
           'Adiciona **participantes** manualmente. Define `SAIDA_SESSION_CHANNEL_ID` para activar registo interactivo.',
         inline: false,
@@ -294,9 +294,9 @@ async function handleCreateSaidaModal(interaction) {
   }
 }
 
-// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
-// FECHAR SA├ìDA ÔÇö modal rico (resultado, fac├º├úo, craft/dominio, kills totais)
-// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+// ═══════════════════════════════════════════════════════════════════════════
+// FECHAR SAÍDA — modal rico (resultado, facção, craft/dominio, kills totais)
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function handleCloseSaidaButton(interaction) {
   if (!(await requirePermission(interaction, isChefia))) return;
@@ -304,7 +304,7 @@ async function handleCloseSaidaButton(interaction) {
   if (!open.length) {
     return safeReply(
       interaction,
-      { content: `${EMOJI.INFO} Sem sa├¡das abertas.`, flags: MessageFlags.Ephemeral },
+      { content: `${EMOJI.INFO} Sem saídas abertas.`, flags: MessageFlags.Ephemeral },
       { messageClass: 'BANAL' }
     );
   }
@@ -314,19 +314,19 @@ async function handleCloseSaidaButton(interaction) {
     placeholder: SAIDAS.SELECTS.QUAL_SAIDA_FECHAR,
     options,
     searchKey: `closeSaida::${interaction.user.id}`,
-    modalTitle: 'Pesquisar sa├¡da',
+    modalTitle: 'Pesquisar saída',
     messageClass: 'BANAL',
   });
   await safeReply(interaction, {
-    content: `${EMOJI.FECHAR} Escolhe a sa├¡da a fechar:`,
+    content: `${EMOJI.FECHAR} Escolhe a saída a fechar:`,
     components: rows,
     flags: MessageFlags.Ephemeral,
   });
 }
 
 /**
- * Fechar directo a partir do session embed ÔÇö salta a selec├º├úo de sa├¡da
- * (j├í estamos nela) e vai logo para o select de resultado.
+ * Fechar directo a partir do session embed — salta a selecção de saída
+ * (já estamos nela) e vai logo para o select de resultado.
  */
 async function handleCloseSessionDirect(interaction) {
   if (isDuplicate(interaction.id)) return;
@@ -338,7 +338,7 @@ async function handleCloseSessionDirect(interaction) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.WARN} Sa├¡da #${saidaId} j├í n├úo est├í aberta (estado: ${fmtSaidaStatus(saida?.status) || 'n├úo encontrada'}).`,
+        content: `${EMOJI.WARN} Saída #${saidaId} já não está aberta (estado: ${fmtSaidaStatus(saida?.status) || 'não encontrada'}).`,
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'WARN' }
@@ -361,12 +361,12 @@ async function handleCloseSessionDirect(interaction) {
       .setMaxValues(1)
       .addOptions(resultOptions)
   );
-  // TTL 30s backstop. Parent guardado ÔåÆ handleCloseResultSelect fecha
+  // TTL 30s backstop. Parent guardado → handleCloseResultSelect fecha
   // o ephemeral explicitamente antes do modal abrir.
   const reply = await safeReply(
     interaction,
     {
-      content: `${EMOJI.FECHAR} Sa├¡da **#${saidaId}** ÔÇö qual foi o resultado?`,
+      content: `${EMOJI.FECHAR} Saída **#${saidaId}** — qual foi o resultado?`,
       components: [row],
       flags: MessageFlags.Ephemeral,
     },
@@ -381,7 +381,7 @@ async function handleCloseSaidaSelect(interaction) {
   const saidaId = parseInt(interaction.values[0]);
   _setContext(interaction.user.id, { saidaId });
 
-  // Step 2: resultado predefinido (select, n├úo texto livre)
+  // Step 2: resultado predefinido (select, não texto livre)
   const resultOptions = VALID_RESULTS.map(r => ({
     label: RESULT_NAME[r],
     description: RESULT_DESCRIPTION[r],
@@ -397,13 +397,13 @@ async function handleCloseSaidaSelect(interaction) {
       .addOptions(resultOptions)
   );
   return safeUpdate(interaction, {
-    content: `${EMOJI.FECHAR} Sa├¡da **#${saidaId}** ÔÇö qual foi o resultado?`,
+    content: `${EMOJI.FECHAR} Saída **#${saidaId}** — qual foi o resultado?`,
     components: [row],
   });
 }
 
-// Step 3: resultado seleccionado ÔåÆ abre modal com detalhes (contra quem
-// em texto livre, craft, notas). Sem dropdown de fac├º├úo ÔÇö user pediu
+// Step 3: resultado seleccionado → abre modal com detalhes (contra quem
+// em texto livre, craft, notas). Sem dropdown de facção — user pediu
 // "por escrita" para ser mais directo.
 async function handleCloseResultSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
@@ -427,7 +427,7 @@ async function handleCloseResultSelect(interaction) {
           .setStyle(TextInputStyle.Short)
           .setRequired(false)
           .setMaxLength(80)
-          .setPlaceholder('Ex: Los Vagos, Ballas, Pol├¡cia...')
+          .setPlaceholder('Ex: Los Vagos, Ballas, Polícia...')
       )
     );
   }
@@ -455,7 +455,7 @@ async function handleCloseResultSelect(interaction) {
 
   const modal = new ModalBuilder()
     .setCustomId('saida::modal_close')
-    .setTitle(`${EMOJI.FECHAR} Fechar #${saidaId} ÔÇö ${resultLabel}`.slice(0, 45))
+    .setTitle(`${EMOJI.FECHAR} Fechar #${saidaId} — ${resultLabel}`.slice(0, 45))
     .addComponents(...fields);
   // Fecha o ephemeral do result-select antes do modal abrir.
   parentStore.deleteParentEphemeral(interaction.user.id).catch(() => {});
@@ -469,11 +469,11 @@ async function handleCloseSaidaModal(interaction) {
   if (!ctx)
     return safeReply(
       interaction,
-      { content: `${EMOJI.PENDENTE} Sess├úo expirada ÔÇö come├ºa de novo.` },
+      { content: `${EMOJI.PENDENTE} Sessão expirada — começa de novo.` },
       { messageClass: 'BANAL' }
     );
 
-  // Resultado vem do select (step 2). Inimigo ├® texto livre (step 3 modal).
+  // Resultado vem do select (step 2). Inimigo é texto livre (step 3 modal).
   const result = ctx.result || 'sem_conflito';
   const enemyRaw = getModalField(interaction, 'enemy') || '';
   const enemy_name = enemyRaw.trim();
@@ -485,7 +485,7 @@ async function handleCloseSaidaModal(interaction) {
   const had_fight = result === 'vitoria' || result === 'derrota';
 
   try {
-    // Transita para em_liquidacao ÔÇö participantes preenchem resultados depois.
+    // Transita para em_liquidacao — participantes preenchem resultados depois.
     await saidaEngine.closeSaida(
       ctx.saidaId,
       {
@@ -505,16 +505,16 @@ async function handleCloseSaidaModal(interaction) {
 
   pendingSaidaContext.delete(interaction.user.id);
 
-  // Refresh session embed para mostrar estado de liquida├º├úo + bot├Áes
+  // Refresh session embed para mostrar estado de liquidação + botões
   const saidaSession = require('./saidaSession');
   saidaSession.refreshSessionEmbed(interaction.client, ctx.saidaId).catch(() => {});
 
   const resultLabel = RESULT_NAME[result] || result;
 
-  // Phase 8b: DM cada participante automaticamente com bot├úo para preencher
-  // o resultado. Substitui o antigo ping p├║blico (removido em phase 4) por
-  // notifica├º├Áes privadas ÔÇö zero spam no canal, cada um recebe na sua DM.
-  // Se DMs estiverem desligadas, fallback: painel vivo tem bot├úo tamb├®m.
+  // Phase 8b: DM cada participante automaticamente com botão para preencher
+  // o resultado. Substitui o antigo ping público (removido em phase 4) por
+  // notificações privadas — zero spam no canal, cada um recebe na sua DM.
+  // Se DMs estiverem desligadas, fallback: painel vivo tem botão também.
   const saidaIndividual = require('./saidaIndividualResult');
   saidaIndividual.dmParticipantsForResults(interaction.client, ctx.saidaId, resultLabel).catch(e => {
     warn(`[CLOSE] dmParticipantsForResults falhou (non-fatal): ${e.message}`);
@@ -522,14 +522,14 @@ async function handleCloseSaidaModal(interaction) {
   return safeReply(
     interaction,
     {
-      content: `${EMOJI.OK} **Sa├¡da #${ctx.saidaId}** em liquida├º├úo ÔÇö resultado: **${resultLabel}**${enemy_name ? ` contra **${enemy_name}**` : ''}.\n\n${EMOJI.PENDENTE} Os participantes foram notificados para preencherem o resultado individual.\nQuando todos preencherem (ou quando quiseres for├ºar), usa **"Finalizar e Publicar"** no painel da sess├úo.`,
+      content: `${EMOJI.OK} **Saída #${ctx.saidaId}** em liquidação — resultado: **${resultLabel}**${enemy_name ? ` contra **${enemy_name}**` : ''}.\n\n${EMOJI.PENDENTE} Os participantes foram notificados para preencherem o resultado individual.\nQuando todos preencherem (ou quando quiseres forçar), usa **"Finalizar e Publicar"** no painel da sessão.`,
     },
     { messageClass: 'BANAL' }
   );
 }
 
 /**
- * Handler do bot├úo "Finalizar e Publicar" ÔÇö transita de em_liquidacao ÔåÆ concluida.
+ * Handler do botão "Finalizar e Publicar" — transita de em_liquidacao → concluida.
  * Corre scoring com dados reais, actualiza stats, publica resultados.
  */
 async function handleFinalizeSaidaButton(interaction) {
@@ -547,7 +547,7 @@ async function handleFinalizeSaidaButton(interaction) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.WARN} Sa├¡da #${saidaId} n├úo est├í em liquida├º├úo (estado: ${saida?.status || 'n├úo encontrada'}).`,
+        content: `${EMOJI.WARN} Saída #${saidaId} não está em liquidação (estado: ${saida?.status || 'não encontrada'}).`,
       },
       { messageClass: 'WARN' }
     );
@@ -557,7 +557,7 @@ async function handleFinalizeSaidaButton(interaction) {
   const progress = await saidaEngine.getResultProgress(saidaId);
 
   try {
-    // Auto-preencher participantes que n├úo submeteram resultado como "sobreviveu, 0 kills"
+    // Auto-preencher participantes que não submeteram resultado como "sobreviveu, 0 kills"
     if (progress.pending > 0) {
       const { query: dbQuery } = require('../db');
       await dbQuery(
@@ -580,7 +580,7 @@ async function handleFinalizeSaidaButton(interaction) {
 
     const result = await saidaEngine.finalizeSaida(saidaId, interaction.user.id);
 
-    // Refresh session embed (mostra conclu├¡da)
+    // Refresh session embed (mostra concluída)
     const saidaSession = require('./saidaSession');
     saidaSession.refreshSessionEmbed(interaction.client, saidaId).catch(() => {});
 
@@ -590,11 +590,11 @@ async function handleFinalizeSaidaButton(interaction) {
       ? `\n${EMOJI.MVP} MVP: **${mvp.display_name || 'Participante'}** (${mvp.kills || 0} kills, peso ${Math.round(mvp.performance_score || 0)})`
       : '';
     const v = result?.values || {};
-    const profitLabel = v.was_profitable ? `${EMOJI.LUCRO} Lucro` : `${EMOJI.WARN} Preju├¡zo`;
+    const profitLabel = v.was_profitable ? `${EMOJI.LUCRO} Lucro` : `${EMOJI.WARN} Prejuízo`;
 
     let pendingNote = '';
     if (progress.pending > 0) {
-      pendingNote = `\n\n${EMOJI.INFO} _${progress.pending} participante(s) n├úo preencheram resultado ÔÇö auto-liquidados como vivos, 0 kills._`;
+      pendingNote = `\n\n${EMOJI.INFO} _${progress.pending} participante(s) não preencheram resultado — auto-liquidados como vivos, 0 kills._`;
     }
 
     return safeReply(
@@ -608,7 +608,7 @@ async function handleFinalizeSaidaButton(interaction) {
             result?.totalSurvivors || 0
           ) +
           mvpLine +
-          `\n${profitLabel}: **${Math.round(v.net || 0).toLocaleString('pt-PT')}Ôé¼**` +
+          `\n${profitLabel}: **${Math.round(v.net || 0).toLocaleString('pt-PT')}€**` +
           pendingNote,
       },
       { messageClass: 'RESULT' }
@@ -618,9 +618,9 @@ async function handleFinalizeSaidaButton(interaction) {
   }
 }
 
-// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+// ═══════════════════════════════════════════════════════════════════════════
 // MARCAR MORTOS
-// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function handleMarkDeadSelect(interaction) {
   if (isDuplicate(interaction.id)) return;
@@ -632,7 +632,7 @@ async function handleMarkDeadSelect(interaction) {
     pendingSaidaContext.delete(interaction.user.id);
     return safeReply(
       interaction,
-      { content: `${EMOJI.INFO} Sa├¡da #${saidaId} ÔÇö nenhum morto marcado.`, flags: MessageFlags.Ephemeral },
+      { content: `${EMOJI.INFO} Saída #${saidaId} — nenhum morto marcado.`, flags: MessageFlags.Ephemeral },
       { messageClass: 'BANAL' }
     );
   }
@@ -661,14 +661,14 @@ async function handleMarkDeadSelect(interaction) {
         interaction.guild
       );
       report.push(
-        `${EMOJI.MORTE} <@${discordId}> ÔÇö ${diedWithItems.length ? `${diedWithItems.length} item(s) ÔåÆ perda` : 'sem material'}`
+        `${EMOJI.MORTE} <@${discordId}> — ${diedWithItems.length ? `${diedWithItems.length} item(s) → perda` : 'sem material'}`
       );
     } catch (e) {
-      report.push(`${EMOJI.ERRO} <@${discordId}> ÔÇö ${e.message}`);
+      report.push(`${EMOJI.ERRO} <@${discordId}> — ${e.message}`);
     }
   }
   pendingSaidaContext.delete(interaction.user.id);
-  const lines = [`Sa├¡da **#${saidaId}** ÔÇö cust├│dia liquidada:`, ...report];
+  const lines = [`Saída **#${saidaId}** — custódia liquidada:`, ...report];
   return safeReply(
     interaction,
     { content: lines.join('\n').slice(0, 1900), flags: MessageFlags.Ephemeral },
@@ -676,15 +676,15 @@ async function handleMarkDeadSelect(interaction) {
   );
 }
 
-// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
-// VER SA├ìDAS
-// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+// ═══════════════════════════════════════════════════════════════════════════
+// VER SAÍDAS
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function handleViewSaidasButton(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const list = await saidaRepo.findRecent(10);
   if (!list.length)
-    return safeReply(interaction, { content: `${EMOJI.INFO} Sem sa├¡das registadas.` }, { messageClass: 'BANAL' });
+    return safeReply(interaction, { content: `${EMOJI.INFO} Sem saídas registadas.` }, { messageClass: 'BANAL' });
   const statusEmoji = {
     aberta: EMOJI.ABERTO,
     em_preparacao: EMOJI.PREPARACAO,
@@ -707,17 +707,17 @@ async function handleViewSaidasButton(interaction) {
     let when = formatPtDateOnly(s.date);
     if (s.scheduled_time) {
       const t = String(s.scheduled_time).slice(0, 5);
-      if (t && t !== '00:00') when += ` ┬À ${t}`;
+      if (t && t !== '00:00') when += ` · ${t}`;
     }
-    return `${em}${re} **#${s.id}** ÔÇö ${fmtSaidaType(s.operation_type)} ┬À ${when} ┬À ${s.spot || 'ÔÇö'} ┬À L├¡der: ${s.leader_name || 'ÔÇö'}`;
+    return `${em}${re} **#${s.id}** — ${fmtSaidaType(s.operation_type)} · ${when} · ${s.spot || '—'} · Líder: ${s.leader_name || '—'}`;
   });
-  const embed = brandEmbed('MOVEMENT').setTitle(`${EMOJI.SAIDA} Sa├¡das recentes`).setDescription(lines.join('\n'));
+  const embed = brandEmbed('MOVEMENT').setTitle(`${EMOJI.SAIDA} Saídas recentes`).setDescription(lines.join('\n'));
   return replySafe(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
-// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+// ═══════════════════════════════════════════════════════════════════════════
 // PARTICIPANTES
-// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function handleAddParticipantButton(interaction) {
   if (!(await requirePermission(interaction, isOficial))) return;
@@ -725,7 +725,7 @@ async function handleAddParticipantButton(interaction) {
   if (!open.length)
     return safeReply(
       interaction,
-      { content: `${EMOJI.INFO} Sem sa├¡das abertas.`, flags: MessageFlags.Ephemeral },
+      { content: `${EMOJI.INFO} Sem saídas abertas.`, flags: MessageFlags.Ephemeral },
       { messageClass: 'BANAL' }
     );
   const options = buildSaidaSelectOptions(open);
@@ -734,11 +734,11 @@ async function handleAddParticipantButton(interaction) {
     placeholder: SAIDAS.SELECTS.QUAL_SAIDA_PARTICIPANTE,
     options,
     searchKey: `addPart::${interaction.user.id}`,
-    modalTitle: 'Pesquisar sa├¡da',
+    modalTitle: 'Pesquisar saída',
     messageClass: 'BANAL',
   });
   await safeReply(interaction, {
-    content: `${EMOJI.PARTICIPANTE} Em que sa├¡da entram os nomes?`,
+    content: `${EMOJI.PARTICIPANTE} Em que saída entram os nomes?`,
     components: rows,
     flags: MessageFlags.Ephemeral,
   });
@@ -751,7 +751,7 @@ async function handleAddParticipantSelect(interaction) {
   const userMenu = new ActionRowBuilder().addComponents(
     new UserSelectMenuBuilder()
       .setCustomId(`saida::user_select_participants::${saidaId}`)
-      .setPlaceholder('Escolhe at├® 25 nomes')
+      .setPlaceholder('Escolhe até 25 nomes')
       .setMinValues(1)
       .setMaxValues(25)
   );
@@ -769,7 +769,7 @@ async function handleParticipantUsersSelect(interaction) {
   if (!saidaId)
     return safeReply(
       interaction,
-      { content: `${EMOJI.WARN} Sa├¡da inv├ílida.`, flags: MessageFlags.Ephemeral },
+      { content: `${EMOJI.WARN} Saída inválida.`, flags: MessageFlags.Ephemeral },
       { messageClass: 'BANAL' }
     );
   const userIds = interaction.values || [];
@@ -787,13 +787,13 @@ async function handleParticipantUsersSelect(interaction) {
       await saidaEngine.addParticipant(saidaId, uid, { roleInSaida: 'membro' }, interaction.user.id, interaction.guild);
       added.push(uid);
     } catch (e) {
-      errors.push(`<@${uid}> ÔÇö ${e.message}`);
+      errors.push(`<@${uid}> — ${e.message}`);
     }
   }
   pendingSaidaContext.delete(interaction.user.id);
   const lines = [];
   if (added.length) {
-    lines.push(`**${added.length}** no movimento da Sa├¡da **#${saidaId}**:`, added.map(u => `<@${u}>`).join(', '));
+    lines.push(`**${added.length}** no movimento da Saída **#${saidaId}**:`, added.map(u => `<@${u}>`).join(', '));
   }
   if (errors.length) {
     lines.push('', '**Falhas:**', ...errors);
@@ -805,9 +805,9 @@ async function handleParticipantUsersSelect(interaction) {
   );
 }
 
-// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
-// MATERIAL DA SA├ìDA (aggregate: fornecido/devolvido/perdido/consumido)
-// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+// ═══════════════════════════════════════════════════════════════════════════
+// MATERIAL DA SAÍDA (aggregate: fornecido/devolvido/perdido/consumido)
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function handleRegisterMaterialButton(interaction) {
   if (!(await requirePermission(interaction, isChefia))) return;
@@ -815,7 +815,7 @@ async function handleRegisterMaterialButton(interaction) {
   if (!open.length)
     return safeReply(
       interaction,
-      { content: `${EMOJI.INFO} Sem sa├¡das abertas.`, flags: MessageFlags.Ephemeral },
+      { content: `${EMOJI.INFO} Sem saídas abertas.`, flags: MessageFlags.Ephemeral },
       { messageClass: 'BANAL' }
     );
   const options = buildSaidaSelectOptions(open);
@@ -824,11 +824,11 @@ async function handleRegisterMaterialButton(interaction) {
     placeholder: SAIDAS.SELECTS.QUAL_SAIDA_MATERIAL,
     options,
     searchKey: `regMat::${interaction.user.id}`,
-    modalTitle: 'Pesquisar sa├¡da',
+    modalTitle: 'Pesquisar saída',
     messageClass: 'BANAL',
   });
   await safeReply(interaction, {
-    content: `${EMOJI.MATERIAL} Material em que sa├¡da?`,
+    content: `${EMOJI.MATERIAL} Material em que saída?`,
     components: rows,
     flags: MessageFlags.Ephemeral,
   });
@@ -841,13 +841,13 @@ async function handleMaterialOpSelect(interaction) {
   const directionOptions = [
     {
       label: 'Fornecido',
-      description: 'Material que saiu da firma ÔåÆ participante',
+      description: 'Material que saiu da firma → participante',
       value: 'fornecido',
       emoji: EMOJI.ENVIAR,
     },
-    { label: 'Devolvido', description: 'Material que voltou ├á casa', value: 'devolvido', emoji: EMOJI.DEVOLVER },
+    { label: 'Devolvido', description: 'Material que voltou à casa', value: 'devolvido', emoji: EMOJI.DEVOLVER },
     { label: 'Perdido', description: 'Material perdido na rua', value: 'perdido', emoji: EMOJI.PERDIDO },
-    { label: 'Consumido', description: 'Material gasto durante a sa├¡da', value: 'consumido', emoji: EMOJI.CONSUMIDO },
+    { label: 'Consumido', description: 'Material gasto durante a saída', value: 'consumido', emoji: EMOJI.CONSUMIDO },
   ];
   const row = new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
@@ -870,7 +870,7 @@ async function handleMaterialDirectionSelect(interaction) {
   if (!ctx || ctx.action !== 'material_op') {
     return safeReply(
       interaction,
-      { content: `${EMOJI.PENDENTE} Sess├úo expirada ÔÇö come├ºa de novo.`, flags: MessageFlags.Ephemeral },
+      { content: `${EMOJI.PENDENTE} Sessão expirada — começa de novo.`, flags: MessageFlags.Ephemeral },
       { messageClass: 'BANAL' }
     );
   }
@@ -886,9 +886,9 @@ async function handleMaterialDirectionSelect(interaction) {
   });
 }
 
-// Step intermedi├írio: categoria seleccionada ÔåÆ mostrar itens dessa categoria
-// Adiciona bot├úo "­ƒöÄ Procurar" em row separado para o user poder pesquisar
-// directamente no cat├ílogo inteiro em vez de scrollar.
+// Step intermediário: categoria seleccionada → mostrar itens dessa categoria
+// Adiciona botão "🔎 Procurar" em row separado para o user poder pesquisar
+// directamente no catálogo inteiro em vez de scrollar.
 async function handleMaterialCategorySelect(interaction) {
   if (isDuplicate(interaction.id)) return;
   const category = interaction.values[0];
@@ -903,7 +903,7 @@ async function handleMaterialCategorySelect(interaction) {
   const itemSearch = require('../inventory/itemSearch');
   const searchRow = new ActionRowBuilder().addComponents(
     itemSearch.buildSearchButton(isIssue ? 'saida_issue' : 'saida_material', {
-      label: 'Procurar em todo o cat├ílogo',
+      label: 'Procurar em todo o catálogo',
       style: 2, // Secondary
     })
   );
@@ -920,7 +920,7 @@ async function handleMaterialItemSelect(interaction) {
   if (!ctx || ctx.action !== 'material_op') {
     return safeReply(
       interaction,
-      { content: `${EMOJI.PENDENTE} Sess├úo expirada.`, flags: MessageFlags.Ephemeral },
+      { content: `${EMOJI.PENDENTE} Sessão expirada.`, flags: MessageFlags.Ephemeral },
       { messageClass: 'BANAL' }
     );
   }
@@ -931,7 +931,7 @@ async function handleMaterialItemSelect(interaction) {
   const MF = MODALS.SAIDA_MATERIAL.FIELDS;
   const modal = new ModalBuilder()
     .setCustomId('saida::modal_material_qty')
-    .setTitle(`${ctx.direction} ÔÇö ${item?.name || 'Item'}`)
+    .setTitle(`${ctx.direction} — ${item?.name || 'Item'}`)
     .addComponents(
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
@@ -959,7 +959,7 @@ async function handleMaterialQtyModal(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const ctx = pendingSaidaContext.get(interaction.user.id);
   if (!ctx || ctx.action !== 'material_op') {
-    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Sess├úo expirada.` }, { messageClass: 'BANAL' });
+    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Sessão expirada.` }, { messageClass: 'BANAL' });
   }
   const quantity = parseInt(getModalField(interaction, 'quantity'));
   const notes = getModalField(interaction, 'notes');
@@ -981,7 +981,7 @@ async function handleMaterialQtyModal(interaction) {
     const dirLabels = { fornecido: 'Fornecido', devolvido: 'Devolvido', perdido: 'Perdido', consumido: 'Consumido' };
     const embed = successEmbed(
       'Material registado',
-      `**${quantity}├ù** ${item?.name || 'Item'} ÔÇö ${dirLabels[ctx.direction]}\nSa├¡da **#${ctx.saidaId}**${notes ? `\nNotas: ${notes}` : ''}`
+      `**${quantity}×** ${item?.name || 'Item'} — ${dirLabels[ctx.direction]}\nSaída **#${ctx.saidaId}**${notes ? `\nNotas: ${notes}` : ''}`
     );
     return replySafe(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
@@ -989,9 +989,9 @@ async function handleMaterialQtyModal(interaction) {
   }
 }
 
-// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
-// FORNECER A PARTICIPANTE (cust├│dia nominal)
-// ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+// ═══════════════════════════════════════════════════════════════════════════
+// FORNECER A PARTICIPANTE (custódia nominal)
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function handleIssueToParticipantButton(interaction) {
   if (!(await requirePermission(interaction, isOficial))) return;
@@ -999,7 +999,7 @@ async function handleIssueToParticipantButton(interaction) {
   if (!open.length)
     return safeReply(
       interaction,
-      { content: `${EMOJI.INFO} Sem sa├¡das abertas.`, flags: MessageFlags.Ephemeral },
+      { content: `${EMOJI.INFO} Sem saídas abertas.`, flags: MessageFlags.Ephemeral },
       { messageClass: 'BANAL' }
     );
   const options = buildSaidaSelectOptions(open);
@@ -1008,11 +1008,11 @@ async function handleIssueToParticipantButton(interaction) {
     placeholder: SAIDAS.SELECTS.QUAL_SAIDA_MATERIAL,
     options,
     searchKey: `issueSaida::${interaction.user.id}`,
-    modalTitle: 'Pesquisar sa├¡da',
+    modalTitle: 'Pesquisar saída',
     messageClass: 'BANAL',
   });
   await safeReply(interaction, {
-    content: `${EMOJI.FORNECER} Fornecer material nominal ÔÇö qual sa├¡da?`,
+    content: `${EMOJI.FORNECER} Fornecer material nominal — qual saída?`,
     components: rows,
     flags: MessageFlags.Ephemeral,
   });
@@ -1026,14 +1026,14 @@ async function handleIssueSaidaSelect(interaction) {
   if (!participants.length) {
     pendingSaidaContext.delete(interaction.user.id);
     return safeUpdate(interaction, {
-      content: `${EMOJI.WARN} Sa├¡da **#${saidaId}** sem nomes. Adiciona primeiro em "Participantes".`,
+      content: `${EMOJI.WARN} Saída **#${saidaId}** sem nomes. Adiciona primeiro em "Participantes".`,
       components: [],
     });
   }
   const options = participants.slice(0, 25).map(p => {
     const typeTag =
       p.participant_type === 'trabalhador' ? `${EMOJI.CRAFT} Trabalhador` : `${EMOJI.SAIDA} Caracterizado`;
-    const weapon = p.own_weapon ? ' ┬À arma pr├│pria' : '';
+    const weapon = p.own_weapon ? ' · arma própria' : '';
     return {
       label: `${p.display_name || p.discord_id}`.slice(0, 100),
       description: `${typeTag}${weapon}`.slice(0, 100),
@@ -1049,10 +1049,7 @@ async function handleIssueSaidaSelect(interaction) {
       .setMaxValues(1)
       .addOptions(options)
   );
-  await safeUpdate(interaction, {
-    content: `${EMOJI.FORNECER} Sa├¡da **#${saidaId}** ÔÇö para quem?`,
-    components: [row],
-  });
+  await safeUpdate(interaction, { content: `${EMOJI.FORNECER} Saída **#${saidaId}** — para quem?`, components: [row] });
 }
 
 async function handleIssueParticipantSelect(interaction) {
@@ -1062,7 +1059,7 @@ async function handleIssueParticipantSelect(interaction) {
   if (!ctx || ctx.action !== 'issue_to_participant')
     return safeReply(
       interaction,
-      { content: `${EMOJI.PENDENTE} Sess├úo expirada.`, flags: MessageFlags.Ephemeral },
+      { content: `${EMOJI.PENDENTE} Sessão expirada.`, flags: MessageFlags.Ephemeral },
       { messageClass: 'BANAL' }
     );
   ctx.participantDiscordId = discordId;
@@ -1084,7 +1081,7 @@ async function handleIssueItemSelect(interaction) {
   if (!ctx || ctx.action !== 'issue_to_participant')
     return safeReply(
       interaction,
-      { content: `${EMOJI.PENDENTE} Sess├úo expirada.`, flags: MessageFlags.Ephemeral },
+      { content: `${EMOJI.PENDENTE} Sessão expirada.`, flags: MessageFlags.Ephemeral },
       { messageClass: 'BANAL' }
     );
   ctx.itemId = itemId;
@@ -1094,7 +1091,7 @@ async function handleIssueItemSelect(interaction) {
   const IF = MODALS.SAIDA_MATERIAL.FIELDS;
   const modal = new ModalBuilder()
     .setCustomId('saida::issue_modal_qty')
-    .setTitle(`${EMOJI.FORNECER} Fornecer ÔÇö ${item?.name || 'Item'}`)
+    .setTitle(`${EMOJI.FORNECER} Fornecer — ${item?.name || 'Item'}`)
     .addComponents(
       new ActionRowBuilder().addComponents(
         new TextInputBuilder()
@@ -1122,7 +1119,7 @@ async function handleIssueQtyModal(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const ctx = pendingSaidaContext.get(interaction.user.id);
   if (!ctx || ctx.action !== 'issue_to_participant')
-    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Sess├úo expirada.` }, { messageClass: 'BANAL' });
+    return safeReply(interaction, { content: `${EMOJI.PENDENTE} Sessão expirada.` }, { messageClass: 'BANAL' });
   const qty = parseInt(getModalField(interaction, 'quantity'));
   const notes = getModalField(interaction, 'notes');
   if (isNaN(qty) || qty <= 0)
@@ -1142,7 +1139,7 @@ async function handleIssueQtyModal(interaction) {
     const item = await inventoryRepo.getItemById(ctx.itemId);
     const embed = successEmbed(
       'Material fornecido',
-      `${EMOJI.FORNECER} **${qty}├ù** ${item?.name || 'Item'} ÔåÆ <@${ctx.participantDiscordId}>\nSa├¡da **#${ctx.saidaId}**${notes ? `\nNotas: ${notes}` : ''}`
+      `${EMOJI.FORNECER} **${qty}×** ${item?.name || 'Item'} → <@${ctx.participantDiscordId}>\nSaída **#${ctx.saidaId}**${notes ? `\nNotas: ${notes}` : ''}`
     );
     return replySafe(interaction, { embeds: [embed] }, { messageClass: 'RESULT' });
   } catch (e) {
@@ -1150,9 +1147,9 @@ async function handleIssueQtyModal(interaction) {
   }
 }
 
-// ÔöÇÔöÇ Registo de pick handlers do itemSearch ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// ── Registo de pick handlers do itemSearch ─────────────────────────────────
 // Quando user pica um item no select filtrado, estes reencaminham para o
-// modal de quantidade que os flows j├í usam (saida::modal_material_qty +
+// modal de quantidade que os flows já usam (saida::modal_material_qty +
 // saida::issue_modal_qty).
 (() => {
   const itemSearch = require('../inventory/itemSearch');
@@ -1162,7 +1159,7 @@ async function handleIssueQtyModal(interaction) {
     if (!ctx || ctx.action !== 'material_op') {
       return safeReply(
         interaction,
-        { content: `${EMOJI.PENDENTE} Sess├úo expirada. Recome├ºa o fluxo.`, flags: MessageFlags.Ephemeral },
+        { content: `${EMOJI.PENDENTE} Sessão expirada. Recomeça o fluxo.`, flags: MessageFlags.Ephemeral },
         { messageClass: 'BANAL' }
       );
     }
@@ -1171,7 +1168,7 @@ async function handleIssueQtyModal(interaction) {
     const MF = MODALS.SAIDA_MATERIAL.FIELDS;
     const modal = new ModalBuilder()
       .setCustomId('saida::modal_material_qty')
-      .setTitle(`${ctx.direction} ÔÇö ${item.name}`.slice(0, 45))
+      .setTitle(`${ctx.direction} — ${item.name}`.slice(0, 45))
       .addComponents(
         new ActionRowBuilder().addComponents(
           new TextInputBuilder()
@@ -1200,7 +1197,7 @@ async function handleIssueQtyModal(interaction) {
     if (!ctx || ctx.action !== 'issue_to_participant') {
       return safeReply(
         interaction,
-        { content: `${EMOJI.PENDENTE} Sess├úo expirada. Recome├ºa o fluxo.`, flags: MessageFlags.Ephemeral },
+        { content: `${EMOJI.PENDENTE} Sessão expirada. Recomeça o fluxo.`, flags: MessageFlags.Ephemeral },
         { messageClass: 'BANAL' }
       );
     }
@@ -1209,7 +1206,7 @@ async function handleIssueQtyModal(interaction) {
     const IF = MODALS.SAIDA_MATERIAL.FIELDS;
     const modal = new ModalBuilder()
       .setCustomId('saida::issue_modal_qty')
-      .setTitle(`${EMOJI.FORNECER} Fornecer ÔÇö ${item.name}`.slice(0, 45))
+      .setTitle(`${EMOJI.FORNECER} Fornecer — ${item.name}`.slice(0, 45))
       .addComponents(
         new ActionRowBuilder().addComponents(
           new TextInputBuilder()
