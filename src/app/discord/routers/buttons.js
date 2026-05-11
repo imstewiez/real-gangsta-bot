@@ -247,6 +247,10 @@ const BUTTON_ROUTES = [
     const tab = interaction.customId.split('::')[2];
     return orderManagementPanel.showManagementPanel(interaction, { tab });
   }),
+  prefix('ordermanage::refresh::', interaction => {
+    const tab = interaction.customId.split('::')[2];
+    return orderManagementPanel.showManagementPanel(interaction, { tab });
+  }),
   prefix('ordermanage::page::', interaction => {
     const parts = interaction.customId.split('::');
     const tab = parts[2];

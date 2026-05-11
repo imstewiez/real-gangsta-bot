@@ -143,7 +143,7 @@ function _buildPaginationRow(page, totalPages, tab) {
     .setDisabled(page >= totalPages - 1);
 
   const refresh = new ButtonBuilder()
-    .setCustomId(`ordermanage::tab::${tab}`)
+    .setCustomId(`ordermanage::refresh::${tab}`)
     .setLabel('🔄 Atualizar')
     .setStyle(ButtonStyle.Secondary);
 
