@@ -72,7 +72,6 @@ function _parseSN(value) {
  */
 async function handleOpenSubmitResult(interaction) {
   if (isDuplicate(interaction.id)) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const saidaId = parseInt(interaction.customId.split('::')[2], 10);
 
   const member = await memberRepo.findByDiscordId(interaction.user.id);

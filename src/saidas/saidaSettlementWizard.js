@@ -113,7 +113,6 @@ async function handleStart(interaction, saidaId) {
 // STEP 1: staff escolheu participante → ephemeral com "Vivo / Morto" botões.
 async function handleSelectParticipant(interaction) {
   if (isDuplicate(interaction.id)) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const parts = interaction.customId.split('::');
   const saidaId = parseInt(parts[2]);
   const discordId = interaction.values[0];

@@ -300,7 +300,6 @@ async function handleCreateSaidaModal(interaction) {
 
 async function handleCloseSaidaButton(interaction) {
   if (!(await requirePermission(interaction, isChefia))) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const open = await saidaRepo.findOpen();
   if (!open.length) {
     return safeReply(
@@ -332,7 +331,6 @@ async function handleCloseSaidaButton(interaction) {
 async function handleCloseSessionDirect(interaction) {
   if (isDuplicate(interaction.id)) return;
   if (!(await requirePermission(interaction, isChefia))) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const saidaId = parseInt(interaction.customId.split('::')[2], 10);
   const saida = await saidaRepo.findById(saidaId);
@@ -723,7 +721,6 @@ async function handleViewSaidasButton(interaction) {
 
 async function handleAddParticipantButton(interaction) {
   if (!(await requirePermission(interaction, isOficial))) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const open = await saidaRepo.findOpen();
   if (!open.length)
     return safeReply(
@@ -814,7 +811,6 @@ async function handleParticipantUsersSelect(interaction) {
 
 async function handleRegisterMaterialButton(interaction) {
   if (!(await requirePermission(interaction, isChefia))) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const open = await saidaRepo.findOpen();
   if (!open.length)
     return safeReply(
@@ -999,7 +995,6 @@ async function handleMaterialQtyModal(interaction) {
 
 async function handleIssueToParticipantButton(interaction) {
   if (!(await requirePermission(interaction, isOficial))) return;
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const open = await saidaRepo.findOpen();
   if (!open.length)
     return safeReply(
