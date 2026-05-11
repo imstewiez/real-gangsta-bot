@@ -163,14 +163,16 @@ async function handleCreateTypeSelect(interaction) {
 
   // TTL 30s — se user não pica o spot em 30s, dropdown auto-desaparece.
   // handleCreateSpotSelect também tenta delete imediato após showModal.
-  return safeReply(
-    interaction,
-    {
+  try {
+    await interaction.editReply({
       content: `${EMOJI.SAIDA} Escolhe o spot da saída:`,
       components: [row],
-    },
-    { messageClass: 'BANAL', ttlMs: 30_000 }
-  );
+    });
+  } catch (e) {
+    const { error } = require('../logger');
+    error(`[handleCreateTypeSelect] editReply failed: ${e.message} (code=${e.code})`, e);
+    throw e;
+  }
 }
 
 // Step 3: spot seleccionado → abre modal final com data/hora/notas
