@@ -95,7 +95,11 @@ const MODAL_ROUTES = [
 async function handleModal(interaction) {
   const id = interaction.customId;
   const route = MODAL_ROUTES.find(r => r.match(id));
-  if (!route) return;
+  if (!route) {
+    const { warn } = require('../../logger');
+    warn(`[Router:Modal] No route for customId: ${id}`);
+    return;
+  }
   return route.handler(interaction);
 }
 

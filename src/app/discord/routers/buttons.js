@@ -300,7 +300,11 @@ const BUTTON_ROUTES = [
 async function handleButton(interaction) {
   const id = interaction.customId;
   const route = BUTTON_ROUTES.find(r => r.match(id));
-  if (!route) return;
+  if (!route) {
+    const { warn } = require('../../logger');
+    warn(`[Router:Button] No route for customId: ${id}`);
+    return;
+  }
   return route.handler(interaction);
 }
 

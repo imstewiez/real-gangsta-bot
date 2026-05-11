@@ -143,7 +143,11 @@ const SELECT_ROUTES = [
 async function handleSelect(interaction) {
   const id = interaction.customId;
   const route = SELECT_ROUTES.find(r => r.match(id));
-  if (!route) return;
+  if (!route) {
+    const { warn } = require('../../logger');
+    warn(`[Router:Select] No route for customId: ${id}`);
+    return;
+  }
   return route.handler(interaction);
 }
 
