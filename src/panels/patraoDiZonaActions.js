@@ -95,7 +95,7 @@ async function _listarBairristasInner(interaction, t0) {
   const weekEnd = end.toISOString();
 
   // Query otimizada: subqueries correlacionadas só calculam para os bairristas
-  // activos (evita full scans em tabelas grandes).
+  // activos (evita full table scans em tabelas grandes).
   const res = await query(
     `
     WITH bairristas AS (
@@ -159,85 +159,66 @@ async function _listarBairristasInner(interaction, t0) {
     return safeReply(interaction, { content: 'Sem bairristas registados.' }, { messageClass: 'BANAL' });
   }
 
-  // ── Constrói embeds com fields inline (cada bairrista = um field) ──
+  // ── Formato: um único embed com descrição em markdown (evita limites de fields/embeds) ──
   const weekLabel = `*Semana: ${formatPtDateOnly(start)} a ${formatPtDateOnly(end)}*`;
-  const statsLine = `**${rows.length}** bairrista(s) ativo(s) · **${rows.filter(r => r.rank_pos > 0).length}** no ranking`;
 
-  // Separa activos (têm entregas na semana) vs inactivos (zero na semana)
-  const ativosSemana = rows.filter(r => r.deliveries_week > 0 || r.sales_week > 0);
-  const inativosSemana = rows.filter(r => r.deliveries_week === 0 && r.sales_week === 0);
-
-  const MAX_FIELDS_PER_EMBED = 25; // limite do Discord
-
-  function buildBairristaField(r) {
+  function fmtRow(r) {
     const tier = TIER_ABBR[r.tier] || '—';
-    const emoji = TIER_EMOJI[r.tier] || '👤';
     const rank = r.rank_pos > 0 ? `#${r.rank_pos}` : '—';
     const entTotal = fmtNum(r.deliveries_total);
-    const entSem = r.deliveries_week > 0 ? r.deliveries_week : 0;
-    const vndSem = r.sales_week > 0 ? r.sales_week : 0;
+    const entSem = r.deliveries_week || 0;
+    const vndSem = r.sales_week || 0;
     const lastEnt = daysAgo(r.last_delivery);
     const lastSaida = daysAgo(r.last_saida);
+    const inativo = r.deliveries_week === 0 && r.sales_week === 0;
+    const statusDot = inativo ? '🔴' : '🟢';
 
-    const name = `${emoji} ${truncateName(r.display_name, 18)} (${tier})`;
-    const value = [
-      `🏆 Rank: ${rank} · Score: ${fmtNum(r.score)}`,
-      `📦 Total: ${entTotal} · Sem: ${entSem}`,
-      `💰 Vnd sem: ${vndSem}`,
-      `📅 Últ. entrega: ${lastEnt}`,
-      `🎯 Últ. saída: ${lastSaida}`,
-    ].join('\n');
-
-    return { name, value, inline: true };
+    return (
+      `${statusDot} **${truncateName(r.display_name, 20)}** \`${tier}\` · Rank ${rank} · Score ${fmtNum(r.score)}\n` +
+      `   📦 ${entTotal} total (${entSem} sem) · 💰 ${vndSem} · 📅 ${lastEnt} · 🎯 ${lastSaida}`
+    );
   }
 
-  function chunkFields(fields, size) {
-    const chunks = [];
-    for (let i = 0; i < fields.length; i += size) {
-      chunks.push(fields.slice(i, i + size));
-    }
-    return chunks;
+  // Separa em blocos para caber na description (4096 chars limite)
+  const ativos = rows.filter(r => r.deliveries_week > 0 || r.sales_week > 0);
+  const inativos = rows.filter(r => r.deliveries_week === 0 && r.sales_week === 0);
+
+  const lines = [];
+  lines.push(weekLabel);
+  lines.push('');
+
+  if (ativos.length > 0) {
+    lines.push(`**🟢 Com movimento esta semana (${ativos.length})**`);
+    ativos.forEach(r => lines.push(fmtRow(r)));
+    lines.push('');
   }
 
-  const embeds = [];
-
-  // Embed principal com descrição
-  const mainEmbed = brandEmbed()
-    .setColor(COLOR.INFO)
-    .setTitle('📋 Bairristas Ativos')
-    .setDescription([weekLabel, '', statsLine].join('\n'));
-  embeds.push(mainEmbed);
-
-  // Seção: Activo esta semana
-  if (ativosSemana.length > 0) {
-    const fields = ativosSemana.map(buildBairristaField);
-    const chunks = chunkFields(fields, MAX_FIELDS_PER_EMBED);
-    chunks.forEach((chunk, idx) => {
-      const title = idx === 0 ? `🟢 Com movimento esta semana (${ativosSemana.length})` : `🟢 Com movimento (cont.)`;
-      embeds.push(brandEmbed().setColor(COLOR.SUCCESS).setTitle(title).addFields(chunk));
-    });
+  if (inativos.length > 0) {
+    lines.push(`**🔴 Sem movimento esta semana (${inativos.length})**`);
+    inativos.forEach(r => lines.push(fmtRow(r)));
+    lines.push('');
   }
 
-  // Seção: Inactivo esta semana
-  if (inativosSemana.length > 0) {
-    const fields = inativosSemana.map(buildBairristaField);
-    const chunks = chunkFields(fields, MAX_FIELDS_PER_EMBED);
-    chunks.forEach((chunk, idx) => {
-      const title = idx === 0 ? `🔴 Sem movimento esta semana (${inativosSemana.length})` : `🔴 Sem movimento (cont.)`;
-      embeds.push(brandEmbed().setColor(COLOR.WARNING_SOFT).setTitle(title).addFields(chunk));
-    });
+  lines.push(`**${rows.length}** bairrista(s) ativo(s) · **${rows.filter(r => r.rank_pos > 0).length}** no ranking`);
+
+  const description = lines.join('\n');
+
+  // Se a description exceder 4096 chars, trunca e avisa
+  const MAX_DESC = 4096;
+  let finalDesc = description;
+  let truncated = false;
+  if (description.length > MAX_DESC) {
+    finalDesc = description.slice(0, MAX_DESC - 50) + '\n\n_… lista truncada (muitos bairristas)_';
+    truncated = true;
   }
 
-  // Limite do Discord: máximo 10 embeds por mensagem
-  const MAX_EMBEDS = 10;
-  const finalEmbeds = embeds.slice(0, MAX_EMBEDS);
-  if (embeds.length > MAX_EMBEDS) {
-    finalEmbeds[MAX_EMBEDS - 1].setFooter({
-      text: `… e mais ${embeds.length - MAX_EMBEDS} secção(ões) omitidas. Usa filtros para ver todos.`,
-    });
+  const embed = brandEmbed().setColor(COLOR.INFO).setTitle('📋 Bairristas Ativos').setDescription(finalDesc);
+
+  if (truncated) {
+    embed.setFooter({ text: 'Alguns bairristas foram omitidos por limite de tamanho.' });
   }
 
-  return safeReply(interaction, { embeds: finalEmbeds }, { messageClass: 'BANAL' });
+  return safeReply(interaction, { embeds: [embed] }, { messageClass: 'BANAL' });
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
