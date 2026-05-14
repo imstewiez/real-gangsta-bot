@@ -11,9 +11,14 @@ async function seedFromFullInventory() {
     return 0;
   }
 
-  // Idempotente: INSERT ... ON CONFLICT (name) DO NOTHING por item.
-  // Antes havia guard "se items.count > 0 → skip" — impedia backfill de
-  // items novos no catálogo (ex.: armas_fogo adicionado depois da 1ª seed).
+  // Skip seed se já existirem items na DB (migração da Railway → Supabase).
+  // Para backfill de novos items, usar script manual ou migration.
+  const existing = await query('SELECT count(*)::int as cnt FROM items');
+  if (existing.rows[0].cnt > 0) {
+    log(`[CATALOG] ${existing.rows[0].cnt} items já existem na DB. A saltar seed.`);
+    return 0;
+  }
+
   const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
   let itemsCreated = 0;
   let stockLoaded = 0;
