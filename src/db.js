@@ -39,9 +39,10 @@ const pool = _DB_URL
   ? new Pool({
       connectionString: _DB_URL,
       ssl: SSL_CFG,
+      family: 4,
       max: POOL_MAX,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
+      connectionTimeoutMillis: 10000,
       statement_timeout: parseInt(process.env.DB_STATEMENT_TIMEOUT, 10) || 30000,
       query_timeout: parseInt(process.env.DB_QUERY_TIMEOUT, 10) || 35000,
     })
