@@ -51,6 +51,35 @@ if (pool) {
   pool.on('error', err => {
     require('./logger').error('[DB] Erro inesperado no pool de conexões:', err.message);
   });
+  pool.on('connect', () => {
+    try {
+      require('./logger').log('[DB] Nova conexão estabelecida ao PostgreSQL');
+    } catch {}
+  });
+  pool.on('acquire', () => {
+    try {
+      require('./logger').log('[DB] Conexão adquirida do pool');
+    } catch {}
+  });
+  pool.on('remove', () => {
+    try {
+      require('./logger').log('[DB] Conexão removida do pool');
+    } catch {}
+  });
+  pool
+    .connect()
+    .then(() => {
+      try {
+        require('./logger').log('[DB] Pool conectado com sucesso');
+      } catch {}
+    })
+    .catch(err => {
+      try {
+        require('./logger').error('[DB] Falha na conexão inicial do pool:', err.message);
+      } catch {
+        console.error('[DB] Falha na conexão inicial do pool:', err.message);
+      }
+    });
 
   // Log pool exhaustion: when all connections are in use and a new acquire
   // is queued, warn so ops can tune DB_POOL_MAX or investigate slow queries.

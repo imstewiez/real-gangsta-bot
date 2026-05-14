@@ -60,6 +60,9 @@ let _shuttingDown = false;
 
 async function bootstrap() {
   log(`[BOOT] ${CONFIG.BOT_INTERNAL_NAME} a iniciar...`);
+  log(`[BOOT] DATABASE_URL host: ${process.env.DATABASE_URL?.replace(/:\/\/[^:]+:[^@]+@/, '://***:***@')}`);
+  log(`[BOOT] NODE_ENV: ${process.env.NODE_ENV}`);
+  log(`[BOOT] SSL_CFG: ${JSON.stringify(require('../db').pool?.options?.ssl || 'n/a')}`);
 
   // Incrementa contador de restarts — útil para detectar crash loops no health endpoint
   try {
@@ -81,19 +84,31 @@ async function bootstrap() {
   setPhase(BOOT_PHASES.WEB_SERVER_UP);
 
   // Coordenação de instâncias (preempção + lock singleton).
-  await ensureInstanceTable();
-  await cleanupStaleInstances();
-  await registerInstance();
+  try {
+    log('[BOOT] A criar tabela bot_instances...');
+    await ensureInstanceTable();
+    log('[BOOT] bot_instances OK');
+    await cleanupStaleInstances();
+    log('[BOOT] cleanup stale OK');
+    await registerInstance();
+    log('[BOOT] instance registada OK');
+  } catch (e) {
+    error(`[BOOT] Falha na coordenação de instâncias: ${e.message}`);
+    process.exit(1);
+  }
 
-  const locked = await acquireInstanceLockWithRetry(90000);
+  log('[BOOT] A adquirir instance lock...');
+  const locked = await acquireInstanceLockWithRetry(10000);
   if (!locked) {
-    error('[BOOT] Não foi possível adquirir lock após 90s. A abortar.');
+    error('[BOOT] Não foi possível adquirir lock após 10s. A abortar.');
     await deregisterInstance('lock_timeout').catch(err => warn(`[BOOT] Falha a deregister instance: ${err.message}`));
     process.exit(1);
   }
+  log('[BOOT] Lock adquirido OK');
   setPhase(BOOT_PHASES.INSTANCE_LOCKED);
 
   try {
+    log('[BOOT] A correr migrations...');
     await runMigrations();
     log('[BOOT] Migrations aplicadas com sucesso.');
   } catch (e) {
