@@ -18,6 +18,7 @@ USER nodejs
 
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV NODE_OPTIONS=--dns-result-order=ipv4first
 
 EXPOSE ${PORT}
 
