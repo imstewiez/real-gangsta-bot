@@ -207,7 +207,20 @@ async function shutdown(signal) {
   if (!process.env.DATABASE_URL?.includes('pooler.supabase.com')) {
     await releaseInstanceLock().catch(() => {});
   }
-  await pool.end().catch(() => {});
+  // Force exit even if pool.end() hangs (Supabase Pooler connections may stall)
+  const killTimer = setTimeout(() => {
+    warn('[SHUTDOWN] pool.end() timeout — forcing exit.');
+    process.exit(1);
+  }, 10000);
+  try {
+    await Promise.race([
+      pool.end(),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('pool.end timeout')), 8000)),
+    ]);
+  } catch {
+    // pool.end() failed or timed out — proceed to exit
+  }
+  clearTimeout(killTimer);
   process.exit(0);
 }
 
