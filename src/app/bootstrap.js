@@ -97,14 +97,21 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  log('[BOOT] A adquirir instance lock...');
-  const locked = await acquireInstanceLockWithRetry(10000);
-  if (!locked) {
-    error('[BOOT] Não foi possível adquirir lock após 10s. A abortar.');
-    await deregisterInstance('lock_timeout').catch(err => warn(`[BOOT] Falha a deregister instance: ${err.message}`));
-    process.exit(1);
+  // PgBouncer/Supabase pooler não suporta advisory locks (conexões são
+  // multiplexadas por query). Saltar lock quando usar pooler.
+  const isPooler = process.env.DATABASE_URL?.includes('pooler.supabase.com');
+  if (isPooler) {
+    log('[BOOT] Pooler Supabase detectado — a saltar advisory lock (não suportado).');
+  } else {
+    log('[BOOT] A adquirir instance lock...');
+    const locked = await acquireInstanceLockWithRetry(10000);
+    if (!locked) {
+      error('[BOOT] Não foi possível adquirir lock após 10s. A abortar.');
+      await deregisterInstance('lock_timeout').catch(err => warn(`[BOOT] Falha a deregister instance: ${err.message}`));
+      process.exit(1);
+    }
+    log('[BOOT] Lock adquirido OK');
   }
-  log('[BOOT] Lock adquirido OK');
   setPhase(BOOT_PHASES.INSTANCE_LOCKED);
 
   try {
@@ -197,7 +204,9 @@ async function shutdown(signal) {
     }
   }
   await deregisterInstance(signal).catch(err => warn(`[SHUTDOWN] deregisterInstance falhou: ${err.message}`));
-  await releaseInstanceLock().catch(() => {});
+  if (!process.env.DATABASE_URL?.includes('pooler.supabase.com')) {
+    await releaseInstanceLock().catch(() => {});
+  }
   await pool.end().catch(() => {});
   process.exit(0);
 }
