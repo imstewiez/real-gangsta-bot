@@ -25,6 +25,10 @@ function _resolveSSL() {
   if (process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID) {
     return { rejectUnauthorized: false };
   }
+  // Supabase self-signed cert — disable strict verification
+  if (_DB_URL && _DB_URL.includes('supabase.co')) {
+    return { rejectUnauthorized: false };
+  }
   return { rejectUnauthorized: true };
 }
 const SSL_CFG = _resolveSSL();
