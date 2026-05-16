@@ -126,6 +126,26 @@ async function bootstrap() {
 
   await seedFromCatalog();
 
+  // Se a tabela weekly_rankings não tem dados para a semana actual,
+  // computa o ranking imediatamente (evita "Sem ranking" na web app).
+  try {
+    const { weekBounds } = require('../util');
+    const { computeWeeklyRankings } = require('../rankings/rankingEngine');
+    const { query } = require('../db');
+    const { start } = weekBounds();
+    const weekStart = start.toISOString().split('T')[0];
+    const res = await query('SELECT 1 FROM weekly_rankings WHERE week_start = $1 LIMIT 1', [weekStart]);
+    if (res.rows.length === 0) {
+      log('[BOOT] Sem ranking para a semana actual — a computar...');
+      await computeWeeklyRankings();
+      log('[BOOT] Ranking computado com sucesso.');
+    } else {
+      log('[BOOT] Ranking da semana actual já existe.');
+    }
+  } catch (e) {
+    warn(`[BOOT] Falha ao computar ranking na startup: ${e.message}`);
+  }
+
   // Subscribers do event bus — antes do client, para apanhar emits precoces.
   if (CONFIG.isSheetsEnabled && CONFIG.isSheetsEnabled()) {
     registerSheetProjections();
