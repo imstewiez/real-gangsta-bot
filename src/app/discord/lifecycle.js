@@ -89,28 +89,41 @@ const ROLE_PRIORITY = Object.freeze({ chefia: 5, patrao_di_zona: 4, oficial: 3, 
 function _resolveRoleAndTier(guildMember) {
   const roles = guildMember.roles.cache;
 
-  // Comando total
-  if (CONFIG.COMMAND_ROLE_IDS.some(id => id && roles.has(id))) {
-    return { role: 'chefia', tier: null };
+  // Chefia
+  if (CONFIG.CHEFIA_ROLE_IDS.some(id => id && roles.has(id))) {
+    const CHEFIA_TIERS = [
+      { roleId: CONFIG.MANDA_CHUVA_ROLE_ID, tier: 'manda_chuva' },
+      { roleId: CONFIG.KINGPIN_ROLE_ID, tier: 'kingpin' },
+    ];
+    const current = CHEFIA_TIERS.find(t => t.roleId && roles.has(t.roleId));
+    return { role: 'chefia', tier: current?.tier || null };
   }
-  // Supervisão
-  if (CONFIG.SUPERVISOR_ROLE_IDS.some(id => id && roles.has(id))) {
-    return { role: 'oficial', tier: null };
+
+  // Oficial
+  if (CONFIG.OFICIAL_ROLE_IDS.some(id => id && roles.has(id))) {
+    const OFICIAL_TIERS = [
+      { roleId: CONFIG.OG_ROLE_ID, tier: 'og' },
+      { roleId: CONFIG.REAL_GANGSTER_ROLE_ID, tier: 'real_gangster' },
+    ];
+    const current = OFICIAL_TIERS.find(t => t.roleId && roles.has(t.roleId));
+    return { role: 'oficial', tier: current?.tier || null };
   }
+
   // Patrão di Zona
-  if (CONFIG.PATRAO_DI_ZONA_ROLE_ID && roles.has(CONFIG.PATRAO_DI_ZONA_ROLE_ID)) {
-    return { role: 'patrao_di_zona', tier: null };
+  if (CONFIG.PATRAO_DI_ZONA_ROLE_IDS.some(id => id && roles.has(id))) {
+    return { role: 'patrao_di_zona', tier: 'patrao_di_zona' };
   }
+
   // Bairrista (tier ou role base)
   const hasTier = CONFIG.BAIRRISTA_TIER_ROLE_IDS.some(id => id && roles.has(id));
   const hasBase = CONFIG.BAIRRISTAS_BASE_ROLE_ID && roles.has(CONFIG.BAIRRISTAS_BASE_ROLE_ID);
   if (hasTier || hasBase) {
-    const TIER_PRIORITY = [
+    const BAIRRISTA_TIERS = [
       { roleId: CONFIG.GANGSTER_FODIDO_ROLE_ID, tier: 'gangster_fodido' },
       { roleId: CONFIG.O_GUNAO_ROLE_ID, tier: 'o_gunao' },
       { roleId: CONFIG.YOUNG_BLOOD_ROLE_ID, tier: 'young_blood' },
     ];
-    const current = TIER_PRIORITY.find(t => t.roleId && roles.has(t.roleId));
+    const current = BAIRRISTA_TIERS.find(t => t.roleId && roles.has(t.roleId));
     return { role: 'bairrista', tier: current?.tier || CONFIG.BAIRRISTA_DEFAULT_TIER || 'young_blood' };
   }
 
@@ -119,9 +132,9 @@ function _resolveRoleAndTier(guildMember) {
 
 function _getRelevantRoleIds() {
   return [
-    ...CONFIG.COMMAND_ROLE_IDS,
-    ...CONFIG.SUPERVISOR_ROLE_IDS,
-    CONFIG.PATRAO_DI_ZONA_ROLE_ID,
+    ...CONFIG.CHEFIA_ROLE_IDS,
+    ...CONFIG.OFICIAL_ROLE_IDS,
+    ...CONFIG.PATRAO_DI_ZONA_ROLE_IDS,
     ...CONFIG.BAIRRISTA_TIER_ROLE_IDS,
     CONFIG.BAIRRISTAS_BASE_ROLE_ID,
   ].filter(Boolean);
@@ -173,27 +186,51 @@ async function _handleMemberRoleChange(oldMember, newMember, client) {
     return;
   }
 
-  // ── 2. Role igual mas tier mudou (só aplica a bairristas) ───────────────
-  if (resolvedRole === 'bairrista' && dbMember.tier !== resolvedTier) {
-    await _handleBairristaTierRoleChange(oldMember, newMember, resolvedTier);
+  // ── 2. Role igual mas tier mudou ────────────────────────────────────────
+  if (dbMember.role === resolvedRole && dbMember.tier !== resolvedTier) {
+    await _handleTierRoleChange(oldMember, newMember, resolvedRole, resolvedTier);
   }
 }
 
-// ── Tier change within bairrista branch ─────────────────────────────────────
+// ── Tier change handler (works for any role branch) ─────────────────────────
 
-async function _handleBairristaTierRoleChange(oldMember, newMember, _resolvedTier) {
-  const tierIds = CONFIG.BAIRRISTA_TIER_ROLE_IDS;
+function _getTierPriorityForRole(role) {
+  if (role === 'chefia') {
+    return [
+      { roleId: CONFIG.MANDA_CHUVA_ROLE_ID, tier: 'manda_chuva' },
+      { roleId: CONFIG.KINGPIN_ROLE_ID, tier: 'kingpin' },
+    ];
+  }
+  if (role === 'oficial') {
+    return [
+      { roleId: CONFIG.OG_ROLE_ID, tier: 'og' },
+      { roleId: CONFIG.REAL_GANGSTER_ROLE_ID, tier: 'real_gangster' },
+    ];
+  }
+  if (role === 'patrao_di_zona') {
+    return [{ roleId: CONFIG.PATRAO_DI_ZONA_ROLE_ID, tier: 'patrao_di_zona' }];
+  }
+  if (role === 'bairrista') {
+    return [
+      { roleId: CONFIG.GANGSTER_FODIDO_ROLE_ID, tier: 'gangster_fodido' },
+      { roleId: CONFIG.O_GUNAO_ROLE_ID, tier: 'o_gunao' },
+      { roleId: CONFIG.YOUNG_BLOOD_ROLE_ID, tier: 'young_blood' },
+    ];
+  }
+  return [];
+}
+
+async function _handleTierRoleChange(oldMember, newMember, resolvedRole, resolvedTier) {
+  const tierIds = _getTierPriorityForRole(resolvedRole)
+    .map(t => t.roleId)
+    .filter(Boolean);
   const added = tierIds.some(id => id && !oldMember.roles.cache.has(id) && newMember.roles.cache.has(id));
   const removed = tierIds.some(id => id && oldMember.roles.cache.has(id) && !newMember.roles.cache.has(id));
   if (!added && !removed) return;
 
   // Tier actual = role mais alto presente (topo da hierarquia vence).
-  const TIER_PRIORITY = [
-    { roleId: CONFIG.GANGSTER_FODIDO_ROLE_ID, tier: 'gangster_fodido' },
-    { roleId: CONFIG.O_GUNAO_ROLE_ID, tier: 'o_gunao' },
-    { roleId: CONFIG.YOUNG_BLOOD_ROLE_ID, tier: 'young_blood' },
-  ];
-  const current = TIER_PRIORITY.find(t => t.roleId && newMember.roles.cache.has(t.roleId));
+  const tierPriority = _getTierPriorityForRole(resolvedRole);
+  const current = tierPriority.find(t => t.roleId && newMember.roles.cache.has(t.roleId));
   if (!current) return; // Ficou sem tier role — não é tier change, é saída do ramo
 
   const { memberRepo } = require('../../repositories');
@@ -205,8 +242,8 @@ async function _handleBairristaTierRoleChange(oldMember, newMember, _resolvedTie
   await memberRepo.update(dbMember.id, { tier: current.tier });
   log(`[ROLE_UPDATE] Tier change ${dbMember.display_name}: ${fromTier} → ${current.tier}`);
 
-  // Renomear canal individual se existir
-  if (dbMember.channel_id) {
+  // Renomear canal individual se existir (apenas para bairristas)
+  if (dbMember.channel_id && resolvedRole === 'bairrista') {
     try {
       const { formatResidentChannelName } = require('../../discord/structureTemplate');
       const { queueChannelOp } = require('../../discordQueue');
