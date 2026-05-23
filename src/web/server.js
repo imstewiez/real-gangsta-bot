@@ -3,6 +3,7 @@ const http = require('http');
 const metrics = require('../lib/metrics');
 const CONFIG = require('../config');
 const { log } = require('../logger');
+const { setClient: setWebhookClient, processEvent } = require('./botWebhook');
 
 let _client = null;
 let _ready = false;
@@ -10,6 +11,7 @@ const _bootTime = Date.now();
 
 function setClient(client) {
   _client = client;
+  setWebhookClient(client);
 }
 
 function markReady() {
@@ -128,6 +130,31 @@ function createServer(port = 3000) {
           displayName: CONFIG.BOT_DISPLAY_NAME,
         })
       );
+      return;
+    }
+
+    // Webhook from web app (tier changes, renames, kicks)
+    if (url === '/webhook' && req.method === 'POST') {
+      const secret = process.env.DISCORD_BOT_SECRET;
+      const auth = req.headers['x-bot-secret'];
+      if (secret && auth !== secret) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'unauthorized' }));
+        return;
+      }
+      let body = '';
+      req.on('data', chunk => (body += chunk));
+      req.on('end', async () => {
+        try {
+          const data = JSON.parse(body);
+          const result = await processEvent(data);
+          res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
+        } catch (e) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: e.message }));
+        }
+      });
       return;
     }
 
