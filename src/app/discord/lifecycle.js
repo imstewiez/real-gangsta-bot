@@ -12,6 +12,24 @@ const { log, warn, error } = require('../../logger');
 const { onMessageCreate: stickyOnMessage } = require('../../sticky/stickyEngine');
 const eventBus = require('../../core/eventBus');
 
+// Debounce cache to ignore rapid successive role updates (e.g. webhook batch swaps)
+const _recentRoleChanges = new Map();
+const ROLE_CHANGE_DEBOUNCE_MS = 8000;
+
+function _isDebounced(discordId) {
+  const ts = _recentRoleChanges.get(discordId);
+  if (!ts) return false;
+  if (Date.now() - ts > ROLE_CHANGE_DEBOUNCE_MS) {
+    _recentRoleChanges.delete(discordId);
+    return false;
+  }
+  return true;
+}
+
+function _touchDebounce(discordId) {
+  _recentRoleChanges.set(discordId, Date.now());
+}
+
 function registerLifecycleListeners(client) {
   // ── Sticky messages — listener para modo `repost` ─────────────────────────
   client.on(Events.MessageCreate, async message => {
@@ -146,6 +164,10 @@ async function _handleMemberRoleChange(oldMember, newMember, client) {
   const relevantRoleIds = _getRelevantRoleIds();
   const roleChanged = relevantRoleIds.some(id => oldMember.roles.cache.has(id) !== newMember.roles.cache.has(id));
   if (!roleChanged) return;
+
+  // Debounce: ignore rapid successive updates (webhook batch swaps, etc.)
+  if (_isDebounced(newMember.id)) return;
+  _touchDebounce(newMember.id);
 
   const { memberRepo } = require('../../repositories');
   const dbMember = await memberRepo.findByDiscordId(newMember.id);

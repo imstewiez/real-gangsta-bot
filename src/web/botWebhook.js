@@ -50,14 +50,12 @@ async function handlePromote(discordId, toTier) {
     return { ok: false, error: `unknown_tier: ${toTier}` };
   }
 
-  // Remove all existing tier roles
-  const rolesToRemove = ALL_TIER_ROLES.filter(r => member.roles.cache.has(r));
-  if (rolesToRemove.length > 0) {
-    await member.roles.remove(rolesToRemove, 'Promoção via web app');
-  }
-
-  // Add new tier role
-  await member.roles.add(newRoleId, 'Promoção via web app');
+  // Swap roles in a single operation to avoid intermediate states
+  // that trigger the bot's own role-change listener multiple times.
+  const currentRoleIds = member.roles.cache.map(r => r.id);
+  const newRoleIds = currentRoleIds.filter(id => !ALL_TIER_ROLES.includes(id));
+  newRoleIds.push(newRoleId);
+  await member.roles.set(newRoleIds, 'Promoção via web app');
 
   log(`[webhook] Promoted ${member.user.tag} to ${toTier} (role ${newRoleId})`);
   return { ok: true };
