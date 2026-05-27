@@ -145,12 +145,17 @@ function startAll(client) {
   // Reconcile drift Discord↔DB — corre 1x por dia (ativa).
   // Cria membros em falta na DB, sincroniza roles/tiers, e mantém
   // gauges Prometheus + relatório de drift em /versao (data health).
-  registerJob('reconcile_daily', 24 * 60 * 60 * 1000, async discordClient => {
-    const guild = discordClient?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
-    if (!guild) return { skipped: 'no_guild' };
-    const { runReconcile } = require('../reconcile');
-    return runReconcile({ domain: 'all', guild, dryRun: false, actor: 'system:scheduler' });
-  });
+  registerJob(
+    'reconcile_daily',
+    24 * 60 * 60 * 1000,
+    async discordClient => {
+      const guild = discordClient?.guilds?.cache?.get(CONFIG.DISCORD_GUILD_ID);
+      if (!guild) return { skipped: 'no_guild' };
+      const { runReconcile } = require('../reconcile');
+      return runReconcile({ domain: 'all', guild, dryRun: false, actor: 'system:scheduler' });
+    },
+    { runOnStart: true }
+  );
 
   // Data health — actualiza gauges Prometheus (stale tabs, drift, retention
   // pending, stuck jobs). Corre a cada 5 min, barato.
