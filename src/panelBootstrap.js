@@ -88,42 +88,36 @@ async function bootstrapPanel(client, panelDef, bottomPinEngine) {
       return { key: panelDef.key, status: 'failed', reason: `canal ${channelId} não encontrado (bot sem acesso?)` };
     }
 
-    // Apaga TODAS as mensagens do bot no canal para garantir rebuild limpo.
-    // Nunca editamos — sempre criamos mensagens novas. Assim cada deploy
-    // mostra os painéis actualizados sem depender de state ou schema version.
-    let deletedCount = 0;
-    let failedCount = 0;
-    let lastId = null;
-    let more = true;
-    while (more) {
-      const opts = lastId ? { limit: 100, before: lastId } : { limit: 100 };
-      const batch = await channel.messages.fetch(opts).catch(() => null);
-      if (!batch || batch.size === 0) {
-        more = false;
-        break;
-      }
-      const botMsgs = [...batch.values()].filter(m => m.author.id === client.user.id);
-      for (const msg of botMsgs) {
-        try {
-          await msg.delete();
-          deletedCount++;
-        } catch {
-          failedCount++;
+    // Idempotente: tenta editar mensagem existente em vez de apagar tudo.
+    const panelMessages = await getStateKey('panelMessages', {});
+    const existingId = panelMessages[panelDef.key];
+    if (existingId) {
+      try {
+        const existing = await channel.messages.fetch(existingId);
+        if (existing) {
+          if (!panelDef.stickySource || !bottomPinEngine) {
+            const payload = await panelDef.build();
+            await existing.edit(payload);
+          } else {
+            // Para sticky panels, o bottomPinEngine gere o conteúdo;
+            // basta garantir que a mensagem existe (não precisa editar aqui).
+            await existing.edit({ content: existing.content || null });
+          }
+          log(`[PANELS] Painel '${panelDef.key}' editado (msg ${existingId}).`);
+          return { key: panelDef.key, status: 'updated', channelId, messageId: existingId, source };
         }
-        await new Promise(r => setTimeout(r, 350));
+      } catch (e) {
+        // Message not found (10008) ou outro erro — continua para criar nova
+        if (e.code !== 10008) {
+          warn(`[PANELS] Falha ao editar '${panelDef.key}': ${e.message}`);
+        }
       }
-      lastId = batch.last()?.id;
-      if (batch.size < 100) more = false;
-    }
-    if (deletedCount > 0 || failedCount > 0) {
-      log(`[PANELS] ${deletedCount} mensagem(ns) apagada(s), ${failedCount} falha(s) em #${channel.name}.`);
     }
 
     // Fallback para painéis sem stickySource (não deve acontecer)
     if (!panelDef.stickySource || !bottomPinEngine) {
       const payload = await panelDef.build();
       const newMsg = await channel.send(payload);
-      const panelMessages = await getStateKey('panelMessages', {});
       panelMessages[panelDef.key] = newMsg.id;
       await setStateKey('panelMessages', panelMessages);
       log(`[PANELS] Painel '${panelDef.key}' publicado (msg ${newMsg.id}, fonte ${source}).`);
@@ -135,7 +129,6 @@ async function bootstrapPanel(client, panelDef, bottomPinEngine) {
       return { key: panelDef.key, status: 'failed', reason: 'registerPin devolveu null' };
     }
 
-    const panelMessages = await getStateKey('panelMessages', {});
     panelMessages[panelDef.key] = newMsg.id;
     await setStateKey('panelMessages', panelMessages);
     log(`[PANELS] Painel '${panelDef.key}' publicado (msg ${newMsg.id}, fonte ${source}).`);
@@ -195,17 +188,8 @@ async function bootstrapAll(client) {
   }, {});
   log(`[PANELS] Painéis inicializados — ${JSON.stringify(counts)}.`);
 
-  // Backfill — garante que todos os canais individuais de bairrista têm o
-  // painel bairrista (welcome + botões). Necessário para canais criados
-  // antes de o painel existir, ou para canais onde a mensagem foi apagada.
-  const backfill = await backfillResidentPanels(client);
-  results.push({
-    key: 'backfill_resident_panels',
-    status: 'info',
-    channelId: null,
-    reason: `${backfill.posted} posted, ${backfill.skipped} já OK, ${backfill.failed} falhas (total ${backfill.total})`,
-  });
-  log(`[PANELS] Backfill residentes — ${JSON.stringify(backfill)}.`);
+  // Backfill resident panels REMOVED — user wants only entrada + radio panels.
+  // Individual bairrista channel panels are no longer managed on boot.
 
   return results;
 }

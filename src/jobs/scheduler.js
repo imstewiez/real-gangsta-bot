@@ -1,12 +1,12 @@
 'use strict';
 const { hostname } = require('os');
-const { publishWeeklyTop, publishDailySummary, publishBairristaWeeklyPrize } = require('../rankings/rankingJobs');
+// const { publishWeeklyTop, publishDailySummary, publishBairristaWeeklyPrize } = require('../rankings/rankingJobs');
 const { processRetries } = require('./sheetsRetryJob');
-const {
-  publishBairristaDailySummary,
-  publishBairristaWeeklySummary,
-  publishBairristaMonthlySummary,
-} = require('../rankings/bairristaSummaryJobs');
+// const {
+//   publishBairristaDailySummary,
+//   publishBairristaWeeklySummary,
+//   publishBairristaMonthlySummary,
+// } = require('../rankings/bairristaSummaryJobs');
 const { jobRepo } = require('../repositories');
 const { log, warn } = require('../logger');
 const metrics = require('../lib/metrics');
@@ -103,11 +103,12 @@ function startAll(client) {
     return;
   }
 
-  if (CONFIG.AUTO_PUBLISH_WEEKLY_TOP) {
-    registerJob('weekly_rankings', 30 * 60 * 1000, publishWeeklyTop);
-  }
-  registerJob('daily_summary', 30 * 60 * 1000, publishDailySummary);
-  registerJob('bairrista_weekly_prize', 30 * 60 * 1000, publishBairristaWeeklyPrize);
+  // Ranking/prize embed publishing REMOVED — user wants only entrada + radio panels.
+  // if (CONFIG.AUTO_PUBLISH_WEEKLY_TOP) {
+  //   registerJob('weekly_rankings', 30 * 60 * 1000, publishWeeklyTop);
+  // }
+  // registerJob('daily_summary', 30 * 60 * 1000, publishDailySummary);
+  // registerJob('bairrista_weekly_prize', 30 * 60 * 1000, publishBairristaWeeklyPrize);
 
   // Reconciliação de invariantes de roles (diário, 4h da manhã aprox)
   registerJob('role_invariants', 24 * 60 * 60 * 1000, async discordClient => {
@@ -176,18 +177,17 @@ function startAll(client) {
     { runOnStart: true }
   );
 
-  // Stock alerts — corre hourly. Verifica items com alert_threshold definido
-  // e posta no canal alertas-stock se balance < threshold. Throttle 24h.
-  registerJob(
-    'stock_alerts',
-    60 * 60 * 1000,
-    async discordClient => {
-      const { setClient, checkAndAlert } = require('../inventory/stockAlertEngine');
-      setClient(discordClient);
-      return checkAndAlert({ dryRun: false });
-    },
-    { runOnStart: true }
-  );
+  // Stock alerts REMOVED — user wants only entrada + radio panels.
+  // registerJob(
+  //   'stock_alerts',
+  //   60 * 60 * 1000,
+  //   async discordClient => {
+  //     const { setClient, checkAndAlert } = require('../inventory/stockAlertEngine');
+  //     setClient(discordClient);
+  //     return checkAndAlert({ dryRun: false });
+  //   },
+  //   { runOnStart: true }
+  // );
 
   // Rankings mensais + all-time snapshot — corre a cada 6h (idempotente).
   // No primeiro dia do mês apanha o mês anterior; resto dos dias actualiza
@@ -239,46 +239,25 @@ function startAll(client) {
     { runOnStart: false }
   );
 
-  // Sticky messages — refresh time-based (modo repost com threshold_minutes)
-  registerJob('sticky_time_refresh', 60 * 1000, async discordClient => {
-    const { runTimeBasedRefresh } = require('../sticky/stickyEngine');
-    return runTimeBasedRefresh(discordClient);
-  });
+  // Sticky time refresh REMOVED — user wants only entrada + radio panels.
+  // registerJob('sticky_time_refresh', 60 * 1000, async discordClient => {
+  //   const { runTimeBasedRefresh } = require('../sticky/stickyEngine');
+  //   return runTimeBasedRefresh(discordClient);
+  // });
 
-  // Stock summary — snapshot periódico no canal resumo-stock
-  if (CONFIG.STOCK_NOTIFY_ENABLED) {
-    const intervalMs = (CONFIG.STOCK_SUMMARY_INTERVAL_HOURS || 4) * 60 * 60 * 1000;
-    registerJob('stock_summary', intervalMs, async () => {
-      const { publishStockSummary } = require('../inventory/stockNotifier');
-      return publishStockSummary();
-    });
-  }
+  // Stock summary REMOVED — user wants only entrada + radio panels.
+  // if (CONFIG.STOCK_NOTIFY_ENABLED) {
+  //   const intervalMs = (CONFIG.STOCK_SUMMARY_INTERVAL_HOURS || 4) * 60 * 60 * 1000;
+  //   registerJob('stock_summary', intervalMs, async () => {
+  //     const { publishStockSummary } = require('../inventory/stockNotifier');
+  //     return publishStockSummary();
+  //   });
+  // }
 
-  // ── Bairrista summary jobs ────────────────────────────────────────────
-  // Resumo diário: corre de 30 em 30 min, publica 1x por dia no canal
-  // log-bairristas (idempotente — se totalQty=0 faz skip).
-  registerJob('bairrista_daily_summary', 30 * 60 * 1000, async () => {
-    const now = new Date();
-    const lisbonHour = Number(
-      new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Lisbon', hour: 'numeric', hour12: false }).format(now)
-    );
-    if (lisbonHour !== (CONFIG.BAIRRISTA_DAILY_SUMMARY_HOUR || 23)) return { skipped: 'wrong_hour' };
-    return publishBairristaDailySummary();
-  });
-
-  // Resumo semanal: corre de 6 em 6h, publica na sexta (dia 5).
-  registerJob('bairrista_weekly_summary', 6 * 60 * 60 * 1000, async () => {
-    const now = new Date();
-    if (now.getDay() !== (CONFIG.BAIRRISTA_WEEKLY_SUMMARY_DAY || 5)) return { skipped: 'wrong_day' };
-    return publishBairristaWeeklySummary();
-  });
-
-  // Resumo mensal: corre de 12 em 12h, publica no dia 1 de cada mês.
-  registerJob('bairrista_monthly_summary', 12 * 60 * 60 * 1000, async () => {
-    const now = new Date();
-    if (now.getDate() !== 1) return { skipped: 'not_first_day' };
-    return publishBairristaMonthlySummary();
-  });
+  // ── Bairrista summary jobs REMOVED — user wants only entrada + radio panels.
+  // registerJob('bairrista_daily_summary', ...);
+  // registerJob('bairrista_weekly_summary', ...);
+  // registerJob('bairrista_monthly_summary', ...);
 
   // Spot cooldown expirer — 1/min. Edita mensagem para "livre" e apaga
   // rows com expires_at <= NOW(). Índice em expires_at torna o DELETE
@@ -300,20 +279,17 @@ function startAll(client) {
     return expireStaleRequests(discordClient);
   });
 
-  // Leaderboard live refresh — 5 min. runOnStart garante panel publicado
-  // sem esperar pelo 1º intervalo após reboot. Idempotente via DB state.
-  registerJob(
-    'leaderboard_refresh',
-    5 * 60 * 1000,
-    async discordClient => {
-      const { publishOrRefresh, setClient } = require('../leaderboard/leaderboardPublisher');
-      setClient(discordClient);
-      // force=true: scheduler sempre refresca no tick (ignora debounce
-      // global que só protege path manual contra burst de N users).
-      return publishOrRefresh(discordClient, { force: true });
-    },
-    { runOnStart: true }
-  );
+  // Leaderboard live refresh REMOVED — user wants only entrada + radio panels.
+  // registerJob(
+  //   'leaderboard_refresh',
+  //   5 * 60 * 1000,
+  //   async discordClient => {
+  //     const { publishOrRefresh, setClient } = require('../leaderboard/leaderboardPublisher');
+  //     setClient(discordClient);
+  //     return publishOrRefresh(discordClient, { force: true });
+  //   },
+  //   { runOnStart: true }
+  // );
 
   for (const job of jobs) {
     job.timer = setInterval(() => runJob(job), job.intervalMs);
