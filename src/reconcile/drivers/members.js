@@ -13,7 +13,7 @@
 
 // const CONFIG = require('../../config');
 const { memberRepo } = require('../../repositories');
-const { markMemberDiscordReconciled } = require('../../repositories/_meta');
+const { markMemberDiscordReconciled, softDelete } = require('../../repositories/_meta');
 const { detectRoleFromGuildMember, backfillMembers } = require('../../members/backfill');
 
 async function check(guild) {
@@ -36,6 +36,7 @@ async function check(guild) {
     }
     if (dbRow && !detected) {
       drift.orphan_in_db.push({
+        id: dbRow.id,
         discord_id: gm.id,
         display_name: dbRow.display_name,
         db_role: dbRow.role,
@@ -67,6 +68,20 @@ async function check(guild) {
     if (!issue) drift.ok += 1;
   }
 
+  // Segunda passagem: detectar membros na DB que já não existem no Discord
+  // (saíram do servidor ou foram kickados).
+  for (const [discordId, dbRow] of byDiscordId) {
+    if (!discordMembers.has(discordId)) {
+      drift.orphan_in_db.push({
+        id: dbRow.id,
+        discord_id: discordId,
+        display_name: dbRow.display_name,
+        db_role: dbRow.role,
+        db_tier: dbRow.tier,
+      });
+    }
+  }
+
   drift.has_drift =
     drift.role_mismatch.length + drift.tier_mismatch.length + drift.missing_in_db.length + drift.orphan_in_db.length >
     0;
@@ -75,9 +90,18 @@ async function check(guild) {
 
 async function apply(guild, drift, { actor = 'system:reconcile' } = {}) {
   // Backfill corrige role/tier mismatch + missing_in_db (cria).
-  // Orphans (Discord removed RP role) ficam como estão em DB — lifecycle
-  // independente (arquivar/marcar inactivo é decisão offboarding, não reconcile).
+  // Orphans (membro na DB mas sem role RP no Discord = saiu do servidor)
+  // são soft-deleted para manter contagem 1:1 com Discord.
   const r = await backfillMembers(guild, { dryRun: false, actor });
+
+  const orphanErrors = [];
+  for (const orphan of drift.orphan_in_db) {
+    try {
+      await softDelete('members', orphan.id, actor, 'orphan_in_db: left Discord');
+    } catch (e) {
+      orphanErrors.push({ id: orphan.id, error: e.message });
+    }
+  }
 
   // Marca last_discord_reconciled_at para todos os membros scannados.
   for (const [, gm] of guild.members.cache) {
@@ -89,8 +113,8 @@ async function apply(guild, drift, { actor = 'system:reconcile' } = {}) {
 
   return {
     corrected: (r.created || 0) + (r.updated || 0),
-    errors: r.errors || [],
-    skipped_orphans: drift.orphan_in_db.length,
+    errors: (r.errors || []).concat(orphanErrors),
+    soft_deleted_orphans: drift.orphan_in_db.length - orphanErrors.length,
   };
 }
 
