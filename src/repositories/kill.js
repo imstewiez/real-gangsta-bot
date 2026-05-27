@@ -4,6 +4,7 @@
  * Kills podem estar ligadas a saídas (saida_id) ou ser standalone.
  */
 const { query } = require('../db');
+const { triggerRecalc } = require('../lib/webAppClient');
 
 async function recordKill({
   killerId,
@@ -26,6 +27,9 @@ async function recordKill({
      RETURNING *`,
     [killerId, victimName, victimDiscordId, victimFaction, spot, context, saidaId, date, notes, confirmedBy, createdBy]
   );
+  // Dispara recalc dos rankings na web app — fire-and-forget
+  triggerRecalc('kill_recorded').catch(() => {});
+
   return res.rows[0];
 }
 

@@ -12,6 +12,7 @@ const eventBus = require('../core/eventBus');
 const { MOVEMENT_TYPE, STOCK_INFLOW_TYPES, STOCK_OUTFLOW_TYPES } = require('../shared/movementTypes');
 const { ValidationError, ConflictError, NotFoundError } = require('../shared/errors');
 const { touchBalance } = require('../repositories/inventoryBalance');
+const { triggerRecalc } = require('../lib/webAppClient');
 
 // Janela para desfazer uma submission (desde o último insert). 5 min é
 // suficiente para "ups, engano" sem permitir manipulação de stats
@@ -100,6 +101,9 @@ async function recordDelivery({
       at: new Date(),
     })
     .catch(e => warn(`[EVENT] material.registered: ${e.message}`));
+
+  // Dispara recalc dos rankings na web app — fire-and-forget
+  triggerRecalc('inventory_movement').catch(() => {});
 
   // Fire-and-forget: log dedicado dos Bairristas (entregas + vendas)
   const isBairristaMovement = /entrega_bairrista|venda_bairrista/.test(movementType);

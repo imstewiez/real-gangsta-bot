@@ -203,6 +203,13 @@ function startAll(client) {
     { runOnStart: true }
   );
 
+  // Recalcular rankings semanais na web app — corre a cada 30 min (idempotente).
+  registerJob('webapp_recalc', 30 * 60 * 1000, async () => {
+    const { triggerRecalc } = require('../lib/webAppClient');
+    const r = await triggerRecalc('scheduled');
+    log(`[SCHEDULER] webapp_recalc: ${JSON.stringify(r)}`);
+  });
+
   // Backfill de tópicos — cria canais em falta para bairristas sem canal individual.
   // Corre 1x por dia (idempotente).
   registerJob(

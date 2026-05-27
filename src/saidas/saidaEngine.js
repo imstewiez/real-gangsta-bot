@@ -23,6 +23,7 @@ const metrics = require('../lib/metrics');
 const { log, warn } = require('../logger');
 const eventBus = require('../core/eventBus');
 const { NotFoundError, ConflictError, ValidationError } = require('../shared/errors');
+const { triggerRecalc } = require('../lib/webAppClient');
 
 // Cliente Discord injectado no boot. Usado apenas para publicar resultados
 // ricos no fecho de saída (fire-and-forget). Se não estiver definido,
@@ -412,6 +413,9 @@ async function finalizeSaida(saidaId, actorId) {
   log(
     `[SAIDA] Saída #${saidaId} finalizada. result=${finalized.result} kills=${totalKills} deaths=${totalDeaths} net=${net.toFixed(2)}€`
   );
+
+  // Dispara recalc dos rankings na web app — fire-and-forget
+  triggerRecalc('saida_finalized').catch(() => {});
 
   // Publica resultados ricos — fire-and-forget
   if (_client) {
