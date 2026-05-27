@@ -6,6 +6,8 @@
 
 const CONFIG = require('../config');
 const { log, warn, error } = require('../logger');
+const { sendDM } = require('../shared/dm');
+const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 
 let _client = null;
 
@@ -84,6 +86,52 @@ async function handleKick(discordId, reason) {
   return { ok: true };
 }
 
+async function handlePrizeDefined(discordId, { week_start, prize_type, prize_description }) {
+  if (!_client) return { ok: false, error: 'client_not_set' };
+  try {
+    const user = await _client.users.fetch(discordId).catch(() => null);
+    if (!user) return { ok: false, error: 'user_not_found' };
+    const embed = brandEmbed('HOUSE')
+      .setColor(COLOR.GOLD)
+      .setTitle('🏆 Prémio Definido!')
+      .setDescription(`O teu prémio da semana **${week_start}** foi definido.`)
+      .addFields(
+        { name: 'Tipo', value: prize_type || '—', inline: true },
+        { name: 'Descrição', value: prize_description || '—', inline: true }
+      )
+      .setFooter({ text: 'Parabéns! 🎉' });
+    await sendDM(user, { embeds: [embed] });
+    log(`[webhook] Prize defined DM sent to ${discordId}`);
+    return { ok: true };
+  } catch (e) {
+    warn(`[webhook] Failed to send prize DM to ${discordId}: ${e.message}`);
+    return { ok: false, error: e.message };
+  }
+}
+
+async function handlePrizeDelivered(discordId, { week_start, prize_type, prize_description }) {
+  if (!_client) return { ok: false, error: 'client_not_set' };
+  try {
+    const user = await _client.users.fetch(discordId).catch(() => null);
+    if (!user) return { ok: false, error: 'user_not_found' };
+    const embed = brandEmbed('HOUSE')
+      .setColor(COLOR.SUCCESS)
+      .setTitle('🎁 Prémio Entregue!')
+      .setDescription(`O teu prémio da semana **${week_start}** foi marcado como entregue.`)
+      .addFields(
+        { name: 'Tipo', value: prize_type || '—', inline: true },
+        { name: 'Descrição', value: prize_description || '—', inline: true }
+      )
+      .setFooter({ text: 'Obrigado pela dedicação! 💪' });
+    await sendDM(user, { embeds: [embed] });
+    log(`[webhook] Prize delivered DM sent to ${discordId}`);
+    return { ok: true };
+  } catch (e) {
+    warn(`[webhook] Failed to send prize DM to ${discordId}: ${e.message}`);
+    return { ok: false, error: e.message };
+  }
+}
+
 async function processEvent(body) {
   const { action, discord_id, to_tier, new_name, reason } = body;
 
@@ -96,6 +144,10 @@ async function processEvent(body) {
       return handleRename(discord_id, new_name);
     case 'kick':
       return handleKick(discord_id, reason);
+    case 'prize_defined':
+      return handlePrizeDefined(discord_id, body);
+    case 'prize_delivered':
+      return handlePrizeDelivered(discord_id, body);
     default:
       return { ok: false, error: `unknown_action: ${action}` };
   }

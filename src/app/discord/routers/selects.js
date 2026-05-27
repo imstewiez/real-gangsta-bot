@@ -39,7 +39,7 @@ const saidaSession = require('../../../saidas/saidaSession');
 const { handleRankingSelect } = require('../../../members/bairristaHandlers');
 const perfilMaterial = require('../../../perfil/perfilMaterial');
 const perfilHistorico = require('../../../perfil/perfilHistorico');
-const { handlePanelGerirSelect } = require('../../../panels/chefiaActions');
+
 const orderManagement = require('../../../orders/orderManagement');
 const orderManagementPanel = require('../../../orders/orderManagementPanel');
 const orderTrackingService = require('../../../orders/orderTrackingService');
@@ -100,10 +100,6 @@ const SELECT_ROUTES = [
 
   // Weapon return — staff escolhe participante
   prefix('saida::weapon_confirm_pick::', saidaIndividual.handleWeaponConfirmPick),
-
-  // Painéis — select menus GERIR (Chefia / Patrão di Zona)
-  exact('panel::chefia_gerir', handlePanelGerirSelect),
-  exact('panel::patrao_gerir', handlePanelGerirSelect),
 
   // Caracterizado self-serve — weapon pick (step 3 do fluxo)
   prefix('saida::weapon_pick::', saidaSession.handleCaracterizadoWeaponPick),

@@ -4,10 +4,6 @@ const CONFIG = require('./config');
 const { getStateKey, setStateKey } = require('./state');
 const { log, warn } = require('./logger');
 const { EMOJI } = require('./content');
-const { buildBairristaPanel } = require('./panels/bairristaPanel');
-const { buildOficialPanel } = require('./panels/oficialPanel');
-const { buildChefiaPanel } = require('./panels/chefiaPanel');
-const { buildPatraoDiZonaPanel } = require('./panels/patraoDiZonaPanel');
 const { buildEntradaPanel } = require('./panels/entradaPanel');
 const { buildRadioPanel } = require('./panels/radioPanel');
 const { CATEGORY_BY_KEY, bold } = require('./discord/structureTemplate');
@@ -33,38 +29,6 @@ const PANELS = [
     autoCategoryKey: 'ENTRADA',
     build: buildEntradaPanel,
     stickySource: 'panel:entrada',
-  },
-  {
-    key: 'panel_bairristas',
-    channelKey: 'PANEL_BAIRRISTAS_CHANNEL_ID',
-    autoName: autoName('painel-bairristas'),
-    autoCategoryKey: 'GUETTO',
-    build: buildBairristaPanel,
-    stickySource: 'panel:bairristas',
-  },
-  {
-    key: 'panel_oficiais',
-    channelKey: 'PANEL_OFICIAIS_CHANNEL_ID',
-    autoName: autoName('painel-oficiais'),
-    autoCategoryKey: 'OFICIAIS',
-    build: buildOficialPanel,
-    stickySource: 'panel:oficiais',
-  },
-  {
-    key: 'panel_chefia',
-    channelKey: 'PANEL_CHEFIA_CHANNEL_ID',
-    autoName: autoName('painel-chefia'),
-    autoCategoryKey: 'COMANDO',
-    build: buildChefiaPanel,
-    stickySource: 'panel:chefia',
-  },
-  {
-    key: 'panel_patrao_di_zona',
-    channelKey: 'PANEL_PATRAO_DI_ZONA_CHANNEL_ID',
-    autoName: autoName('painel-patrao-di-zona'),
-    autoCategoryKey: 'GUETTO',
-    build: buildPatraoDiZonaPanel,
-    stickySource: 'panel:patrao_di_zona',
   },
   {
     key: 'panel_radio',

@@ -25,6 +25,7 @@ const { safeReply } = require('../shared/interactionHelpers');
 const { brandEmbed } = require('../shared/embedBuilders');
 const { formatMoney } = require('../shared/formatMoney');
 const { EMOJI } = require('../content');
+const { sendDM } = require('../shared/dm');
 
 const STATUS_EMOJI = {
   pending: '⏳',
@@ -60,6 +61,26 @@ function _fmtIngredients(json) {
     return list.map(i => `${i.qty}× ${i.name}`).join(', ');
   } catch {
     return '';
+  }
+}
+
+async function _notifyMemberOrderStatus(client, order, statusLabel, color, actorId, notes = null) {
+  if (!order.member_discord_id) return;
+  try {
+    const user = await client.users.fetch(order.member_discord_id).catch(() => null);
+    if (!user) return;
+    const embed = brandEmbed('HOUSE')
+      .setColor(color)
+      .setTitle(`${STATUS_EMOJI[order.status] || '•'} Encomenda ${statusLabel}`)
+      .setDescription(`**${order.quantity}× ${order.item_name}**`)
+      .addFields(
+        { name: 'Estado', value: statusLabel, inline: true },
+        { name: 'Por', value: `<@${actorId}>`, inline: true }
+      );
+    if (notes) embed.addFields({ name: 'Motivo', value: String(notes).slice(0, 500), inline: false });
+    await sendDM(user, { embeds: [embed] });
+  } catch {
+    // best-effort
   }
 }
 
@@ -217,6 +238,8 @@ async function handleOrderAceitarButton(interaction) {
       // Non-critical
     }
 
+    await _notifyMemberOrderStatus(interaction.client, order, 'Em Processo', 0x3b82f6, interaction.user.id);
+
     return safeReply(
       interaction,
       {
@@ -253,6 +276,8 @@ async function handleOrderEntregueButton(interaction) {
     } catch {
       // Non-critical
     }
+
+    await _notifyMemberOrderStatus(interaction.client, order, 'Entregue', 0x22c55e, interaction.user.id);
 
     return safeReply(
       interaction,
@@ -317,6 +342,8 @@ async function handleOrderRecusarModal(interaction) {
     } catch {
       // Non-critical
     }
+
+    await _notifyMemberOrderStatus(interaction.client, order, 'Recusada', 0xef4444, interaction.user.id, motivo);
 
     return safeReply(
       interaction,

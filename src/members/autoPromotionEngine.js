@@ -8,6 +8,7 @@ const { queueMemberOp, queueChannelOp } = require('../discordQueue');
 const { log, warn } = require('../logger');
 const eventBus = require('../core/eventBus');
 const { COLOR } = require('../shared/embedBuilders');
+const { sendDM } = require('../shared/dm');
 
 // ── Thresholds (XP acumulado — pontos por item entregue/vendido) ────────────
 // Young Blood (entry) → O Gunão:        50.000 XP
@@ -222,6 +223,25 @@ async function checkAndPromote(discordId, guild, client) {
       description: `<@${discordId}> subiu de **${formatTierName(promotion.from)}** para **${formatTierName(promotion.to)}**!\n\nXP acumulado: **${decision.totalPoints.toLocaleString('pt-PT')}** (meta: ${threshold.toLocaleString('pt-PT')} XP)`,
       color: COLOR.PROMOTION_GOLD,
     });
+
+    // Notificar membro por DM
+    try {
+      const user = await client.users.fetch(discordId).catch(() => null);
+      if (user) {
+        const { brandEmbed } = require('../shared/embedBuilders');
+        const embed = brandEmbed('HOUSE')
+          .setColor(COLOR.PROMOTION_GOLD)
+          .setTitle('🎉 Promoção Automática!')
+          .setDescription(
+            `Subiste de **${formatTierName(promotion.from)}** para **${formatTierName(promotion.to)}**!\n\n` +
+              `XP acumulado: **${decision.totalPoints.toLocaleString('pt-PT')}** (meta: ${threshold.toLocaleString('pt-PT')} XP)`
+          )
+          .setFooter({ text: 'Continua a trabalhar duro! 💪' });
+        await sendDM(user, { embeds: [embed] });
+      }
+    } catch {
+      // best-effort DM
+    }
 
     log(`[AUTO-PROMO] ${decision.displayName}: ${promotion.from} → ${promotion.to} (${decision.totalPoints} XP)`);
 

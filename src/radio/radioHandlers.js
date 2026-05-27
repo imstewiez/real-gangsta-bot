@@ -18,19 +18,18 @@ const { isCommand } = require('../permissions/permissionEngine');
 const { RADIO, EMOJI, MODALS } = require('../content');
 const { warn } = require('../logger');
 
-// Quem pode alterar a rádio: Comando (Kingpin, Manda-Chuva), OG, ou Patrão di Zona.
-// Exclui Real Gangster.
+// Quem pode alterar a rádio: OG, Real Gangster, Kingpin, Manda-Chuva, ou Patrão di Zona.
 function _canManageRadio(member) {
-  const { memberRoleIds, isPatraoDiZona } = require('../permissions/permissionEngine');
-  return isCommand(member) || memberRoleIds(member).has(CONFIG.OG_ROLE_ID) || isPatraoDiZona(member);
+  const { isOficial, isPatraoDiZona } = require('../permissions/permissionEngine');
+  return isOficial(member) || isPatraoDiZona(member);
 }
 
-async function _denyIfNotOG(interaction) {
+async function _denyIfNotRadioManager(interaction) {
   if (_canManageRadio(interaction.member)) return false;
   await safeReply(
     interaction,
     {
-      content: `${EMOJI.BLOQUEADO} Apenas Patrão di Zona, OG, Kingpin ou Manda-Chuva pode alterar a rádio.`,
+      content: `${EMOJI.BLOQUEADO} Apenas OG, Real Gangster, Kingpin, Manda-Chuva ou Patrão di Zona pode alterar a rádio.`,
       flags: MessageFlags.Ephemeral,
     },
     { messageClass: 'BANAL' }
@@ -97,7 +96,7 @@ async function notifyRadioChange(channel, { type, value, previous, mode, actorId
 }
 
 async function handleSet(interaction) {
-  if (await _denyIfNotOG(interaction)) return;
+  if (await _denyIfNotRadioManager(interaction)) return;
   const [, , type] = parseId(interaction.customId);
   const meta = TYPE_META[type];
   const M = MODALS.RADIO_SET(meta.label);
@@ -121,7 +120,7 @@ async function handleSet(interaction) {
 }
 
 async function handleSetModal(interaction) {
-  if (await _denyIfNotOG(interaction)) return;
+  if (await _denyIfNotRadioManager(interaction)) return;
   const [, , type] = parseId(interaction.customId);
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -156,7 +155,7 @@ async function handleSetModal(interaction) {
 }
 
 async function handleRandom(interaction) {
-  if (await _denyIfNotOG(interaction)) return;
+  if (await _denyIfNotRadioManager(interaction)) return;
   const [, , type] = parseId(interaction.customId);
   await interaction.deferUpdate();
   try {

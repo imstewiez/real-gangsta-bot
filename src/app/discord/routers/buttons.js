@@ -57,8 +57,6 @@ const saidaSession = require('../../../saidas/saidaSession');
 const saidaIndividual = require('../../../saidas/saidaIndividualResult');
 
 const { handleSet: radioHandleSet, handleRandom: radioHandleRandom } = require('../../../radio/radioHandlers');
-const chefiaActions = require('../../../panels/chefiaActions');
-const patraoDiZonaActions = require('../../../panels/patraoDiZonaActions');
 const buttonAdapters = require('../../../panels/buttonAdapters');
 
 // ── Leaderboard live panel ─────────────────────────────────────────────────
@@ -216,8 +214,6 @@ const BUTTON_ROUTES = [
   exact('chefia::ver_stock', handleStockCommand),
   exact('chefia::ajustar_stock', handleAdjustStockButton),
   exact('chefia::gerir_materiais', handleGerirMateriaisButton),
-  exact('chefia::ver_tops', chefiaActions.verTops),
-  exact('chefia::ver_logs', chefiaActions.verLogs),
   exact('chefia::criar_incidente', buttonAdapters.handleCriarIncidenteButton),
   exact('chefia::transferir_stock', buttonAdapters.handleTransferirStockButton),
   exact('chefia::ausencias', buttonAdapters.handleChefiaAusenciasButton),
@@ -271,12 +267,6 @@ const BUTTON_ROUTES = [
   prefix('session::add_participant::', handleAddParticipantButton),
   prefix('session::issue_material::', handleIssueToParticipantButton),
   prefix('session::register_material::', handleRegisterMaterialButton),
-
-  // Patrão di Zona — painel patrão (v12)
-  exact('patrao::listar_bairristas', patraoDiZonaActions.listarBairristas),
-  exact('patrao::ver_entregas', patraoDiZonaActions.verEntregasOuVendas),
-  exact('patrao::ver_vendas', patraoDiZonaActions.verEntregasOuVendas),
-  exact('patrao::ver_tops', patraoDiZonaActions.verTopsBairristas),
 ];
 
 async function handleButton(interaction) {
