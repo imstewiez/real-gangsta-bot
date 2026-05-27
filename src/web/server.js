@@ -147,9 +147,12 @@ function createServer(port = 3000) {
       req.on('end', async () => {
         try {
           const data = JSON.parse(body);
-          const result = await processEvent(data);
-          res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify(result));
+          // Process asynchronously so the web app isn't blocked by DM delays
+          processEvent(data).catch(err => {
+            warn('[webhook] Background processing failed:', err.message);
+          });
+          res.writeHead(202, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, queued: true }));
         } catch (e) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: false, error: e.message }));
