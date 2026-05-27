@@ -24,10 +24,6 @@ const TOPICS = {
     title: '🏆 Como Funcionam os Prémios',
     body: 'Toda semana o Top 1 de contribuição ganha um prémio.\nA chefia define o prémio e marca como entregue.\nHistórico em `/ranking`.',
   },
-  disponibilidade: {
-    title: '📅 Disponibilidade Diária',
-    body: 'Vota todos os dias no painel de disponibilidade.\nEscolhe os horários em que podes aparecer.\nIsto ajuda a chefia a planear saídas.',
-  },
   cargos: {
     title: '👑 Hierarquia',
     body: '**Manda-Chuva** → **Kingpin** → **OG** → **Patrão di Zona** → **Oficial** → **Bairrista** → **Young Blood**\n\nPromoções automáticas por material entregue/vendido.',

@@ -56,11 +56,6 @@ const saidaStats = require('../../../saidas/saidaStatsHandlers');
 const saidaSession = require('../../../saidas/saidaSession');
 const saidaIndividual = require('../../../saidas/saidaIndividualResult');
 
-const {
-  handleVoteAll: availHandleVoteAll,
-  handleSummary: availHandleSummary,
-  handleRefresh: availHandleRefresh,
-} = require('../../../availability/availabilityHandlers');
 const { handleSet: radioHandleSet, handleRandom: radioHandleRandom } = require('../../../radio/radioHandlers');
 const chefiaActions = require('../../../panels/chefiaActions');
 const patraoDiZonaActions = require('../../../panels/patraoDiZonaActions');
@@ -71,7 +66,6 @@ const {
   handleLeaderboardDetails,
   handleLeaderboardNav,
   handleLeaderboardCustomOpen,
-  handleLeaderboardRefresh,
 } = require('../../../leaderboard/leaderboardHandlers');
 
 // ── Searchable item picker (itemsearch::open::<purpose>) ───────────────────
@@ -113,17 +107,10 @@ const denyHandler = interaction => {
 
 // ── Rotas ordenadas por prioridade (prefixos mais específicos primeiro) ───
 const BUTTON_ROUTES = [
-  // Availability
-  prefix('avail::all::', availHandleVoteAll),
-  prefix('avail::summary::', availHandleSummary),
-  prefix('avail::refresh::', availHandleRefresh),
-
   // Leaderboard live panel — details ephemeral + refresh manual + nav
   prefix('lb::details::', handleLeaderboardDetails),
   prefix('lb::nav::', handleLeaderboardNav),
   exact('lb::custom::open', handleLeaderboardCustomOpen),
-  exact('lb::refresh', handleLeaderboardRefresh),
-
   // Global searchable select — pesquisa em dropdowns
   prefix('search::open::', handleSearchOpen),
   prefix('search::clear::', handleSearchClear),
@@ -234,11 +221,6 @@ const BUTTON_ROUTES = [
   exact('chefia::criar_incidente', buttonAdapters.handleCriarIncidenteButton),
   exact('chefia::transferir_stock', buttonAdapters.handleTransferirStockButton),
   exact('chefia::ausencias', buttonAdapters.handleChefiaAusenciasButton),
-  exact('chefia::painel_pendencias', buttonAdapters.handlePainelPendenciasButton),
-  exact('chefia::relatorio', buttonAdapters.handleRelatorioButton),
-  exact('chefia::inactivos', buttonAdapters.handleInactivosButton),
-  exact('chefia::sync_sheets', buttonAdapters.handleSyncSheetsButton),
-  exact('chefia::republicar_paineis', chefiaActions.republicarTodosPaineis),
   exact('chefia::gerir_encomendas', interaction => orderManagementPanel.showManagementPanel(interaction)),
   exact('chefia::gerir_stock_v3', stockV3Handlers.handleGerirStockV3),
 

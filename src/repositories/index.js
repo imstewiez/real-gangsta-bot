@@ -11,7 +11,6 @@ module.exports = {
   rankingRepo: require('./ranking'),
   monthlyRankingRepo: require('./monthlyRanking'),
   jobRepo: require('./job'),
-  availabilityRepo: require('./availability'),
   radioRepo: require('./radio'),
   stickyRepo: require('./sticky'),
   bairristaStatsRepo: require('./bairristaStats'),

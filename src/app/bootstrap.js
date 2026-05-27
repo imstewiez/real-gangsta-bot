@@ -31,7 +31,6 @@ const { seedFromCatalog } = require('../inventory/itemCatalog');
 const { stopAll: stopScheduler, drainActiveJobs } = require('../jobs/scheduler');
 const { createServer } = require('../web/server');
 const { registerSheetProjections } = require('../sheets/projections');
-const { registerNotificationRouting } = require('../notifications/routing');
 
 const { createClient } = require('./discord/client');
 const { registerLifecycleListeners } = require('./discord/lifecycle');
@@ -156,7 +155,6 @@ async function bootstrap() {
         'Tabs nunca sincronizam até o env estar configurado no Railway.'
     );
   }
-  registerNotificationRouting();
   setPhase(BOOT_PHASES.EVENT_BUS_READY);
 
   // Client + listeners.

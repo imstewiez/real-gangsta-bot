@@ -98,15 +98,6 @@ const BUTTONS = {
     HISTORY: { label: 'Histórico', emoji: E.AUDIT, style: STYLE.SECONDARY },
   },
 
-  // Disponibilidade
-  AVAILABILITY: {
-    VOTE_YES: { label: 'Apareço', emoji: E.DISPONIVEL, style: STYLE.SUCCESS },
-    VOTE_MAYBE: { label: 'Talvez', emoji: E.TALVEZ, style: STYLE.SECONDARY },
-    VOTE_NO: { label: 'Não dá', emoji: E.INDISPONIVEL, style: STYLE.DANGER },
-    SUMMARY: { label: 'Resumo', emoji: E.INFO, style: STYLE.SECONDARY },
-    REFRESH: { label: 'Actualizar', emoji: E.REFRESH, style: STYLE.SECONDARY },
-  },
-
   // Kills
   KILL: {
     REGISTAR: { label: 'Registar Kill', emoji: E.KILL, style: STYLE.SUCCESS },

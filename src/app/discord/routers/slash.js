@@ -9,28 +9,18 @@
 
 const stockCheck = require('../../../queries/stockCheck');
 const ficha = require('../../../queries/ficha');
-const audit = require('../../../queries/audit');
 const catalogo = require('../../../queries/catalogo');
 const ranking = require('../../../queries/ranking');
 const saidasMinhas = require('../../../queries/saidasMinhas');
-const versao = require('../../../queries/versao');
 const transfer = require('../../../queries/transfer');
 const entregaVendaRapida = require('../../../queries/entregaVendaRapida');
 
 const { handleRegisterKillButton } = require('../../../kills/killHandlers');
 const { handleMovimento } = require('../../../members/bairristaHandlers');
 const { handleMeuPedido } = require('../../../onboarding/meuPedido');
-const syncSheets = require('../../../queries/syncSheets');
-const backfillTopicos = require('../../../queries/backfillTopicos');
-const cleanupTopicos = require('../../../queries/cleanupTopicos');
-const novaCategoriaTopicos = require('../../../queries/novaCategoriaTopicos');
-const inactivosBairristas = require('../../../queries/inactivosBairristas');
-const premios = require('../../../queries/premios');
 const gerirItens = require('../../../queries/gerirItens');
 const promover = require('../../../queries/promover');
-const painelPendencias = require('../../../queries/painelPendencias');
 const meuPainel = require('../../../queries/meuPainel');
-const relatorio = require('../../../queries/relatorio');
 const incidentes = require('../../../queries/incidentes');
 const catalogoMelhorado = require('../../../queries/catalogoMelhorado');
 const stockMelhorado = require('../../../queries/stockMelhorado');
@@ -38,8 +28,6 @@ const ajuda = require('../../../queries/ajuda');
 const tutorial = require('../../../queries/tutorial');
 const ausencias = require('../../../queries/ausencias');
 const meuResumo = require('../../../queries/meuResumo');
-const dashboard = require('../../../queries/dashboard');
-const erros = require('../../../queries/erros');
 const primeiraVez = require('../../../queries/primeiraVez');
 const { commandsByName } = require('../../../lib/metrics');
 
@@ -50,7 +38,6 @@ const SLASH_ROUTES = {
   catalogo: catalogo.handle,
   ranking: ranking.handle,
   saidas: saidasMinhas.handle,
-  versao: versao.handle,
   movimento: handleMovimento,
   kill: handleRegisterKillButton,
   'meu-pedido': handleMeuPedido,
@@ -60,19 +47,10 @@ const SLASH_ROUTES = {
   venda: entregaVendaRapida.handleVenda,
 
   // ── Staff operacional
-  audit: audit.handle,
   transfer: transfer.handle,
-  'sync-sheets': syncSheets.handle,
-  'backfill-topicos': backfillTopicos.handle,
-  'cleanup-topicos': cleanupTopicos.handle,
-  'nova-categoria-topicos': novaCategoriaTopicos.handle,
-  'inactivos-bairristas': inactivosBairristas.handle,
-  premios: premios.handle,
   'gerir-itens': gerirItens.handle,
   promover: promover.handle,
-  'painel-pendencias': painelPendencias.handle,
   'meu-painel': meuPainel.handle,
-  relatorio: relatorio.handle,
   incidentes: incidentes.handle,
   'catalogo-melhorado': catalogoMelhorado.handle,
   'stock-melhorado': stockMelhorado.handle,
@@ -80,8 +58,6 @@ const SLASH_ROUTES = {
   tutorial: tutorial.handle,
   ausencias: ausencias.handle,
   'meu-resumo': meuResumo.handle,
-  dashboard: dashboard.handle,
-  erros: erros.handle,
   'primeira-vez': primeiraVez.handle,
 };
 

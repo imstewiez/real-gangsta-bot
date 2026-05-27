@@ -2,7 +2,6 @@
 const { hostname } = require('os');
 const { publishWeeklyTop, publishDailySummary, publishBairristaWeeklyPrize } = require('../rankings/rankingJobs');
 const { processRetries } = require('./sheetsRetryJob');
-const { runNotificationJob } = require('./notificationJob');
 const {
   publishBairristaDailySummary,
   publishBairristaWeeklySummary,
@@ -136,9 +135,6 @@ function startAll(client) {
     return processRetries();
   });
 
-  // Notification queue processor
-  registerJob('notification_queue', 30 * 1000, runNotificationJob);
-
   // Retention — corre 1x por dia (24h interval). Remove audit_logs > 365d,
   // job_runs > 90d, radio_history > 365d. Soft-delete availability > 180d.
   registerJob('retention', 24 * 60 * 60 * 1000, async () => {
@@ -250,40 +246,6 @@ function startAll(client) {
     registerJob('stock_summary', intervalMs, async () => {
       const { publishStockSummary } = require('../inventory/stockNotifier');
       return publishStockSummary();
-    });
-  }
-
-  // Auto-publish disponibilidade diária — corre de 5 em 5 min e age só na hora
-  // configurada (idempotente por canal+data via índice único da DB).
-  if (CONFIG.AVAILABILITY_AUTO_PUBLISH_ENABLED && CONFIG.AVAILABILITY_CHANNEL_ID) {
-    const { availabilityRepo } = require('../repositories');
-    const { createSession, closeSession, todayDateString } = require('../availability/availabilityEngine');
-    registerJob('availability_auto_publish', 5 * 60 * 1000, async discordClient => {
-      const now = new Date();
-      const lisbonHour = Number(
-        new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Lisbon', hour: 'numeric', hour12: false }).format(now)
-      );
-      if (lisbonHour !== CONFIG.AVAILABILITY_AUTO_PUBLISH_HOUR) return { skipped: 'wrong_hour' };
-      const date = todayDateString();
-
-      // Fecha qualquer sessão aberta do dia anterior ANTES de criar a nova.
-      // Reset diário completo às 07:00 — os votos do dia ficam congelados
-      // (historial) e uma sessão fresca substitui-a.
-      const prevOpen = await availabilityRepo.findOpenBefore(CONFIG.AVAILABILITY_CHANNEL_ID, date).catch(() => []);
-      for (const sess of prevOpen) {
-        await closeSession({ client: discordClient, sessionId: sess.id, actorId: 'system:daily-reset' }).catch(
-          () => {}
-        );
-      }
-
-      const existing = await availabilityRepo.getOpenSession(CONFIG.AVAILABILITY_CHANNEL_ID, date);
-      if (existing) return { skipped: 'already_open', sessionId: existing.id, closedPrev: prevOpen.length };
-      const { session } = await createSession({
-        client: discordClient,
-        channelId: CONFIG.AVAILABILITY_CHANNEL_ID,
-        createdBy: 'system:auto-publish',
-      });
-      return { sessionId: session.id, closedPrev: prevOpen.length };
     });
   }
 

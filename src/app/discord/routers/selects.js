@@ -37,7 +37,6 @@ const saidaStats = require('../../../saidas/saidaStatsHandlers');
 const saidaIndividual = require('../../../saidas/saidaIndividualResult');
 const saidaSession = require('../../../saidas/saidaSession');
 const { handleRankingSelect } = require('../../../members/bairristaHandlers');
-const { handleVoteSelect: availHandleVoteSelect } = require('../../../availability/availabilityHandlers');
 const perfilMaterial = require('../../../perfil/perfilMaterial');
 const perfilHistorico = require('../../../perfil/perfilHistorico');
 const { handlePanelGerirSelect } = require('../../../panels/chefiaActions');
@@ -49,9 +48,6 @@ const exact = (id, handler) => ({ match: x => x === id, handler });
 const prefix = (p, handler) => ({ match: x => x.startsWith(p), handler });
 
 const SELECT_ROUTES = [
-  // Availability
-  prefix('avail::vote_select::', availHandleVoteSelect),
-
   // Inventory — registo de material (ponto de entrada: cart flow)
   exact('inv::select_tipo_registo', handleTipoRegistoSelect),
   prefix('inv::cat_', handleCategorySelect),

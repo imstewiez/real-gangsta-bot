@@ -12,14 +12,7 @@
 const { MessageFlags, ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const { safeReply } = require('../shared/interactionHelpers');
 const { EMOJI } = require('../content');
-const {
-  buildDetailsForPeriod,
-  buildDetailsForCustomRange,
-  publishOrRefresh,
-  canUserRefresh,
-  markUserRefresh,
-  REFRESH_COOLDOWN_MS,
-} = require('./leaderboardPublisher');
+const { buildDetailsForPeriod, buildDetailsForCustomRange } = require('./leaderboardPublisher');
 const { warn } = require('../logger');
 
 async function handleLeaderboardDetails(interaction) {
@@ -106,46 +99,9 @@ async function handleLeaderboardCustomModal(interaction) {
   }
 }
 
-async function handleLeaderboardRefresh(interaction) {
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
-
-  const gate = canUserRefresh(interaction.user.id);
-  if (!gate.ok) {
-    const secs = Math.ceil(gate.waitMs / 1000);
-    return safeReply(
-      interaction,
-      { content: `${EMOJI.PENDENTE} Aguarda **${secs}s** antes de pedir outro refresh.` },
-      { messageClass: 'BANAL' }
-    );
-  }
-  markUserRefresh(interaction.user.id);
-
-  try {
-    const r = await publishOrRefresh(interaction.client);
-    if (r.skipped) {
-      return safeReply(
-        interaction,
-        { content: `${EMOJI.WARN} Refresh ignorado: ${r.skipped}.` },
-        { messageClass: 'WARN' }
-      );
-    }
-    return safeReply(
-      interaction,
-      {
-        content: `${EMOJI.OK} Leaderboard actualizado. _(podes pedir outro refresh daqui a ${Math.round(REFRESH_COOLDOWN_MS / 1000)}s)_`,
-      },
-      { messageClass: 'BANAL' }
-    );
-  } catch (e) {
-    warn(`[LEADERBOARD] refresh manual falhou: ${e.message}`);
-    return safeReply(interaction, { content: `${EMOJI.ERRO} Falha a atualizar.` }, { messageClass: 'ERROR' });
-  }
-}
-
 module.exports = {
   handleLeaderboardDetails,
   handleLeaderboardNav,
   handleLeaderboardCustomOpen,
   handleLeaderboardCustomModal,
-  handleLeaderboardRefresh,
 };

@@ -14,8 +14,7 @@ const STEPS = [
     body: 'Clica em **Entregar** no teu canal ou usa `/entrega`. Escolhe item e quantidade.',
   },
   { title: '3️⃣ Como Vender', body: 'Clica em **Vender** ou `/venda`. Define preço se quiseres.' },
-  { title: '4️⃣ Disponibilidade', body: 'Vota todos os dias no painel de disponibilidade. Ajuda a chefia a planear.' },
-  { title: '5️⃣ Saídas', body: 'Inscreve-te nas saídas anunciadas. Participa, cumpre objectivos, devolve armas.' },
+  { title: '4️⃣ Saídas', body: 'Inscreve-te nas saídas anunciadas. Participa, cumpre objectivos, devolve armas.' },
   {
     title: '6️⃣ Progressão',
     body: 'Entrega material e participa em saídas para subir na hierarquia. Usa `/ficha` para ver progresso.',

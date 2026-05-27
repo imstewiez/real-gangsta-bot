@@ -129,14 +129,6 @@ function validateConfig(config = CONFIG) {
     }
   }
 
-  // ── Availability ──
-  if (!Array.isArray(config.AVAILABILITY_SLOTS) || config.AVAILABILITY_SLOTS.length === 0) {
-    err('AVAILABILITY_SLOTS', 'Precisa de pelo menos 1 slot.');
-  }
-  if (config.AVAILABILITY_AUTO_PUBLISH_ENABLED && !config.AVAILABILITY_CHANNEL_ID) {
-    err('AVAILABILITY_CHANNEL_ID', 'AUTO_PUBLISH_ENABLED=true mas canal em falta — job vai falhar.');
-  }
-
   // ── Radio ──
   if (config.RADIO_RANDOM_MIN < 0 || config.RADIO_RANDOM_MAX < 0) {
     err('RADIO_RANDOM_MIN/MAX', 'Valores têm de ser >= 0.');

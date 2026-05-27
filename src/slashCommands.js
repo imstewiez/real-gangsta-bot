@@ -11,8 +11,6 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 
 const commands = [
   // ── User-facing ────────────────────────────────────────────────────────────
-  new SlashCommandBuilder().setName('versao').setDescription('Estado do bot, versão e saúde dos dados'),
-
   new SlashCommandBuilder()
     .setName('stock')
     .setDescription('Stock actual (geral ou de um item)')
@@ -54,97 +52,6 @@ const commands = [
   new SlashCommandBuilder().setName('kill').setDescription('Registar uma kill'),
 
   new SlashCommandBuilder().setName('meu-pedido').setDescription('Ver o estado do teu pedido de tag'),
-
-  // ── Staff diagnóstico ──────────────────────────────────────────────────────
-  new SlashCommandBuilder()
-    .setName('backfill-topicos')
-    .setDescription('Cria tópicos em falta para bairristas sem canal individual (chefia)')
-    .addBooleanOption(opt =>
-      opt.setName('executar').setDescription('true=cria os canais · false/omit=só preview (default)').setRequired(false)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('cleanup-topicos')
-    .setDescription('Arquiva tópicos de ex-bairristas (promovidos, saídos) — liberta slots na categoria (chefia)')
-    .addBooleanOption(opt =>
-      opt.setName('executar').setDescription('true=arquiva · false/omit=só preview (default)').setRequired(false)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('organize-topicos')
-    .setDescription('Move órfãos, apaga log-bairristas duplicados e separadores — arruma categorias (chefia)')
-    .addBooleanOption(opt =>
-      opt.setName('executar').setDescription('true=aplica · false/omit=só preview (default)').setRequired(false)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('nova-categoria-topicos')
-    .setDescription('Cria (ou reutiliza) categoria e move TODOS os tópicos para lá (chefia)')
-    .addStringOption(opt =>
-      opt.setName('nome').setDescription('Nome da categoria (default: BAIRRISTAS)').setRequired(false)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('dedup-topicos')
-    .setDescription('Apaga canais duplicados por bairrista — mantém o mais antigo (chefia)')
-    .addBooleanOption(opt =>
-      opt.setName('executar').setDescription('true=aplica · false/omit=só preview (default)').setRequired(false)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('inactivos-bairristas')
-    .setDescription('Lista bairristas com pouca ou nenhuma actividade — para avaliar kick (chefia)')
-    .addIntegerOption(opt =>
-      opt
-        .setName('dias_sem_actividade')
-        .setDescription('Dias sem actividade para considerar inactivo (default 30)')
-        .setRequired(false)
-        .setMinValue(1)
-        .setMaxValue(365)
-    )
-    .addIntegerOption(opt =>
-      opt
-        .setName('min_dias_entrada')
-        .setDescription('Ignora bairristas que entraram há menos de N dias (default 14)')
-        .setRequired(false)
-        .setMinValue(0)
-        .setMaxValue(365)
-    ),
-
-  new SlashCommandBuilder()
-    .setName('sync-sheets')
-    .setDescription('Diagnóstico e resync do Google Sheets (chefia)')
-    .addStringOption(opt =>
-      opt
-        .setName('acao')
-        .setDescription('status=ver estado · all=resync de todas · tab=resync de uma (default: status)')
-        .setRequired(false)
-        .addChoices(
-          { name: 'status (ver última sync por tab)', value: 'status' },
-          { name: 'all (resync de todas as tabs)', value: 'all' },
-          { name: 'tab (resync de uma — preenche "tab")', value: 'tab' }
-        )
-    )
-    .addStringOption(opt =>
-      opt
-        .setName('tab')
-        .setDescription('Tab a resync (obrigatório se acao=tab)')
-        .setRequired(false)
-        .addChoices(
-          { name: 'dashboard', value: 'dashboard' },
-          { name: 'resumo', value: 'resumo' },
-          { name: 'membros', value: 'membros' },
-          { name: 'saidas', value: 'saidas' },
-          { name: 'stock', value: 'stock' },
-          { name: 'config', value: 'config' }
-        )
-    ),
-
-  // ── Staff operacional ──────────────────────────────────────────────────────
-  new SlashCommandBuilder()
-    .setName('audit')
-    .setDescription('Logs de auditoria')
-    .addIntegerOption(opt => opt.setName('limite').setDescription('Registos (default 20)').setRequired(false)),
 
   // ── Entregas / Vendas rápidas com autocomplete por nome do item ──
   // User escreve o nome parcial → Discord filtra em tempo real.
@@ -299,12 +206,6 @@ const commands = [
         .addStringOption(o => o.setName('motivo').setDescription('Motivo').setRequired(false))
     ),
 
-  // ── Painel de pendências ──
-  new SlashCommandBuilder()
-    .setName('painel-pendencias')
-    .setDescription('Cockpit de pendências da chefia (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
-
   // ── Meu painel pessoal ──
   new SlashCommandBuilder().setName('meu-painel').setDescription('O teu centro de notificações pessoal'),
 
@@ -324,20 +225,6 @@ const commands = [
           { name: 'Este mês', value: 'month' }
         )
     ),
-
-  // ── Modo Manutenção ──
-  new SlashCommandBuilder()
-    .setName('manutencao')
-    .setDescription('Modo manutenção (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addSubcommand(sc => sc.setName('status').setDescription('Ver estado'))
-    .addSubcommand(sc =>
-      sc
-        .setName('ativar')
-        .setDescription('Activar')
-        .addStringOption(o => o.setName('motivo').setDescription('Motivo').setRequired(false))
-    )
-    .addSubcommand(sc => sc.setName('desativar').setDescription('Desactivar')),
 
   // ── Incidentes ──
   new SlashCommandBuilder()
@@ -594,39 +481,8 @@ const commands = [
     .addStringOption(o => o.setName('inicio').setDescription('Data início (ISO)').setRequired(true))
     .addStringOption(o => o.setName('fim').setDescription('Data fim (ISO)').setRequired(false)),
 
-  // ── Audit Trail ──
-  new SlashCommandBuilder()
-    .setName('audit-trail')
-    .setDescription('Histórico por objeto (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addStringOption(o =>
-      o
-        .setName('tipo')
-        .setDescription('Tipo')
-        .setRequired(true)
-        .addChoices(
-          { name: 'Entrega', value: 'entrega' },
-          { name: 'Encomenda', value: 'encomenda' },
-          { name: 'Membro', value: 'membro' },
-          { name: 'Item', value: 'item' }
-        )
-    )
-    .addIntegerOption(o => o.setName('id').setDescription('ID').setRequired(true)),
-
   // ── Meu resumo ──
   new SlashCommandBuilder().setName('meu-resumo').setDescription('O teu resumo semanal e pendentes'),
-
-  // ── Dashboard chefia ──
-  new SlashCommandBuilder()
-    .setName('dashboard')
-    .setDescription('Dashboard operacional da chefia (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
-
-  // ── Painel de erros ──
-  new SlashCommandBuilder()
-    .setName('erros')
-    .setDescription('Erros e incidentes recentes (OG+)')
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   // ── Primeira utilização ──
   new SlashCommandBuilder().setName('primeira-vez').setDescription('Guia de primeira utilização'),

@@ -28,7 +28,7 @@ const { registerBuiltinRenderers } = require('../sticky/stickyRenderers');
 const { setClient: setStockClient } = require('../inventory/stockNotifier');
 const { setClient: setBairristaLogClient } = require('../inventory/bairristaNotifier');
 const { setClient: setSaidaClient } = require('../saidas/saidaEngine');
-const { setClient: setNotifRouterClient } = require('../notifications/routing');
+
 const { setClient: setSpotCooldownClient } = require('../saidas/spotCooldown');
 const { SessionLifecycle } = require('../saidas/saidaLifecycle');
 const { registerCommands } = require('./discord/registerCommands');
@@ -51,7 +51,7 @@ function injectClientPhase(client) {
   setStockClient(client);
   setBairristaLogClient(client);
   setSaidaClient(client);
-  setNotifRouterClient(client);
+
   setSpotCooldownClient(client);
 }
 

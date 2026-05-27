@@ -41,16 +41,6 @@ const POLICIES = [
     applySql: "DELETE FROM job_runs WHERE COALESCE(finished_at, started_at) < NOW() - INTERVAL '90 days' RETURNING id",
   },
   {
-    key: 'availability_180',
-    domain: 'availability_sessions',
-    action: 'soft_delete',
-    description: 'availability_sessions fechadas > 180 dias (soft-delete)',
-    countSql:
-      "SELECT COUNT(*)::int AS n FROM availability_sessions WHERE status='closed' AND deleted_at IS NULL AND created_at < NOW() - INTERVAL '180 days'",
-    applySql:
-      "UPDATE availability_sessions SET deleted_at = NOW(), deleted_by = 'system:retention', record_version = record_version + 1 WHERE status='closed' AND deleted_at IS NULL AND created_at < NOW() - INTERVAL '180 days' RETURNING id",
-  },
-  {
     key: 'radio_history_365',
     domain: 'radio_history',
     action: 'hard_delete',

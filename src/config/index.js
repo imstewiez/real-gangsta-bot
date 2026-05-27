@@ -20,7 +20,6 @@ const jobs = require('./jobs');
 const panels = require('./panels');
 const stock = require('./stock');
 const radio = require('./radio');
-const availability = require('./availability');
 const branding = require('./branding');
 const logging = require('./logging');
 const sheets = require('./sheets');
@@ -35,7 +34,6 @@ const CONFIG = {
   ...panels,
   ...stock,
   ...radio,
-  ...availability,
   ...branding,
   ...logging,
   GOOGLE_SERVICE_ACCOUNT_JSON: sheets.GOOGLE_SERVICE_ACCOUNT_JSON,

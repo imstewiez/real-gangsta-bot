@@ -44,43 +44,6 @@ async function handleMeuResumoButton(interaction) {
   return handle(interaction);
 }
 
-async function handlePainelPendenciasButton(interaction) {
-  const { handle } = require('../queries/painelPendencias');
-  return handle(interaction);
-}
-
-async function handleRelatorioButton(interaction) {
-  const { handle } = require('../queries/relatorio');
-  interaction.options = {
-    getString: () => 'week',
-    getSubcommand: () => null,
-  };
-  return handle(interaction);
-}
-
-async function handleDashboardButton(interaction) {
-  const { handle } = require('../queries/dashboard');
-  return handle(interaction);
-}
-
-async function handleInactivosButton(interaction) {
-  const { handle } = require('../queries/inactivosBairristas');
-  interaction.options = {
-    getInteger: name => (name === 'dias_sem_actividade' ? 30 : 14),
-    getSubcommand: () => null,
-  };
-  return handle(interaction);
-}
-
-async function handleSyncSheetsButton(interaction) {
-  const { handle } = require('../queries/syncSheets');
-  interaction.options = {
-    getString: name => (name === 'acao' ? 'status' : null),
-    getSubcommand: () => null,
-  };
-  return handle(interaction);
-}
-
 // ── Acções com modal ────────────────────────────────────────────────────────
 
 async function handleVenderButton(interaction) {
@@ -299,6 +262,8 @@ async function handleVenderModalSubmit(interaction) {
       quantity: qty,
       price: preco ? (Number.isNaN(parseFloat(preco)) ? null : parseFloat(preco)) : null,
       note: nota,
+      guild: interaction.guild,
+      client: interaction.client,
     });
 
     return safeReply(
@@ -573,11 +538,6 @@ module.exports = {
   handlePrecariosChefiaButton,
   handleMinhasSaidasButton,
   handleMeuResumoButton,
-  handlePainelPendenciasButton,
-  handleRelatorioButton,
-  handleDashboardButton,
-  handleInactivosButton,
-  handleSyncSheetsButton,
   // Modais (abrir)
   handleVenderButton,
   handleKillButton,

@@ -158,22 +158,6 @@ function fmtResult(raw) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PRESENCE — availability.presence
-// ═══════════════════════════════════════════════════════════════════════════
-
-const PRESENCE = {
-  disponivel: { label: 'Na zona', emoji: '🟢' },
-  indisponivel: { label: 'Fora', emoji: '🔴' },
-  talvez: { label: 'Talvez', emoji: '🟡' },
-};
-
-function fmtPresence(raw) {
-  const p = PRESENCE[raw];
-  if (!p) return raw;
-  return `${p.emoji} ${p.label}`;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // EXPORTS
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -186,7 +170,6 @@ module.exports = {
   PARTICIPANT_TYPE,
   ROLE,
   TIER,
-  PRESENCE,
   // Formatters
   fmtMovementType,
   fmtMovementTypeShort,
@@ -197,5 +180,4 @@ module.exports = {
   fmtRole,
   fmtTier,
   fmtResult,
-  fmtPresence,
 };

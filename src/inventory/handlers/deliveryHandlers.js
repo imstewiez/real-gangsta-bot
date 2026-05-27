@@ -80,7 +80,7 @@ async function handleDeliveryApproverSelect(interaction) {
     const decisionComponents = bairristaCart.buildDeliveryDecisionComponents(result.request.id);
 
     let delivered = 'canal';
-    const { resolveChannel } = require('../../notifications/channels');
+    const { resolveChannel } = require('../../shared/channels');
     const staffChannel = await resolveChannel(interaction.client, 'INVENTORY_EVENTS');
     if (staffChannel) {
       await staffChannel.send({

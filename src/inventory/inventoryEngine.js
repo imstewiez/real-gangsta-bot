@@ -28,6 +28,8 @@ async function recordDelivery({
   notes = '',
   operationId = null,
   createdBy,
+  guild = null,
+  client = null,
 }) {
   const member = await memberRepo.findByDiscordId(discordId);
   if (!member) throw new NotFoundError('Membro não encontrado.', { code: 'MEMBER_NOT_FOUND' });
@@ -104,6 +106,12 @@ async function recordDelivery({
 
   // Dispara recalc dos rankings na web app — fire-and-forget
   triggerRecalc('inventory_movement').catch(() => {});
+
+  // Verifica promoção automática por XP — fire-and-forget (só bairristas)
+  if (isBairristaMovement && guild && client) {
+    const { checkAndPromote } = require('../members/autoPromotionEngine');
+    checkAndPromote(discordId, guild, client).catch(() => null);
+  }
 
   // Fire-and-forget: log dedicado dos Bairristas (entregas + vendas)
   const isBairristaMovement = /entrega_bairrista|venda_bairrista/.test(movementType);
@@ -233,6 +241,9 @@ async function afterBatchCommitted({
     `[BAIRRISTA-BATCH] ${member.display_name} (${tipo}) submetteu ${enrichedLines.length} linhas, ${totalQty} qty, ${totalValue}€ — submission=${submissionId}`
   );
 
+  // Dispara recalc dos rankings na web app — fire-and-forget
+  triggerRecalc('inventory_movement').catch(() => {});
+
   (async () => {
     try {
       const { start } = weekBounds();
@@ -290,7 +301,15 @@ async function afterBatchCommitted({
  *   lines: Array,
  * }>}
  */
-async function recordDeliveryBatch({ discordId, tipo, lines, globalNotes = '', createdBy }) {
+async function recordDeliveryBatch({
+  discordId,
+  tipo,
+  lines,
+  globalNotes = '',
+  createdBy,
+  guild = null,
+  client = null,
+}) {
   if (!Array.isArray(lines) || lines.length === 0) {
     throw new ValidationError('Carrinho vazio — adiciona pelo menos 1 item antes de submeter.', { code: 'EMPTY_CART' });
   }
@@ -471,6 +490,12 @@ async function recordDeliveryBatch({ discordId, tipo, lines, globalNotes = '', c
       warn(`[BAIRRISTA-BATCH] log notify falhou: ${e.message}`);
     }
   })().catch(() => {});
+
+  // Verifica promoção automática por XP — fire-and-forget (só bairristas)
+  if (/entrega_bairrista|venda_bairrista/.test(movementType) && guild && client) {
+    const { checkAndPromote } = require('../members/autoPromotionEngine');
+    checkAndPromote(discordId, guild, client).catch(() => null);
+  }
 
   return {
     submissionId,
@@ -809,7 +834,7 @@ async function getStockForItem(itemId) {
   return inventoryRepo.getStockForItem(itemId);
 }
 
-async function registerSale({ memberId, itemName, quantity, price = null, note = '' }) {
+async function registerSale({ memberId, itemName, quantity, price = null, note = '', guild = null, client = null }) {
   const stockManager = require('./stockManager');
   const item = await stockManager.findItemByName(itemName);
   if (!item) throw new NotFoundError(`Item não encontrado: ${itemName}`, { code: 'ITEM_NOT_FOUND' });
@@ -821,6 +846,8 @@ async function registerSale({ memberId, itemName, quantity, price = null, note =
     movementType: 'venda_bairrista',
     notes: note + (price ? ` | Preço: ${Math.round(Number(price)).toLocaleString('pt-PT')}€` : ''),
     createdBy: `discord:${memberId}`,
+    guild,
+    client,
   });
   return { success: true, movement: result.movement };
 }

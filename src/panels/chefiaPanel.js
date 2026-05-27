@@ -153,11 +153,7 @@ async function buildChefiaPanel() {
       { customId: 'chefia::gerir_encomendas', label: 'Gerir Encomendas', style: 'Success', emoji: EMOJI.ENCOMENDA },
     ],
     // Row 2 — Consultas
-    [
-      { customId: 'chefia::painel_pendencias', label: 'Pendências', style: 'Primary', emoji: EMOJI.PENDENTE },
-      { customId: 'chefia::relatorio', label: 'Relatório', style: 'Primary', emoji: EMOJI.AUDIT },
-      { customId: 'chefia::ver_stock', label: 'Stock', style: 'Primary', emoji: EMOJI.STOCK },
-    ],
+    [{ customId: 'chefia::ver_stock', label: 'Stock', style: 'Primary', emoji: EMOJI.STOCK }],
     // Row 3 — Gestão (select menu)
   ]);
 
@@ -178,12 +174,6 @@ async function buildChefiaPanel() {
           value: 'chefia::gerir_materiais',
           emoji: EMOJI.EDITAR,
           description: 'Adicionar/remover itens do catálogo',
-        },
-        {
-          label: 'Republicar Painéis',
-          value: 'chefia::republicar_paineis',
-          emoji: EMOJI.REFRESH,
-          description: 'Republicar todos os painéis',
         },
       ],
     })

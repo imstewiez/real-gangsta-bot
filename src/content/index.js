@@ -33,7 +33,6 @@ const ONBOARDING = require('./onboarding');
 const { SAIDAS, VALID_RESULTS, RESULT_LABEL, RESULT_NAME, RESULT_EMOJI, RESULT_DESCRIPTION } = require('./saidas');
 const STATS = require('./stats');
 const KILLS = require('./kills');
-const AVAILABILITY = require('./availability');
 const RADIO = require('./radio');
 const INVENTORY = require('./inventory');
 const RANKINGS = require('./rankings');
@@ -59,7 +58,6 @@ module.exports = {
   RESULT_DESCRIPTION,
   STATS,
   KILLS,
-  AVAILABILITY,
   RADIO,
   INVENTORY,
   RANKINGS,

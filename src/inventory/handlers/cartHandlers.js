@@ -594,7 +594,7 @@ async function handleCartSubmit(interaction) {
 
   // Notificar canal de staff (INVENTORY_EVENTS → CH_MATERIAL_ENTREG 1491506821599330545)
   try {
-    const { resolveChannel } = require('../../notifications/channels');
+    const { resolveChannel } = require('../../shared/channels');
     const staffChannel = await resolveChannel(interaction.client, 'INVENTORY_EVENTS');
     if (staffChannel) {
       const requestEmbed = bairristaCart.buildDeliveryRequestEmbed({
