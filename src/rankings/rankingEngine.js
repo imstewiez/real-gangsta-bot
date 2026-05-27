@@ -82,7 +82,8 @@ async function computeWeeklyRankings(weekDate = new Date()) {
   const weekEnd = end.toISOString().split('T')[0];
 
   const movements = await inventoryRepo.getWeeklyMovements(start, end);
-  const members = await memberRepo.findAll('ativo');
+  const allMembers = await memberRepo.findAll('ativo');
+  const members = allMembers.filter(m => m.role === 'bairrista');
 
   // First pass: compute raw scores for all members
   const memberData = [];
