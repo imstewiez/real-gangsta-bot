@@ -17,6 +17,11 @@ async function findAll(status = 'ativo') {
   return res.rows;
 }
 
+async function findAllNonDeleted() {
+  const res = await query('SELECT * FROM members WHERE deleted_at IS NULL ORDER BY display_name');
+  return res.rows;
+}
+
 async function findByRole(role) {
   const res = await query('SELECT * FROM members WHERE role = $1 AND status = $2 ORDER BY display_name', [
     role,
@@ -119,6 +124,7 @@ module.exports = {
   findByDiscordId,
   findById,
   findAll,
+  findAllNonDeleted,
   findByRole,
   create,
   update,

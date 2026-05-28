@@ -15,11 +15,16 @@
 const { memberRepo } = require('../../repositories');
 const { markMemberDiscordReconciled, softDelete } = require('../../repositories/_meta');
 const { detectRoleFromGuildMember, backfillMembers } = require('../../members/backfill');
+const { log } = require('../../logger');
 
 async function check(guild) {
-  await guild.members.fetch().catch(() => null);
+  try {
+    await guild.members.fetch();
+  } catch (e) {
+    throw new Error(`guild.members.fetch failed: ${e.message}`);
+  }
   const discordMembers = guild.members.cache;
-  const dbMembers = await memberRepo.findAll('ativo');
+  const dbMembers = await memberRepo.findAllNonDeleted();
 
   const byDiscordId = new Map(dbMembers.map(m => [m.discord_id, m]));
   const drift = { total_checked: 0, role_mismatch: [], tier_mismatch: [], missing_in_db: [], orphan_in_db: [], ok: 0 };
@@ -85,6 +90,10 @@ async function check(guild) {
   drift.has_drift =
     drift.role_mismatch.length + drift.tier_mismatch.length + drift.missing_in_db.length + drift.orphan_in_db.length >
     0;
+
+  log(
+    `[RECONCILE:members] checked=${drift.total_checked} ok=${drift.ok} role=${drift.role_mismatch.length} tier=${drift.tier_mismatch.length} missing=${drift.missing_in_db.length} orphan=${drift.orphan_in_db.length} has_drift=${drift.has_drift}`
+  );
   return drift;
 }
 

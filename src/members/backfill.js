@@ -89,7 +89,11 @@ async function backfillMembers(guild, opts = {}) {
   const dryRun = Boolean(opts.dryRun);
   const actor = opts.actor || 'system:backfill';
 
-  await guild.members.fetch().catch(() => null);
+  try {
+    await guild.members.fetch();
+  } catch (e) {
+    throw new Error(`guild.members.fetch failed during backfill: ${e.message}`);
+  }
   const report = {
     scanned: 0,
     skippedBot: 0,
