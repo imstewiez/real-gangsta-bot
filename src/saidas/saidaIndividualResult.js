@@ -79,7 +79,7 @@ async function handleOpenSubmitResult(interaction) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.ERRO} Não estás registado na firma.`,
+        content: `${EMOJI.ERRO} Não estás registado na Ballas Gang.`,
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'WARN' }

@@ -844,7 +844,7 @@ async function handleMaterialOpSelect(interaction) {
   const directionOptions = [
     {
       label: 'Fornecido',
-      description: 'Material que saiu da firma → participante',
+      description: 'Material que saiu da Ballas Gang → participante',
       value: 'fornecido',
       emoji: EMOJI.ENVIAR,
     },

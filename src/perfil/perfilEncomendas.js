@@ -65,7 +65,7 @@ async function handle(interaction) {
   if (!rows.length) {
     embed.setDescription(
       'Ainda não fizeste nenhuma encomenda.\n\n' +
-        'Usa o botão **Encomendar** no teu painel para pedir material à firma.'
+        'Usa o botão **Encomendar** no teu painel para pedir material à Ballas Gang.'
     );
   } else {
     // KPI stripe — contagens por estado

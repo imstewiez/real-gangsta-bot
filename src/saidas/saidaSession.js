@@ -508,7 +508,7 @@ async function handleSessionCaracterizado(interaction) {
   return safeReply(
     interaction,
     {
-      content: `**Sa├¡da #${saidaId}** ÔÇö como te armas?\n\n${EMOJI.ARMA} **Arma Pr├│pria** ÔÇö j├í tens arma contigo\n${EMOJI.FORNECER} **Pedir ├á Org** ÔÇö a firma cede a arma do stock`,
+      content: `**Sa├¡da #${saidaId}** ÔÇö como te armas?\n\n${EMOJI.ARMA} **Arma Pr├│pria** ÔÇö j├í tens arma contigo\n${EMOJI.FORNECER} **Pedir ├á Org** ÔÇö a Ballas Gang cede a arma do stock`,
       components: [row],
       flags: MessageFlags.Ephemeral,
     },
@@ -907,7 +907,7 @@ async function handleSessionPedirJuntar(interaction) {
   if (!member) {
     return safeReply(
       interaction,
-      { content: `${EMOJI.ERRO} N├úo est├ís registado na firma.` },
+      { content: `${EMOJI.ERRO} N├úo est├ís registado na Ballas Gang.` },
       { messageClass: 'ERROR' }
     );
   }

@@ -16,7 +16,7 @@ async function handle(interaction) {
     return safeReply(interaction, { content: 'Instância ainda não registada.' }, { messageClass: 'BANAL' });
   }
   const lines = [
-    `**Firma RedWood** · ${inst.version || '?'}${inst.gitSha ? ` · \`${inst.gitSha.slice(0, 7)}\`` : ''}`,
+    `**Ballas Gang** · ${inst.version || '?'}${inst.gitSha ? ` · \`${inst.gitSha.slice(0, 7)}\`` : ''}`,
     `${EMOJI.CASA} \`${inst.hostname}\` · pid \`${inst.pid}\` · <t:${Math.floor(new Date(inst.startedAt).getTime() / 1000)}:R>`,
   ];
 

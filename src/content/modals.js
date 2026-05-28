@@ -15,7 +15,7 @@ const E = require('./emojis');
 const MODALS = {
   // ── Onboarding ────────────────────────────────────────────────────────
   TAG_REQUEST: {
-    TITLE: 'Pedir Tag — Firma RedWood',
+    TITLE: 'Pedir Tag — Ballas Gang',
     FIELDS: {
       full_name: {
         label: 'Nome in-game (primeiro e último)',
@@ -179,7 +179,7 @@ const MODALS = {
         required: false,
       },
       kills: {
-        label: 'Kills da firma (total)',
+        label: 'Kills da Ballas Gang (total)',
         placeholder: 'Ex: 4',
         maxLength: 5,
         required: false,

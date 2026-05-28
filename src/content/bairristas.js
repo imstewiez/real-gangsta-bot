@@ -18,7 +18,7 @@ const BAIRRISTAS = {
       `${E.ENTREGA} **Registar** — entrega ou vende material\n` +
       `${E.FIRMA} **Movimento no Bairro** — o teu peso em tempo real\n` +
       `${E.MEDAL_1} **Ranking** — quem rende mais na semana\n` +
-      `${E.ENCOMENDA} **Encomendas** — o que pediste à firma\n` +
+      `${E.ENCOMENDA} **Encomendas** — o que pediste à Ballas Gang\n` +
       '\n' +
       `${inlineSign('HOUSE')}`,
   },

@@ -201,7 +201,7 @@ async function bootstrapAll(client) {
  * Idempotente: não duplica se o painel já estiver no canal (detectado por
  * título do embed "Painel do Bairrista" ou "Bem-vindo ao bairro").
  */
-async function backfillResidentPanels(client) {
+async function _backfillResidentPanels(client) {
   const { query } = require('./db');
   const { buildBairristaChannelPanel } = require('./onboarding/onboardingHandlers');
   const { welcomeChannelEmbed } = require('./shared/embedBuilders');

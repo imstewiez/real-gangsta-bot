@@ -7,7 +7,7 @@ const E = require('./emojis');
 
 const RADIO = {
   TITLE: `${E.RADIO} Frequência`,
-  PROMPT: 'Frequência principal da Firma.',
+  PROMPT: 'Frequência principal da Ballas Gang.',
 
   // Títulos de success embeds
   SET_TITLE: `${E.RADIO} Frequência actualizada`,

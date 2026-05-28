@@ -5,7 +5,7 @@ const { EMOJI } = require('../content');
 const { getOficialMetrics } = require('../repositories/panelRepo');
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Painel do Bairrista — Atividade da Firma
+// Painel do Bairrista — Atividade da Ballas Gang
 // ═══════════════════════════════════════════════════════════════════════════════
 // Nota: este é o painel PÚBLICO no canal. Dados pessoais aparecem em "Meu Resumo".
 
@@ -69,7 +69,7 @@ async function buildBairristaPanel() {
 
   const embed = renderPanelEmbed({
     title: `${EMOJI.CASA} Painel do Bairrista`,
-    subtitle: 'Atividade semanal da Firma RedWood — quem puxa, quem rende.',
+    subtitle: 'Atividade semanal da Ballas Gang — quem puxa, quem rende.',
     color: COLOR.GOLD,
     fields,
   });

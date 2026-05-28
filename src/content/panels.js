@@ -15,13 +15,13 @@ const PANELS = {
   ENTRADA: {
     TITLE: `${E.SANGUE} O Portão`,
     DESCRIPTION:
-      'Bem-vindo à Firma RedWood. Aqui começa o teu percurso — lê as regras, pede a tua tag e mostra o que vales.',
+      'Bem-vindo à Ballas Gang. Aqui começa o teu percurso — lê as regras, pede a tua tag e mostra o que vales.',
     BUTTON: { REGISTRAR: 'Dar a Cara' },
   },
 
   BAIRRISTA: {
     TITLE: `${E.CASA} Painel do Bairrista`,
-    DESCRIPTION: 'Atividade semanal da Firma RedWood — quem puxa, quem rende.',
+    DESCRIPTION: 'Atividade semanal da Ballas Gang — quem puxa, quem rende.',
     BUTTONS: {
       ENTREGA: 'Entregar Material',
       VENDA: 'Vender',
@@ -34,7 +34,7 @@ const PANELS = {
 
   OFICIAL: {
     TITLE: `${E.VITORIA} Painel do Oficial`,
-    DESCRIPTION: 'Operações, movimento e atividade semanal da Firma RedWood.',
+    DESCRIPTION: 'Operações, movimento e atividade semanal da Ballas Gang.',
     BUTTONS: {
       CRIAR_SAIDA: 'Abrir Saída',
       ENTREGA: 'Registar Material',
@@ -48,7 +48,7 @@ const PANELS = {
 
   CHEFIA: {
     TITLE: `${E.LIDER} Painel da Chefia`,
-    DESCRIPTION: 'Visão geral da Firma RedWood — operações, membros, stock e movimento.',
+    DESCRIPTION: 'Visão geral da Ballas Gang — operações, membros, stock e movimento.',
     BUTTONS: {
       CRIAR_SAIDA: 'Abrir Saída',
       GERIR_ENCOMENDAS: 'Gerir Encomendas',

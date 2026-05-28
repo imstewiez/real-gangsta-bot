@@ -102,7 +102,7 @@ function buildEmbed(states) {
 
   const embed = brandEmbed('MOVEMENT')
     .setColor(COLOR.DANGER)
-    .setTitle(`${EMOJI.RADIO} Frequência da Firma`)
+    .setTitle(`${EMOJI.RADIO} Frequência da Ballas Gang`)
     .setDescription(`\`\`\`fix\n${val}\n\`\`\`\n` + `> ${modeTag} · ${by} · ${when}`);
 
   return applyLogo(embed);

@@ -140,7 +140,7 @@ async function buildChefiaPanel() {
 
   const embed = renderPanelEmbed({
     title: `${EMOJI.LIDER} Painel da Chefia`,
-    subtitle: 'Visão geral da Firma RedWood — operações, membros, stock e movimento.',
+    subtitle: 'Visão geral da Ballas Gang — operações, membros, stock e movimento.',
     color: COLOR.DANGER,
     fields,
   });

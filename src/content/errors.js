@@ -43,7 +43,7 @@ const ERRORS = {
   // Membros
   MEMBER_NOT_FOUND: () => `${E.NOT_FOUND} ${t('errors.member_not_found', 'Esse nome não está na casa.')}`,
 
-  ALREADY_REGISTERED: () => `${E.WARN} Já está na firma — não precisas de registar outra vez.`,
+  ALREADY_REGISTERED: () => `${E.WARN} Já estás na Ballas Gang — não precisas de registar outra vez.`,
 
   // Saídas
   SAIDA_NOT_FOUND: () => `${E.NOT_FOUND} Essa saída não existe.`,

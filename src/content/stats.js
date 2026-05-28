@@ -20,7 +20,7 @@ const STATS = {
     { value: 'spot_net', label: `${E.ZONA} Spots — Lucro`, description: 'Onde lucramos mais' },
     { value: 'spot_winrate', label: `${E.VITORIA} Spots — Winrate`, description: 'Onde vencemos mais' },
     { value: 'spot_deaths', label: `${E.MORTE} Spots — Mortes`, description: 'Onde caímos mais' },
-    { value: 'org_kills', label: `${E.DERROTA} Firma — Kills`, description: 'Contagem total' },
+    { value: 'org_kills', label: `${E.DERROTA} Ballas Gang — Kills`, description: 'Contagem total' },
   ],
 
   TITLES: {
@@ -33,7 +33,7 @@ const STATS = {
     spot_net: `${E.ZONA} Spots — Lucro Líquido`,
     spot_winrate: `${E.VITORIA} Spots — Winrate`,
     spot_deaths: `${E.MORTE} Spots — Onde Caímos Mais`,
-    org_kills: `${E.DERROTA} Kills da Firma`,
+    org_kills: `${E.DERROTA} Kills da Ballas Gang`,
   },
 
   EMPTY: '_Sem dados ainda._',

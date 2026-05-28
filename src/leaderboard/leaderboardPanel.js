@@ -95,7 +95,7 @@ function formatLeaderLine(category, leader) {
 function buildLeaderboardEmbed({ daily, weekly, monthly, refreshedAt }) {
   const embed = brandEmbed('TOP')
     .setColor(COLOR.GOLD)
-    .setTitle(`${EMOJI.TOPO} Leaderboard da Firma`)
+    .setTitle(`${EMOJI.TOPO} Leaderboard da Ballas Gang`)
     .setDescription(
       [
         '_Top 1 em cada categoria, por período._',

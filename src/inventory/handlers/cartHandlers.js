@@ -28,7 +28,7 @@ async function handleRegistarMaterialButton(interaction) {
     return safeReply(
       interaction,
       {
-        content: `${EMOJI.ERRO} Não estás registado na firma. Pede a tag primeiro.`,
+        content: `${EMOJI.ERRO} Não estás registado na Ballas Gang. Pede a tag primeiro.`,
         flags: MessageFlags.Ephemeral,
       },
       { messageClass: 'ERROR' }

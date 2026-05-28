@@ -54,7 +54,7 @@ async function _handle(interaction, tipo) {
   if (!member) {
     return safeReply(
       interaction,
-      { content: `${EMOJI.ERRO} Não estás registado na firma. Pede a tag primeiro.` },
+      { content: `${EMOJI.ERRO} Não estás registado na Ballas Gang. Pede a tag primeiro.` },
       { messageClass: 'ERROR' }
     );
   }

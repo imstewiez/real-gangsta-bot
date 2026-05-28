@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Tab Dashboard — central de comando RedWood (v2 redesign).
+ * Tab Dashboard — central de comando Ballas Gang (v2 redesign).
  *
  * Blocos (topo → fundo):
  *   1. Header premium

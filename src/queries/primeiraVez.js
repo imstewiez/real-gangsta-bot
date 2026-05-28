@@ -4,7 +4,7 @@ const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
 
 const STEPS = [
-  '👋 **Bem-vindo!** Este é o teu canal pessoal na firma.',
+  '👋 **Bem-vindo!** Este é o teu canal pessoal na Ballas Gang.',
   '📥 **Entregar** — Usa o botão Entregar ou `/entrega` para registar material.',
   '💰 **Vender** — Usa o botão Vender ou `/venda` para registar vendas.',
   '📦 **Encomendar** — Clica em Encomendar no painel para pedir material.',

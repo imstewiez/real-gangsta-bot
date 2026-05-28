@@ -107,7 +107,7 @@ async function startCooldown({ spot, saidaId, saidaType, leaderName, minutes, cl
             .setTitle(`${EMOJI.WARN} Spot Queimado — ${spot}`)
             .setDescription(
               'A org acabou de abrir uma saída neste spot.\n' +
-                `**Ninguém da firma pode voltar a ${spot}** durante **${mins} min**.\n` +
+                `**Ninguém da Ballas Gang pode voltar a ${spot}** durante **${mins} min**.\n` +
                 '\n' +
                 `${EMOJI.SAIDA} Saída: **#${saidaId}**${saidaType ? ` · ${saidaType}` : ''}\n` +
                 `${EMOJI.TEMPO || '⏱️'} Livre a partir de: **${formatPtDate(expiresAt)}**\n` +

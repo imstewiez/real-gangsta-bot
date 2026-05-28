@@ -373,7 +373,7 @@ async function _syncOneImpl(key) {
       for (const p of existingProtections) {
         postBatch.requests.push({ deleteProtectedRange: { protectedRangeId: p.protectedRangeId } });
       }
-      postBatch.protectSheet(sheetId, 'Firma RedWood � gerido pelo bot');
+      postBatch.protectSheet(sheetId, 'Ballas Gang � gerido pelo bot');
       if (key === 'config') postBatch.hideSheet(sheetId);
       await postBatch.flush();
     } catch (e) {

@@ -31,7 +31,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('ranking')
-    .setDescription('Rankings da firma')
+    .setDescription('Rankings da Ballas Gang')
     .addStringOption(opt =>
       opt
         .setName('periodo')

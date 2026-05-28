@@ -3,11 +3,11 @@
  * Helpers de assinatura / footer.
  *
  * Todo o embed relevante passa por aqui. Mantém a marca consistente
- * (Firma RedWood) e aceita variações curtas ("casa", "rua", "topo")
+ * (Ballas Gang) e aceita variações curtas ("casa", "rua", "topo")
  * quando fizer sentido pelo contexto.
  */
 
-const BRAND = 'Firma RedWood';
+const BRAND = 'Ballas Gang';
 
 const SIGNATURES = {
   SHORT: `— ${BRAND}`,
@@ -29,7 +29,7 @@ function footer(variant = 'SHORT', iconURL) {
   return out;
 }
 
-// Footer com contexto extra (ex: `Firma RedWood · movimento · pedido #abc123`).
+// Footer com contexto extra (ex: `Ballas Gang · movimento · pedido #abc123`).
 function footerWithContext(variant = 'SHORT', extra) {
   const base = footerText(variant);
   return extra ? `${base} · ${extra}` : base;

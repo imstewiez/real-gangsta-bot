@@ -36,9 +36,9 @@ const MEMBER_STATS = {
   // Material
   MATERIAL: {
     TITLE: `${E.MATERIAL} O teu material`,
-    NO_DATA: 'Ainda não recebeste material da firma.',
+    NO_DATA: 'Ainda não recebeste material da Ballas Gang.',
 
-    RECEBIDO: `${E.FORNECER} Recebido da firma`,
+    RECEBIDO: `${E.FORNECER} Recebido da Ballas Gang`,
     DEVOLVIDO: `${E.DEVOLVER} Devolveste`,
     PERDIDO: `${E.PERDIDO} Perdeste`,
     CONSUMIDO: `${E.CRAFT} Consumido`,

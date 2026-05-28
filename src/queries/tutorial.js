@@ -4,7 +4,7 @@ const { brandEmbed } = require('../shared/embedBuilders');
 const { safeReply } = require('../shared/interactionHelpers');
 
 const STEPS = [
-  { title: '👋 Bem-vindo à Firma!', body: 'Fizeste a escolha certa. Vamos começar o teu percurso.' },
+  { title: '👋 Bem-vindo à Ballas Gang!', body: 'Fizeste a escolha certa. Vamos começar o teu percurso.' },
   {
     title: '1️⃣ Canal Pessoal',
     body: 'Tens um canal só teu no Discord. É lá que geres tudo: entregas, vendas, encomendas, saídas.',

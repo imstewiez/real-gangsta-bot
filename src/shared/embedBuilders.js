@@ -31,7 +31,7 @@ const COLOR = Object.freeze({
 
 // ── Brand embeds ────────────────────────────────────────────────────────────
 
-// Footer assinado pela Firma RedWood. Icone opcional via BOT_LOGO_URL.
+// Footer assinado pela Ballas Gang. Icone opcional via BOT_LOGO_URL.
 // Todas as embeds do bot devem passar por aqui — garante consistência visual.
 // V13: logo aplicado automaticamente (skipLogo para excepções).
 function brandEmbed(variant = 'SHORT', opts = {}) {

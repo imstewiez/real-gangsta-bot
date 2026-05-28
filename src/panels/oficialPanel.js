@@ -70,7 +70,7 @@ async function buildOficialPanel() {
 
   const embed = renderPanelEmbed({
     title: `${EMOJI.VITORIA} Painel do Oficial`,
-    subtitle: 'Operações, movimento e atividade semanal da Firma RedWood.',
+    subtitle: 'Operações, movimento e atividade semanal da Ballas Gang.',
     color: COLOR.INFO,
     fields,
   });

@@ -41,7 +41,7 @@ async function syncConfig(batch, sheetId) {
 
   // ── HIERARQUIA ──────────────────────────────────────────────────────────
   row = sectionHeader(batch, sheetId, row, {
-    title: 'HIERARQUIA DA FIRMA',
+    title: 'HIERARQUIA DA BALLAS GANG',
     hint: 'do topo a base',
     columnCount: COL_COUNT,
   });

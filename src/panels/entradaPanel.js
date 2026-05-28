@@ -23,7 +23,7 @@ async function buildEntradaPanel() {
 
   const title = `${EMOJI.SANGUE} O Portão`;
   const description =
-    'Bem-vindo à Firma RedWood. Aqui começa o teu percurso — lê as regras, pede a tua tag e mostra o que vales.';
+    'Bem-vindo à Ballas Gang. Aqui começa o teu percurso — lê as regras, pede a tua tag e mostra o que vales.';
 
   try {
     const embed = new EmbedBuilder()
@@ -33,7 +33,7 @@ async function buildEntradaPanel() {
       .addFields(
         {
           name: `${EMOJI.PARTICIPANTE} Membros Activos`,
-          value: `**${safe.membros_activos ?? 0}** na Firma`,
+          value: `**${safe.membros_activos ?? 0}** na Ballas Gang`,
           inline: true,
         },
         {
@@ -42,7 +42,7 @@ async function buildEntradaPanel() {
           inline: true,
         }
       )
-      .setFooter({ text: '— Firma RedWood' });
+      .setFooter({ text: '— Ballas Gang' });
 
     const btn1 = button({
       customId: 'onboard::pedir_tag',
@@ -64,7 +64,7 @@ async function buildEntradaPanel() {
     const fallback = new EmbedBuilder()
       .setColor(COLOR.SUCCESS)
       .setTitle('O Portão')
-      .setDescription('Bem-vindo à Firma RedWood.');
+      .setDescription('Bem-vindo à Ballas Gang.');
     return { embeds: [fallback] };
   }
 }

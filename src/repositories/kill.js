@@ -104,8 +104,8 @@ async function totalOrgKills(windowDays = null) {
 }
 
 /**
- * Total de kills da firma incluindo operation_participants (saídas) +
- * kill_logs (/kill events). Para display "Kills da firma all-time" —
+ * Total de kills da Ballas Gang incluindo operation_participants (saídas) +
+ * kill_logs (/kill events). Para display "Kills da Ballas Gang all-time" —
  * totalOrgKills sozinho só conta /kill e deixa de fora as saídas.
  */
 async function totalOrgKillsAllSources(windowDays = null) {

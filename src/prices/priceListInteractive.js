@@ -128,7 +128,7 @@ const BUY_WEAPON_NAMES = new Set([
   'Carabina Especial',
 ]);
 
-// Itens que o bairrista pode vender/entregar à firma
+// Itens que o bairrista pode vender/entregar à Ballas Gang
 const SELLABLE_ITEM_NAMES = new Set([
   'Lixo Eletrónico',
   'Sucata',
@@ -461,14 +461,14 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       .setDescription(
         '**Como ler:**\n' +
           '💰 **Preço** — dinheiro sujo a pagar (já com markup do teu tier)\n' +
-          '📦 **Materiais** — entregas fisicamente na firma (obrigatórios)\n\n' +
+          '📦 **Materiais** — entregas fisicamente na Ballas Gang (obrigatórios)\n\n' +
           `_Rank: ${memberRole} | Compra ${fmtPct(buyMult)}_`
       )
   );
   embeds.push(legend);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SECÇÃO COMPRA (o que a firma VENDE → bairrista COMPRA)
+  // SECÇÃO COMPRA (o que a Ballas Gang VENDE → bairrista COMPRA)
   // ═══════════════════════════════════════════════════════════════════════════
 
   for (const catDef of BUY_CATEGORIES) {
@@ -560,7 +560,7 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SECÇÃO VENDA (o que a firma COMPRA → bairrista VENDE)
+  // SECÇÃO VENDA (o que a Ballas Gang COMPRA → bairrista VENDE)
   // ═══════════════════════════════════════════════════════════════════════════
 
   const sellItems = items.filter(item => SELLABLE_ITEM_NAMES.has(item.name));
@@ -578,7 +578,7 @@ async function buildPriceEmbedsForMember(memberRole, memberTier) {
       brandEmbed('MOVEMENT')
         .setColor(COLOR.SUCCESS)
         .setTitle('💵 Preços de Venda')
-        .setDescription('Preços que a **Firma paga** por cada material que entregas.')
+        .setDescription('Preços que a **Ballas Gang paga** por cada material que entregas.')
     );
     embeds.push(sellHeader);
 
@@ -752,7 +752,7 @@ async function buildPriceEmbedsForChefia() {
         '**Legenda:**\n' +
           '`Custo` = valor total dos materiais de craft\n' +
           '`YB/OG/GF` = preço que o bairrista paga (c/ material) por tier\n' +
-          '`Margem` = lucro da firma sobre o custo de produção\n\n' +
+          '`Margem` = lucro da Ballas Gang sobre o custo de produção\n\n' +
           '_Ordenado por margem de lucro (maior primeiro)._' +
           '\n\n*Usa os botões ◀ ▶ para navegar entre páginas.*'
       )

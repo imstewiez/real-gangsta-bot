@@ -3,7 +3,7 @@
  * Copy de onboarding — tag, canal individual, aprovação, negação, DMs.
  *
  * Tom: temático, rua, firma. Frase curta, imperativo, contraste binário
- * "a rua X, a Firma Y". Sem anglicismos. Corta o ar.
+ * "a rua X, a Ballas Gang Y". Sem anglicismos. Corta o ar.
  */
 
 const E = require('./emojis');
@@ -17,10 +17,10 @@ const ONBOARDING = {
     `${E.MATERIAL} **Registar Material** — cada quilo conta. Sem registo, não existe.\n` +
     `${E.FIRMA} **Movimento no Bairro** — o teu peso ao vivo.\n` +
     `${E.MEDAL_1} **Ranking** — sobe pela produção, não pela cara.\n` +
-    `${E.ENCOMENDA} **Encomendas** — o que pediste à firma.\n` +
+    `${E.ENCOMENDA} **Encomendas** — o que pediste à Ballas Gang.\n` +
     '\n' +
     '_Trás pedra. O bairro devolve nome._\n' +
-    '— Firma RedWood',
+    '— Ballas Gang',
 
   // ── Confirmação ao user após submeter o modal ──
   REQUEST_RECEIVED_TITLE: `${E.TAG} Pedido em Análise`,
@@ -55,7 +55,7 @@ const ONBOARDING = {
     `${E.MATERIAL} Começa já — regista o que trazes.\n` +
     '\n' +
     '_Bem-vindo ao bairro._\n' +
-    '— Firma RedWood',
+    '— Ballas Gang',
 
   // ── Negação ──
   TAG_DENIED_TITLE: `${E.BLOQUEADO} Tag Negada`,
@@ -69,7 +69,7 @@ const ONBOARDING = {
     (reason ? `\n**Motivo:** ${reason}\n` : '') +
     '\n' +
     '_Para reapelar, fala directo com a chefia no servidor._\n' +
-    '— Firma RedWood',
+    '— Ballas Gang',
 
   // ── Fallback message quando DMs fechados ──
   DM_FALLBACK_NOTICE:

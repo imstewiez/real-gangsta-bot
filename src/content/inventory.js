@@ -21,7 +21,7 @@ const INVENTORY = {
 
   PROMPTS: {
     SET_STOCK: 'Ajustar quantidade de um item.',
-    FORNECER: 'Fornecer material a um nome da firma.',
+    FORNECER: 'Fornecer material a um nome da Ballas Gang.',
     ENTREGA_OU_VENDA: 'Queres **entregar** ou **vender** material ao grupo?',
     QUE_MATERIAL_ENTREGA: 'Que material queres **entregar**?',
     QUE_MATERIAL_VENDA: 'Que material queres **vender**? O valor é calculado automaticamente.',

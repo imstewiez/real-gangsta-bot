@@ -2,7 +2,7 @@
 const http = require('http');
 const metrics = require('../lib/metrics');
 const CONFIG = require('../config');
-const { log } = require('../logger');
+const { log, warn } = require('../logger');
 const { setClient: setWebhookClient, processEvent } = require('./botWebhook');
 
 let _client = null;

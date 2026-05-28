@@ -7,7 +7,7 @@
 
 const E = require('./emojis');
 
-// Armas que a firma pode emitir em "Pedir à Org". Subset curado do catálogo
+// Armas que a Ballas Gang pode emitir em "Pedir à Org". Subset curado do catálogo
 // armas_fogo. "Arma Própria" continua a mostrar o catálogo completo
 // (armas_fogo + armas_brancas) — cada um leva o que tem.
 const ORG_ISSUED_WEAPONS = [
@@ -129,7 +129,7 @@ const SAIDAS = {
     DEVOLVERAM: 'Devolveram',
     DEVENDO: 'Ficaram a dever',
     WINRATE: 'Winrate do spot',
-    ORG_KILLS: 'Kills da firma (all-time)',
+    ORG_KILLS: 'Kills da Ballas Gang (all-time)',
   },
 
   // Sessão interactiva
@@ -162,7 +162,7 @@ const SAIDAS = {
   MODAL: {
     KILLS_LABEL: 'Kills',
     DIED_LABEL: 'Morreu? (S/N)',
-    DIED_WITH_MAT_LABEL: 'Morreu com material da firma?',
+    DIED_WITH_MAT_LABEL: 'Morreu com material da Ballas Gang?',
     NOTES_LABEL: 'Notas',
     RESULT_LABEL: 'Resultado (vitória/derrota/empate/sem conflito)',
     ENEMY_LABEL: 'Inimigo · facção',

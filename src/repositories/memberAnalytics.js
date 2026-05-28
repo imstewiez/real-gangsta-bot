@@ -2,7 +2,7 @@
 /**
  * Analytics pessoais por membro — junta member_saida_stats, kill_logs,
  * operation_participants e operation_materials para dar uma visão
- * completa da performance de cada nome da firma.
+ * completa da performance de cada nome da Ballas Gang.
  *
  * Todas as queries aceitam discord_id directamente para simplificar
  * handlers (não é preciso traduzir para member.id antes).

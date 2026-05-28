@@ -1,15 +1,15 @@
 'use strict';
 /**
- * Design System RedWood para Google Sheets.
+ * Design System Ballas Gang para Google Sheets.
  *
  * Princípios:
  *   - Uma só paleta, uma só fonte, tokens centralizados.
- *   - Preto profundo + vermelho RedWood + carvão + marfim.
+ *   - Preto profundo + vermelho Ballas Gang + carvão + marfim.
  *   - Verde só para positivo, vermelho signal só para negativo,
  *     amarelo só para atenção. Gold reservado para destaques pontuais.
  *   - Tudo aqui devolve objectos compatíveis com batchUpdate; os
  *     "builders" vivem em tabs/_common.js.
- *   - Identidade visual única: Firma RedWood.
+ *   - Identidade visual única: Ballas Gang.
  */
 
 // ─── Primitivos ──────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ const COLOR = {
   OFF_WHITE: rgb(240, 236, 232), // #F0ECE8 — texto principal (tom marfim)
   WHITE: rgb(255, 255, 255),
 
-  // Marca RedWood
+  // Marca Ballas Gang
   RED_DEEP: rgb(139, 0, 0), // #8B0000 — accent primário
   RED_BLOOD: rgb(178, 34, 34), // #B22222 — headers de tabela
   RED_SIGNAL: rgb(220, 53, 69), // #DC3545 — negativo/erro
@@ -200,17 +200,17 @@ function cell(value, opts = {}) {
   if (opts.padding) fmt.padding = opts.padding;
   if (Object.keys(fmt).length) v.userEnteredFormat = fmt;
 
-  // Brand run: detecta "RedWood" e destaca a vermelho no meio do texto.
-  // Aplica apenas se o valor for string e contiver "RedWood".
+  // Brand run: detecta "Ballas Gang" e destaca a vermelho no meio do texto.
+  // Aplica apenas se o valor for string e contiver "Ballas Gang".
   if (opts.brandRed && typeof value === 'string') {
-    const idx = value.indexOf('RedWood');
-    const brandEnd = idx + 'RedWood'.length;
+    const idx = value.indexOf('Ballas Gang');
+    const brandEnd = idx + 'Ballas Gang'.length;
     if (idx >= 0) {
       const baseFont = opts.font || {};
       const runs = [];
       if (idx > 0) runs.push({ startIndex: 0, format: { ...baseFont } });
       runs.push({ startIndex: idx, format: { ...baseFont, foregroundColor: COLOR.RED_DEEP, bold: true } });
-      // Só adiciona o reset se houver texto depois de "RedWood"
+      // Só adiciona o reset se houver texto depois de "Ballas Gang"
       if (brandEnd < value.length) runs.push({ startIndex: brandEnd, format: { ...baseFont } });
       v.textFormatRuns = runs;
     }
@@ -459,7 +459,7 @@ function conditionalTextEquals(sheetId, startRow, startCol, endRow, endCol, text
 }
 
 // Signature global
-const SIGNATURE = 'Firma RedWood';
+const SIGNATURE = 'Ballas Gang';
 
 module.exports = {
   // Primitivos

@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Bot di Zona · Firma RedWood — entry point.
+ * Bot di Zona · Ballas Gang — entry point.
  *
  * Toda a lógica de orquestração (lock singleton, migrations, Discord client,
  * listeners, routers) vive em `src/app/bootstrap.js`. Este ficheiro só

@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Biblioteca de componentes do design system RedWood.
+ * Biblioteca de componentes do design system Ballas Gang.
  *
  * Todas as tabs devem ser montadas via estes blocos — não construir headers
  * e footers "à mão". Assim garantimos consistência visual global.
@@ -476,7 +476,7 @@ function autoResizeAll(batch, sheetId, rowCount, columnCount) {
 // Todas as tabs devem usar este helper para o título principal.
 // ─────────────────────────────────────────────────────────────────────────────
 function gangTitle(baseTitle) {
-  return `${baseTitle} · Firma RedWood`;
+  return `${baseTitle} · Ballas Gang`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -9,7 +9,7 @@ const KILLS = {
   // Títulos principais
   TITLE: `${E.KILL} Kills`,
   LOG_TITLE: `${E.AUDIT} Registo de Kills`,
-  LEADERBOARD_TITLE: `${E.MORTE} Cemitério — Topo da Firma`,
+  LEADERBOARD_TITLE: `${E.MORTE} Cemitério — Topo da Ballas Gang`,
   REGISTERED_TITLE: `${E.KILL} Kill Registada`,
 
   // Estados
@@ -38,7 +38,7 @@ const KILLS = {
 
   // Copy dinâmica para streak
   STREAK_LINE: n => `${E.KILL} streak: **${n}**`,
-  RANK_ENTRY: pos => `${E.TOPO} entras no **top ${pos}** da firma.`,
+  RANK_ENTRY: pos => `${E.TOPO} entras no **top ${pos}** da Ballas Gang.`,
   NEW_RECORD: () => `${E.TOPO} novo recorde pessoal.`,
 };
 

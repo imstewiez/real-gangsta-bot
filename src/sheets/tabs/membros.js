@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Tab Membros v2 — roster com agrupamento por role, XP, e dias na firma.
+ * Tab Membros v2 — roster com agrupamento por role, XP, e dias na Ballas Gang.
  */
 
 const {
@@ -206,7 +206,7 @@ async function syncMembros(batch, sheetId) {
   // ── Secção 2: Distribuição por classe (tabela compacta) ──────────────────
   row = sectionHeader(batch, sheetId, row, {
     title: 'DISTRIBUIÇÃO POR CLASSE',
-    hint: 'hierarquia da firma',
+    hint: 'hierarquia da Ballas Gang',
     columnCount: COL_COUNT,
   });
   row = tableHeader(batch, sheetId, row, [

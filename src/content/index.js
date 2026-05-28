@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Camada central de texto/UX — Firma RedWood.
+ * Camada central de texto/UX — Ballas Gang.
  *
  * Todo o conteúdo visível ao utilizador final passa por aqui. Evita strings
  * soltas em handlers/engines. Troca global de tom = 1 ficheiro.

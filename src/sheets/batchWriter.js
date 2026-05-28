@@ -69,7 +69,7 @@ class BatchWriter {
   }
 
   /** Escreve `rows` (array de arrays de cell objects) a partir de (startRow, startCol).
-   * Inclui textFormatRuns no fields para suportar texto multi-cor (ex: "RedWood" a
+   * Inclui textFormatRuns no fields para suportar texto multi-cor (ex: "Ballas Gang" a
    * vermelho dentro do título). Células sem runs têm-nas limpas — idempotente. */
   updateCells(sheetId, startRow, startCol, rows) {
     if (!rows.length) return this;
