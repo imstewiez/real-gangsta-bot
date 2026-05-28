@@ -15,25 +15,17 @@ const { buildSearchableSelect } = require('../shared/selectSearch');
 // ── Whitelists (copiadas de priceListInteractive.js para evitar coupling) ──
 
 const BUY_WEAPON_NAMES = new Set([
-  'Canivete',
-  'Taco de Baseball',
-  'Taco de 8Ball',
-  'SNS Pistol',
   'Pistol XM3',
   'Mini SMG',
   'Micro SMG',
-  'Machine Pistol',
   'TEC Pistol',
   'AP Pistol',
-  'Compact Rifle',
-  'Gusenberg',
+  'TEC-9',
   '.50',
   'P90',
   'PDW',
-  'Revolver',
-  'Gadget Pistol',
   'Bullpup',
-  'Carabina Especial',
+  'Carabina',
   'Heavy Pistol',
 ]);
 
@@ -70,53 +62,15 @@ const ALLOWED_ACESSORIOS = new Set([
   'Mag Expandido',
 ]);
 
-const ARMAS_ORANGE_NAMES = new Set([
-  'SNS Pistol',
-  'Pistol XM3',
-  'Mini SMG',
-  'Micro SMG',
-  'Machine Pistol',
-  'TEC Pistol',
-  'AP Pistol',
-  'Compact Rifle',
-  'Gusenberg',
-]);
+const ARMAS_ORANGE_NAMES = new Set(['Pistol XM3', 'Mini SMG', 'Micro SMG', 'TEC Pistol', 'AP Pistol', 'TEC-9']);
 
-const ARMAS_RED_NAMES = new Set([
-  '.50',
-  'P90',
-  'PDW',
-  'Revolver',
-  'Gadget Pistol',
-  'Bullpup',
-  'Carabina Especial',
-  'Heavy Pistol',
-]);
+const ARMAS_RED_NAMES = new Set(['.50', 'P90', 'PDW', 'Bullpup', 'Carabina', 'Heavy Pistol']);
 
 // ── Ordem explícita dentro de cada categoria ───────────────────────────────
 
 const ORDER_ARMAS_BRANCAS = ['Canivete', 'Taco de Baseball', 'Taco de 8Ball'];
-const ORDER_ARMAS_ORANGE = [
-  'SNS Pistol',
-  'Pistol XM3',
-  'Mini SMG',
-  'Micro SMG',
-  'Machine Pistol',
-  'TEC Pistol',
-  'AP Pistol',
-  'Compact Rifle',
-  'Gusenberg',
-];
-const ORDER_ARMAS_RED = [
-  'Heavy Pistol',
-  '.50',
-  'PDW',
-  'P90',
-  'Bullpup',
-  'Carabina Especial',
-  'Revolver',
-  'Gadget Pistol',
-];
+const ORDER_ARMAS_ORANGE = ['Pistol XM3', 'Mini SMG', 'Micro SMG', 'TEC-9', 'TEC Pistol', 'AP Pistol'];
+const ORDER_ARMAS_RED = ['Heavy Pistol', '.50', 'PDW', 'P90', 'Bullpup', 'Carabina'];
 
 const _ING_ABBREV = {
   'Barra de Ouro': 'Ouro',
@@ -129,7 +83,7 @@ const _ING_ABBREV = {
   'Molde de Arma': 'Molde',
   'Corpo Mini SMG': 'Corpo',
   'Corpo Pistol XM3': 'Corpo',
-  'Corpo UZI': 'Corpo',
+  'Corpo Micro SMG': 'Corpo',
   'Corpo TEC-9': 'Corpo',
   'Corpo TEC Pistol': 'Corpo',
   'Corpo AP Pistol': 'Corpo',
@@ -156,7 +110,6 @@ function sortByExplicitOrder(items, orderArray) {
 // ── Categorias de exibição para encomendas ─────────────────────────────────
 
 const ORDER_CATEGORIES = [
-  { key: 'armas_brancas', label: '🔪 Armas Brancas', emoji: '🔪' },
   { key: 'armas_orange', label: '🟠 Armas Orange', emoji: '🟠' },
   { key: 'armas_red', label: '🔴 Armas Red', emoji: '🔴' },
   { key: 'carregadores', label: '🔋 Carregadores', emoji: '🔋' },

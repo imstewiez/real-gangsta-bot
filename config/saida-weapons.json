@@ -1,58 +1,29 @@
 {
   "_comment": "Whitelist ordenada de armas permitidas nos dropdowns de saída (tanto 'Arma Própria' como 'Pedir à Org'). A ordem importa — é a ordem em que aparecem no select.",
   "allowed": [
+    "Mini SMG",
+    "Pistol XM3",
     "Micro SMG",
-    "Machine Pistol",
-    "Pistola Tec",
-    "Espingarda de Assalto",
-    "AP Pistola",
-    "Compact Rifle",
-    "Gusenberg",
+    "TEC-9",
+    "TEC Pistol",
+    "AP Pistol",
+    "Heavy Pistol",
+    "Pistola .50",
     "P90",
-    "Carabina Especial",
-    "Pistola .50"
+    "Combat PDW",
+    "Bullpup Rifle",
+    "Carabina Rifle"
   ],
   "categories": [
     {
       "name": "Armas Orange",
       "emoji": "🟠",
-      "weapons": ["Micro SMG", "Machine Pistol", "Pistola Tec", "SMG", "Assault SMG", "Combat PDW", "Mini SMG"]
+      "weapons": ["Mini SMG", "Pistol XM3", "Micro SMG", "TEC-9", "TEC Pistol", "AP Pistol"]
     },
     {
       "name": "Armas Red",
       "emoji": "🔴",
-      "weapons": [
-        "Compact Rifle",
-        "Carabina Especial",
-        "Gusenberg",
-        "P90",
-        "Assault Rifle",
-        "Bullpup Rifle",
-        "Advanced Rifle",
-        "Compact Grenade Launcher",
-        "Espingarda de Assalto",
-        "Sawed-Off Shotgun",
-        "Assault Shotgun",
-        "Heavy Shotgun"
-      ]
-    },
-    {
-      "name": "Pistolas SNS",
-      "emoji": "🔫",
-      "weapons": [
-        "SNS Pistol",
-        "SNS Pistol Mk II",
-        "Heavy Pistol",
-        "Vintage Pistol",
-        "AP Pistola",
-        "Pistola .50",
-        "Heavy Revolver"
-      ]
-    },
-    {
-      "name": "Armas Brancas",
-      "emoji": "🔪",
-      "weapons": ["Faca", "Bastão", "Martelo", "Machadinha", "Faca de Combate", "Bottle", "Knuckle Duster"]
+      "weapons": ["Heavy Pistol", "Pistola .50", "P90", "Combat PDW", "Bullpup Rifle", "Carabina Rifle"]
     }
   ]
 }
