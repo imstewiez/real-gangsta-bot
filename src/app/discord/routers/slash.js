@@ -3,11 +3,13 @@
 const saidasMinhas = require('../../../queries/saidasMinhas');
 const { handleMeuPedido } = require('../../../onboarding/meuPedido');
 const primeiraVez = require('../../../queries/primeiraVez');
+const kick = require('../../../queries/kick');
 const { commandsByName } = require('../../../lib/metrics');
 
 const SLASH_ROUTES = {
   'meu-pedido': handleMeuPedido,
   saidas: saidasMinhas.handle,
+  kick: kick.handle,
   'primeira-vez': primeiraVez.handle,
 };
 
