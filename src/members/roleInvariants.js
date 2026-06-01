@@ -91,7 +91,18 @@ async function fetchGuildMembers(guild) {
     await guild.members.fetch();
     return true;
   } catch (e) {
-    warn(`[RECONCILE:members] guild.members.fetch falhou; reconciliação DB→Discord saltada: ${e.message}`);
+    warn(`[RECONCILE:members] guild.members.fetch falhou; fallback individual será usado: ${e.message}`);
+    return false;
+  }
+}
+
+async function memberExistsInDiscord(guild, discordId) {
+  if (!discordId) return false;
+  if (guild.members.cache.has(discordId)) return true;
+  try {
+    const found = await guild.members.fetch({ user: discordId, force: true }).catch(() => null);
+    return Boolean(found);
+  } catch (_) {
     return false;
   }
 }
@@ -99,8 +110,7 @@ async function fetchGuildMembers(guild) {
 async function markMissingDbMembersRemoved(guild, opts = {}) {
   const dryRun = Boolean(opts.dryRun);
   const actor = opts.actor || 'system:discord-reconcile';
-  const fetched = await fetchGuildMembers(guild);
-  if (!fetched) return { scanned: 0, missing: 0, updated: 0, skipped: true };
+  await fetchGuildMembers(guild);
 
   const active = await query(
     `select id, discord_id, display_name, tier, role
@@ -112,10 +122,17 @@ async function markMissingDbMembersRemoved(guild, opts = {}) {
       limit 1000`
   );
 
-  const missing = active.rows.filter(row => row.discord_id && !guild.members.cache.has(row.discord_id));
+  const missing = [];
+  let checked = 0;
+  for (const row of active.rows) {
+    checked++;
+    const exists = await memberExistsInDiscord(guild, row.discord_id);
+    if (!exists) missing.push(row);
+  }
+
   if (!missing.length) {
-    log(`[RECONCILE:members] DB↔Discord OK: ${active.rows.length} ativos verificados, 0 órfãos.`);
-    return { scanned: active.rows.length, missing: 0, updated: 0, skipped: false };
+    log(`[RECONCILE:members] DB↔Discord OK: ${checked} ativos verificados, 0 órfãos.`);
+    return { scanned: checked, missing: 0, updated: 0, skipped: false };
   }
 
   const ids = missing.map(row => row.id);
@@ -159,20 +176,18 @@ async function markMissingDbMembersRemoved(guild, opts = {}) {
   }
 
   log(
-    `[RECONCILE:members] Marcados como removidos: ${missing.length}/${active.rows.length} ` +
+    `[RECONCILE:members] Marcados como removidos: ${missing.length}/${checked} ` +
       missing.map(m => `${m.display_name || m.discord_id}#${m.id}`).slice(0, 10).join(', ')
   );
 
-  return { scanned: active.rows.length, missing: missing.length, updated: dryRun ? 0 : missing.length, skipped: false };
+  return { scanned: checked, missing: missing.length, updated: dryRun ? 0 : missing.length, skipped: false };
 }
 
 async function reconcileAllMembers(guild, opts = {}) {
   const dryRun = Boolean(opts.dryRun);
   const actor = opts.actor || 'system';
 
-  const fetched = await fetchGuildMembers(guild);
-  if (!fetched) return { scanned: 0, violations: 0, fixed: 0, details: [], skipped: true };
-
+  await fetchGuildMembers(guild);
   const members = guild.members.cache;
 
   const report = {
