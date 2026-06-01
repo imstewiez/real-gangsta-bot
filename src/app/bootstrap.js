@@ -7,12 +7,12 @@
  *   2. Web server (healthcheck precisa estar online cedo)
  *   3. Coordenação de instâncias (dedup + lock singleton)
  *   4. Migrations + seed
- *   5. Event bus subscribers (sheets + routing)
- *   6. Discord client + listeners
- *   7. Ready handler (delegado a readyPhases.js — 9 fases nomeadas)
- *   8. Shutdown signals
+ *   5. Discord client + listeners
+ *   6. Ready handler
+ *   7. Shutdown signals
  *
- * Idealmente chamado só uma vez, a partir de `src/index.js`.
+ * Pós-migração para webapp: Google Sheets, painéis de gestão e dashboards
+ * não pertencem ao boot do bot. O bot fica focado em Discord/Railway.
  */
 
 const { Events } = require('discord.js');
@@ -30,7 +30,6 @@ const { log, warn, error, startLogMaintenance, stopLogMaintenance } = require('.
 const { seedFromCatalog } = require('../inventory/itemCatalog');
 const { stopAll: stopScheduler, drainActiveJobs } = require('../jobs/scheduler');
 const { createServer } = require('../web/server');
-const { registerSheetProjections } = require('../sheets/projections');
 
 const { createClient } = require('./discord/client');
 const { registerLifecycleListeners } = require('./discord/lifecycle');
@@ -42,10 +41,9 @@ const BOOT_PHASES = {
   WEB_SERVER_UP: 2,
   INSTANCE_LOCKED: 3,
   MIGRATIONS_CHECKED: 4,
-  EVENT_BUS_READY: 5,
-  DISCORD_CONNECTED: 6,
-  READY_PHASES_COMPLETE: 7,
-  FULLY_OPERATIONAL: 8,
+  DISCORD_CONNECTED: 5,
+  READY_PHASES_COMPLETE: 6,
+  FULLY_OPERATIONAL: 7,
 };
 let _currentPhase = 0;
 function setPhase(phase) {
@@ -63,7 +61,6 @@ async function bootstrap() {
   log(`[BOOT] NODE_ENV: ${process.env.NODE_ENV}`);
   log(`[BOOT] SSL_CFG: ${JSON.stringify(require('../db').pool?.options?.ssl || 'n/a')}`);
 
-  // Incrementa contador de restarts — útil para detectar crash loops no health endpoint
   try {
     const { botRestartsTotal } = require('../lib/metrics');
     botRestartsTotal?.inc();
@@ -71,18 +68,14 @@ async function bootstrap() {
     /* metrics ainda não carregado */
   }
 
-  // Validação forte de config ANTES de qualquer coisa. Aborta com relatório
-  // claro se houver erros; warnings ficam nos logs.
   validateOrExit();
   setPhase(BOOT_PHASES.CONFIG_VALIDATED);
 
   startLogMaintenance();
 
-  // Web server cedo — healthcheck desbloqueia preempção de instância antiga.
   _server = createServer(Number(process.env.PORT) || 3000);
   setPhase(BOOT_PHASES.WEB_SERVER_UP);
 
-  // Coordenação de instâncias (preempção + lock singleton).
   try {
     log('[BOOT] A criar tabela bot_instances...');
     await ensureInstanceTable();
@@ -96,8 +89,6 @@ async function bootstrap() {
     process.exit(1);
   }
 
-  // PgBouncer/Supabase pooler não suporta advisory locks (conexões são
-  // multiplexadas por query). Saltar lock quando usar pooler.
   const isPooler = process.env.DATABASE_URL?.includes('pooler.supabase.com');
   if (isPooler) {
     log('[BOOT] Pooler Supabase detectado — a saltar advisory lock (não suportado).');
@@ -125,39 +116,6 @@ async function bootstrap() {
 
   await seedFromCatalog();
 
-  // Se a tabela weekly_rankings não tem dados para a semana actual,
-  // computa o ranking imediatamente (evita "Sem ranking" na web app).
-  try {
-    const { weekBounds } = require('../util');
-    const { computeWeeklyRankings } = require('../rankings/rankingEngine');
-    const { query } = require('../db');
-    const { start } = weekBounds();
-    const weekStart = start.toISOString().split('T')[0];
-    const res = await query('SELECT 1 FROM weekly_rankings WHERE week_start = $1 LIMIT 1', [weekStart]);
-    if (res.rows.length === 0) {
-      log('[BOOT] Sem ranking para a semana actual — a computar...');
-      await computeWeeklyRankings();
-      log('[BOOT] Ranking computado com sucesso.');
-    } else {
-      log('[BOOT] Ranking da semana actual já existe.');
-    }
-  } catch (e) {
-    warn(`[BOOT] Falha ao computar ranking na startup: ${e.message}`);
-  }
-
-  // Subscribers do event bus — antes do client, para apanhar emits precoces.
-  if (CONFIG.isSheetsEnabled && CONFIG.isSheetsEnabled()) {
-    registerSheetProjections();
-    log('[SHEETS] Projections registadas (sync event-driven com debounce 5s).');
-  } else {
-    warn(
-      '[SHEETS] ⚠️ DESACTIVADO — GOOGLE_SERVICE_ACCOUNT_JSON ou SPREADSHEET_ID em falta. ' +
-        'Tabs nunca sincronizam até o env estar configurado no Railway.'
-    );
-  }
-  setPhase(BOOT_PHASES.EVENT_BUS_READY);
-
-  // Client + listeners.
   client = createClient();
   registerLifecycleListeners(client);
   client.on(Events.InteractionCreate, onInteraction);
@@ -187,7 +145,6 @@ async function bootstrap() {
   return client;
 }
 
-// ── Graceful shutdown ───────────────────────────────────────────────────────
 async function shutdown(signal) {
   if (_shuttingDown) return;
   _shuttingDown = true;
@@ -225,7 +182,6 @@ async function shutdown(signal) {
   if (!process.env.DATABASE_URL?.includes('pooler.supabase.com')) {
     await releaseInstanceLock().catch(() => {});
   }
-  // Force exit even if pool.end() hangs (Supabase Pooler connections may stall)
   const killTimer = setTimeout(() => {
     warn('[SHUTDOWN] pool.end() timeout — forcing exit.');
     process.exit(1);
@@ -251,23 +207,19 @@ function installShutdownSignals() {
       const metrics = require('../lib/metrics');
       metrics.interactionErrorsTotal?.inc();
     } catch {}
-    // Se for erro crítico de boot (lock, migrations), shutdown fatal
     const fatal =
       reason &&
       (reason.message?.includes('lock') ||
         reason.message?.includes('migration') ||
         reason.message?.includes('DATABASE_URL'));
     if (fatal) {
-      error('[UNHANDLED REJECTION] Fatal — a fazer shutdown.');
-      setTimeout(() => shutdown('unhandled_fatal'), 500);
+      shutdown('fatal_unhandled_rejection').catch(() => process.exit(1));
     }
   });
   process.on('uncaughtException', err => {
     error('[UNCAUGHT EXCEPTION]', err);
-    // Uncaught exceptions são mais graves — tentar graceful shutdown
-    // mas dar tempo ao event loop de flushar logs/metrics.
-    setTimeout(() => shutdown('uncaughtException'), 500);
+    shutdown('uncaught_exception').catch(() => process.exit(1));
   });
 }
 
-module.exports = { bootstrap, shutdown, getBootPhase: () => _currentPhase };
+module.exports = { bootstrap, shutdown, getCurrentPhase: () => _currentPhase };
