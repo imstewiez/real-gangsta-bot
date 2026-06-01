@@ -52,6 +52,11 @@ async function update(id, fields) {
     'promoted_at',
     'demoted_at',
     'nickname',
+    'lifecycle_state',
+    'lifecycle_changed_at',
+    'lifecycle_changed_by',
+    'lifecycle_notes',
+    'deleted_at',
     'updated_at',
   ]);
   const safe = guardColumns(fields, ALLOWED);
@@ -82,13 +87,17 @@ async function _recordRoleChange(id, newRole, changedBy, reason = '', timestampC
       [id, member.role, newRole, changedBy, reason]
     );
 
-    // Reactivar membro inativo se for promovido/demovido para cargo activo
     const shouldReactivate = member.status === 'inativo' && newRole !== 'inativo';
-    const statusSet = shouldReactivate ? "status = 'ativo'," : '';
+    const shouldDeactivate = newRole === 'inativo';
+    const statusSet = shouldReactivate
+      ? "status = 'ativo', deleted_at = NULL, lifecycle_state = 'active', lifecycle_changed_at = NOW(), lifecycle_changed_by = $3, lifecycle_notes = $4,"
+      : shouldDeactivate
+        ? "status = 'inativo', deleted_at = NOW(), lifecycle_state = 'removed', lifecycle_changed_at = NOW(), lifecycle_changed_by = $3, lifecycle_notes = $4,"
+        : '';
 
     const result = await client.query(
       `UPDATE members SET role = $1, ${statusSet} ${timestampColumn} = NOW(), updated_at = NOW() WHERE id = $2 RETURNING *`,
-      [newRole, id]
+      statusSet ? [newRole, id, changedBy, reason || ''] : [newRole, id]
     );
     return result.rows[0];
   });
