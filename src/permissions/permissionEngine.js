@@ -1,24 +1,9 @@
 'use strict';
 const CONFIG = require('../config');
 
-/**
- * Hierarquia Bot di Zona:
- *   1. Manda-Chuva      ─┐
- *   2. Kingpin           ├─ Comando Total  (isCommand / isChefia)
- *   3. OG                ┐
- *   4. Real Gangster     ├─ Supervisão     (isSupervisor / isOficial)
- *   5. Patrão di Zona    ── Chefe do Bairro (isPatraoDiZona)
- *   6. Gangster Fodido   ┐
- *   7. O Gunão           ├─ Bairristas     (isBairrista)
- *   8. Young Blood       ┘
- *
- * Roles flavor (não-core): Tropinhas do Guetto, Patrulha Pata
- */
-
 function memberRoleIds(member) {
   const cache = member?.roles?.cache;
   if (!cache) return new Set();
-  // Discord.js Collection has .map, plain Map only has .values()
   const ids = typeof cache.map === 'function' ? cache.map(r => r.id) : [...cache.values()].map(r => r.id);
   return new Set(ids);
 }
@@ -58,32 +43,34 @@ function getExactRole(member) {
   return null;
 }
 
-// ── Predicados semânticos ─────────────────────────────────────────────────
-
-/** Comando total: Manda-Chuva, Kingpin. */
 function isCommand(member) {
   return hasAny(memberRoleIds(member), CONFIG.COMMAND_ROLE_IDS);
 }
 
-/** Supervisão: OG, Real Gangster. */
 function isSupervisor(member) {
   return hasAny(memberRoleIds(member), CONFIG.SUPERVISOR_ROLE_IDS);
 }
 
-/** Chefia = Comando total (compatibilidade com código existente). */
 function isChefia(member) {
   return isCommand(member);
 }
 
-/** Oficial = Supervisão OU Comando (quem manda acima da linha dos bairristas). */
 function isOficial(member) {
   return isCommand(member) || isSupervisor(member);
 }
 
-/** Patrão di Zona ou qualquer escalão acima. */
 function isPatraoDiZona(member) {
   return hasAny(memberRoleIds(member), CONFIG.PATRAO_DI_ZONA_ROLE_IDS) || isCommand(member) || isSupervisor(member);
 }
+
+function canManageOnboarding(member) {
+  return isPatraoDiZona(member);
+}
+
+function canKickMembers(member) {
+  return isPatraoDiZona(member);
+}
+
 function isBairrista(member) {
   return hasAny(memberRoleIds(member), CONFIG.BAIRRISTA_TIER_ROLE_IDS);
 }
@@ -92,8 +79,6 @@ function isAnyMember(member) {
   return isCommand(member) || isSupervisor(member) || isPatraoDiZona(member) || isBairrista(member);
 }
 
-// ── Capacidades (intent-level) ────────────────────────────────────────────
-
 function canManageInventory(member) {
   return isCommand(member) || isSupervisor(member);
 }
@@ -101,11 +86,6 @@ function canManageOperations(member) {
   return isCommand(member) || isSupervisor(member);
 }
 
-/**
- * Abrir uma sessão de saída (criar + publicar painel vivo) requer
- * OG ou acima — exclui Real Gangster, que participa mas não abre.
- * Ordem: Manda-Chuva (1) > Kingpin (2) > OG (3) > Real Gangster (4).
- */
 function canOpenSession(member) {
   return (
     isCommand(member) ||
@@ -141,6 +121,8 @@ module.exports = {
   isChefia,
   isOficial,
   isPatraoDiZona,
+  canManageOnboarding,
+  canKickMembers,
   isBairrista,
   isAnyMember,
   canManageInventory,
