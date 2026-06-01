@@ -108,11 +108,8 @@ async function runMigrations() {
     }
 
     // Safety net — re-executa DDL idempotente de tabelas/colunas críticas em
-    // cada boot, bypassing schema_migrations. Observado em Railway prod:
-    // schema_migrations regista IDs como aplicados mas as tabelas desaparecem
-    // (hipótese: volume reset, restore de backup, drop manual). Sem este
-    // fallback, o bot arranca "all migrations up to date" mas job crasha ao
-    // usar spot_cooldowns ou recordSheetSync falha por column missing.
+    // cada boot, bypassing schema_migrations. Mantém compatibilidade com DBs
+    // antigas/restauradas sem forçar constraints rígidas sobre dados legacy.
     await ensureCriticalSchema(client);
   } finally {
     await client.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_ID]);
@@ -138,20 +135,12 @@ async function ensureCriticalSchema(client) {
               ADD COLUMN IF NOT EXISTS last_discord_reconciled_at TIMESTAMPTZ`,
     },
     {
-      name: 'members.role modern constraint',
-      sql: `DO $$ BEGIN
-              ALTER TABLE members DROP CONSTRAINT IF EXISTS members_role_check;
-              ALTER TABLE members ADD CONSTRAINT members_role_check
-                CHECK (role IN ('bairrista','patrao_di_zona','oficial','chefia','inativo','morador','chefe_moradores'));
-            END $$`,
+      name: 'drop legacy members.role constraint',
+      sql: `ALTER TABLE members DROP CONSTRAINT IF EXISTS members_role_check`,
     },
     {
-      name: 'members.status modern constraint',
-      sql: `DO $$ BEGIN
-              ALTER TABLE members DROP CONSTRAINT IF EXISTS members_status_check;
-              ALTER TABLE members ADD CONSTRAINT members_status_check
-                CHECK (status IN ('ativo','active','inativo','inactive','arquivado','archived'));
-            END $$`,
+      name: 'drop legacy members.status constraint',
+      sql: `ALTER TABLE members DROP CONSTRAINT IF EXISTS members_status_check`,
     },
     {
       name: 'members active indexes',
