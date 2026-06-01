@@ -54,16 +54,20 @@ async function handle(interaction) {
 
   const dbMember = await memberRepo.findByDiscordId(target.id);
   if (dbMember) {
-    await memberRepo.update(dbMember.id, {
-      role: 'inativo',
-      status: 'inativo',
-      lifecycle_state: 'removed',
-      lifecycle_changed_at: new Date(),
-      lifecycle_changed_by: interaction.user.id,
-      lifecycle_notes: reason,
-      deleted_at: new Date(),
-      channel_id: null,
-    });
+    await query(
+      `update members
+          set role = 'inativo',
+              status = 'inativo',
+              lifecycle_state = 'removed',
+              lifecycle_changed_at = now(),
+              lifecycle_changed_by = $2,
+              lifecycle_notes = $3,
+              deleted_at = now(),
+              channel_id = null,
+              updated_at = now()
+        where id = $1`,
+      [dbMember.id, interaction.user.id, reason]
+    );
 
     await query(
       `update resident_channels
