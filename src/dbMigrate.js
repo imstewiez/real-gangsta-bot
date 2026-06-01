@@ -123,6 +123,43 @@ async function runMigrations() {
 async function ensureCriticalSchema(client) {
   const ddls = [
     {
+      name: 'members compatibility columns',
+      sql: `ALTER TABLE members
+              ADD COLUMN IF NOT EXISTS tier TEXT,
+              ADD COLUMN IF NOT EXISTS nickname TEXT,
+              ADD COLUMN IF NOT EXISTS full_name TEXT,
+              ADD COLUMN IF NOT EXISTS lifecycle_state TEXT DEFAULT 'active',
+              ADD COLUMN IF NOT EXISTS lifecycle_changed_at TIMESTAMPTZ,
+              ADD COLUMN IF NOT EXISTS lifecycle_changed_by TEXT,
+              ADD COLUMN IF NOT EXISTS lifecycle_notes TEXT,
+              ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ,
+              ADD COLUMN IF NOT EXISTS deleted_by TEXT,
+              ADD COLUMN IF NOT EXISTS record_version INTEGER NOT NULL DEFAULT 1,
+              ADD COLUMN IF NOT EXISTS last_discord_reconciled_at TIMESTAMPTZ`,
+    },
+    {
+      name: 'members.role modern constraint',
+      sql: `DO $$ BEGIN
+              ALTER TABLE members DROP CONSTRAINT IF EXISTS members_role_check;
+              ALTER TABLE members ADD CONSTRAINT members_role_check
+                CHECK (role IN ('bairrista','patrao_di_zona','oficial','chefia','inativo','morador','chefe_moradores'));
+            END $$`,
+    },
+    {
+      name: 'members.status modern constraint',
+      sql: `DO $$ BEGIN
+              ALTER TABLE members DROP CONSTRAINT IF EXISTS members_status_check;
+              ALTER TABLE members ADD CONSTRAINT members_status_check
+                CHECK (status IN ('ativo','active','inativo','inactive','arquivado','archived'));
+            END $$`,
+    },
+    {
+      name: 'members active indexes',
+      sql: `CREATE INDEX IF NOT EXISTS idx_members_active_discord
+              ON members (discord_id)
+              WHERE deleted_at IS NULL`,
+    },
+    {
       name: 'spot_cooldowns table',
       sql: `CREATE TABLE IF NOT EXISTS spot_cooldowns (
               spot                     TEXT PRIMARY KEY,
@@ -225,6 +262,12 @@ async function ensureCriticalSchema(client) {
               created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
               updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )`,
+    },
+    {
+      name: 'inventory_delivery_requests compatibility columns',
+      sql: `ALTER TABLE inventory_delivery_requests
+              ADD COLUMN IF NOT EXISTS responsavel_member_id INTEGER REFERENCES members(id) ON DELETE SET NULL,
+              ADD COLUMN IF NOT EXISTS tipo TEXT NOT NULL DEFAULT 'entrega'`,
     },
     {
       name: 'inventory_delivery_requests approver pending index',
