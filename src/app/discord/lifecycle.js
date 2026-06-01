@@ -132,17 +132,16 @@ function _resolveRoleAndTier(guildMember) {
     return { role: 'patrao_di_zona', tier: 'patrao_di_zona' };
   }
 
-  // Bairrista (tier ou role base)
-  const hasTier = CONFIG.BAIRRISTA_TIER_ROLE_IDS.some(id => id && roles.has(id));
-  const hasBase = CONFIG.BAIRRISTAS_BASE_ROLE_ID && roles.has(CONFIG.BAIRRISTAS_BASE_ROLE_ID);
-  if (hasTier || hasBase) {
-    const BAIRRISTA_TIERS = [
-      { roleId: CONFIG.GANGSTER_FODIDO_ROLE_ID, tier: 'gangster_fodido' },
-      { roleId: CONFIG.O_GUNAO_ROLE_ID, tier: 'o_gunao' },
-      { roleId: CONFIG.YOUNG_BLOOD_ROLE_ID, tier: 'young_blood' },
-    ];
-    const current = BAIRRISTA_TIERS.find(t => t.roleId && roles.has(t.roleId));
-    return { role: 'bairrista', tier: current?.tier || CONFIG.BAIRRISTA_DEFAULT_TIER || 'young_blood' };
+  // Bairrista só conta com cargo operacional/tier real.
+  // A role base/friends nunca deve, sozinha, manter alguém como membro ativo.
+  const BAIRRISTA_TIERS = [
+    { roleId: CONFIG.GANGSTER_FODIDO_ROLE_ID, tier: 'gangster_fodido' },
+    { roleId: CONFIG.O_GUNAO_ROLE_ID, tier: 'o_gunao' },
+    { roleId: CONFIG.YOUNG_BLOOD_ROLE_ID, tier: 'young_blood' },
+  ];
+  const current = BAIRRISTA_TIERS.find(t => t.roleId && roles.has(t.roleId));
+  if (current) {
+    return { role: 'bairrista', tier: current.tier };
   }
 
   return { role: 'inativo', tier: null };
@@ -154,7 +153,6 @@ function _getRelevantRoleIds() {
     ...CONFIG.OFICIAL_ROLE_IDS,
     ...CONFIG.PATRAO_DI_ZONA_ROLE_IDS,
     ...CONFIG.BAIRRISTA_TIER_ROLE_IDS,
-    CONFIG.BAIRRISTAS_BASE_ROLE_ID,
   ].filter(Boolean);
 }
 
@@ -196,7 +194,7 @@ async function _handleMemberRoleChange(oldMember, newMember, client) {
       await demoteMember(dbMember.id, resolvedRole, {
         guildMember: newMember,
         client,
-        reason: 'Detetada mudança de role no Discord',
+        reason: resolvedRole === 'inativo' ? 'Perdeu todos os cargos operacionais da Ballas' : 'Detetada mudança de role no Discord',
         actorTag: 'system',
         actorId: 'system',
         changedBy: 'system',
@@ -253,7 +251,7 @@ async function _handleTierRoleChange(oldMember, newMember, resolvedRole, resolve
   // Tier actual = role mais alto presente (topo da hierarquia vence).
   const tierPriority = _getTierPriorityForRole(resolvedRole);
   const current = tierPriority.find(t => t.roleId && newMember.roles.cache.has(t.roleId));
-  if (!current) return; // Ficou sem tier role — não é tier change, é saída do ramo
+  if (!current) return; // Ficou sem tier role — já foi tratado como saída do ramo
 
   const { memberRepo } = require('../../repositories');
   const dbMember = await memberRepo.findByDiscordId(newMember.id);
