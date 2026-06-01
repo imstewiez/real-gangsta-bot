@@ -13,7 +13,7 @@ const CONFIG = require('../config');
 const { safeReply, safeShowModal, getModalField } = require('../shared/interactionHelpers');
 const { brandEmbed, successEmbed, errorEmbed, applyLogo, COLOR } = require('../shared/embedBuilders');
 const { EMOJI, PANELS, BUTTONS, MODALS, ONBOARDING, ERRORS } = require('../content');
-const { isPatraoDiZona } = require('../permissions/permissionEngine');
+const { canManageOnboarding } = require('../permissions/permissionEngine');
 const { query } = require('../db');
 const { logAudit } = require('../audit/auditEngine');
 const { tryDmOrFallback } = require('../shared/dm');
@@ -275,7 +275,7 @@ async function _buildMemberContext(interaction, _fullName, nickname) {
 }
 
 async function handleApproveButton(interaction, requestId) {
-  if (!isPatraoDiZona(interaction.member)) {
+  if (!canManageOnboarding(interaction.member)) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('aprovar tags'), flags: MessageFlags.Ephemeral },
@@ -347,7 +347,7 @@ function _buildStaffApprovalReply(tagReq, result) {
 }
 
 async function handleDenyButton(interaction, requestId) {
-  if (!isPatraoDiZona(interaction.member)) {
+  if (!canManageOnboarding(interaction.member)) {
     return safeReply(
       interaction,
       { content: ERRORS.NO_PERMISSION('negar tags'), flags: MessageFlags.Ephemeral },
@@ -384,7 +384,7 @@ async function handleDenyButton(interaction, requestId) {
 async function handleDenyModalSubmit(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  if (!isPatraoDiZona(interaction.member)) {
+  if (!canManageOnboarding(interaction.member)) {
     return safeReply(interaction, { content: ERRORS.NO_PERMISSION('negar tags') }, { messageClass: 'BANAL' });
   }
 
