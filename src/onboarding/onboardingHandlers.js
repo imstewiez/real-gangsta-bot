@@ -21,12 +21,6 @@ const rateLimiter = require('../shared/rateLimiter');
 const { warn } = require('../logger');
 const { formatPtDate } = require('../shared/formatPtDate');
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Entry panel — botão principal "Dar a Cara" + 1 botão secundário (Código).
-// O botão Código aponta para o sticky/pinned do canal de leis; se não
-// existir, cai silenciosamente (só o botão principal fica).
-// ═══════════════════════════════════════════════════════════════════════════
-
 function buildEntradaPanel() {
   const embed = applyLogo(
     brandEmbed('SHORT')
@@ -36,7 +30,7 @@ function buildEntradaPanel() {
       .addFields({
         name: `${EMOJI.OK} Como funciona?`,
         value:
-          '1. Clica em **Dar a Cara** e preenche o modal\n2. Aguarda aprovação da chefia\n3. Recebe a tua tag e canal individual',
+          '1. Clica em **Dar a Cara** e preenche o modal\n2. Aguarda aprovação da chefia\n3. Recebe a tua tag e acesso à webapp',
         inline: false,
       })
   );
@@ -59,15 +53,9 @@ function buildEntradaPanel() {
   return { embeds: [embed], components: [row] };
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// STEP 1: User clica "Pedir Tag" → guards + modal
-// ═══════════════════════════════════════════════════════════════════════════
-
 async function handlePedirTagButton(interaction) {
   const discordId = interaction.user.id;
 
-  // Guard 0: cooldown anti-spam — 5 tentativas em 5 min por user.
-  // Evita DDOS humano (clicar como um doido) sem fricção para 99% dos users.
   if (!rateLimiter.allow(discordId, 'onboard::pedir_tag', { limit: 5, windowMs: 5 * 60_000 })) {
     return safeReply(
       interaction,
@@ -76,7 +64,6 @@ async function handlePedirTagButton(interaction) {
     );
   }
 
-  // Guard 1: pedido pendente
   const existing = await query("SELECT id FROM tag_requests WHERE discord_id = $1 AND status = 'pending'", [discordId]);
   if (existing.rows.length > 0) {
     return safeReply(
@@ -86,13 +73,14 @@ async function handlePedirTagButton(interaction) {
     );
   }
 
-  // Guard 2: já é bairrista via role Discord
-  const bairristaRoleIds = CONFIG.BAIRRISTA_TIER_ROLE_IDS;
-  const staffRoleIds = [...CONFIG.COMMAND_ROLE_IDS, ...CONFIG.SUPERVISOR_ROLE_IDS, ...CONFIG.PATRAO_DI_ZONA_ROLE_IDS];
-  const hasAnyMemberRole = [...bairristaRoleIds, CONFIG.BAIRRISTAS_BASE_ROLE_ID, ...staffRoleIds]
-    .filter(Boolean)
-    .some(id => interaction.member.roles.cache.has(id));
-  if (hasAnyMemberRole) {
+  const operationalRoleIds = [
+    ...CONFIG.BAIRRISTA_TIER_ROLE_IDS,
+    ...CONFIG.COMMAND_ROLE_IDS,
+    ...CONFIG.SUPERVISOR_ROLE_IDS,
+    ...CONFIG.PATRAO_DI_ZONA_ROLE_IDS,
+  ].filter(Boolean);
+  const hasOperationalRole = operationalRoleIds.some(id => interaction.member.roles.cache.has(id));
+  if (hasOperationalRole) {
     return safeReply(
       interaction,
       { content: ONBOARDING.ALREADY_IN_HOUSE, flags: MessageFlags.Ephemeral },
@@ -100,30 +88,19 @@ async function handlePedirTagButton(interaction) {
     );
   }
 
-  // Guard 3: já existe record de member activo na DB.
   const memberRecord = await query(
-    "SELECT id, role, status FROM members WHERE discord_id = $1 AND status = 'ativo' LIMIT 1",
+    `SELECT id, role, status
+       FROM members
+      WHERE discord_id = $1
+        AND deleted_at IS NULL
+        AND coalesce(lifecycle_state::text, status, 'active') IN ('active','ativo','promoted')
+      LIMIT 1`,
     [discordId]
   );
   if (memberRecord.rows.length > 0) {
     return safeReply(
       interaction,
       { content: ONBOARDING.HAS_ACTIVE_RECORD(memberRecord.rows[0].role), flags: MessageFlags.Ephemeral },
-      { messageClass: 'BANAL' }
-    );
-  }
-
-  // Guard 4: já teve tag aprovada alguma vez.
-  const priorApproved = await query(
-    `SELECT id, resolved_at FROM tag_requests
-      WHERE discord_id = $1 AND status = 'approved'
-      ORDER BY resolved_at DESC LIMIT 1`,
-    [discordId]
-  );
-  if (priorApproved.rows.length > 0) {
-    return safeReply(
-      interaction,
-      { content: ONBOARDING.HAS_PRIOR_APPROVED, flags: MessageFlags.Ephemeral },
       { messageClass: 'BANAL' }
     );
   }
@@ -158,10 +135,6 @@ async function handlePedirTagButton(interaction) {
   await safeShowModal(interaction, modal);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// STEP 2: Modal submetido → DB + rich approval card no canal de staff
-// ═══════════════════════════════════════════════════════════════════════════
-
 async function handleTagModal(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -176,7 +149,6 @@ async function handleTagModal(interaction) {
     );
   }
 
-  // Save to DB. Dedup por UNIQUE INDEX `uq_tag_requests_pending_per_user`.
   let requestId;
   try {
     const res = await query(
@@ -192,7 +164,6 @@ async function handleTagModal(interaction) {
     throw e;
   }
 
-  // ── Enriquecer approval card com contexto da chefia ──
   const memberCtx = await _buildMemberContext(interaction, fullName, nickname);
 
   const tagChannel = await interaction.client.channels.fetch(CONFIG.TAG_REQUEST_CHANNEL_ID).catch(() => null);
@@ -215,9 +186,7 @@ async function handleTagModal(interaction) {
       { name: 'Nickname final', value: `\`${fullName} (${nickname})\``, inline: false }
     );
 
-  if (memberCtx.contextFields.length) {
-    approvalEmbed.addFields(...memberCtx.contextFields);
-  }
+  if (memberCtx.contextFields.length) approvalEmbed.addFields(...memberCtx.contextFields);
 
   const aBtn = BUTTONS.ONBOARDING.APROVAR;
   const dBtn = BUTTONS.ONBOARDING.NEGAR;
@@ -237,7 +206,6 @@ async function handleTagModal(interaction) {
   const msg = await tagChannel.send({ embeds: [approvalEmbed], components: [approvalRow] });
   await query('UPDATE tag_requests SET message_id = $1 WHERE id = $2', [msg.id, requestId]);
 
-  // ── Confirmação visual ao user com o ticker de próximos passos ──
   const confirmEmbed = brandEmbed('SHORT')
     .setColor(COLOR.WARNING_SOFT)
     .setTitle(ONBOARDING.REQUEST_RECEIVED_TITLE)
@@ -246,17 +214,9 @@ async function handleTagModal(interaction) {
   return safeReply(interaction, { embeds: [confirmEmbed] }, { messageClass: 'BANAL' });
 }
 
-/**
- * Recolhe contexto sobre o candidato para mostrar à chefia no approval card.
- * - Tempo no server
- * - Idade da conta Discord (<7 dias é suspeito)
- * - Histórico de pedidos anteriores (aprovados/negados)
- * - Conflito de alcunha com bairrista activo
- */
 async function _buildMemberContext(interaction, _fullName, nickname) {
   const out = { contextFields: [] };
 
-  // Tempo no server + idade da conta
   try {
     const gm = interaction.member;
     const accountAgeMs = Date.now() - (gm.user.createdTimestamp || Date.now());
@@ -267,11 +227,8 @@ async function _buildMemberContext(interaction, _fullName, nickname) {
       `conta Discord há **${days(accountAgeMs)}d**` +
       (days(accountAgeMs) < 7 ? ' ⚠️ _conta nova_' : '');
     out.contextFields.push({ name: 'Contexto', value: ageLine, inline: false });
-  } catch (_) {
-    /* non-fatal */
-  }
+  } catch (_) {}
 
-  // Histórico de pedidos
   try {
     const history = await query(
       `SELECT
@@ -290,18 +247,18 @@ async function _buildMemberContext(interaction, _fullName, nickname) {
       if (h.denied) line += `**${h.denied}** pedido(s) negado(s)`;
       if (h.approved) line += `${line ? ' · ' : ''}**${h.approved}** aprovado(s)`;
       if (h.last_denied) line += `\n_Último negado: ${formatPtDate(h.last_denied)}_`;
-      if (h.last_denial_reason) line += `\n_Razão: "${String(h.last_denial_reason).slice(0, 100)}"_`;
+      if (h.last_denial_reason) line += `\n_Razão: ${String(h.last_denial_reason).slice(0, 200)}_`;
       out.contextFields.push({ name: 'Histórico', value: line, inline: false });
     }
-  } catch (_) {
-    /* non-fatal */
-  }
+  } catch (_) {}
 
-  // Conflito de alcunha
   try {
     const conflict = await query(
       `SELECT display_name FROM members
-         WHERE nickname ILIKE $1 AND status = 'ativo' AND discord_id <> $2
+         WHERE nickname ILIKE $1
+           AND deleted_at IS NULL
+           AND coalesce(lifecycle_state::text, status, 'active') IN ('active','ativo','promoted')
+           AND discord_id <> $2
          LIMIT 1`,
       [nickname, interaction.user.id]
     );
@@ -312,16 +269,10 @@ async function _buildMemberContext(interaction, _fullName, nickname) {
         inline: false,
       });
     }
-  } catch (_) {
-    /* non-fatal */
-  }
+  } catch (_) {}
 
   return out;
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-// STEP 3a: Aprovação
-// ═══════════════════════════════════════════════════════════════════════════
 
 async function handleApproveButton(interaction, requestId) {
   if (!isPatraoDiZona(interaction.member)) {
@@ -334,8 +285,6 @@ async function handleApproveButton(interaction, requestId) {
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  // Claim atómico via `approved_by` (lock token). Race-safe para 2 staff a
-  // clicar ao mesmo tempo. Ver onboardingHandlers histórico.
   const claim = await query(
     `UPDATE tag_requests SET approved_by = $1
       WHERE id = $2 AND status = 'pending' AND approved_by IS NULL
@@ -346,17 +295,9 @@ async function handleApproveButton(interaction, requestId) {
   if (!tagReq) {
     const check = await query('SELECT status FROM tag_requests WHERE id = $1', [requestId]);
     if (check.rows.length === 0) {
-      return safeReply(
-        interaction,
-        { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.` },
-        { messageClass: 'ERROR' }
-      );
+      return safeReply(interaction, { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.` }, { messageClass: 'ERROR' });
     }
-    return safeReply(
-      interaction,
-      { content: `${EMOJI.BLOQUEADO} Este pedido já foi tratado por outro oficial.` },
-      { messageClass: 'BANAL' }
-    );
+    return safeReply(interaction, { content: `${EMOJI.BLOQUEADO} Este pedido já foi tratado por outro oficial.` }, { messageClass: 'BANAL' });
   }
 
   const { processApproval } = require('./onboardingEngine');
@@ -364,14 +305,12 @@ async function handleApproveButton(interaction, requestId) {
   try {
     result = await processApproval(tagReq, interaction.member, interaction.client);
   } catch (e) {
-    // Engine falhou inteira — liberta o claim para staff re-tentar.
     await query("UPDATE tag_requests SET approved_by = NULL WHERE id = $1 AND status = 'pending'", [requestId]).catch(
       () => {}
     );
     throw e;
   }
 
-  // Actualiza mensagem original com estado aprovado + assina quem aprovou.
   if (tagReq.message_id && interaction.message?.embeds?.[0]) {
     try {
       const approvedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
@@ -379,35 +318,23 @@ async function handleApproveButton(interaction, requestId) {
         .setTitle(ONBOARDING.TAG_APPROVED_TITLE)
         .addFields({ name: 'Aprovado por', value: `<@${interaction.user.id}>`, inline: true });
       await interaction.message.edit({ embeds: [approvedEmbed], components: [] });
-    } catch (_) {
-      /* message may have been deleted */
-    }
+    } catch (_) {}
   }
 
-  // Reply rico ao staff com surface explícito de falhas + entrega DM.
   const body = _buildStaffApprovalReply(tagReq, result);
   return safeReply(interaction, { embeds: [body] }, { messageClass: 'BANAL' });
 }
 
 function _buildStaffApprovalReply(tagReq, result) {
   const lines = [];
-  lines.push(
-    ONBOARDING.TAG_APPROVED_STAFF_BODY(
-      `<@${tagReq.discord_id}>`,
-      tagReq.nickname,
-      result.channelId ? `<#${result.channelId}>` : null
-    )
-  );
+  lines.push(ONBOARDING.TAG_APPROVED_STAFF_BODY(`<@${tagReq.discord_id}>`, tagReq.nickname, null));
 
-  // Warnings de falhas parciais — não matam a operação mas staff tem de ver.
   for (const err of result.errors || []) {
     if (err.phase === 'nickname') lines.push(`\n${EMOJI.WARN} Nickname não alterado _(${err.message})_.`);
-    else if (err.phase === 'channel') lines.push(`\n${EMOJI.ERRO} Canal individual **falhou** — ${err.message}.`);
     else if (err.phase === 'roles') lines.push(`\n${EMOJI.ERRO} Roles parcial — ${err.message}.`);
     else lines.push(`\n${EMOJI.WARN} ${err.phase}: ${err.message}`);
   }
 
-  // Entrega DM — informa a chefia se foi DM, fallback, ou falhou.
   if (result.dmDelivery) {
     if (result.dmDelivery.delivered === 'dm') lines.push(`\n${EMOJI.OK} DM enviada ao user.`);
     else if (result.dmDelivery.delivered === 'channel')
@@ -419,10 +346,6 @@ function _buildStaffApprovalReply(tagReq, result) {
   return hasErr ? errorEmbed('Aprovado com avisos', lines.join('\n')) : successEmbed('Aprovado', lines.join('\n'));
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// STEP 3b: Negação — agora com modal para razão (opcional)
-// ═══════════════════════════════════════════════════════════════════════════
-
 async function handleDenyButton(interaction, requestId) {
   if (!isPatraoDiZona(interaction.member)) {
     return safeReply(
@@ -432,21 +355,12 @@ async function handleDenyButton(interaction, requestId) {
     );
   }
 
-  // Verifica que o pedido existe antes de abrir modal — evita modal fantasma.
   const r = await query('SELECT status FROM tag_requests WHERE id = $1', [requestId]);
   if (r.rows.length === 0) {
-    return safeReply(
-      interaction,
-      { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.`, flags: MessageFlags.Ephemeral },
-      { messageClass: 'ERROR' }
-    );
+    return safeReply(interaction, { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.`, flags: MessageFlags.Ephemeral }, { messageClass: 'ERROR' });
   }
   if (r.rows[0].status !== 'pending') {
-    return safeReply(
-      interaction,
-      { content: `${EMOJI.BLOQUEADO} Este pedido já foi tratado.`, flags: MessageFlags.Ephemeral },
-      { messageClass: 'BANAL' }
-    );
+    return safeReply(interaction, { content: `${EMOJI.BLOQUEADO} Este pedido já foi tratado.`, flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
   }
 
   const modal = new ModalBuilder()
@@ -480,7 +394,6 @@ async function handleDenyModalSubmit(interaction) {
   }
   const reason = (getModalField(interaction, 'reason') || '').trim() || null;
 
-  // Claim atómico — primeiro que submete ganha.
   const claim = await query(
     `UPDATE tag_requests
         SET status = 'denied',
@@ -494,11 +407,7 @@ async function handleDenyModalSubmit(interaction) {
   );
   const tagReq = claim.rows[0];
   if (!tagReq) {
-    return safeReply(
-      interaction,
-      { content: `${EMOJI.BLOQUEADO} Pedido já foi tratado ou não existe.` },
-      { messageClass: 'BANAL' }
-    );
+    return safeReply(interaction, { content: `${EMOJI.BLOQUEADO} Pedido já foi tratado ou não existe.` }, { messageClass: 'BANAL' });
   }
 
   await logAudit({
@@ -510,7 +419,6 @@ async function handleDenyModalSubmit(interaction) {
     afterState: { fullName: tagReq.full_name, nickname: tagReq.nickname, denial_reason: reason },
   });
 
-  // Atualiza a mensagem original — mostra estado denied com razão se houver.
   if (tagReq.message_id) {
     try {
       const msg = await interaction.channel?.messages.fetch(tagReq.message_id).catch(() => null);
@@ -522,12 +430,9 @@ async function handleDenyModalSubmit(interaction) {
         if (reason) deniedEmbed.addFields({ name: 'Razão', value: reason, inline: false });
         await msg.edit({ embeds: [deniedEmbed], components: [] }).catch(() => {});
       }
-    } catch (_) {
-      /* message may have been deleted */
-    }
+    } catch (_) {}
   }
 
-  // DM ao user (ou fallback).
   let dmDelivery = { delivered: 'none' };
   try {
     const guild = interaction.guild;
@@ -556,42 +461,14 @@ async function handleDenyModalSubmit(interaction) {
 
   const lines = [ONBOARDING.TAG_DENIED_STAFF_BODY(tagReq.full_name, tagReq.nickname, reason)];
   if (dmDelivery.delivered === 'dm') lines.push(`\n${EMOJI.OK} DM enviada ao user.`);
-  else if (dmDelivery.delivered === 'channel')
-    lines.push(`\n${EMOJI.WARN} DMs fechados — fallback no canal de entrada.`);
+  else if (dmDelivery.delivered === 'channel') lines.push(`\n${EMOJI.WARN} DMs fechados — fallback no canal de entrada.`);
   else lines.push(`\n${EMOJI.ERRO} Não foi possível notificar o user.`);
 
   return safeReply(interaction, { embeds: [errorEmbed('Pedido negado', lines.join('\n'))] }, { messageClass: 'ERROR' });
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Painel do canal individual (welcome + CTAs após aprovação)
-// ═══════════════════════════════════════════════════════════════════════════
-
 function buildBairristaChannelPanel() {
-  const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId('bairrista::registar_material')
-      .setLabel('Registar Material')
-      .setStyle(ButtonStyle.Success)
-      .setEmoji('📦'),
-    new ButtonBuilder()
-      .setCustomId('bairrista::movimento')
-      .setLabel('Movimento no Bairro')
-      .setStyle(ButtonStyle.Primary)
-      .setEmoji('🔥'),
-    new ButtonBuilder()
-      .setCustomId('bairrista::ranking')
-      .setLabel('Ranking')
-      .setStyle(ButtonStyle.Primary)
-      .setEmoji('🥇'),
-    new ButtonBuilder()
-      .setCustomId('perfil::encomendas')
-      .setLabel('Encomendas')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('📋')
-  );
-
-  return [row1];
+  return [];
 }
 
 module.exports = {
