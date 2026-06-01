@@ -44,7 +44,7 @@ async function handle(interaction) {
 
   const actorRole = getExactRole(interaction.member);
   const targetRole = getExactRole(target);
-  if (rank(actorRole) <= rank(targetRole)) {
+  if (targetRole && rank(actorRole) <= rank(targetRole)) {
     return safeReply(
       interaction,
       { content: 'Não podes expulsar alguém do mesmo cargo ou superior ao teu.' },
