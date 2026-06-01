@@ -32,6 +32,14 @@ async function transition({ memberId, newState, changedBy, reason }) {
     if (!cur.rows.length) throw new NotFoundError('Membro não encontrado.', { code: 'MEMBER_NOT_FOUND' });
     const oldState = cur.rows[0].lifecycle_state;
     if (oldState === newState) return { oldState, newState, changed: false };
+
+    // Quando alguém perde todos os cargos operacionais, memberRepo.demote já marca
+    // lifecycle_state='removed'. O fluxo legacy ainda chama transition('demoted')
+    // a seguir; isso deve ser ignorado para não reabrir nem poluir logs.
+    if (oldState === 'removed' && newState === 'demoted') {
+      return { oldState, newState: oldState, changed: false };
+    }
+
     if (!canTransition(oldState, newState)) {
       throw new ConflictError(`Transição inválida: ${oldState} → ${newState}`, {
         code: 'INVALID_LIFECYCLE_TRANSITION',
