@@ -104,16 +104,21 @@ function startAll(client) {
   // O bot mantém apenas tarefas que dependem do Discord/eventos em tempo real.
 
   if (CONFIG.ENFORCE_ROLE_INVARIANTS) {
-    registerJob('role_invariants', 24 * 60 * 60 * 1000, async discordClient => {
-      try {
-        const guild = discordClient.guilds.cache.get(CONFIG.DISCORD_GUILD_ID);
-        if (!guild) return;
-        const { reconcileAllMembers } = require('../members/roleInvariants');
-        return reconcileAllMembers(guild, { actor: 'system:daily-job' });
-      } catch (e) {
-        warn(`[SCHEDULER] role_invariants failed: ${e.message}`);
-      }
-    });
+    registerJob(
+      'discord_membership_reconcile',
+      24 * 60 * 60 * 1000,
+      async discordClient => {
+        try {
+          const guild = discordClient.guilds.cache.get(CONFIG.DISCORD_GUILD_ID);
+          if (!guild) return;
+          const { reconcileDiscordMembership } = require('../members/roleInvariants');
+          return reconcileDiscordMembership(guild, { actor: 'system:daily-discord-reconcile' });
+        } catch (e) {
+          warn(`[SCHEDULER] discord_membership_reconcile failed: ${e.message}`);
+        }
+      },
+      { runOnStart: true }
+    );
   }
 
   registerJob('retention', 24 * 60 * 60 * 1000, async () => {
