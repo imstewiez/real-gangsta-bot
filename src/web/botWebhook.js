@@ -5,7 +5,7 @@
  */
 
 const CONFIG = require('../config');
-const { log, warn, error } = require('../logger');
+const { log, warn } = require('../logger');
 const { sendDM } = require('../shared/dm');
 const { brandEmbed, COLOR } = require('../shared/embedBuilders');
 
@@ -27,6 +27,11 @@ const TIER_TO_ROLE = {
 };
 
 const ALL_TIER_ROLES = Object.values(TIER_TO_ROLE).filter(Boolean);
+const ALL_ORG_ROLES = [
+  ...ALL_TIER_ROLES,
+  CONFIG.BAIRRISTAS_BASE_ROLE_ID,
+  CONFIG.PENDENTE_ROLE_ID,
+].filter(Boolean);
 
 async function resolveGuildMember(discordId) {
   if (!_client) return null;
@@ -48,23 +53,21 @@ async function handlePromote(discordId, toTier) {
   if (!member) return { ok: false, error: 'member_not_found' };
 
   const newRoleId = TIER_TO_ROLE[toTier];
-  if (!newRoleId) {
-    return { ok: false, error: `unknown_tier: ${toTier}` };
-  }
+  if (!newRoleId) return { ok: false, error: `unknown_tier: ${toTier}` };
 
-  // Swap roles in a single operation to avoid intermediate states
-  // that trigger the bot's own role-change listener multiple times.
   const currentRoleIds = member.roles.cache.map(r => r.id);
   const newRoleIds = currentRoleIds.filter(id => !ALL_TIER_ROLES.includes(id));
   newRoleIds.push(newRoleId);
-  await member.roles.set(newRoleIds, 'Promoção via web app');
+  if (CONFIG.BAIRRISTAS_BASE_ROLE_ID && !newRoleIds.includes(CONFIG.BAIRRISTAS_BASE_ROLE_ID)) {
+    newRoleIds.push(CONFIG.BAIRRISTAS_BASE_ROLE_ID);
+  }
+  await member.roles.set(newRoleIds, 'Alteração de cargo via webapp');
 
-  log(`[webhook] Promoted ${member.user.tag} to ${toTier} (role ${newRoleId})`);
+  log(`[webhook] Changed ${member.user.tag} to ${toTier} (role ${newRoleId})`);
   return { ok: true };
 }
 
 async function handleDemote(discordId, toTier) {
-  // Same logic as promote — roles are swapped
   return handlePromote(discordId, toTier);
 }
 
@@ -72,7 +75,7 @@ async function handleRename(discordId, newName) {
   const member = await resolveGuildMember(discordId);
   if (!member) return { ok: false, error: 'member_not_found' };
 
-  await member.setNickname(newName, 'Rename via web app');
+  await member.setNickname(newName, 'Rename via webapp');
   log(`[webhook] Renamed ${member.user.tag} to ${newName}`);
   return { ok: true };
 }
@@ -81,7 +84,14 @@ async function handleKick(discordId, reason) {
   const member = await resolveGuildMember(discordId);
   if (!member) return { ok: false, error: 'member_not_found' };
 
-  await member.kick(reason || 'Kick via web app');
+  try {
+    const remainingRoleIds = member.roles.cache.map(r => r.id).filter(id => !ALL_ORG_ROLES.includes(id));
+    await member.roles.set(remainingRoleIds, 'Kick via webapp: remover cargos da organização');
+  } catch (e) {
+    warn(`[webhook] Failed to strip org roles before kick for ${discordId}: ${e.message}`);
+  }
+
+  await member.kick(reason || 'Kick via webapp');
   log(`[webhook] Kicked ${member.user.tag}`);
   return { ok: true };
 }
