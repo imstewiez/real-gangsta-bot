@@ -49,8 +49,6 @@ async function update(id, fields) {
     'status',
     'tier',
     'notes',
-    'promoted_at',
-    'demoted_at',
     'nickname',
     'lifecycle_state',
     'lifecycle_changed_at',
@@ -75,7 +73,7 @@ async function update(id, fields) {
   return res.rows[0] || null;
 }
 
-async function _recordRoleChange(id, newRole, changedBy, reason = '', timestampColumn = 'promoted_at') {
+async function _recordRoleChange(id, newRole, changedBy, reason = '') {
   return queryWithTransaction(async client => {
     const current = await client.query('SELECT * FROM members WHERE id = $1', [id]);
     const member = current.rows[0];
@@ -96,7 +94,7 @@ async function _recordRoleChange(id, newRole, changedBy, reason = '', timestampC
         : '';
 
     const result = await client.query(
-      `UPDATE members SET role = $1, ${statusSet} ${timestampColumn} = NOW(), updated_at = NOW() WHERE id = $2 RETURNING *`,
+      `UPDATE members SET role = $1, ${statusSet} updated_at = NOW() WHERE id = $2 RETURNING *`,
       statusSet ? [newRole, id, changedBy, reason || ''] : [newRole, id]
     );
     return result.rows[0];
@@ -104,11 +102,11 @@ async function _recordRoleChange(id, newRole, changedBy, reason = '', timestampC
 }
 
 async function promote(id, newRole, changedBy, reason = '') {
-  return _recordRoleChange(id, newRole, changedBy, reason, 'promoted_at');
+  return _recordRoleChange(id, newRole, changedBy, reason);
 }
 
 async function demote(id, newRole, changedBy, reason = '') {
-  return _recordRoleChange(id, newRole, changedBy, reason, 'demoted_at');
+  return _recordRoleChange(id, newRole, changedBy, reason);
 }
 
 async function countByRole() {
