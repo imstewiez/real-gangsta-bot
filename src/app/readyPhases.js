@@ -48,12 +48,6 @@ async function saidaLifecyclePhase(client) {
   }
 }
 
-async function panelBootstrapPhase() {
-  if (CONFIG.PANEL_BOOTSTRAP_ON_READY) {
-    warn('[READY] PANEL_BOOTSTRAP_ON_READY está ativo, mas painéis legacy foram migrados para a webapp. Ignorado.');
-  }
-}
-
 async function warmupPhase() {
   await warmPool(3);
 }
@@ -79,7 +73,6 @@ async function runReadyPhases(client, { onPreempt }) {
     ['registerSlashCommands', () => registerSlashCommandsPhase(client)],
     ['injectClient', () => injectClientPhase(client)],
     ['saidaLifecycle', () => saidaLifecyclePhase(client)],
-    ['panelBootstrap', () => panelBootstrapPhase()],
     ['warmup', () => warmupPhase()],
     ['scheduler', () => schedulerPhase(client)],
     ['webReady', () => webReadyPhase(client)],
@@ -106,7 +99,6 @@ module.exports = {
   registerSlashCommandsPhase,
   injectClientPhase,
   saidaLifecyclePhase,
-  panelBootstrapPhase,
   warmupPhase,
   schedulerPhase,
   webReadyPhase,
