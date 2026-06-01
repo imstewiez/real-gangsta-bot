@@ -1,5 +1,5 @@
 'use strict';
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 
 const commands = [
   new SlashCommandBuilder()
@@ -14,6 +14,7 @@ const commands = [
   new SlashCommandBuilder()
     .setName('kick')
     .setDescription('Expulsar um membro do bairro')
+    .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers)
     .addUserOption(opt => opt.setName('membro').setDescription('Membro a expulsar').setRequired(true))
     .addStringOption(opt => opt.setName('motivo').setDescription('Motivo').setRequired(false)),
 
