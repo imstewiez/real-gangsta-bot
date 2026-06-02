@@ -117,7 +117,9 @@ function startAll(client) {
           warn(`[SCHEDULER] discord_membership_reconcile failed: ${e.message}`);
         }
       },
-      { runOnStart: true }
+      // O arranque já corre membershipReconcile na fase READY. Não correr de novo
+      // pelo scheduler evita fetch duplicado ao Discord e warnings de rate-limit.
+      { runOnStart: false }
     );
   }
 
