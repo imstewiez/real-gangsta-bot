@@ -75,12 +75,8 @@ function detectRoleFromGuildMember(gm) {
 async function backfillMembers(guild, opts = {}) {
   const dryRun = Boolean(opts.dryRun);
   const actor = opts.actor || 'system:backfill';
+  const skipFetch = Boolean(opts.skipFetch);
 
-  try {
-    await guild.members.fetch();
-  } catch (e) {
-    throw new Error(`guild.members.fetch failed during backfill: ${e.message}`);
-  }
   const report = {
     scanned: 0,
     skippedBot: 0,
@@ -89,7 +85,17 @@ async function backfillMembers(guild, opts = {}) {
     updated: 0,
     unchanged: 0,
     errors: [],
+    fetch_failed: false,
   };
+
+  if (!skipFetch) {
+    try {
+      await guild.members.fetch();
+    } catch (e) {
+      report.fetch_failed = true;
+      warn(`[BACKFILL] guild.members.fetch falhou; vou usar a cache atual e tentar novamente no próximo reconcile: ${e.message}`);
+    }
+  }
 
   for (const [, gm] of guild.members.cache) {
     report.scanned += 1;
@@ -134,7 +140,7 @@ async function backfillMembers(guild, opts = {}) {
       if (existing.tier !== detected.tier) changes.tier = detected.tier;
       if (existing.display_name !== displayName) changes.display_name = displayName;
       if (existing.username !== username) changes.username = username;
-      if (existing.status === 'inativo') {
+      if (existing.status === 'inativo' || existing.deleted_at) {
         changes.status = 'ativo';
         changes.deleted_at = null;
         changes.lifecycle_state = 'active';
@@ -167,7 +173,7 @@ async function backfillMembers(guild, opts = {}) {
     }
   }
 
-  log(`[BACKFILL] scanned=${report.scanned} bot=${report.skippedBot} no_operational_role=${report.skippedNoRole} created=${report.created} updated=${report.updated} unchanged=${report.unchanged} errors=${report.errors.length} dry=${dryRun}`);
+  log(`[BACKFILL] scanned=${report.scanned} bot=${report.skippedBot} no_operational_role=${report.skippedNoRole} created=${report.created} updated=${report.updated} unchanged=${report.unchanged} errors=${report.errors.length} fetch_failed=${report.fetch_failed} dry=${dryRun}`);
   return report;
 }
 
