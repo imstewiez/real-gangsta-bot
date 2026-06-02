@@ -52,6 +52,25 @@ async function warmupPhase() {
   await warmPool(3);
 }
 
+async function membershipReconcilePhase(client) {
+  if (!CONFIG.ENFORCE_ROLE_INVARIANTS) {
+    log('[RECONCILE:members] Skip — ENFORCE_ROLE_INVARIANTS=false.');
+    return;
+  }
+  const guild = client.guilds.cache.get(CONFIG.DISCORD_GUILD_ID);
+  if (!guild) {
+    warn('[RECONCILE:members] Skip — guild não encontrada.');
+    return;
+  }
+  const { reconcileDiscordMembership } = require('../members/roleInvariants');
+  const result = await reconcileDiscordMembership(guild, { actor: 'system:ready-discord-reconcile' });
+  log(
+    `[RECONCILE:members] Ready sync concluído: scanned=${result.missing?.scanned ?? 0} ` +
+      `missing=${result.missing?.missing ?? 0} no_operational_role=${result.missing?.no_operational_role ?? 0} ` +
+      `updated=${result.missing?.updated ?? 0}`
+  );
+}
+
 function schedulerPhase(client) {
   startScheduler(client);
 }
@@ -74,6 +93,7 @@ async function runReadyPhases(client, { onPreempt }) {
     ['injectClient', () => injectClientPhase(client)],
     ['saidaLifecycle', () => saidaLifecyclePhase(client)],
     ['warmup', () => warmupPhase()],
+    ['membershipReconcile', () => membershipReconcilePhase(client)],
     ['scheduler', () => schedulerPhase(client)],
     ['webReady', () => webReadyPhase(client)],
     ['heartbeat', () => heartbeatPhase(onPreempt)],
@@ -100,6 +120,7 @@ module.exports = {
   injectClientPhase,
   saidaLifecyclePhase,
   warmupPhase,
+  membershipReconcilePhase,
   schedulerPhase,
   webReadyPhase,
   heartbeatPhase,
