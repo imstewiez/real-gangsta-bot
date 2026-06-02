@@ -7,6 +7,7 @@
  *   - no máximo um tier operacional simultâneo.
  *
  * Reconciliação DB:
+ *   - importa para a DB membros do Discord com cargo operacional válido;
  *   - qualquer membro ativo na DB que já não existe no Discord fica inativo/removido;
  *   - qualquer membro ativo na DB que existe mas só tem tags não-operacionais
  *     também fica inativo/removido.
@@ -17,7 +18,7 @@ const { query } = require('../db');
 const { queueMemberOp } = require('../discordQueue');
 const { logAudit } = require('../audit/auditEngine');
 const { log, warn } = require('../logger');
-const { detectRoleFromGuildMember } = require('./backfill');
+const { detectRoleFromGuildMember, backfillMembers } = require('./backfill');
 
 function hasAnyTier(guildMember) {
   const ids = CONFIG.BAIRRISTA_TIER_ROLE_IDS;
@@ -95,7 +96,7 @@ async function getGuildMember(guild, discordId) {
 async function markMissingDbMembersRemoved(guild, opts = {}) {
   const dryRun = Boolean(opts.dryRun);
   const actor = opts.actor || 'system:discord-reconcile';
-  await fetchGuildMembers(guild);
+  if (!opts.skipFetch) await fetchGuildMembers(guild);
 
   const active = await query(
     `select id, discord_id, display_name, tier, role
@@ -185,7 +186,7 @@ async function reconcileAllMembers(guild, opts = {}) {
   const dryRun = Boolean(opts.dryRun);
   const actor = opts.actor || 'system';
 
-  await fetchGuildMembers(guild);
+  if (!opts.skipFetch) await fetchGuildMembers(guild);
   const members = guild.members.cache;
 
   const report = { scanned: members.size, violations: 0, fixed: 0, details: [] };
@@ -205,8 +206,21 @@ async function reconcileAllMembers(guild, opts = {}) {
 }
 
 async function reconcileDiscordMembership(guild, opts = {}) {
-  const [invariants, missing] = await Promise.all([reconcileAllMembers(guild, opts), markMissingDbMembersRemoved(guild, opts)]);
-  return { invariants, missing };
+  const actor = opts.actor || 'system:discord-reconcile';
+  await fetchGuildMembers(guild);
+
+  // 1) Primeiro importa/reativa quem está no Discord com cargo operacional.
+  // Sem isto, o log podia dizer "DB↔Discord OK" para 70 membros ativos,
+  // mas ignorar 4 membros reais do Discord que ainda não existiam na DB.
+  const backfill = await backfillMembers(guild, { ...opts, actor });
+
+  // 2) Depois garante invariantes de roles no Discord.
+  const invariants = await reconcileAllMembers(guild, { ...opts, actor, skipFetch: true });
+
+  // 3) Por fim remove/inativa da DB quem já não tem cargo operacional.
+  const missing = await markMissingDbMembersRemoved(guild, { ...opts, actor, skipFetch: true });
+
+  return { backfill, invariants, missing };
 }
 
 module.exports = { hasAnyTier, hasBairristasBase, ensureInvariants, reconcileAllMembers, markMissingDbMembersRemoved, reconcileDiscordMembership };
