@@ -7,7 +7,9 @@
  *   - no máximo um tier operacional simultâneo.
  *
  * Reconciliação DB:
- *   - qualquer membro ativo na DB que já não existe no Discord fica inativo/removido.
+ *   - qualquer membro ativo na DB que já não existe no Discord fica inativo/removido;
+ *   - qualquer membro ativo na DB que existe mas só tem tags não-operacionais
+ *     também fica inativo/removido.
  */
 
 const CONFIG = require('../config');
@@ -15,6 +17,7 @@ const { query } = require('../db');
 const { queueMemberOp } = require('../discordQueue');
 const { logAudit } = require('../audit/auditEngine');
 const { log, warn } = require('../logger');
+const { detectRoleFromGuildMember } = require('./backfill');
 
 function hasAnyTier(guildMember) {
   const ids = CONFIG.BAIRRISTA_TIER_ROLE_IDS;
@@ -40,13 +43,7 @@ async function ensureInvariants(guildMember, opts = {}) {
       try {
         await queueMemberOp(() => guildMember.roles.add(CONFIG.BAIRRISTAS_BASE_ROLE_ID, reason));
         fixes.push('added_bairristas_base');
-        await logAudit({
-          action: 'invariant_fix',
-          entityType: 'member',
-          entityId: guildMember.id,
-          actorId: actor,
-          context: 'tier_without_bairristas_base → added Bairristas base',
-        });
+        await logAudit({ action: 'invariant_fix', entityType: 'member', entityId: guildMember.id, actorId: actor, context: 'tier_without_bairristas_base → added Bairristas base' });
       } catch (e) {
         warn(`[INVARIANT] Falha ao aplicar base Bairristas em ${guildMember.id}: ${e.message}`);
       }
@@ -68,22 +65,11 @@ async function ensureInvariants(guildMember, opts = {}) {
           warn(`[INVARIANT] Falha ao remover tier duplicado ${id}: ${e.message}`);
         }
       }
-      await logAudit({
-        action: 'invariant_fix',
-        entityType: 'member',
-        entityId: guildMember.id,
-        actorId: actor,
-        context: `multiple_tiers → kept ${keep}`,
-      });
+      await logAudit({ action: 'invariant_fix', entityType: 'member', entityId: guildMember.id, actorId: actor, context: `multiple_tiers → kept ${keep}` });
     }
   }
 
-  return {
-    needsFix: violations.length > 0,
-    applied: fixes.length > 0,
-    violations,
-    fixes,
-  };
+  return { needsFix: violations.length > 0, applied: fixes.length > 0, violations, fixes };
 }
 
 async function fetchGuildMembers(guild) {
@@ -96,14 +82,13 @@ async function fetchGuildMembers(guild) {
   }
 }
 
-async function memberExistsInDiscord(guild, discordId) {
-  if (!discordId) return false;
-  if (guild.members.cache.has(discordId)) return true;
+async function getGuildMember(guild, discordId) {
+  if (!discordId) return null;
+  if (guild.members.cache.has(discordId)) return guild.members.cache.get(discordId);
   try {
-    const found = await guild.members.fetch({ user: discordId, force: true }).catch(() => null);
-    return Boolean(found);
+    return await guild.members.fetch({ user: discordId, force: true }).catch(() => null);
   } catch (_) {
-    return false;
+    return null;
   }
 }
 
@@ -119,24 +104,32 @@ async function markMissingDbMembersRemoved(guild, opts = {}) {
         and deleted_at is null
         and coalesce(lifecycle_state::text, status, 'active') in ('active','ativo','promoted')
       order by id
-      limit 1000`
+      limit 2000`
   );
 
   const missing = [];
+  const noOperationalRole = [];
   let checked = 0;
+
   for (const row of active.rows) {
     checked++;
-    const exists = await memberExistsInDiscord(guild, row.discord_id);
-    if (!exists) missing.push(row);
+    const gm = await getGuildMember(guild, row.discord_id);
+    if (!gm) {
+      missing.push(row);
+      continue;
+    }
+    const detected = detectRoleFromGuildMember(gm);
+    if (!detected) noOperationalRole.push(row);
   }
 
-  if (!missing.length) {
-    log(`[RECONCILE:members] DB↔Discord OK: ${checked} ativos verificados, 0 órfãos.`);
-    return { scanned: checked, missing: 0, updated: 0, skipped: false };
+  const toRemove = [...missing, ...noOperationalRole];
+  if (!toRemove.length) {
+    log(`[RECONCILE:members] DB↔Discord OK: ${checked} ativos verificados, 0 órfãos/sem cargo operacional.`);
+    return { scanned: checked, missing: 0, no_operational_role: 0, updated: 0, skipped: false };
   }
 
-  const ids = missing.map(row => row.id);
-  const discordIds = missing.map(row => row.discord_id);
+  const ids = toRemove.map(row => row.id);
+  const discordIds = toRemove.map(row => row.discord_id);
 
   if (!dryRun) {
     await query(
@@ -146,12 +139,15 @@ async function markMissingDbMembersRemoved(guild, opts = {}) {
               lifecycle_state = 'removed',
               lifecycle_changed_at = now(),
               lifecycle_changed_by = $2,
-              lifecycle_notes = 'Removido automaticamente: já não está no Discord',
+              lifecycle_notes = case
+                when id = any($3::int[]) then 'Removido automaticamente: existe no Discord mas sem cargo operacional da Ballas'
+                else 'Removido automaticamente: já não está no Discord'
+              end,
               deleted_at = now(),
               channel_id = null,
               updated_at = now()
         where id = any($1::int[])`,
-      [ids, actor]
+      [ids, actor, noOperationalRole.map(row => row.id)]
     );
 
     await query(
@@ -164,23 +160,25 @@ async function markMissingDbMembersRemoved(guild, opts = {}) {
     ).catch(e => warn(`[RECONCILE:members] Falha a limpar user_roles de órfãos: ${e.message}`));
 
     await logAudit({
-      action: 'members_auto_removed_missing_discord',
+      action: 'members_auto_removed_no_operational_discord_role',
       entityType: 'member',
       entityId: 'bulk',
       actorId: actor,
       afterState: {
-        count: missing.length,
-        members: missing.map(m => ({ id: m.id, discord_id: m.discord_id, name: m.display_name, tier: m.tier, role: m.role })),
+        missing_count: missing.length,
+        no_operational_role_count: noOperationalRole.length,
+        members: toRemove.map(m => ({ id: m.id, discord_id: m.discord_id, name: m.display_name, tier: m.tier, role: m.role })),
       },
     }).catch(e => warn(`[RECONCILE:members] Audit falhou: ${e.message}`));
   }
 
   log(
-    `[RECONCILE:members] Marcados como removidos: ${missing.length}/${checked} ` +
-      missing.map(m => `${m.display_name || m.discord_id}#${m.id}`).slice(0, 10).join(', ')
+    `[RECONCILE:members] Marcados como removidos: ${toRemove.length}/${checked} ` +
+      `(missing=${missing.length}, no_operational_role=${noOperationalRole.length}) ` +
+      toRemove.map(m => `${m.display_name || m.discord_id}#${m.id}`).slice(0, 10).join(', ')
   );
 
-  return { scanned: checked, missing: missing.length, updated: dryRun ? 0 : missing.length, skipped: false };
+  return { scanned: checked, missing: missing.length, no_operational_role: noOperationalRole.length, updated: dryRun ? 0 : toRemove.length, skipped: false };
 }
 
 async function reconcileAllMembers(guild, opts = {}) {
@@ -190,12 +188,7 @@ async function reconcileAllMembers(guild, opts = {}) {
   await fetchGuildMembers(guild);
   const members = guild.members.cache;
 
-  const report = {
-    scanned: members.size,
-    violations: 0,
-    fixed: 0,
-    details: [],
-  };
+  const report = { scanned: members.size, violations: 0, fixed: 0, details: [] };
 
   for (const [, gm] of members) {
     if (gm.user.bot) continue;
@@ -203,34 +196,17 @@ async function reconcileAllMembers(guild, opts = {}) {
     if (result.needsFix) {
       report.violations++;
       if (result.applied) report.fixed++;
-      report.details.push({
-        member: gm.id,
-        displayName: gm.displayName,
-        violations: result.violations,
-        fixes: result.fixes,
-      });
+      report.details.push({ member: gm.id, displayName: gm.displayName, violations: result.violations, fixes: result.fixes });
     }
   }
 
-  log(
-    `[INVARIANT] Reconciliação: ${report.scanned} scan, ${report.violations} violações, ${report.fixed} corrigidas (dry=${dryRun})`
-  );
+  log(`[INVARIANT] Reconciliação: ${report.scanned} scan, ${report.violations} violações, ${report.fixed} corrigidas (dry=${dryRun})`);
   return report;
 }
 
 async function reconcileDiscordMembership(guild, opts = {}) {
-  const [invariants, missing] = await Promise.all([
-    reconcileAllMembers(guild, opts),
-    markMissingDbMembersRemoved(guild, opts),
-  ]);
+  const [invariants, missing] = await Promise.all([reconcileAllMembers(guild, opts), markMissingDbMembersRemoved(guild, opts)]);
   return { invariants, missing };
 }
 
-module.exports = {
-  hasAnyTier,
-  hasBairristasBase,
-  ensureInvariants,
-  reconcileAllMembers,
-  markMissingDbMembersRemoved,
-  reconcileDiscordMembership,
-};
+module.exports = { hasAnyTier, hasBairristasBase, ensureInvariants, reconcileAllMembers, markMissingDbMembersRemoved, reconcileDiscordMembership };
