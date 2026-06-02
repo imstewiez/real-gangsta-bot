@@ -30,6 +30,16 @@ function _touchDebounce(discordId) {
   _recentRoleChanges.set(discordId, Date.now());
 }
 
+function _pickDisplayName(guildMember) {
+  const candidates = [guildMember.displayName, guildMember.nickname, guildMember.user?.globalName, guildMember.user?.username];
+  for (const c of candidates) {
+    if (!c) continue;
+    const clean = String(c).replace(/[^\p{L}\p{N}]+/gu, '');
+    if (clean.length >= 2) return c;
+  }
+  return guildMember.user?.username || guildMember.id;
+}
+
 function registerLifecycleListeners(client) {
   // ── Sticky messages — listener para modo `repost` ─────────────────────────
   client.on(Events.MessageCreate, async message => {
@@ -168,10 +178,49 @@ async function _handleMemberRoleChange(oldMember, newMember, client) {
   _touchDebounce(newMember.id);
 
   const { memberRepo } = require('../../repositories');
-  const dbMember = await memberRepo.findByDiscordId(newMember.id);
-  if (!dbMember) return;
-
+  let dbMember = await memberRepo.findByDiscordId(newMember.id);
   const { role: resolvedRole, tier: resolvedTier } = _resolveRoleAndTier(newMember);
+
+  // Entradas diretas por tag: se alguém recebe cargo operacional e ainda não
+  // existe na DB, a app passa a refletir isso imediatamente sem esperar pelo
+  // reconcile diário/arranque.
+  if (!dbMember) {
+    if (resolvedRole === 'inativo') return;
+    const created = await memberRepo.create({
+      discordId: newMember.id,
+      username: newMember.user.username,
+      displayName: _pickDisplayName(newMember),
+      role: resolvedRole,
+    });
+    dbMember = await memberRepo.update(created.id, {
+      tier: resolvedTier,
+      status: 'ativo',
+      deleted_at: null,
+      lifecycle_state: 'active',
+      lifecycle_changed_at: new Date(),
+      lifecycle_changed_by: 'system:role-update',
+      lifecycle_notes: 'Criado automaticamente ao receber cargo operacional no Discord',
+    });
+    log(`[ROLE_UPDATE] Entrada automática: ${dbMember.display_name || newMember.id} role=${resolvedRole} tier=${resolvedTier}`);
+    return;
+  }
+
+  if ((dbMember.status === 'inativo' || dbMember.deleted_at) && resolvedRole !== 'inativo') {
+    dbMember = await memberRepo.update(dbMember.id, {
+      role: resolvedRole,
+      tier: resolvedTier,
+      display_name: _pickDisplayName(newMember),
+      username: newMember.user.username,
+      status: 'ativo',
+      deleted_at: null,
+      lifecycle_state: 'active',
+      lifecycle_changed_at: new Date(),
+      lifecycle_changed_by: 'system:role-update',
+      lifecycle_notes: 'Reativado automaticamente ao receber cargo operacional no Discord',
+    });
+    log(`[ROLE_UPDATE] Reativação automática: ${dbMember.display_name || newMember.id} role=${resolvedRole} tier=${resolvedTier}`);
+    return;
+  }
 
   // ── 1. Role principal mudou → promoção / demotion ───────────────────────
   if (dbMember.role !== resolvedRole) {
@@ -187,6 +236,7 @@ async function _handleMemberRoleChange(oldMember, newMember, client) {
         actorId: 'system',
         changedBy: 'system',
       });
+      if (resolvedTier && dbMember.tier !== resolvedTier) await memberRepo.update(dbMember.id, { tier: resolvedTier });
       log(
         `[ROLE_UPDATE] Promoção automática: ${dbMember.display_name || newMember.id} ${dbMember.role} → ${resolvedRole}`
       );
@@ -199,6 +249,7 @@ async function _handleMemberRoleChange(oldMember, newMember, client) {
         actorId: 'system',
         changedBy: 'system',
       });
+      if (resolvedTier && dbMember.tier !== resolvedTier) await memberRepo.update(dbMember.id, { tier: resolvedTier });
       log(
         `[ROLE_UPDATE] Rebaixamento automático: ${dbMember.display_name || newMember.id} ${dbMember.role} → ${resolvedRole}`
       );
