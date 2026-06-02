@@ -12,6 +12,7 @@
     "dev": "node --watch src/index.js",
     "db:migrate": "node -e \"require('dotenv').config(); require('./src/dbMigrate').runMigrations().then(() => process.exit(0)).catch(e => { console.error(e); process.exit(1); })\"",
     "repair:material-prices": "node scripts/repair-material-prices.js",
+    "audit:members": "node scripts/audit-members.js",
     "test": "node --test test/*.test.js test/unit/**/*.test.js",
     "test:integration": "node --test --test-concurrency=1 test/integration/*.test.js",
     "test:all": "node --test test/*.test.js test/integration/*.test.js",
