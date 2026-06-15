@@ -2,11 +2,10 @@
 
 const { handleTagModal, handleDenyModalSubmit } = require('../../../onboarding/onboardingHandlers');
 
-const exact = (id, handler) => ({ match: x => x === id, handler });
 const prefix = (p, handler) => ({ match: x => x.startsWith(p), handler });
 
 const MODAL_ROUTES = [
-  exact('onboard::modal_tag', handleTagModal),
+  prefix('onboard::modal_tag', handleTagModal),
   prefix('onboard::modal_deny::', handleDenyModalSubmit),
 ];
 
