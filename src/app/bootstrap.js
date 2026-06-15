@@ -1,18 +1,6 @@
 'use strict';
 /**
- * Bootstrap — composition root do bot.
- *
- * Orquestra, pela ordem:
- *   1. Validação de config (aborta se erro)
- *   2. Web server (healthcheck precisa estar online cedo)
- *   3. Coordenação de instâncias (dedup + lock singleton)
- *   4. Migrations + seed
- *   5. Discord client + listeners
- *   6. Ready handler
- *   7. Shutdown signals
- *
- * Pós-migração para webapp: Google Sheets, painéis de gestão e dashboards
- * não pertencem ao boot do bot. O bot fica focado em Discord/Railway.
+ * Bootstrap — composition root do bot Discord Ballas Gang.
  */
 
 const { Events } = require('discord.js');
@@ -27,7 +15,6 @@ const {
   deregisterInstance,
 } = require('../instanceCoordinator');
 const { log, warn, error, startLogMaintenance, stopLogMaintenance } = require('../logger');
-const { seedFromCatalog } = require('../inventory/itemCatalog');
 const { stopAll: stopScheduler, drainActiveJobs } = require('../jobs/scheduler');
 const { createServer } = require('../web/server');
 
@@ -45,15 +32,16 @@ const BOOT_PHASES = {
   READY_PHASES_COMPLETE: 6,
   FULLY_OPERATIONAL: 7,
 };
+
 let _currentPhase = 0;
+let client = null;
+let _server = null;
+let _shuttingDown = false;
+
 function setPhase(phase) {
   _currentPhase = phase;
   log(`[BOOT] Phase ${phase}/${BOOT_PHASES.FULLY_OPERATIONAL} reached`);
 }
-
-let client = null;
-let _server = null;
-let _shuttingDown = false;
 
 async function bootstrap() {
   log(`[BOOT] ${CONFIG.BOT_INTERNAL_NAME} a iniciar...`);
@@ -77,13 +65,11 @@ async function bootstrap() {
   setPhase(BOOT_PHASES.WEB_SERVER_UP);
 
   try {
-    log('[BOOT] A criar tabela bot_instances...');
+    log('[BOOT] A preparar coordenação de instâncias...');
     await ensureInstanceTable();
-    log('[BOOT] bot_instances OK');
     await cleanupStaleInstances();
-    log('[BOOT] cleanup stale OK');
     await registerInstance();
-    log('[BOOT] instance registada OK');
+    log('[BOOT] Instância registada.');
   } catch (e) {
     error(`[BOOT] Falha na coordenação de instâncias: ${e.message}`);
     process.exit(1);
@@ -91,7 +77,7 @@ async function bootstrap() {
 
   const isPooler = process.env.DATABASE_URL?.includes('pooler.supabase.com');
   if (isPooler) {
-    log('[BOOT] Pooler Supabase detectado — a saltar advisory lock (não suportado).');
+    log('[BOOT] Pooler Supabase detectado — a saltar advisory lock.');
   } else {
     log('[BOOT] A adquirir instance lock...');
     const locked = await acquireInstanceLockWithRetry(10000);
@@ -100,7 +86,7 @@ async function bootstrap() {
       await deregisterInstance('lock_timeout').catch(err => warn(`[BOOT] Falha a deregister instance: ${err.message}`));
       process.exit(1);
     }
-    log('[BOOT] Lock adquirido OK');
+    log('[BOOT] Lock adquirido.');
   }
   setPhase(BOOT_PHASES.INSTANCE_LOCKED);
 
@@ -113,8 +99,6 @@ async function bootstrap() {
     process.exit(1);
   }
   setPhase(BOOT_PHASES.MIGRATIONS_CHECKED);
-
-  await seedFromCatalog();
 
   client = createClient();
   registerLifecycleListeners(client);
@@ -222,4 +206,9 @@ function installShutdownSignals() {
   });
 }
 
-module.exports = { bootstrap, shutdown, getCurrentPhase: () => _currentPhase };
+module.exports = {
+  bootstrap,
+  shutdown,
+  getCurrentPhase: () => _currentPhase,
+  getBootPhase: () => _currentPhase,
+};
