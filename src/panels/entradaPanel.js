@@ -3,7 +3,7 @@
 const https = require('node:https');
 const { EmbedBuilder } = require('discord.js');
 const CONFIG = require('../config');
-const { EMOJI, BUTTONS } = require('../content');
+const { BUTTONS } = require('../content');
 const { button, buttonRow } = require('../shared/ui/buttons');
 const { warn } = require('../logger');
 
@@ -80,10 +80,10 @@ async function buildEntradaPanel() {
 
   const embed = new EmbedBuilder()
     .setColor(0x7b2cbf)
-    .setTitle(`${EMOJI.TAG} Bem-vindo ao Bairro`)
+    .setTitle('💜 Bem-vindo ao Bairro')
     .setDescription(
       'Entraste no bairro certo. A **Ballas Gang** é para quem vem representar, somar e fazer parte da organização.\n\n' +
-        'Faz aqui o teu pedido de tag: escolhe **Bairrista** ou **Tropinha**, preenche o formulário e aguarda a validação da equipa.'
+        '🟣 Faz aqui o teu pedido de tag: escolhe **Bairrista** ou **Tropinha**, preenche o formulário e aguarda a validação da equipa.'
     )
     .setFooter({ text: '— Ballas Gang', iconURL: logoUrl || undefined });
 
