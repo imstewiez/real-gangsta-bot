@@ -1,10 +1,7 @@
 'use strict';
 /**
- * Fases do ready hook.
- *
- * Pós-migração para webapp: o bot não inicializa Sheets, dashboards nem
- * painéis legacy. Mantém apenas Discord core, listeners operacionais,
- * scheduler mínimo e healthcheck Railway.
+ * Fases do ready hook do bot minimalista.
+ * Mantém apenas Discord core, comandos, reconciliação de membros, outbox e healthcheck.
  */
 
 const CONFIG = require('../config');
@@ -14,38 +11,22 @@ const { warmPool } = require('../db');
 const { startHeartbeat } = require('../instanceCoordinator');
 const { startAll: startScheduler } = require('../jobs/scheduler');
 const { setClient: setWebClient, markReady } = require('../web/server');
-const { setClient: setStockClient } = require('../inventory/stockNotifier');
-const { setClient: setBairristaLogClient } = require('../inventory/bairristaNotifier');
-const { setClient: setSaidaClient } = require('../saidas/saidaEngine');
-const { setClient: setSpotCooldownClient } = require('../saidas/spotCooldown');
-const { SessionLifecycle } = require('../saidas/saidaLifecycle');
 const { registerCommands } = require('./discord/registerCommands');
 
-let _saidaLifecycle = null;
 function getSaidaLifecycle() {
-  return _saidaLifecycle;
+  return null;
 }
 
 async function registerSlashCommandsPhase(client) {
   await registerCommands(client);
 }
 
-function injectClientPhase(client) {
-  setStockClient(client);
-  setBairristaLogClient(client);
-  setSaidaClient(client);
-  setSpotCooldownClient(client);
+function injectClientPhase() {
+  // No-op compatível: módulos legacy deixaram de receber client no runtime.
 }
 
-async function saidaLifecyclePhase(client) {
-  try {
-    const lifecycle = new SessionLifecycle({ client });
-    await lifecycle.restoreCountdowns();
-    _saidaLifecycle = lifecycle;
-    log(`[BOOT:SAIDAS] SessionLifecycle restaurado (${lifecycle.getActiveCountdowns().length} countdowns activos).`);
-  } catch (e) {
-    warn(`[BOOT:SAIDAS] Falha a restaurar lifecycle: ${e.message}`);
-  }
+async function saidaLifecyclePhase() {
+  // No-op compatível: saídas vivem fora do bot Discord minimalista.
 }
 
 async function warmupPhase() {
@@ -90,8 +71,6 @@ async function runReadyPhases(client, { onPreempt }) {
 
   const phases = [
     ['registerSlashCommands', () => registerSlashCommandsPhase(client)],
-    ['injectClient', () => injectClientPhase(client)],
-    ['saidaLifecycle', () => saidaLifecyclePhase(client)],
     ['warmup', () => warmupPhase()],
     ['membershipReconcile', () => membershipReconcilePhase(client)],
     ['scheduler', () => schedulerPhase(client)],
