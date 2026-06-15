@@ -6,6 +6,7 @@ const { log, warn } = require('../logger');
 
 const DEFAULT_CHANNEL_ID = '1490397821075984506';
 const STATE_KEY = 'dailyAvailabilityPanel';
+const PANEL_VERSION = 2;
 const TIMEZONE = process.env.AVAILABILITY_TIMEZONE || 'Europe/Lisbon';
 const DEFAULT_SLOTS = ['14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00', '24+'];
 const REACTIONS = ['✅', '❌', '❓'];
@@ -31,6 +32,12 @@ function getSlots() {
 
 function getChannelId() {
   return process.env.AVAILABILITY_PANEL_CHANNEL_ID || DEFAULT_CHANNEL_ID;
+}
+
+function getMentionContent() {
+  const raw = process.env.AVAILABILITY_PANEL_MENTION;
+  if (raw === 'none' || raw === 'false') return '';
+  return raw || '@everyone';
 }
 
 async function deleteOldMessages(channel, messageIds = []) {
@@ -78,7 +85,13 @@ async function publishAvailabilityPanel(client, { force = false } = {}) {
   const today = getLisbonDateKey();
   const state = await getStateKey(STATE_KEY, {});
 
-  if (!force && state.date === today && Array.isArray(state.message_ids) && state.message_ids.length > 0) {
+  if (
+    !force &&
+    state.date === today &&
+    state.panel_version === PANEL_VERSION &&
+    Array.isArray(state.message_ids) &&
+    state.message_ids.length > 0
+  ) {
     return { skipped: true, reason: 'already_published_today', date: today };
   }
 
@@ -91,7 +104,12 @@ async function publishAvailabilityPanel(client, { force = false } = {}) {
   await deleteOldMessages(channel, state.message_ids || []);
 
   const sentIds = [];
-  const header = await channel.send({ embeds: [buildHeaderEmbed(today)], allowedMentions: { parse: [] } });
+  const mention = getMentionContent();
+  const header = await channel.send({
+    content: mention,
+    embeds: [buildHeaderEmbed(today)],
+    allowedMentions: { parse: mention ? ['everyone'] : [] },
+  });
   sentIds.push(header.id);
 
   for (const slot of getSlots()) {
@@ -102,6 +120,7 @@ async function publishAvailabilityPanel(client, { force = false } = {}) {
 
   await setStateKey(STATE_KEY, {
     date: today,
+    panel_version: PANEL_VERSION,
     channel_id: channelId,
     message_ids: sentIds,
     updated_at: new Date().toISOString(),
