@@ -1,10 +1,13 @@
 'use strict';
 /**
  * Webhook handler para receber eventos da web app (gangsta-bot-web).
- * Atualiza roles, nicknames e kicks diretamente no Discord.
+ * Atualiza roles, nicknames e canais individuais diretamente no Discord.
  */
 
 const CONFIG = require('../config');
+const { query } = require('../db');
+const { queueChannelOp } = require('../discordQueue');
+const { formatResidentChannelName } = require('../discord/structureTemplate');
 const { log, warn } = require('../logger');
 const { sendDM } = require('../shared/dm');
 const { brandEmbed, COLOR } = require('../shared/embedBuilders');
@@ -48,6 +51,47 @@ async function resolveGuildMember(discordId) {
   }
 }
 
+function channelNickFromDb(row) {
+  if (row?.nickname) return row.nickname;
+  const display = row?.display_name || row?.full_name || '';
+  const m = String(display).match(/\(([^)]+)\)\s*$/);
+  if (m?.[1]) return m[1];
+  return display || 'sem-nome';
+}
+
+async function renameResidentChannel(discordId, toTier) {
+  if (!_client || !discordId || !toTier) return { skipped: true };
+  const guild = _client.guilds.cache.get(CONFIG.DISCORD_GUILD_ID);
+  if (!guild) return { skipped: true, error: 'guild_not_found' };
+
+  const res = await query(
+    `select id, discord_id, channel_id, nickname, display_name, full_name, tier
+       from members
+      where discord_id = $1
+        and deleted_at is null
+      order by updated_at desc nulls last
+      limit 1`,
+    [discordId]
+  ).catch(e => {
+    warn(`[webhook] Failed to load member channel for ${discordId}: ${e.message}`);
+    return { rows: [] };
+  });
+
+  const row = res.rows[0];
+  if (!row?.channel_id) return { skipped: true, reason: 'no_channel_id' };
+
+  const channel = await guild.channels.fetch(row.channel_id).catch(() => null);
+  if (!channel || !channel.setName) return { skipped: true, reason: 'channel_not_found' };
+
+  const newName = formatResidentChannelName(toTier, channelNickFromDb(row));
+  if (!newName || channel.name === newName) return { skipped: true, reason: 'same_name' };
+
+  const oldName = channel.name;
+  await queueChannelOp(() => channel.setName(newName, 'Sincronizar tópico com cargo atual'));
+  log(`[webhook] Renamed resident channel ${oldName} -> ${newName}`);
+  return { ok: true, oldName, newName };
+}
+
 async function handlePromote(discordId, toTier) {
   const member = await resolveGuildMember(discordId);
   if (!member) return { ok: false, error: 'member_not_found' };
@@ -62,6 +106,7 @@ async function handlePromote(discordId, toTier) {
     newRoleIds.push(CONFIG.BAIRRISTAS_BASE_ROLE_ID);
   }
   await member.roles.set(newRoleIds, 'Alteração de cargo via webapp');
+  await renameResidentChannel(discordId, toTier).catch(e => warn(`[webhook] Failed to rename resident channel for ${discordId}: ${e.message}`));
 
   log(`[webhook] Changed ${member.user.tag} to ${toTier} (role ${newRoleId})`);
   return { ok: true };
@@ -163,4 +208,4 @@ async function processEvent(body) {
   }
 }
 
-module.exports = { setClient, processEvent };
+module.exports = { setClient, processEvent, renameResidentChannel };
