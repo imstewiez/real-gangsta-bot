@@ -19,20 +19,11 @@ function registerJob(name, intervalMs, fn, opts = {}) {
 }
 
 async function runJob(job) {
-  if (_shuttingDown) {
-    log(`[SCHEDULER] Job '${job.name}' skipped — shutdown in progress.`);
-    return;
-  }
-  if (job._running) {
-    log(`[SCHEDULER] Job '${job.name}' still running — skipped overlap.`);
-    return;
-  }
+  if (_shuttingDown || job._running) return;
   job._running = true;
   const promise = (async () => {
     let jobId = await jobRepo.pickJob(job.name, INSTANCE_ID);
-    if (!jobId) {
-      jobId = await jobRepo.startJob(job.name, INSTANCE_ID);
-    }
+    if (!jobId) jobId = await jobRepo.startJob(job.name, INSTANCE_ID);
     metrics.jobRunsTotal.inc();
     metrics.jobsByName.inc({ job: job.name });
 
@@ -40,7 +31,7 @@ async function runJob(job) {
       try {
         await jobRepo.renewLease(jobId);
       } catch (e) {
-        warn(`[SCHEDULER] Heartbeat failed for job '${job.name}': ${e.message}`);
+        warn(`[SCHEDULER] Heartbeat failed for '${job.name}': ${e.message}`);
       }
     }, 60000);
     _heartbeats.set(job.name, heartbeat);
@@ -56,16 +47,15 @@ async function runJob(job) {
     } catch (e) {
       metrics.jobErrorsTotal.inc();
       await jobRepo.failJob(jobId, e.message);
-      warn(`[SCHEDULER] Job '${job.name}' failed: ${e.message}`);
+      warn(`[SCHEDULER] '${job.name}' failed: ${e.message}`);
     } finally {
       const hb = _heartbeats.get(job.name);
-      if (hb) {
-        clearInterval(hb);
-        _heartbeats.delete(job.name);
-      }
+      if (hb) clearInterval(hb);
+      _heartbeats.delete(job.name);
       job._running = false;
     }
   })();
+
   _activeJobs.set(job.name, promise);
   try {
     await promise;
@@ -81,67 +71,30 @@ async function drainActiveJobs(timeoutMs = 30000) {
     _heartbeats.delete(name);
   }
   if (!_activeJobs.size) return;
-  log(`[SCHEDULER] Draining ${_activeJobs.size} active jobs...`);
   await Promise.allSettled(
     Array.from(_activeJobs.values()).map(p => Promise.race([p, new Promise(r => setTimeout(r, timeoutMs))]))
   );
-  log('[SCHEDULER] Drain complete.');
 }
 
 function startAll(client) {
   _client = client;
+  jobs.length = 0;
+  _shuttingDown = false;
 
   if (!CONFIG.ENABLE_BACKGROUND_JOBS) {
     log('[SCHEDULER] Background jobs disabled.');
     return;
   }
 
-  // Pós-migração para webapp:
-  // - sem Google Sheets;
-  // - sem dashboards/painéis/rankings publicados pelo bot;
-  // - sem backfill/cleanup de tópicos;
-  // - sem data-health pesado no arranque.
-  // O bot mantém apenas tarefas que dependem do Discord/eventos em tempo real.
-
-  if (CONFIG.ENFORCE_ROLE_INVARIANTS) {
-    registerJob(
-      'discord_membership_reconcile',
-      24 * 60 * 60 * 1000,
-      async discordClient => {
-        try {
-          const guild = discordClient.guilds.cache.get(CONFIG.DISCORD_GUILD_ID);
-          if (!guild) return;
-          const { reconcileDiscordMembership } = require('../members/roleInvariants');
-          return reconcileDiscordMembership(guild, { actor: 'system:daily-discord-reconcile' });
-        } catch (e) {
-          warn(`[SCHEDULER] discord_membership_reconcile failed: ${e.message}`);
-        }
-      },
-      // O arranque já corre membershipReconcile na fase READY. Não correr de novo
-      // pelo scheduler evita fetch duplicado ao Discord e warnings de rate-limit.
-      { runOnStart: false }
-    );
-  }
-
-  registerJob('retention', 24 * 60 * 60 * 1000, async () => {
-    const { runRetention } = require('./retentionJob');
-    return runRetention({ dryRun: false, actor: 'system:scheduler' });
-  });
-
   registerJob(
-    'spot_cooldown_expirer',
-    60 * 1000,
+    'bot_outbox_events',
+    parseInt(process.env.BOT_OUTBOX_INTERVAL_MS, 10) || 15000,
     async discordClient => {
-      const { runExpirer } = require('../saidas/spotCooldown');
-      return runExpirer(discordClient);
+      const { processPendingOutboxEvents } = require('../members/botOutboxProcessor');
+      return processPendingOutboxEvents(discordClient, { limit: 5 });
     },
-    { runOnStart: false }
+    { runOnStart: true }
   );
-
-  registerJob('saida_request_expirer', 60 * 1000, async discordClient => {
-    const { expireStaleRequests } = require('../saidas/saidaEngine');
-    return expireStaleRequests(discordClient);
-  });
 
   for (const job of jobs) {
     job.timer = setInterval(() => runJob(job), job.intervalMs);
@@ -149,12 +102,8 @@ function startAll(client) {
     log(`[SCHEDULER] Job '${job.name}' registered (${job.intervalMs / 1000}s interval).`);
   }
 
-  const onStartJobs = jobs.filter(j => j.runOnStart);
-  if (onStartJobs.length) {
-    log(`[SCHEDULER] Running ${onStartJobs.length} jobs on start...`);
-    for (const job of onStartJobs) {
-      runJob(job).catch(e => warn(`[SCHEDULER] on-start '${job.name}' failed: ${e.message}`));
-    }
+  for (const job of jobs.filter(j => j.runOnStart)) {
+    runJob(job).catch(e => warn(`[SCHEDULER] on-start '${job.name}' failed: ${e.message}`));
   }
 }
 
