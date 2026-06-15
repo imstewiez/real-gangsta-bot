@@ -1,7 +1,4 @@
 'use strict';
-/**
- * Modal router minimalista para onboarding.
- */
 
 const { handleTagModal, handleDenyModalSubmit } = require('../../../onboarding/onboardingHandlers');
 
@@ -16,11 +13,7 @@ const MODAL_ROUTES = [
 async function handleModal(interaction) {
   const id = interaction.customId;
   const route = MODAL_ROUTES.find(r => r.match(id));
-  if (!route) {
-    const { warn } = require('../../logger');
-    warn(`[Router:Modal] Sem rota para customId: ${id}`);
-    return;
-  }
+  if (!route) return;
   return route.handler(interaction);
 }
 
