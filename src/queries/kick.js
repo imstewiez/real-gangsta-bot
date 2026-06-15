@@ -10,7 +10,7 @@ const { safeReply } = require('../shared/interactionHelpers');
 async function handle(interaction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-  const target = interaction.options.getMember('membro');
+  const target = interaction.options.getMember('membro') || interaction.options.getMember('user');
   const reason = interaction.options.getString('motivo') || 'Remoção controlada via comando de gestão';
 
   if (!target || !target.user) {
