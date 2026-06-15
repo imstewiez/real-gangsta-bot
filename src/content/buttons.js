@@ -7,6 +7,7 @@ const BUTTONS = {
   ENTRADA: {
     PEDIR_BAIRRISTA: { label: 'Pedido: Tag Bairrista', emoji: E.TAG, style: STYLE.SUCCESS },
     PEDIR_TROPINHA: { label: 'Pedido: Tag Tropinha', emoji: E.PARTICIPANTE, style: STYLE.PRIMARY },
+    PEDIR_TAG: { label: 'Pedido: Tag Bairrista', emoji: E.TAG, style: STYLE.SUCCESS },
     MEU_PEDIDO: { label: 'Estado do pedido', emoji: '🔎', style: STYLE.SECONDARY },
   },
   ONBOARDING: {
