@@ -4,22 +4,26 @@ const { SlashCommandBuilder } = require('discord.js');
 const commands = [
   new SlashCommandBuilder()
     .setName('meu-pedido')
-    .setDescription('Ver o estado do teu pedido de tag'),
+    .setDescription('Ver o estado do teu pedido de acesso'),
 
   new SlashCommandBuilder()
-    .setName('saidas')
-    .setDescription('As tuas ultimas saidas')
-    .addIntegerOption(opt => opt.setName('id').setDescription('ID de uma saida especifica').setRequired(false)),
+    .setName('perfil')
+    .setDescription('Ver o teu perfil básico na Ballas Gang'),
 
   new SlashCommandBuilder()
     .setName('kick')
-    .setDescription('Expulsar um membro do bairro')
-    .addUserOption(opt => opt.setName('membro').setDescription('Membro a expulsar').setRequired(true))
-    .addStringOption(opt => opt.setName('motivo').setDescription('Motivo').setRequired(false)),
+    .setDescription('Remover um membro da comunidade')
+    .addUserOption(opt => opt.setName('membro').setDescription('Membro a remover').setRequired(true))
+    .addStringOption(opt => opt.setName('motivo').setDescription('Motivo interno').setRequired(false)),
 
   new SlashCommandBuilder()
-    .setName('primeira-vez')
-    .setDescription('Guia rapido para usar a comunidade'),
+    .setName('sync-membro')
+    .setDescription('Sincronizar um membro entre DB e Discord')
+    .addUserOption(opt => opt.setName('membro').setDescription('Membro a sincronizar').setRequired(true)),
+
+  new SlashCommandBuilder()
+    .setName('painel-entrada')
+    .setDescription('Republicar o painel de pedido de acesso'),
 ];
 
 module.exports = { commands };
