@@ -33,72 +33,32 @@ function createServer(port = 3000) {
   const server = http.createServer(async (req, res) => {
     const url = req.url?.split('?')[0];
 
-    // Liveness for Railway: the HTTP process is up. Full readiness stays on
-    // /ready because Discord login, locks and migrations can take longer.
     if (url === '/health' || url === '/live') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(
-        JSON.stringify({
-          status: 'ok',
-          ready: _ready,
-          bot: CONFIG.BOT_INTERNAL_NAME,
-          uptimeSec: Math.floor((Date.now() - _bootTime) / 1000),
-        })
-      );
+      res.end(JSON.stringify({ status: 'ok', ready: _ready, bot: CONFIG.BOT_INTERNAL_NAME, uptimeSec: Math.floor((Date.now() - _bootTime) / 1000) }));
       return;
     }
 
-    // Readiness: bot is fully operational (Discord connected + DB responsive).
     if (url === '/ready') {
       const { getBootPhase } = require('../app/bootstrap');
       const phase = getBootPhase ? getBootPhase() : 0;
-      const ok = phase >= 8;
+      const ok = phase >= 7;
       res.writeHead(ok ? 200 : 503, { 'Content-Type': 'application/json' });
-      res.end(
-        JSON.stringify({
-          status: ok ? 'ready' : 'booting',
-          phase,
-          db: 'ok',
-          discord: _client?.ws?.status === 0 ? 'connected' : 'disconnected',
-          timestamp: new Date().toISOString(),
-        })
-      );
+      res.end(JSON.stringify({ status: ok ? 'ready' : 'booting', phase, db: 'ok', discord: _client?.ws?.status === 0 ? 'connected' : 'disconnected', timestamp: new Date().toISOString() }));
       return;
     }
 
-    // Deep health — todos os checks + info detalhada. Útil para dashboard de ops.
     if (url === '/health/full' || url === '/healthz') {
       const discordOk = _client?.isReady?.() ?? false;
       const db = await _checkDb();
-      const sheetsEnabled = Boolean(CONFIG.SPREADSHEET_ID && CONFIG.GOOGLE_SERVICE_ACCOUNT_JSON);
       const status = discordOk && db.ok ? 'healthy' : 'degraded';
-
-      // Metrics snapshot para health dashboard
       let metricsSnapshot = {};
       try {
         const metricsLib = require('../lib/metrics');
         metricsSnapshot = metricsLib.toJson();
-      } catch {
-        /* metrics não disponível */
-      }
-
+      } catch {}
       res.writeHead(discordOk && db.ok ? 200 : 503, { 'Content-Type': 'application/json' });
-      res.end(
-        JSON.stringify({
-          status,
-          bot: CONFIG.BOT_INTERNAL_NAME,
-          displayName: CONFIG.BOT_DISPLAY_NAME,
-          uptimeSec: Math.floor((Date.now() - _bootTime) / 1000),
-          checks: {
-            discord: { ok: discordOk, guilds: _client?.guilds?.cache?.size || 0, pingMs: _client?.ws?.ping || null },
-            db,
-            sheets: { ok: sheetsEnabled, enabled: sheetsEnabled },
-          },
-          metrics: metricsSnapshot,
-          node: process.version,
-          memMB: Math.round(process.memoryUsage().rss / 1024 / 1024),
-        })
-      );
+      res.end(JSON.stringify({ status, bot: CONFIG.BOT_INTERNAL_NAME, displayName: CONFIG.BOT_DISPLAY_NAME, uptimeSec: Math.floor((Date.now() - _bootTime) / 1000), checks: { discord: { ok: discordOk, guilds: _client?.guilds?.cache?.size || 0, pingMs: _client?.ws?.ping || null }, db }, metrics: metricsSnapshot, node: process.version, memMB: Math.round(process.memoryUsage().rss / 1024 / 1024) }));
       return;
     }
 
@@ -121,19 +81,10 @@ function createServer(port = 3000) {
     if (url === '/version') {
       const pkg = require('../../package.json');
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(
-        JSON.stringify({
-          name: pkg.name,
-          version: pkg.version,
-          node: process.version,
-          bot: CONFIG.BOT_INTERNAL_NAME,
-          displayName: CONFIG.BOT_DISPLAY_NAME,
-        })
-      );
+      res.end(JSON.stringify({ name: pkg.name, version: pkg.version, node: process.version, bot: CONFIG.BOT_INTERNAL_NAME, displayName: CONFIG.BOT_DISPLAY_NAME }));
       return;
     }
 
-    // Webhook from web app (tier changes, renames, kicks)
     if (url === '/webhook' && req.method === 'POST') {
       const secret = process.env.DISCORD_BOT_SECRET;
       const auth = req.headers['x-bot-secret'];
@@ -147,10 +98,7 @@ function createServer(port = 3000) {
       req.on('end', async () => {
         try {
           const data = JSON.parse(body);
-          // Process asynchronously so the web app isn't blocked by DM delays
-          processEvent(data).catch(err => {
-            warn('[webhook] Background processing failed:', err.message);
-          });
+          processEvent(data).catch(err => warn('[webhook] Processing failed:', err.message));
           res.writeHead(202, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: true, queued: true }));
         } catch (e) {
@@ -165,18 +113,11 @@ function createServer(port = 3000) {
     res.end('Not Found');
   });
 
-  server.listen(port, () => {
-    log(`[WEB] Health server listening on port ${port}`);
-  });
-
+  server.listen(port, () => log(`[WEB] Health server listening on port ${port}`));
   server.on('error', err => {
-    if (err.code === 'EADDRINUSE') {
-      throw new Error(`[WEB] Port ${port} already in use — health server cannot bind.`);
-    } else {
-      throw new Error(`[WEB] Server error: ${err.message}`);
-    }
+    if (err.code === 'EADDRINUSE') throw new Error(`[WEB] Port ${port} already in use.`);
+    throw new Error(`[WEB] Server error: ${err.message}`);
   });
-
   return server;
 }
 
