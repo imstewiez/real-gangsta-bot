@@ -8,26 +8,37 @@ const { queueMemberOp } = require('../discordQueue');
 const { log, warn } = require('../logger');
 const metrics = require('../lib/metrics');
 
-/**
- * Process an approved tag request after the webapp migration.
- *
- * Discord owns only Discord-native onboarding:
- * 1. Add base/tier roles and remove Pendente.
- * 2. Set Discord nickname when possible.
- * 3. Upsert/reactivate member row in DB.
- * 4. Mark tag request approved.
- * 5. Audit + notify user.
- *
- * The bot no longer creates individual channels, bairrista panels, topic
- * backfills, inventory panels, rankings or dashboard surfaces. Those belong to
- * the webapp or were intentionally removed.
- */
+function resolveEntryRole(tagRequest) {
+  const isTropinha = String(tagRequest.request_type || '').toLowerCase() === 'tropinha';
+  if (isTropinha) {
+    return {
+      requestType: 'tropinha',
+      dbTier: 'young_blood',
+      roleId: CONFIG.TROPINHA_DI_ZONA_ROLE_ID || '1490397688800477215',
+      roleLabel: 'Tropinha di Zona',
+      reason: 'Onboarding: Tag Tropinha di Zona',
+    };
+  }
+
+  const entryTier = CONFIG.BAIRRISTA_DEFAULT_TIER || 'young_blood';
+  const entryRoleKey = `${entryTier.toUpperCase()}_ROLE_ID`;
+  return {
+    requestType: 'bairrista',
+    dbTier: entryTier,
+    roleId: CONFIG[entryRoleKey],
+    roleLabel: entryTier,
+    roleKey: entryRoleKey,
+    reason: `Onboarding: tier ${entryTier}`,
+  };
+}
+
 async function processApproval(tagRequest, approverMember, client) {
   const guild = approverMember.guild;
   const discordId = tagRequest.discord_id;
   const fullName = tagRequest.full_name;
   const nickname = tagRequest.nickname;
   const displayNickname = `${fullName} (${nickname})`;
+  const entry = resolveEntryRole(tagRequest);
 
   const result = {
     rolesAdded: false,
@@ -35,6 +46,8 @@ async function processApproval(tagRequest, approverMember, client) {
     channelCreated: false,
     channelId: null,
     errors: [],
+    entryRole: entry.roleLabel,
+    requestType: entry.requestType,
   };
 
   const guildMember = await guild.members.fetch(discordId).catch(() => null);
@@ -43,21 +56,18 @@ async function processApproval(tagRequest, approverMember, client) {
     return result;
   }
 
-  const entryTier = CONFIG.BAIRRISTA_DEFAULT_TIER || 'young_blood';
-  const entryRoleKey = `${entryTier.toUpperCase()}_ROLE_ID`;
-  const entryRoleId = CONFIG[entryRoleKey];
-
   try {
     if (CONFIG.BAIRRISTAS_BASE_ROLE_ID) {
       await queueMemberOp(() =>
         guildMember.roles.add(CONFIG.BAIRRISTAS_BASE_ROLE_ID, 'Onboarding: role base Bairristas')
       );
     }
-    if (entryRoleId) {
-      await queueMemberOp(() => guildMember.roles.add(entryRoleId, `Onboarding: tier ${entryTier}`));
+    if (entry.roleId) {
+      await queueMemberOp(() => guildMember.roles.add(entry.roleId, entry.reason));
     } else {
-      warn(`[ONBOARDING] ${entryRoleKey} não configurado — tier de entrada não foi atribuído.`);
-      result.errors.push({ phase: 'roles', message: `${entryRoleKey} não configurado` });
+      const missing = entry.roleKey || 'TROPINHA_DI_ZONA_ROLE_ID';
+      warn(`[ONBOARDING] ${missing} não configurado — tag de entrada não foi atribuída.`);
+      result.errors.push({ phase: 'roles', message: `${missing} não configurado` });
     }
     if (CONFIG.PENDENTE_ROLE_ID && guildMember.roles.cache.has(CONFIG.PENDENTE_ROLE_ID)) {
       await queueMemberOp(() =>
@@ -65,7 +75,7 @@ async function processApproval(tagRequest, approverMember, client) {
       );
     }
     result.rolesAdded = true;
-    log(`[ONBOARDING] Roles aplicadas a ${fullName} (${discordId}).`);
+    log(`[ONBOARDING] Role ${entry.roleLabel} aplicada a ${fullName} (${discordId}).`);
   } catch (e) {
     warn(`[ONBOARDING] Falha ao adicionar roles: ${e.message}`);
     result.errors.push({ phase: 'roles', message: e.message });
@@ -109,12 +119,21 @@ async function processApproval(tagRequest, approverMember, client) {
             lifecycle_state = 'active',
             lifecycle_changed_at = NOW(),
             lifecycle_changed_by = $6,
-            lifecycle_notes = 'Onboarding aprovado via Discord',
+            lifecycle_notes = $7,
             deleted_at = NULL,
             channel_id = NULL,
             updated_at = NOW()
-      WHERE id = $7`,
-    [tagRequest.username || guildMember.user.username, fullName, nickname, fullName, entryTier, approverMember.id, dbMember.id]
+      WHERE id = $8`,
+    [
+      tagRequest.username || guildMember.user.username,
+      fullName,
+      nickname,
+      fullName,
+      entry.dbTier,
+      approverMember.id,
+      `Onboarding aprovado via Discord: ${entry.roleLabel}`,
+      dbMember.id,
+    ]
   );
 
   await query(
@@ -134,13 +153,13 @@ async function processApproval(tagRequest, approverMember, client) {
     entityId: discordId,
     actorId: approverMember.id,
     actorName: approverMember.user.username,
-    afterState: { fullName, nickname, tier: entryTier, rolesAdded: result.rolesAdded },
+    afterState: { fullName, nickname, tier: entry.dbTier, entryRole: entry.roleLabel, requestType: entry.requestType, rolesAdded: result.rolesAdded },
   });
 
   const { ONBOARDING } = require('../content');
   await sendAuditToChannel(client, {
     title: ONBOARDING.TAG_APPROVED_TITLE,
-    description: `<@${discordId}> entrou como **${entryTier}**.\nNome: **${fullName}** *(${nickname})*`,
+    description: `<@${discordId}> entrou com **${entry.roleLabel}**.\nNome: **${fullName}** *(${nickname})*`,
     color: COLOR.SUCCESS,
   });
 
@@ -198,4 +217,4 @@ async function handlePromotionToOficial(member, client) {
   });
 }
 
-module.exports = { processApproval, handlePromotionToOficial };
+module.exports = { processApproval, handlePromotionToOficial, resolveEntryRole };
