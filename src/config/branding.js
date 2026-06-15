@@ -1,8 +1,5 @@
 'use strict';
 
-const DEFAULT_LOGO_URL = 'https://www.ballasgang.eu/assets/ballas-logo.png';
-const logoUrl = process.env.BALLAS_GANG_LOGO_URL || process.env.BOT_LOGO_URL || DEFAULT_LOGO_URL;
-
 function normalizeName(value, fallback) {
   const clean = String(value || '').trim();
   if (!clean) return fallback;
@@ -13,11 +10,22 @@ function normalizeName(value, fallback) {
   return clean;
 }
 
+function normalizeLogoUrl(value) {
+  const clean = String(value || '').trim();
+  if (!clean) return '';
+  const lower = clean.toLowerCase();
+  if (lower.includes(['red', 'wood'].join(''))) return '';
+  if (lower.includes('botdizona')) return '';
+  return clean;
+}
+
+const explicitLogoUrl = normalizeLogoUrl(process.env.BALLAS_GANG_LOGO_URL || process.env.BOT_LOGO_URL);
+
 module.exports = {
   BOT_INTERNAL_NAME: normalizeName(process.env.BOT_INTERNAL_NAME, 'Ballas Gang'),
   BOT_DISPLAY_NAME: normalizeName(process.env.BOT_DISPLAY_NAME, 'Ballas Gang • Gestão'),
-  BALLAS_GANG_LOGO_URL: logoUrl,
-  BOT_LOGO_URL: logoUrl,
-  WEB_APP_URL: process.env.WEB_APP_URL || 'https://ballasgang.eu',
+  BALLAS_GANG_LOGO_URL: explicitLogoUrl,
+  BOT_LOGO_URL: explicitLogoUrl,
+  WEB_APP_URL: process.env.WEB_APP_URL || 'https://www.ballasgang.eu',
   BOT_COLOR: parseInt(process.env.BOT_COLOR || '7B2CBF', 16),
 };
