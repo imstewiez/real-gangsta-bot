@@ -5,6 +5,7 @@ const { getStateKey, setStateKey } = require('./state');
 const { log, warn } = require('./logger');
 const { EMOJI } = require('./content');
 const { buildEntradaPanel } = require('./panels/entradaPanel');
+const { buildRadioPanel } = require('./radio/radioPanel');
 const { CATEGORY_BY_KEY, bold } = require('./discord/structureTemplate');
 
 const { BottomPinEngine } = require('./messages/bottomPinEngine');
@@ -24,6 +25,11 @@ const PANELS = [
     autoCategoryKey: 'ENTRADA',
     build: buildEntradaPanel,
     stickySource: 'panel:entrada',
+  },
+  {
+    key: 'panel_radio',
+    channelKey: 'RADIO_PANEL_CHANNEL_ID',
+    build: buildRadioPanel,
   },
 ];
 
@@ -77,7 +83,7 @@ async function bootstrapPanel(client, panelDef, bottomPinEngine) {
         if (existing) {
           const payload = await panelDef.build();
           await existing.edit(payload);
-          if (bottomPinEngine?._channelPins) {
+          if (bottomPinEngine?._channelPins && panelDef.stickySource) {
             if (!bottomPinEngine._channelPins.has(channelId)) bottomPinEngine._channelPins.set(channelId, new Set());
             bottomPinEngine._channelPins.get(channelId).add(panelDef.stickySource);
           }
@@ -111,7 +117,7 @@ async function bootstrapPanel(client, panelDef, bottomPinEngine) {
   }
 }
 
-const PANELS_SCHEMA_VERSION = 16;
+const PANELS_SCHEMA_VERSION = 17;
 
 async function _maybeForceRebuild() {
   const stored = await getStateKey('panelsSchemaVersion', 0);
