@@ -21,7 +21,6 @@ const BAIRRISTA_TIERS = [
   { key: 'gangster_fodido', getId: () => CONFIG.GANGSTER_FODIDO_ROLE_ID },
   { key: 'o_gunao', getId: () => CONFIG.O_GUNAO_ROLE_ID },
   { key: 'young_blood', getId: () => CONFIG.YOUNG_BLOOD_ROLE_ID },
-  { key: 'young_blood', getId: () => CONFIG.TROPINHA_DI_ZONA_ROLE_ID },
 ];
 
 function _resolveTier(roles, tierList) {
