@@ -49,6 +49,11 @@ async function membershipReconcilePhase(client) {
   );
 }
 
+function streamCommandsPhase(client) {
+  const { registerLiveCommandHandler } = require('../streams/liveMonitor');
+  registerLiveCommandHandler(client);
+}
+
 function schedulerPhase(client) {
   startScheduler(client);
 }
@@ -69,6 +74,7 @@ async function runReadyPhases(client, { onPreempt }) {
   const phases = [
     ['clearSlashCommands', () => registerSlashCommandsPhase(client)],
     ['panels', () => panelsPhase(client)],
+    ['streamCommands', () => streamCommandsPhase(client)],
     ['warmup', () => warmupPhase()],
     ['membershipReconcile', () => membershipReconcilePhase(client)],
     ['scheduler', () => schedulerPhase(client)],
@@ -99,6 +105,7 @@ module.exports = {
   saidaLifecyclePhase,
   warmupPhase,
   membershipReconcilePhase,
+  streamCommandsPhase,
   schedulerPhase,
   webReadyPhase,
   heartbeatPhase,
