@@ -10,6 +10,7 @@ const {
   handleApproveTropinhaButton,
 } = require('../../../onboarding/tropinhaHandlers');
 const { handleMeuPedido } = require('../../../onboarding/meuPedido');
+const { handleRadioRandomButton, handleRadioManualButton } = require('../../../radio/radioPanel');
 
 const exact = (id, handler) => ({ match: x => x === id, handler });
 const prefix = (p, handler) => ({ match: x => x.startsWith(p), handler });
@@ -32,6 +33,8 @@ const denyHandler = interaction => {
 };
 
 const BUTTON_ROUTES = [
+  exact('radio::random', handleRadioRandomButton),
+  exact('radio::manual', handleRadioManualButton),
   exact('onboard::pedir_bairrista', handlePedirTagButton),
   exact('onboard::pedir_tropinha', handlePedirTropinhaButton),
   exact('onboard::pedir_tag', handlePedirTagButton),
