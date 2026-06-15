@@ -1,8 +1,4 @@
 'use strict';
-/**
- * Button router minimalista.
- * Runtime Discord limitado a onboarding e estado do pedido.
- */
 
 const {
   handlePedirTagButton,
@@ -32,6 +28,8 @@ const denyHandler = interaction => {
 };
 
 const BUTTON_ROUTES = [
+  exact('onboard::pedir_bairrista', handlePedirTagButton),
+  exact('onboard::pedir_tropinha', handlePedirTagButton),
   exact('onboard::pedir_tag', handlePedirTagButton),
   exact('onboard::meu_pedido', handleMeuPedido),
   prefix('onboard::approve::', approveHandler),
