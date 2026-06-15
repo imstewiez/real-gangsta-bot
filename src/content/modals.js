@@ -1,252 +1,111 @@
 'use strict';
-/**
- * Copy canónica de modais — títulos, field labels, placeholders.
- *
- * Cada modal define:
- *   TITLE       — ≤ 45 chars, contexto claro
- *   FIELDS[id]  — { label, placeholder, maxLength?, required? }
- *
- * CustomIds dos modais ficam nos handlers para preservar compat com modais
- * já abertos (Discord não aceita mudança de customId após abrir).
- */
 
 const E = require('./emojis');
 
 const MODALS = {
-  // ── Onboarding ────────────────────────────────────────────────────────
   TAG_REQUEST: {
-    TITLE: 'Pedir Tag — Ballas Gang',
+    TITLE: 'Pedido de Tag',
     FIELDS: {
       full_name: {
-        label: 'Nome in-game (primeiro e último)',
-        placeholder: 'Ex: Chico Navalhas',
+        label: 'Nome in-game',
+        placeholder: 'Ex: João Silva',
         maxLength: 60,
         required: true,
       },
       nickname: {
-        label: 'Alcunha / como te tratam',
-        placeholder: 'Ex: Chico',
+        label: 'Alcunha / nome curto',
+        placeholder: 'Ex: Silva',
         maxLength: 30,
         required: true,
       },
     },
   },
 
-  // ── Kill ──────────────────────────────────────────────────────────────
   KILL_REGISTER: {
-    TITLE: `${E.KILL} Registar Kill`,
+    TITLE: `${E.KILL} Registar ocorrência`,
     FIELDS: {
-      victim: {
-        label: 'Vítima (nome · facção)',
-        placeholder: 'Ex: Chico Navalhas · Los Vagos',
-        maxLength: 80,
-        required: true,
-      },
-      spot: {
-        label: 'Spot (onde aconteceu)',
-        placeholder: 'Ex: Motel, Grove, Sandy PD...',
-        maxLength: 60,
-        required: false,
-      },
-      context: {
-        label: 'Contexto (opcional)',
-        placeholder: 'Ex: guerra Vagos, retaliação, atropelamento',
-        maxLength: 200,
-        required: false,
-      },
+      victim: { label: 'Nome / referência', placeholder: 'Ex: nome e grupo', maxLength: 80, required: true },
+      spot: { label: 'Local', placeholder: 'Ex: zona ou referência', maxLength: 60, required: false },
+      context: { label: 'Contexto', placeholder: 'Notas relevantes', maxLength: 200, required: false },
     },
   },
 
-  // ── Inventário — entrega/venda ────────────────────────────────────────
   INVENTORY_QUANTITY: {
-    TITLE: (itemName, isVenda) => (isVenda ? `Vender ${itemName}` : `Entregar ${itemName}`),
+    TITLE: itemName => `Registar ${itemName}`,
     FIELDS: {
-      quantity: {
-        label: price => `Quantidade${price ? ` (${price}€ cada)` : ''}`,
-        placeholder: 'Ex: 10',
-        maxLength: 10,
-        required: true,
-      },
-      notes: {
-        label: 'Observações (opcional)',
-        placeholder: 'Ex: faltavam 2, outras notas...',
-        maxLength: 500,
-        required: false,
-      },
+      quantity: { label: () => 'Quantidade', placeholder: 'Ex: 10', maxLength: 10, required: true },
+      notes: { label: 'Observações', placeholder: 'Notas opcionais', maxLength: 500, required: false },
     },
   },
 
-  // ── Inventário — ajuste manual ────────────────────────────────────────
   INVENTORY_ADJUST: {
-    TITLE: 'Ajustar Stock',
+    TITLE: 'Ajustar registo',
     FIELDS: {
-      delta: {
-        label: 'Delta (positivo ou negativo)',
-        placeholder: 'Ex: -5 ou +20',
-        maxLength: 10,
-        required: true,
-      },
-      reason: {
-        label: 'Motivo (curto)',
-        placeholder: 'Ex: contagem, correcção, compra',
-        maxLength: 120,
-        required: true,
-      },
+      delta: { label: 'Valor', placeholder: 'Ex: -5 ou +20', maxLength: 10, required: true },
+      reason: { label: 'Motivo', placeholder: 'Ex: correção', maxLength: 120, required: true },
     },
   },
 
-  // ── Inventário — novo item ────────────────────────────────────────────
   INVENTORY_ADD_ITEM: {
-    TITLE: 'Novo Item',
+    TITLE: 'Novo item',
     FIELDS: {
-      name: { label: 'Nome', placeholder: 'Ex: AK-47', maxLength: 60, required: true },
-      category: { label: 'Categoria', placeholder: 'armas / droga / …', maxLength: 30, required: true },
-      unit: { label: 'Unidade', placeholder: 'unidade / caixa', maxLength: 20, required: false },
-      value: { label: 'Valor estimado (€)', placeholder: 'Ex: 25000', maxLength: 10, required: false },
+      name: { label: 'Nome', placeholder: 'Ex: item', maxLength: 60, required: true },
+      category: { label: 'Categoria', placeholder: 'categoria', maxLength: 30, required: true },
+      unit: { label: 'Unidade', placeholder: 'unidade', maxLength: 20, required: false },
+      value: { label: 'Valor', placeholder: 'Ex: 25000', maxLength: 10, required: false },
     },
   },
 
-  // ── Inventário — editar preço ─────────────────────────────────────────
   INVENTORY_EDIT_PRICE: {
     TITLE: itemName => `Preço — ${itemName}`,
     FIELDS: {
-      price: {
-        label: 'Novo preço (€)',
-        placeholder: 'Ex: 30000',
-        maxLength: 10,
-        required: true,
-      },
+      price: { label: 'Novo preço', placeholder: 'Ex: 30000', maxLength: 10, required: true },
     },
   },
 
-  // ── Saída — criar ─────────────────────────────────────────────────────
   SAIDA_CREATE: {
-    TITLE: `${E.SAIDA} Nova Saída`,
+    TITLE: `${E.SAIDA} Nova ação`,
     FIELDS: {
-      date: {
-        label: 'Data (YYYY-MM-DD)',
-        placeholder: 'Ex: 2026-04-16',
-        maxLength: 10,
-        required: true,
-      },
-      time: {
-        label: 'Hora (HH:MM)',
-        placeholder: 'Ex: 21:30',
-        maxLength: 5,
-        required: true,
-      },
-      spot: {
-        label: 'Spot',
-        placeholder: 'Ex: Grove, Motel, Sandy',
-        maxLength: 60,
-        required: true,
-      },
-      type: {
-        label: 'Tipo',
-        placeholder: 'craft · domínio · ataque · defesa · recolha',
-        maxLength: 20,
-        required: true,
-      },
-      notes: {
-        label: 'Notas (opcional)',
-        placeholder: 'Contexto, objectivos, lineup...',
-        maxLength: 500,
-        required: false,
-      },
+      date: { label: 'Data', placeholder: 'Ex: 2026-04-16', maxLength: 10, required: true },
+      time: { label: 'Hora', placeholder: 'Ex: 21:30', maxLength: 5, required: true },
+      spot: { label: 'Local', placeholder: 'Ex: local', maxLength: 60, required: true },
+      type: { label: 'Tipo', placeholder: 'tipo de ação', maxLength: 20, required: true },
+      notes: { label: 'Notas', placeholder: 'Contexto ou observações', maxLength: 500, required: false },
     },
   },
 
-  // ── Saída — fechar resultado ──────────────────────────────────────────
   SAIDA_SETTLE: {
-    TITLE: id => `${E.FECHAR} Fechar Saída #${id}`,
+    TITLE: id => `${E.FECHAR} Fechar ação #${id}`,
     FIELDS: {
-      result: {
-        label: 'Resultado',
-        placeholder: 'vitória · derrota · empate · sem conflito',
-        maxLength: 20,
-        required: true,
-      },
-      enemy: {
-        label: 'Inimigo · facção (opcional)',
-        placeholder: 'Ex: Los Vagos',
-        maxLength: 80,
-        required: false,
-      },
-      crafted: {
-        label: 'Material craftado (unidades)',
-        placeholder: 'Ex: 50',
-        maxLength: 12,
-        required: false,
-      },
-      kills: {
-        label: 'Kills da Ballas Gang (total)',
-        placeholder: 'Ex: 4',
-        maxLength: 5,
-        required: false,
-      },
-      notes: {
-        label: 'Notas (opcional)',
-        placeholder: 'Ex: perdemos 2, material intacto',
-        maxLength: 500,
-        required: false,
-      },
+      result: { label: 'Resultado', placeholder: 'resultado', maxLength: 20, required: true },
+      enemy: { label: 'Referência externa', placeholder: 'opcional', maxLength: 80, required: false },
+      crafted: { label: 'Quantidade', placeholder: 'Ex: 50', maxLength: 12, required: false },
+      kills: { label: 'Total', placeholder: 'Ex: 4', maxLength: 5, required: false },
+      notes: { label: 'Notas', placeholder: 'Observações', maxLength: 500, required: false },
     },
   },
 
-  // ── Saída — material por participante ─────────────────────────────────
   SAIDA_MATERIAL: {
-    TITLE: what => `Material · ${what}`,
+    TITLE: what => `Registo · ${what}`,
     FIELDS: {
-      qty: {
-        label: 'Quantidade',
-        placeholder: 'Ex: 10',
-        maxLength: 6,
-        required: true,
-      },
-      notes: {
-        label: 'Notas (opcional)',
-        placeholder: '',
-        maxLength: 200,
-        required: false,
-      },
+      qty: { label: 'Quantidade', placeholder: 'Ex: 10', maxLength: 6, required: true },
+      notes: { label: 'Notas', placeholder: '', maxLength: 200, required: false },
     },
   },
 
-  // ── Encomenda (bairrista para oficial) ────────────────────────────────
   ENCOMENDA: {
-    TITLE: `${E.FORNECER} Encomendar Material`,
+    TITLE: `${E.FORNECER} Pedido interno`,
     FIELDS: {
-      item: {
-        label: 'Item (nome)',
-        placeholder: 'Ex: AK-47, Heroína, Colete',
-        maxLength: 60,
-        required: true,
-      },
-      quantity: {
-        label: 'Quantidade',
-        placeholder: 'Ex: 5',
-        maxLength: 6,
-        required: true,
-      },
-      notes: {
-        label: 'Porquê / para quando',
-        placeholder: 'Ex: saída de hoje, stock pessoal',
-        maxLength: 200,
-        required: false,
-      },
+      item: { label: 'Item', placeholder: 'Nome do item', maxLength: 60, required: true },
+      quantity: { label: 'Quantidade', placeholder: 'Ex: 5', maxLength: 6, required: true },
+      notes: { label: 'Notas', placeholder: 'Informação adicional', maxLength: 200, required: false },
     },
   },
 
-  // ── Rádio ─────────────────────────────────────────────────────────────
   RADIO_SET: {
-    TITLE: label => `${E.RADIO} Rádio ${label}`,
+    TITLE: label => `${E.RADIO} ${label}`,
     FIELDS: {
-      value: {
-        label: label => `Valor (${label.toLowerCase()})`,
-        placeholder: 'Ex: 1234',
-        maxLength: 10,
-        required: true,
-      },
+      value: { label: label => `Valor (${label.toLowerCase()})`, placeholder: 'Ex: 1234', maxLength: 10, required: true },
     },
   },
 };
