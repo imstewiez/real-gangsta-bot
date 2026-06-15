@@ -5,8 +5,9 @@ const STYLE = { SUCCESS: 'Success', PRIMARY: 'Primary', SECONDARY: 'Secondary', 
 
 const BUTTONS = {
   ENTRADA: {
-    PEDIR_TAG: { label: 'Pedir acesso', emoji: E.TAG, style: STYLE.SUCCESS },
-    MEU_PEDIDO: { label: 'Ver o meu pedido', emoji: '🔎', style: STYLE.SECONDARY },
+    PEDIR_BAIRRISTA: { label: 'Pedido: Tag Bairrista', emoji: E.TAG, style: STYLE.SUCCESS },
+    PEDIR_TROPINHA: { label: 'Pedido: Tag Tropinha', emoji: E.PARTICIPANTE, style: STYLE.PRIMARY },
+    MEU_PEDIDO: { label: 'Estado do pedido', emoji: '🔎', style: STYLE.SECONDARY },
   },
   ONBOARDING: {
     APROVAR: { label: 'Aprovar', emoji: E.OK, style: STYLE.SUCCESS },
