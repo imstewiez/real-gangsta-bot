@@ -2,7 +2,6 @@
 
 const { EmbedBuilder } = require('discord.js');
 const CONFIG = require('../config');
-const { COLOR } = require('../shared/embedBuilders');
 const { EMOJI, BUTTONS } = require('../content');
 const { button, buttonRow } = require('../shared/ui/buttons');
 const { getEntradaMetrics } = require('../repositories/panelRepo');
@@ -20,7 +19,7 @@ async function buildEntradaPanel() {
   const safe = metrics || { membros_activos: 0, novos_semana: 0 };
 
   const embed = new EmbedBuilder()
-    .setColor(COLOR.BRAND)
+    .setColor(0x7b2cbf)
     .setTitle(`${EMOJI.TAG} Pedidos de Acesso`)
     .setDescription('Escolhe o tipo de pedido que queres abrir. A equipa responsável analisa e responde assim que possível.')
     .addFields(
@@ -35,7 +34,7 @@ async function buildEntradaPanel() {
         inline: true,
       }
     )
-    .setFooter({ text: `— ${CONFIG.BOT_DISPLAY_NAME || 'Ballas Gang'}` });
+    .setFooter({ text: '— Ballas Gang', iconURL: CONFIG.BOT_LOGO_URL || undefined });
 
   if (CONFIG.BOT_LOGO_URL) embed.setThumbnail(CONFIG.BOT_LOGO_URL);
 
