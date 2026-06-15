@@ -7,6 +7,8 @@
  *   - no máximo um tier operacional simultâneo.
  *
  * Reconciliação DB:
+ *   - a DB é a fonte principal quando já existe membro ativo;
+ *   - o Discord é sincronizado para o tier da DB antes do backfill;
  *   - importa para a DB membros do Discord com cargo operacional válido;
  *   - qualquer membro ativo na DB que já não existe no Discord fica inativo/removido;
  *   - qualquer membro ativo na DB que existe mas só tem tags não-operacionais
@@ -19,6 +21,17 @@ const { queueMemberOp } = require('../discordQueue');
 const { logAudit } = require('../audit/auditEngine');
 const { log, warn } = require('../logger');
 const { detectRoleFromGuildMember, backfillMembers } = require('./backfill');
+
+const VALID_SYNC_TIERS = new Set([
+  'young_blood',
+  'o_gunao',
+  'gangster_fodido',
+  'patrao_di_zona',
+  'real_gangster',
+  'og',
+  'kingpin',
+  'manda_chuva',
+]);
 
 function hasAnyTier(guildMember) {
   const ids = CONFIG.BAIRRISTA_TIER_ROLE_IDS;
@@ -91,6 +104,60 @@ async function getGuildMember(guild, discordId) {
   } catch (_) {
     return null;
   }
+}
+
+async function syncActiveDbMembersToDiscord(guild, opts = {}) {
+  const dryRun = Boolean(opts.dryRun);
+  const actor = opts.actor || 'system:db-to-discord-sync';
+  const { syncMemberDiscordState } = require('./syncMemberDiscordState');
+
+  const active = await query(
+    `select id, discord_id, display_name, tier, role
+       from members
+      where discord_id is not null
+        and deleted_at is null
+        and coalesce(lifecycle_state::text, status, 'active') in ('active','ativo','promoted')
+      order by id
+      limit 2000`
+  );
+
+  let scanned = 0;
+  let synced = 0;
+  let skipped = 0;
+  let missing = 0;
+  const errors = [];
+
+  for (const row of active.rows) {
+    scanned++;
+    const tier = String(row.tier || row.role || '').toLowerCase().trim();
+    if (!VALID_SYNC_TIERS.has(tier)) {
+      skipped++;
+      continue;
+    }
+
+    const gm = await getGuildMember(guild, row.discord_id);
+    if (!gm) {
+      missing++;
+      continue;
+    }
+
+    if (dryRun) {
+      synced++;
+      continue;
+    }
+
+    try {
+      const result = await syncMemberDiscordState(null, { memberId: row.id, discordId: row.discord_id });
+      if (!result?.ok) throw new Error(result?.error || 'sync_failed');
+      synced++;
+    } catch (e) {
+      errors.push({ id: row.id, discord_id: row.discord_id, error: e.message });
+      warn(`[RECONCILE:members] Falha DB→Discord ${row.display_name || row.discord_id}: ${e.message}`);
+    }
+  }
+
+  log(`[RECONCILE:members] DB→Discord: scanned=${scanned} synced=${synced} skipped=${skipped} missing=${missing} errors=${errors.length} actor=${actor}`);
+  return { scanned, synced, skipped, missing, errors };
 }
 
 async function markMissingDbMembersRemoved(guild, opts = {}) {
@@ -209,18 +276,20 @@ async function reconcileDiscordMembership(guild, opts = {}) {
   const actor = opts.actor || 'system:discord-reconcile';
   await fetchGuildMembers(guild);
 
-  // 1) Primeiro importa/reativa quem está no Discord com cargo operacional.
-  // Sem isto, o log podia dizer "DB↔Discord OK" para 70 membros ativos,
-  // mas ignorar 4 membros reais do Discord que ainda não existiam na DB.
-  const backfill = await backfillMembers(guild, { ...opts, actor });
+  // 1) A DB manda quando já existe membro ativo.
+  // Isto impede que o Discord antigo (ex.: Young Blood) volte a baixar a DB após uma promoção por XP.
+  const dbToDiscord = await syncActiveDbMembersToDiscord(guild, { ...opts, actor, skipFetch: true });
 
-  // 2) Depois garante invariantes de roles no Discord.
+  // 2) Depois importa/reativa quem está no Discord mas ainda não existe na DB.
+  const backfill = await backfillMembers(guild, { ...opts, actor, skipFetch: true });
+
+  // 3) Garante invariantes de roles no Discord.
   const invariants = await reconcileAllMembers(guild, { ...opts, actor, skipFetch: true });
 
-  // 3) Por fim remove/inativa da DB quem já não tem cargo operacional.
+  // 4) Por fim remove/inativa da DB quem já não tem cargo operacional.
   const missing = await markMissingDbMembersRemoved(guild, { ...opts, actor, skipFetch: true });
 
-  return { backfill, invariants, missing };
+  return { dbToDiscord, backfill, invariants, missing };
 }
 
-module.exports = { hasAnyTier, hasBairristasBase, ensureInvariants, reconcileAllMembers, markMissingDbMembersRemoved, reconcileDiscordMembership };
+module.exports = { hasAnyTier, hasBairristasBase, ensureInvariants, syncActiveDbMembersToDiscord, reconcileAllMembers, markMissingDbMembersRemoved, reconcileDiscordMembership };
