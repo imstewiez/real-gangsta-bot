@@ -1,16 +1,18 @@
 'use strict';
 
-const saidasMinhas = require('../../../queries/saidasMinhas');
 const { handleMeuPedido } = require('../../../onboarding/meuPedido');
-const primeiraVez = require('../../../queries/primeiraVez');
 const kick = require('../../../queries/kick');
+const perfil = require('../../../queries/perfil');
+const syncMembro = require('../../../queries/syncMembro');
+const painelEntrada = require('../../../queries/painelEntrada');
 const { commandsByName } = require('../../../lib/metrics');
 
 const SLASH_ROUTES = {
   'meu-pedido': handleMeuPedido,
-  saidas: saidasMinhas.handle,
+  perfil: perfil.handle,
   kick: kick.handle,
-  'primeira-vez': primeiraVez.handle,
+  'sync-membro': syncMembro.handle,
+  'painel-entrada': painelEntrada.handle,
 };
 
 async function handleSlash(interaction) {
