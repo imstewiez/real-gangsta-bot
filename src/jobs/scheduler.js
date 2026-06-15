@@ -96,6 +96,16 @@ function startAll(client) {
     { runOnStart: true }
   );
 
+  registerJob(
+    'daily_availability_panel',
+    parseInt(process.env.AVAILABILITY_PANEL_CHECK_MS, 10) || 60000,
+    async discordClient => {
+      const { publishAvailabilityPanel } = require('../availability/dailyAvailabilityPanel');
+      return publishAvailabilityPanel(discordClient);
+    },
+    { runOnStart: true }
+  );
+
   for (const job of jobs) {
     job.timer = setInterval(() => runJob(job), job.intervalMs);
     job.timer.unref();
