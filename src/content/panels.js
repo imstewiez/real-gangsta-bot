@@ -1,83 +1,44 @@
 'use strict';
-/**
- * Copy dos painéis — títulos, descrições e labels.
- *
- * Regras:
- *   - Títulos curtos, descritivos, com emoji.
- *   - Descrições explicam o propósito numa frase.
- *   - Sem copy aforística excessiva — os painéis são ferramentas, não poesia.
- *   - Estados vazios tratados nos builders, não aqui.
- */
 
 const E = require('./emojis');
 
 const PANELS = {
   ENTRADA: {
-    TITLE: `${E.SANGUE} O Portão`,
+    TITLE: `${E.TAG} Pedidos de Acesso`,
     DESCRIPTION:
-      'Bem-vindo à Ballas Gang. Aqui começa o teu percurso — lê as regras, pede a tua tag e mostra o que vales.',
-    BUTTON: { REGISTRAR: 'Dar a Cara' },
+      'Escolhe o tipo de pedido que queres abrir. A equipa responsável analisa e responde assim que possível.',
+    BUTTON: { REGISTRAR: 'Pedido: Tag Bairrista' },
   },
 
   BAIRRISTA: {
-    TITLE: `${E.CASA} Painel do Bairrista`,
-    DESCRIPTION: 'Atividade semanal da Ballas Gang — quem puxa, quem rende.',
-    BUTTONS: {
-      ENTREGA: 'Entregar Material',
-      VENDA: 'Vender',
-      ENCOMENDAR: 'Encomendar',
-      RANKING: 'Ranking',
-      TOPO: 'Topo Semanal',
-      RESUMO: 'Meu Resumo',
-    },
+    TITLE: `${E.CASA} Painel de Membro`,
+    DESCRIPTION: 'Painel operacional da Ballas Gang.',
+    BUTTONS: {},
   },
 
   OFICIAL: {
-    TITLE: `${E.VITORIA} Painel do Oficial`,
-    DESCRIPTION: 'Operações, movimento e atividade semanal da Ballas Gang.',
-    BUTTONS: {
-      CRIAR_SAIDA: 'Abrir Saída',
-      ENTREGA: 'Registar Material',
-      VENDA: 'Vender',
-      PRECARIOS: 'Preçários',
-      ENCOMENDAR: 'Encomendar',
-      TOPO: 'Topo Semanal',
-      RESUMO: 'Meu Resumo',
-    },
+    TITLE: `${E.VITORIA} Painel de Gestão`,
+    DESCRIPTION: 'Gestão interna da Ballas Gang.',
+    BUTTONS: {},
   },
 
   CHEFIA: {
-    TITLE: `${E.LIDER} Painel da Chefia`,
-    DESCRIPTION: 'Visão geral da Ballas Gang — operações, membros, stock e movimento.',
-    BUTTONS: {
-      CRIAR_SAIDA: 'Abrir Saída',
-      GERIR_ENCOMENDAS: 'Gerir Encomendas',
-      PENDENCIAS: 'Pendências',
-      RELATORIO: 'Relatório',
-      STOCK: 'Stock',
-      AJUSTAR_STOCK: 'Ajustar Stock',
-      GERIR_MATERIAIS: 'Gerir Materiais',
-      REPUBLICAR: 'Republicar Painéis',
-    },
+    TITLE: `${E.LIDER} Painel de Administração`,
+    DESCRIPTION: 'Visão geral da Ballas Gang.',
+    BUTTONS: {},
   },
 
   PATRAO_DI_ZONA: {
-    TITLE: `${E.LIDER} Painel do Patrão di Zona`,
-    DESCRIPTION: 'Visão do bairro — quem puxa, quem some, quem precisa de atenção.',
-    BUTTONS: {
-      LISTAR: 'Listar Bairristas',
-      ENTREGAS: 'Ver Entregas',
-      VENDAS: 'Ver Vendas',
-      TOPOS: 'Top da Zona',
-    },
+    TITLE: `${E.LIDER} Painel de Supervisão`,
+    DESCRIPTION: 'Acompanhamento de membros e pedidos.',
+    BUTTONS: {},
   },
 
   BAIRRISTA_CHANNEL: {
-    WELCOME_TITLE: `${E.SANGUE} Esta Zona é Tua`,
+    WELCOME_TITLE: `${E.TAG} Canal de Membro`,
     WELCOME_DESCRIPTION: name =>
       `Bem-vindo, **${name}**.\n` +
-      'Este canal é teu — aqui produzes, aqui o bairro vê-te trabalhar.\n' +
-      '**Regista o que trazes. Consulta o teu peso. Sobe.**',
+      'Este canal fica reservado para acompanhamento interno e notas de gestão.',
   },
 };
 
