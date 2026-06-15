@@ -13,7 +13,8 @@ function resolveEntryRole(tagRequest) {
   if (isTropinha) {
     return {
       requestType: 'tropinha',
-      dbTier: 'young_blood',
+      externalOnly: true,
+      dbTier: null,
       roleId: CONFIG.TROPINHA_DI_ZONA_ROLE_ID || '1490397688800477215',
       roleLabel: 'Tropinha di Zona',
       reason: 'Onboarding: Tag Tropinha di Zona',
@@ -24,12 +25,27 @@ function resolveEntryRole(tagRequest) {
   const entryRoleKey = `${entryTier.toUpperCase()}_ROLE_ID`;
   return {
     requestType: 'bairrista',
+    externalOnly: false,
     dbTier: entryTier,
     roleId: CONFIG[entryRoleKey],
     roleLabel: entryTier,
     roleKey: entryRoleKey,
     reason: `Onboarding: tier ${entryTier}`,
   };
+}
+
+async function removeBairroRolesFromExternal(guildMember, reason) {
+  const rolesToRemove = [
+    CONFIG.BAIRRISTAS_BASE_ROLE_ID,
+    CONFIG.YOUNG_BLOOD_ROLE_ID,
+    CONFIG.O_GUNAO_ROLE_ID,
+    CONFIG.GANGSTER_FODIDO_ROLE_ID,
+  ].filter(Boolean);
+
+  for (const roleId of rolesToRemove) {
+    if (!guildMember.roles.cache.has(roleId)) continue;
+    await queueMemberOp(() => guildMember.roles.remove(roleId, reason));
+  }
 }
 
 async function processApproval(tagRequest, approverMember, client) {
@@ -57,11 +73,14 @@ async function processApproval(tagRequest, approverMember, client) {
   }
 
   try {
-    if (CONFIG.BAIRRISTAS_BASE_ROLE_ID) {
+    if (entry.externalOnly) {
+      await removeBairroRolesFromExternal(guildMember, 'Tropinha externo: remove tags internas do bairro');
+    } else if (CONFIG.BAIRRISTAS_BASE_ROLE_ID) {
       await queueMemberOp(() =>
         guildMember.roles.add(CONFIG.BAIRRISTAS_BASE_ROLE_ID, 'Onboarding: role base Bairristas')
       );
     }
+
     if (entry.roleId) {
       await queueMemberOp(() => guildMember.roles.add(entry.roleId, entry.reason));
     } else {
@@ -69,6 +88,7 @@ async function processApproval(tagRequest, approverMember, client) {
       warn(`[ONBOARDING] ${missing} não configurado — tag de entrada não foi atribuída.`);
       result.errors.push({ phase: 'roles', message: `${missing} não configurado` });
     }
+
     if (CONFIG.PENDENTE_ROLE_ID && guildMember.roles.cache.has(CONFIG.PENDENTE_ROLE_ID)) {
       await queueMemberOp(() =>
         guildMember.roles.remove(CONFIG.PENDENTE_ROLE_ID, 'Onboarding: tag aprovada, remove Pendente')
@@ -77,15 +97,17 @@ async function processApproval(tagRequest, approverMember, client) {
     result.rolesAdded = true;
     log(`[ONBOARDING] Role ${entry.roleLabel} aplicada a ${fullName} (${discordId}).`);
   } catch (e) {
-    warn(`[ONBOARDING] Falha ao adicionar roles: ${e.message}`);
+    warn(`[ONBOARDING] Falha ao alterar roles: ${e.message}`);
     result.errors.push({ phase: 'roles', message: e.message });
   }
 
-  try {
-    const { ensureInvariants } = require('../members/roleInvariants');
-    await ensureInvariants(guildMember, { actor: approverMember.id, reason: 'Post-onboarding invariant check' });
-  } catch (e) {
-    warn(`[ONBOARDING] Invariant check falhou para ${discordId}: ${e.message}`);
+  if (!entry.externalOnly) {
+    try {
+      const { ensureInvariants } = require('../members/roleInvariants');
+      await ensureInvariants(guildMember, { actor: approverMember.id, reason: 'Post-onboarding invariant check' });
+    } catch (e) {
+      warn(`[ONBOARDING] Invariant check falhou para ${discordId}: ${e.message}`);
+    }
   }
 
   try {
@@ -95,6 +117,53 @@ async function processApproval(tagRequest, approverMember, client) {
   } catch (e) {
     warn(`[ONBOARDING] Não foi possível mudar o nickname de ${discordId}: ${e.message}`);
     result.errors.push({ phase: 'nickname', message: e.message });
+  }
+
+  if (entry.externalOnly) {
+    await query(
+      `UPDATE tag_requests
+          SET status = 'approved',
+              approved_by = $1,
+              resolved_at = NOW(),
+              processed_at = NOW(),
+              channel_create_failed = FALSE
+        WHERE id = $2`,
+      [approverMember.id, tagRequest.id]
+    );
+
+    await query(
+      `UPDATE members
+          SET role = 'externo',
+              status = 'inativo',
+              lifecycle_state = 'removed',
+              lifecycle_changed_at = NOW(),
+              lifecycle_changed_by = $2,
+              lifecycle_notes = 'Tropinha externo: não pertence ao bairro',
+              deleted_at = NOW(),
+              updated_at = NOW()
+        WHERE discord_id = $1
+          AND deleted_at IS NULL
+          AND coalesce(lifecycle_state::text, status, 'active') IN ('active','ativo','promoted')`,
+      [discordId, approverMember.id]
+    ).catch(e => warn(`[ONBOARDING] Falha ao marcar Tropinha como externo na DB: ${e.message}`));
+
+    await logAudit({
+      action: 'tag_request_approved_external',
+      entityType: 'member',
+      entityId: discordId,
+      actorId: approverMember.id,
+      actorName: approverMember.user.username,
+      afterState: { fullName, nickname, entryRole: entry.roleLabel, requestType: entry.requestType, rolesAdded: result.rolesAdded },
+    });
+
+    await sendAuditToChannel(client, {
+      title: 'Tag aprovada',
+      description: `<@${discordId}> recebeu **${entry.roleLabel}**.\nNome: **${fullName}** *(${nickname})*`,
+      color: COLOR.SUCCESS,
+    });
+
+    metrics.membersOnboarded.inc();
+    return result;
   }
 
   let dbMember = await memberRepo.findByDiscordId(discordId);
