@@ -74,9 +74,8 @@ async function buildRadioPanel() {
     .setColor(0x7b2cbf)
     .setTitle('🟣 Rádio do Bairro')
     .setDescription(
-      'Mantém a comunicação limpa e organizada. Define aqui a frequência de rádio que a equipa deve usar.\n\n' +
-        `**Frequência atual:** \`${freq}\`\n\n` +
-        'Usa **Gerar aleatória** para criar uma frequência entre `0` e `4999`, ou **Inserir manualmente** para definir uma frequência específica.'
+      'Comunicação limpa, direta e sem confusão. A rádio atual do bairro fica sempre aqui visível.\n\n' +
+        `# 📡 ${freq}`
     )
     .setFooter({ text: '— Ballas Gang', iconURL: logoUrl || undefined });
 
