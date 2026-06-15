@@ -82,8 +82,8 @@ async function buildEntradaPanel() {
     .setColor(0x7b2cbf)
     .setTitle(`${EMOJI.TAG} Bem-vindo ao Bairro`)
     .setDescription(
-      'Faz aqui o teu pedido de tag para a Ballas Gang.\n\n' +
-        'Escolhe a opção certa, preenche o formulário e aguarda a análise da equipa responsável.'
+      'Entraste no bairro certo. A **Ballas Gang** é para quem vem representar, somar e fazer parte da organização.\n\n' +
+        'Faz aqui o teu pedido de tag: escolhe **Bairrista** ou **Tropinha**, preenche o formulário e aguarda a validação da equipa.'
     )
     .setFooter({ text: '— Ballas Gang', iconURL: logoUrl || undefined });
 
