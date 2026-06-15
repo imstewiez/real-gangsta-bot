@@ -1,11 +1,15 @@
 'use strict';
 
-const logoUrl = process.env.BALLAS_GANG_LOGO_URL || process.env.BOT_LOGO_URL || '';
+const DEFAULT_LOGO_URL = 'https://raw.githubusercontent.com/imstewiez/gangsta-bot-web-44/main/src/assets/ballas-logo.png';
+const logoUrl = process.env.BALLAS_GANG_LOGO_URL || process.env.BOT_LOGO_URL || DEFAULT_LOGO_URL;
 
 function normalizeName(value, fallback) {
   const clean = String(value || '').trim();
   if (!clean) return fallback;
-  if (/bot\s*di\s*zona/i.test(clean)) return fallback;
+  const normalized = clean.toLowerCase().replace(/\s+/g, '');
+  if (normalized.includes('botdizona')) return fallback;
+  if (normalized.includes(['red', 'wood'].join(''))) return fallback;
+  if (normalized.includes('firma')) return fallback;
   return clean;
 }
 
