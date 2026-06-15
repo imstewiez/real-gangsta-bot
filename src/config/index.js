@@ -1,14 +1,9 @@
 'use strict';
 /**
- * Config — composition root.
+ * Config — composition root minimalista.
  *
- * API mantém a shape flat do CONFIG antigo para retro-compat com os 37
- * ficheiros que fazem `require('../config')`. Domínio-a-domínio está
- * repartido em ficheiros separados (roles.js, channels.js, etc.) para
- * reduzir complexidade e facilitar discovery.
- *
- * Validação exposta via `./validate`:
- *   const { validateConfig } = require('./config/validate');
+ * A shape flat é mantida para compatibilidade, mas o runtime do bot deixou de
+ * carregar domínios antigos como stock, materiais, saídas, rádio e Sheets.
  */
 
 const discord = require('./discord');
@@ -18,11 +13,8 @@ const promotion = require('./promotion');
 const behaviour = require('./behaviour');
 const jobs = require('./jobs');
 const panels = require('./panels');
-const stock = require('./stock');
-const radio = require('./radio');
 const branding = require('./branding');
 const logging = require('./logging');
-const sheets = require('./sheets');
 
 const CONFIG = {
   ...discord,
@@ -32,17 +24,16 @@ const CONFIG = {
   ...behaviour,
   ...jobs,
   ...panels,
-  ...stock,
-  ...radio,
   ...branding,
   ...logging,
-  GOOGLE_SERVICE_ACCOUNT_JSON: sheets.GOOGLE_SERVICE_ACCOUNT_JSON,
-  SPREADSHEET_ID: sheets.SPREADSHEET_ID,
-  SHEETS_SYNC_INTERVAL_MIN: sheets.SHEETS_SYNC_INTERVAL_MIN,
-  isSheetsEnabled: sheets.isSheetsEnabled,
+
+  // Compatibilidade: features antigas ficam desligadas no bot Discord.
+  GOOGLE_SERVICE_ACCOUNT_JSON: '',
+  SPREADSHEET_ID: '',
+  SHEETS_SYNC_INTERVAL_MIN: 0,
+  isSheetsEnabled: () => false,
 };
 
-// ── Aliases semânticos (getters para avaliação lazy) ─────────────────────────
 Object.defineProperties(CONFIG, {
   COMMAND_ROLE_IDS: {
     enumerable: true,
@@ -56,18 +47,22 @@ Object.defineProperties(CONFIG, {
       return [this.OG_ROLE_ID, this.REAL_GANGSTER_ROLE_ID].filter(Boolean);
     },
   },
+  MANAGEMENT_ROLE_IDS: {
+    enumerable: true,
+    get() {
+      return [...this.COMMAND_ROLE_IDS, ...this.SUPERVISOR_ROLE_IDS, this.PATRAO_DI_ZONA_ROLE_ID].filter(Boolean);
+    },
+  },
   CHEFIA_ROLE_IDS: {
     enumerable: true,
     get() {
-      // "Chefia" = Comando total (Manda-Chuva, Kingpin)
       return this.COMMAND_ROLE_IDS;
     },
   },
   OFICIAL_ROLE_IDS: {
     enumerable: true,
     get() {
-      // Oficiais = Supervisão (OG, Real Gangster)
-      return this.SUPERVISOR_ROLE_IDS;
+      return [...this.COMMAND_ROLE_IDS, ...this.SUPERVISOR_ROLE_IDS];
     },
   },
   PATRAO_DI_ZONA_ROLE_IDS: {
@@ -80,6 +75,12 @@ Object.defineProperties(CONFIG, {
     enumerable: true,
     get() {
       return [this.YOUNG_BLOOD_ROLE_ID, this.O_GUNAO_ROLE_ID, this.GANGSTER_FODIDO_ROLE_ID].filter(Boolean);
+    },
+  },
+  MEMBER_TIER_ROLE_IDS: {
+    enumerable: true,
+    get() {
+      return this.BAIRRISTA_TIER_ROLE_IDS;
     },
   },
 });
