@@ -3,6 +3,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { getStateKey, setStateKey } = require('../state');
 const { log, warn } = require('../logger');
+const { postDailySummaryIfNeeded, SUMMARY_VERSION } = require('./dailyAvailabilitySummary');
 
 const DEFAULT_CHANNEL_ID = '1490397821075984506';
 const STATE_KEY = 'dailyAvailabilityPanel';
@@ -135,11 +136,17 @@ async function publishAvailabilityPanel(client, { force = false } = {}) {
     return { skipped: true, reason: 'already_published_today', date: today };
   }
 
+  const logoUrl = await resolveLogoUrl();
+  if (!force && state.date && state.date !== today) {
+    await postDailySummaryIfNeeded(channel, state, getSlots(), client, logoUrl).catch(e =>
+      warn(`[AVAILABILITY] Falha ao publicar resumo diário de ${state.date}: ${e.message}`)
+    );
+  }
+
   await deleteOldMessages(channel, state.message_ids || []);
 
   const sentIds = [];
   const mention = getMentionContent();
-  const logoUrl = await resolveLogoUrl();
   const header = await channel.send({
     content: mention,
     embeds: [buildHeaderEmbed(today, logoUrl)],
@@ -157,6 +164,7 @@ async function publishAvailabilityPanel(client, { force = false } = {}) {
     date: today,
     panel_version: PANEL_VERSION,
     copy_version: COPY_VERSION,
+    summary_version: SUMMARY_VERSION,
     channel_id: channelId,
     message_ids: sentIds,
     updated_at: new Date().toISOString(),
