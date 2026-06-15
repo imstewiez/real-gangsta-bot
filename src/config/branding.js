@@ -19,7 +19,7 @@ function normalizeLogoUrl(value) {
   return clean;
 }
 
-const explicitLogoUrl = normalizeLogoUrl(process.env.BALLAS_GANG_LOGO_URL || process.env.BOT_LOGO_URL);
+const explicitLogoUrl = normalizeLogoUrl(process.env.BALLAS_GANG_LOGO_URL);
 
 module.exports = {
   BOT_INTERNAL_NAME: normalizeName(process.env.BOT_INTERNAL_NAME, 'Ballas Gang'),
