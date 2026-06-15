@@ -116,6 +116,16 @@ function startAll(client) {
     { runOnStart: true }
   );
 
+  registerJob(
+    'stream_live_monitor',
+    parseInt(process.env.STREAM_MONITOR_INTERVAL_MS, 10) || 90000,
+    async discordClient => {
+      const { monitorLiveStreams } = require('../streams/liveMonitor');
+      return monitorLiveStreams(discordClient);
+    },
+    { runOnStart: true }
+  );
+
   for (const job of jobs) {
     job.timer = setInterval(() => runJob(job), job.intervalMs);
     job.timer.unref();
