@@ -116,8 +116,7 @@ const PANELS_SCHEMA_VERSION = 16;
 async function _maybeForceRebuild() {
   const stored = await getStateKey('panelsSchemaVersion', 0);
   if (stored < PANELS_SCHEMA_VERSION) {
-    log(`[PANELS] Schema bump detectado (${stored} → ${PANELS_SCHEMA_VERSION}) — rebuild.`);
-    await setStateKey('panelMessages', {});
+    log(`[PANELS] Schema bump detectado (${stored} → ${PANELS_SCHEMA_VERSION}) — refresh.`);
     await setStateKey('panelsSchemaVersion', PANELS_SCHEMA_VERSION);
   }
 }
