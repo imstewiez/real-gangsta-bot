@@ -127,6 +127,7 @@ async function handleRadioRandomButton(interaction) {
     });
   }
 
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const value = Math.floor(Math.random() * (RADIO_MAX + 1));
   await setRadioFrequency(value, interaction.member || interaction.user);
   await updateRadioPanelMessage(interaction.client);
@@ -134,7 +135,6 @@ async function handleRadioRandomButton(interaction) {
 
   return safeReply(interaction, {
     content: `📡 Frequência atualizada para **${value}**.`,
-    flags: MessageFlags.Ephemeral,
   });
 }
 
