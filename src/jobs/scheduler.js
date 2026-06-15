@@ -106,6 +106,16 @@ function startAll(client) {
     { runOnStart: true }
   );
 
+  registerJob(
+    'cleanup_tropinha_external_roles',
+    parseInt(process.env.TROPINHA_CLEANUP_INTERVAL_MS, 10) || 600000,
+    async discordClient => {
+      const { cleanupTropinhaExternalRoles } = require('../friends/cleanupTropinhaRoles');
+      return cleanupTropinhaExternalRoles(discordClient);
+    },
+    { runOnStart: true }
+  );
+
   for (const job of jobs) {
     job.timer = setInterval(() => runJob(job), job.intervalMs);
     job.timer.unref();
