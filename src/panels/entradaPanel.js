@@ -1,72 +1,68 @@
 'use strict';
+
 const { EmbedBuilder } = require('discord.js');
+const CONFIG = require('../config');
 const { COLOR } = require('../shared/embedBuilders');
-const { EMOJI } = require('../content');
+const { EMOJI, BUTTONS } = require('../content');
 const { button, buttonRow } = require('../shared/ui/buttons');
 const { getEntradaMetrics } = require('../repositories/panelRepo');
 const { warn } = require('../logger');
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Painel de Entrada — Onboarding
-// ═══════════════════════════════════════════════════════════════════════════════
-
 async function buildEntradaPanel() {
-  let m;
+  let metrics;
   try {
-    m = await getEntradaMetrics();
+    metrics = await getEntradaMetrics();
   } catch (e) {
     warn(`[ENTRADA] getEntradaMetrics falhou: ${e.message}`);
-    m = { membros_activos: 0, novos_semana: 0 };
+    metrics = { membros_activos: 0, novos_semana: 0 };
   }
 
-  const safe = m || { membros_activos: 0, novos_semana: 0 };
+  const safe = metrics || { membros_activos: 0, novos_semana: 0 };
 
-  const title = `${EMOJI.SANGUE} O Portão`;
-  const description =
-    'Bem-vindo à Ballas Gang. Aqui começa o teu percurso — lê as regras, pede a tua tag e mostra o que vales.';
+  const embed = new EmbedBuilder()
+    .setColor(COLOR.BRAND)
+    .setTitle(`${EMOJI.TAG} Pedidos de Acesso`)
+    .setDescription('Escolhe o tipo de pedido que queres abrir. A equipa responsável analisa e responde assim que possível.')
+    .addFields(
+      {
+        name: `${EMOJI.PARTICIPANTE} Membros activos`,
+        value: `**${safe.membros_activos ?? 0}** membros registados`,
+        inline: true,
+      },
+      {
+        name: `${EMOJI.ENTRADA} Novos esta semana`,
+        value: `**${safe.novos_semana ?? 0}** pedidos aprovados`,
+        inline: true,
+      }
+    )
+    .setFooter({ text: `— ${CONFIG.BOT_DISPLAY_NAME || 'Ballas Gang'}` });
 
-  try {
-    const embed = new EmbedBuilder()
-      .setColor(COLOR.SUCCESS)
-      .setTitle(title)
-      .setDescription(description)
-      .addFields(
-        {
-          name: `${EMOJI.PARTICIPANTE} Membros Activos`,
-          value: `**${safe.membros_activos ?? 0}** na Ballas Gang`,
-          inline: true,
-        },
-        {
-          name: `${EMOJI.SANGUE} Novos esta Semana`,
-          value: `**${safe.novos_semana ?? 0}** entradas`,
-          inline: true,
-        }
-      )
-      .setFooter({ text: '— Ballas Gang' });
+  if (CONFIG.BOT_LOGO_URL) embed.setThumbnail(CONFIG.BOT_LOGO_URL);
 
-    const btn1 = button({
-      customId: 'onboard::pedir_tag',
-      label: 'Dar a Cara',
-      style: 'Success',
-      emoji: EMOJI.TAG,
-    });
-    const btn2 = button({
-      customId: 'onboard::meu_pedido',
-      label: 'Ver Regras',
-      style: 'Primary',
-      emoji: EMOJI.LEIS,
-    });
+  const bBairrista = BUTTONS.ENTRADA.PEDIR_BAIRRISTA;
+  const bTropinha = BUTTONS.ENTRADA.PEDIR_TROPINHA;
+  const bPedido = BUTTONS.ENTRADA.MEU_PEDIDO;
 
-    return { embeds: [embed], components: [buttonRow(btn1, btn2)] };
-  } catch (e) {
-    warn(`[ENTRADA] build embed falhou: ${e.message}`);
-    // Fallback ultra-simples
-    const fallback = new EmbedBuilder()
-      .setColor(COLOR.SUCCESS)
-      .setTitle('O Portão')
-      .setDescription('Bem-vindo à Ballas Gang.');
-    return { embeds: [fallback] };
-  }
+  const btnBairrista = button({
+    customId: 'onboard::pedir_bairrista',
+    label: bBairrista.label,
+    style: bBairrista.style,
+    emoji: bBairrista.emoji,
+  });
+  const btnTropinha = button({
+    customId: 'onboard::pedir_tropinha',
+    label: bTropinha.label,
+    style: bTropinha.style,
+    emoji: bTropinha.emoji,
+  });
+  const btnPedido = button({
+    customId: 'onboard::meu_pedido',
+    label: bPedido.label,
+    style: bPedido.style,
+    emoji: bPedido.emoji,
+  });
+
+  return { embeds: [embed], components: [buttonRow(btnBairrista, btnTropinha, btnPedido)] };
 }
 
 module.exports = { buildEntradaPanel };
