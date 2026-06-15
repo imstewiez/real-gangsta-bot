@@ -42,7 +42,7 @@ async function handleButton(interaction) {
   const id = interaction.customId;
   const route = BUTTON_ROUTES.find(r => r.match(id));
   if (!route) {
-    const { warn } = require('../../logger');
+    const { warn } = require('../../../logger');
     warn(`[Router:Button] Sem rota para customId: ${id}`);
     return;
   }
