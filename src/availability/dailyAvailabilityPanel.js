@@ -6,7 +6,7 @@ const { log, warn } = require('../logger');
 
 const DEFAULT_CHANNEL_ID = '1490397821075984506';
 const STATE_KEY = 'dailyAvailabilityPanel';
-const PANEL_VERSION = 2;
+const PANEL_VERSION = 3;
 const TIMEZONE = process.env.AVAILABILITY_TIMEZONE || 'Europe/Lisbon';
 const DEFAULT_SLOTS = ['14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00', '24+'];
 const REACTIONS = ['✅', '❌', '❓'];
@@ -40,6 +40,16 @@ function getMentionContent() {
   return raw || '@everyone';
 }
 
+async function resolveLogoUrl() {
+  try {
+    const panel = require('../panels/entradaPanel');
+    return (await panel.resolveLogoUrl()) || '';
+  } catch (_) {
+    const CONFIG = require('../config');
+    return CONFIG.BALLAS_GANG_LOGO_URL || CONFIG.BOT_LOGO_URL || '';
+  }
+}
+
 async function deleteOldMessages(channel, messageIds = []) {
   for (const id of messageIds) {
     if (!id) continue;
@@ -62,16 +72,19 @@ async function addAvailabilityReactions(message) {
   }
 }
 
-function buildHeaderEmbed(dateKey) {
-  return new EmbedBuilder()
+function buildHeaderEmbed(dateKey, logoUrl = '') {
+  const embed = new EmbedBuilder()
     .setColor(0x7b2cbf)
-    .setTitle('🟣 Disponibilidade diária')
+    .setTitle('🟣 Disponibilidade do Bairro')
     .setDescription(
-      'Marca a tua disponibilidade para hoje.\n\n' +
-        '**✅ Disponível** · **❌ Indisponível** · **❓ Talvez / depende**\n\n' +
-        'Reage em cada hora para a equipa perceber rapidamente quantos membros estão disponíveis.'
+      'Hoje é dia de representar com organização. Marca a tua presença para a equipa saber, de forma simples, quem está disponível e a que horas.\n\n' +
+        '**✅ Vou estar** · **❌ Não vou conseguir** · **❓ Talvez / depende**\n\n' +
+        'Reage nos horários abaixo. Assim fica tudo limpo, rápido de ler e ninguém precisa andar a perguntar quem aparece.'
     )
-    .setFooter({ text: `— Ballas Gang · ${dateKey}` });
+    .setFooter({ text: `— Ballas Gang · ${dateKey}`, iconURL: logoUrl || undefined });
+
+  if (logoUrl) embed.setThumbnail(logoUrl);
+  return embed;
 }
 
 function buildSlotMessage(slot) {
@@ -105,9 +118,10 @@ async function publishAvailabilityPanel(client, { force = false } = {}) {
 
   const sentIds = [];
   const mention = getMentionContent();
+  const logoUrl = await resolveLogoUrl();
   const header = await channel.send({
     content: mention,
-    embeds: [buildHeaderEmbed(today)],
+    embeds: [buildHeaderEmbed(today, logoUrl)],
     allowedMentions: { parse: mention ? ['everyone'] : [] },
   });
   sentIds.push(header.id);
