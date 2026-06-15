@@ -1,8 +1,4 @@
 'use strict';
-/**
- * Fases do ready hook do bot minimalista.
- * Mantém apenas Discord core, comandos, reconciliação de membros, outbox e healthcheck.
- */
 
 const CONFIG = require('../config');
 const { log, warn } = require('../logger');
@@ -21,13 +17,14 @@ async function registerSlashCommandsPhase(client) {
   await registerCommands(client);
 }
 
-function injectClientPhase() {
-  // No-op compatível: módulos legacy deixaram de receber client no runtime.
+async function panelsPhase(client) {
+  const { bootstrapAll } = require('../panelBootstrap');
+  await bootstrapAll(client);
 }
 
-async function saidaLifecyclePhase() {
-  // No-op compatível: saídas vivem fora do bot Discord minimalista.
-}
+function injectClientPhase() {}
+
+async function saidaLifecyclePhase() {}
 
 async function warmupPhase() {
   await warmPool(3);
@@ -70,7 +67,8 @@ async function runReadyPhases(client, { onPreempt }) {
   metrics.discordPingMs.set(client.ws.ping);
 
   const phases = [
-    ['registerSlashCommands', () => registerSlashCommandsPhase(client)],
+    ['clearSlashCommands', () => registerSlashCommandsPhase(client)],
+    ['panels', () => panelsPhase(client)],
     ['warmup', () => warmupPhase()],
     ['membershipReconcile', () => membershipReconcilePhase(client)],
     ['scheduler', () => schedulerPhase(client)],
@@ -96,6 +94,7 @@ module.exports = {
   runReadyPhases,
   getSaidaLifecycle,
   registerSlashCommandsPhase,
+  panelsPhase,
   injectClientPhase,
   saidaLifecyclePhase,
   warmupPhase,
