@@ -1,10 +1,14 @@
 'use strict';
 
-// BOT_INTERNAL_NAME — nome técnico (logs, metrics, health, version).
-// BOT_DISPLAY_NAME  — assinatura in-character em embeds e user-facing.
+// Branding central da Ballas Gang.
+// BALLAS_GANG_LOGO_URL tem prioridade; BOT_LOGO_URL fica como alias compatível.
+const logoUrl = process.env.BALLAS_GANG_LOGO_URL || process.env.BOT_LOGO_URL || '';
+
 module.exports = {
-  BOT_INTERNAL_NAME: process.env.BOT_INTERNAL_NAME || 'Bot di Zona',
-  BOT_DISPLAY_NAME: process.env.BOT_DISPLAY_NAME || 'Ballas Gang',
-  BOT_LOGO_URL: process.env.BOT_LOGO_URL || '',
-  BOT_COLOR: parseInt(process.env.BOT_COLOR || 'E74C3C', 16),
+  BOT_INTERNAL_NAME: process.env.BOT_INTERNAL_NAME || 'Ballas Gang',
+  BOT_DISPLAY_NAME: process.env.BOT_DISPLAY_NAME || 'Ballas Gang • Gestão',
+  BALLAS_GANG_LOGO_URL: logoUrl,
+  BOT_LOGO_URL: logoUrl,
+  WEB_APP_URL: process.env.WEB_APP_URL || 'https://ballasgang.eu',
+  BOT_COLOR: parseInt(process.env.BOT_COLOR || '7B2CBF', 16),
 };
