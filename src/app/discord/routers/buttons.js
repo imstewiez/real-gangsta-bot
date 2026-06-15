@@ -5,6 +5,10 @@ const {
   handleApproveButton,
   handleDenyButton,
 } = require('../../../onboarding/onboardingHandlers');
+const {
+  handlePedirTropinhaButton,
+  handleApproveTropinhaButton,
+} = require('../../../onboarding/tropinhaHandlers');
 const { handleMeuPedido } = require('../../../onboarding/meuPedido');
 
 const exact = (id, handler) => ({ match: x => x === id, handler });
@@ -29,9 +33,10 @@ const denyHandler = interaction => {
 
 const BUTTON_ROUTES = [
   exact('onboard::pedir_bairrista', handlePedirTagButton),
-  exact('onboard::pedir_tropinha', handlePedirTagButton),
+  exact('onboard::pedir_tropinha', handlePedirTropinhaButton),
   exact('onboard::pedir_tag', handlePedirTagButton),
   exact('onboard::meu_pedido', handleMeuPedido),
+  prefix('onboard::approve_tropinha::', handleApproveTropinhaButton),
   prefix('onboard::approve::', approveHandler),
   prefix('onboard::deny::', denyHandler),
 ];
