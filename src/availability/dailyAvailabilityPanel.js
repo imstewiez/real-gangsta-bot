@@ -7,6 +7,7 @@ const { log, warn } = require('../logger');
 const DEFAULT_CHANNEL_ID = '1490397821075984506';
 const STATE_KEY = 'dailyAvailabilityPanel';
 const PANEL_VERSION = 3;
+const COPY_VERSION = 2;
 const TIMEZONE = process.env.AVAILABILITY_TIMEZONE || 'Europe/Lisbon';
 const DEFAULT_SLOTS = ['14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00', '24+'];
 const REACTIONS = ['✅', '❌', '❓'];
@@ -77,9 +78,9 @@ function buildHeaderEmbed(dateKey, logoUrl = '') {
     .setColor(0x7b2cbf)
     .setTitle('🟣 Disponibilidade do Bairro')
     .setDescription(
-      'Hoje é dia de representar com organização. Marca a tua presença para a equipa saber, de forma simples, quem está disponível e a que horas.\n\n' +
-        '**✅ Vou estar** · **❌ Não vou conseguir** · **❓ Talvez / depende**\n\n' +
-        'Reage nos horários abaixo. Assim fica tudo limpo, rápido de ler e ninguém precisa andar a perguntar quem aparece.'
+      'Hoje é dia de representar. Marca a tua presença para o bairro saber quem aparece, a que horas, e com quem pode contar.\n\n' +
+        '**✅ Vou estar** · **❌ Não vou** · **❓ Talvez**\n\n' +
+        'Reage nos horários abaixo. Assim o gang vê logo a disponibilidade e ninguém anda a perguntar no chat.'
     )
     .setFooter({ text: `— Ballas Gang · ${dateKey}`, iconURL: logoUrl || undefined });
 
@@ -91,12 +92,33 @@ function buildSlotMessage(slot) {
   return `**${slot}**`;
 }
 
+async function editHeaderOnly(channel, state, dateKey, logoUrl) {
+  const headerId = Array.isArray(state.message_ids) ? state.message_ids[0] : null;
+  if (!headerId) return false;
+  const header = await channel.messages.fetch(headerId).catch(() => null);
+  if (!header) return false;
+  await header.edit({ embeds: [buildHeaderEmbed(dateKey, logoUrl)] });
+  await setStateKey(STATE_KEY, {
+    ...state,
+    copy_version: COPY_VERSION,
+    updated_at: new Date().toISOString(),
+  });
+  log(`[AVAILABILITY] Copy do painel diário actualizado sem republicar horários (${dateKey}).`);
+  return true;
+}
+
 async function publishAvailabilityPanel(client, { force = false } = {}) {
   if (!client) return { skipped: true, reason: 'no_client' };
 
   const channelId = getChannelId();
   const today = getLisbonDateKey();
   const state = await getStateKey(STATE_KEY, {});
+
+  const channel = await client.channels.fetch(channelId).catch(() => null);
+  if (!channel || !channel.isTextBased?.()) {
+    warn(`[AVAILABILITY] Canal ${channelId} não encontrado ou não é texto.`);
+    return { skipped: true, reason: 'channel_not_found', channelId };
+  }
 
   if (
     !force &&
@@ -105,13 +127,12 @@ async function publishAvailabilityPanel(client, { force = false } = {}) {
     Array.isArray(state.message_ids) &&
     state.message_ids.length > 0
   ) {
+    if (state.copy_version !== COPY_VERSION) {
+      const logoUrl = await resolveLogoUrl();
+      const edited = await editHeaderOnly(channel, state, today, logoUrl);
+      if (edited) return { updated: true, reason: 'header_copy_updated', date: today };
+    }
     return { skipped: true, reason: 'already_published_today', date: today };
-  }
-
-  const channel = await client.channels.fetch(channelId).catch(() => null);
-  if (!channel || !channel.isTextBased?.()) {
-    warn(`[AVAILABILITY] Canal ${channelId} não encontrado ou não é texto.`);
-    return { skipped: true, reason: 'channel_not_found', channelId };
   }
 
   await deleteOldMessages(channel, state.message_ids || []);
@@ -135,6 +156,7 @@ async function publishAvailabilityPanel(client, { force = false } = {}) {
   await setStateKey(STATE_KEY, {
     date: today,
     panel_version: PANEL_VERSION,
+    copy_version: COPY_VERSION,
     channel_id: channelId,
     message_ids: sentIds,
     updated_at: new Date().toISOString(),
