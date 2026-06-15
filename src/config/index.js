@@ -74,7 +74,7 @@ Object.defineProperties(CONFIG, {
   BAIRRISTA_TIER_ROLE_IDS: {
     enumerable: true,
     get() {
-      return [this.YOUNG_BLOOD_ROLE_ID, this.TROPINHA_DI_ZONA_ROLE_ID, this.O_GUNAO_ROLE_ID, this.GANGSTER_FODIDO_ROLE_ID].filter(Boolean);
+      return [this.YOUNG_BLOOD_ROLE_ID, this.O_GUNAO_ROLE_ID, this.GANGSTER_FODIDO_ROLE_ID].filter(Boolean);
     },
   },
   MEMBER_TIER_ROLE_IDS: {
