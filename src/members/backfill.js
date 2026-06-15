@@ -2,11 +2,6 @@
 /**
  * Backfill — importa para a DB todos os membros do Discord que têm pelo
  * menos uma role operacional da Ballas.
- *
- * Importante: role base/flavour (ex.: amigos, bairristas base, tropinhas) NÃO
- * conta como membro ativo. Só cargos reais da hierarquia contam:
- * Manda-Chuva, Kingpin, OG, Real Gangster, Patrão di Zona, Gangster Fodido,
- * O Gunão e Young Blood.
  */
 
 const CONFIG = require('../config');
@@ -14,7 +9,6 @@ const { memberRepo } = require('../repositories');
 const { log, warn } = require('../logger');
 const { logAudit } = require('../audit/auditEngine');
 
-// Ordem de prioridade dentro de cada classe (topo → base). Topo ganha.
 const CHEFIA_TIERS = [
   { key: 'manda_chuva', getId: () => CONFIG.MANDA_CHUVA_ROLE_ID },
   { key: 'kingpin', getId: () => CONFIG.KINGPIN_ROLE_ID },
@@ -27,6 +21,7 @@ const BAIRRISTA_TIERS = [
   { key: 'gangster_fodido', getId: () => CONFIG.GANGSTER_FODIDO_ROLE_ID },
   { key: 'o_gunao', getId: () => CONFIG.O_GUNAO_ROLE_ID },
   { key: 'young_blood', getId: () => CONFIG.YOUNG_BLOOD_ROLE_ID },
+  { key: 'young_blood', getId: () => CONFIG.TROPINHA_DI_ZONA_ROLE_ID },
 ];
 
 function _resolveTier(roles, tierList) {
@@ -50,25 +45,19 @@ function _pickDisplayName(gm) {
 function detectRoleFromGuildMember(gm) {
   const roles = gm.roles.cache;
 
-  // Chefia — topo da hierarquia.
   const chefiaTier = _resolveTier(roles, CHEFIA_TIERS);
   if (chefiaTier) return { role: 'chefia', tier: chefiaTier };
 
-  // Oficiais/supervisão.
   const oficialTier = _resolveTier(roles, OFICIAL_TIERS);
   if (oficialTier) return { role: 'oficial', tier: oficialTier };
 
-  // Patrão di Zona.
   if (CONFIG.PATRAO_DI_ZONA_ROLE_ID && roles.has(CONFIG.PATRAO_DI_ZONA_ROLE_ID)) {
     return { role: 'patrao_di_zona', tier: 'patrao_di_zona' };
   }
 
-  // Bairrista com tier — detecta o mais alto.
   const bairristaTier = _resolveTier(roles, BAIRRISTA_TIERS);
   if (bairristaTier) return { role: 'bairrista', tier: bairristaTier };
 
-  // Role base/flavour sozinha não é cargo operacional. Isto evita membros
-  // fantasma quando alguém fica apenas com tag de amigos/base no Discord.
   return null;
 }
 
