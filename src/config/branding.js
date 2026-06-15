@@ -1,6 +1,6 @@
 'use strict';
 
-const DEFAULT_LOGO_URL = 'https://raw.githubusercontent.com/imstewiez/gangsta-bot-web-44/main/src/assets/ballas-logo.png';
+const DEFAULT_LOGO_URL = 'https://www.ballasgang.eu/assets/ballas-logo.png';
 const logoUrl = process.env.BALLAS_GANG_LOGO_URL || process.env.BOT_LOGO_URL || DEFAULT_LOGO_URL;
 
 function normalizeName(value, fallback) {
