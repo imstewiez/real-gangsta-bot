@@ -76,9 +76,9 @@ async function runReadyPhases(client, { onPreempt }) {
     ['panels', () => panelsPhase(client)],
     ['streamCommands', () => streamCommandsPhase(client)],
     ['warmup', () => warmupPhase()],
+    ['webReady', () => webReadyPhase(client)],
     ['membershipReconcile', () => membershipReconcilePhase(client)],
     ['scheduler', () => schedulerPhase(client)],
-    ['webReady', () => webReadyPhase(client)],
     ['heartbeat', () => heartbeatPhase(onPreempt)],
   ];
 
