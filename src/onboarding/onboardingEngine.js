@@ -7,6 +7,7 @@ const { COLOR } = require('../shared/embedBuilders');
 const { queueMemberOp } = require('../discordQueue');
 const { log, warn } = require('../logger');
 const metrics = require('../lib/metrics');
+const { ensureResidentChannelForMember } = require('../members/ensureResidentChannel');
 
 function resolveEntryRole(tagRequest) {
   const isTropinha = String(tagRequest.request_type || '').toLowerCase() === 'tropinha';
@@ -205,15 +206,50 @@ async function processApproval(tagRequest, approverMember, client) {
     ]
   );
 
+  const freshMember = {
+    ...dbMember,
+    id: dbMember.id,
+    discord_id: discordId,
+    username: tagRequest.username || guildMember.user.username,
+    full_name: fullName,
+    nickname,
+    display_name: fullName,
+    role: 'bairrista',
+    tier: entry.dbTier,
+    status: 'ativo',
+    lifecycle_state: 'active',
+    deleted_at: null,
+    channel_id: null,
+  };
+
+  try {
+    const channelResult = await ensureResidentChannelForMember(guild, freshMember, {
+      reason: 'Onboarding aprovado: criar canal individual de bairrista',
+    });
+    if (channelResult.created || channelResult.channelId) {
+      result.channelCreated = Boolean(channelResult.created);
+      result.channelId = channelResult.channelId || null;
+    }
+  } catch (e) {
+    warn(`[ONBOARDING] Canal individual falhou para ${discordId}: ${e.message}`);
+    result.errors.push({ phase: 'channel', message: e.message });
+    await query(
+      `UPDATE tag_requests
+          SET channel_create_failed = TRUE
+        WHERE id = $1`,
+      [tagRequest.id]
+    ).catch(() => {});
+  }
+
   await query(
     `UPDATE tag_requests
         SET status = 'approved',
             approved_by = $1,
             resolved_at = NOW(),
             processed_at = NOW(),
-            channel_create_failed = FALSE
+            channel_create_failed = $3
       WHERE id = $2`,
-    [approverMember.id, tagRequest.id]
+    [approverMember.id, tagRequest.id, result.errors.some(e => e.phase === 'channel')]
   );
 
   await logAudit({
@@ -222,13 +258,13 @@ async function processApproval(tagRequest, approverMember, client) {
     entityId: discordId,
     actorId: approverMember.id,
     actorName: approverMember.user.username,
-    afterState: { fullName, nickname, tier: entry.dbTier, entryRole: entry.roleLabel, requestType: entry.requestType, rolesAdded: result.rolesAdded },
+    afterState: { fullName, nickname, tier: entry.dbTier, entryRole: entry.roleLabel, requestType: entry.requestType, rolesAdded: result.rolesAdded, channelId: result.channelId },
   });
 
   const { ONBOARDING } = require('../content');
   await sendAuditToChannel(client, {
     title: ONBOARDING.TAG_APPROVED_TITLE,
-    description: `<@${discordId}> entrou com **${entry.roleLabel}**.\nNome: **${fullName}** *(${nickname})*`,
+    description: `<@${discordId}> entrou com **${entry.roleLabel}**.\nNome: **${fullName}** *(${nickname})*${result.channelId ? `\nCanal: <#${result.channelId}>` : ''}`,
     color: COLOR.SUCCESS,
   });
 
