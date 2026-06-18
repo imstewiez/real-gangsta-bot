@@ -37,10 +37,29 @@ function channelNickFromMember(row) {
   return display || 'sem-nome';
 }
 
+async function repairResidentChannelRecord(row, channel) {
+  if (!row?.id || !channel?.id) return;
+  await query(
+    `insert into resident_channels (member_id, discord_id, channel_id, channel_name, category_id, status)
+     values ($1, $2, $3, $4, $5, 'active')
+     on conflict (channel_id) do update
+       set member_id = excluded.member_id,
+           discord_id = excluded.discord_id,
+           channel_name = excluded.channel_name,
+           category_id = excluded.category_id,
+           status = 'active',
+           deleted_at = null`,
+    [row.id, row.discord_id, channel.id, channel.name, channel.parentId || null]
+  ).catch(e => warn(`[RESIDENT-CHANNEL] Falha ao reparar resident_channels para ${row.display_name || row.id}: ${e.message}`));
+}
+
 async function hasUsableResidentChannel(guild, row) {
   if (row?.channel_id) {
     const existing = await guild.channels.fetch(row.channel_id).catch(() => null);
-    if (existing) return { ok: true, channel: existing, reason: 'members.channel_id' };
+    if (existing) {
+      await repairResidentChannelRecord(row, existing);
+      return { ok: true, channel: existing, reason: 'members.channel_id' };
+    }
   }
 
   const rc = await query(
