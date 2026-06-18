@@ -19,6 +19,8 @@ function setClient(client) {
 }
 
 const TIER_TO_ROLE = {
+  ballas: CONFIG.BALLAS_ROLE_ID,
+  bairrista: CONFIG.BAIRRISTAS_BASE_ROLE_ID,
   manda_chuva: CONFIG.MANDA_CHUVA_ROLE_ID,
   kingpin: CONFIG.KINGPIN_ROLE_ID,
   og: CONFIG.OG_ROLE_ID,
@@ -29,9 +31,20 @@ const TIER_TO_ROLE = {
   young_blood: CONFIG.YOUNG_BLOOD_ROLE_ID,
 };
 
-const ALL_TIER_ROLES = Object.values(TIER_TO_ROLE).filter(Boolean);
+const ALL_TIER_ROLES = [
+  CONFIG.MANDA_CHUVA_ROLE_ID,
+  CONFIG.KINGPIN_ROLE_ID,
+  CONFIG.OG_ROLE_ID,
+  CONFIG.REAL_GANGSTER_ROLE_ID,
+  CONFIG.PATRAO_DI_ZONA_ROLE_ID,
+  CONFIG.GANGSTER_FODIDO_ROLE_ID,
+  CONFIG.O_GUNAO_ROLE_ID,
+  CONFIG.YOUNG_BLOOD_ROLE_ID,
+].filter(Boolean);
+
 const ALL_ORG_ROLES = [
   ...ALL_TIER_ROLES,
+  CONFIG.BALLAS_ROLE_ID,
   CONFIG.BAIRRISTAS_BASE_ROLE_ID,
   CONFIG.PENDENTE_ROLE_ID,
 ].filter(Boolean);
@@ -101,12 +114,17 @@ async function handlePromote(discordId, toTier) {
 
   const currentRoleIds = member.roles.cache.map(r => r.id);
   const newRoleIds = currentRoleIds.filter(id => !ALL_TIER_ROLES.includes(id));
-  newRoleIds.push(newRoleId);
-  if (CONFIG.BAIRRISTAS_BASE_ROLE_ID && !newRoleIds.includes(CONFIG.BAIRRISTAS_BASE_ROLE_ID)) {
+  if (!newRoleIds.includes(newRoleId)) newRoleIds.push(newRoleId);
+
+  const isOperationalTier = !['ballas', 'bairrista'].includes(toTier);
+  if (isOperationalTier && CONFIG.BAIRRISTAS_BASE_ROLE_ID && !newRoleIds.includes(CONFIG.BAIRRISTAS_BASE_ROLE_ID)) {
     newRoleIds.push(CONFIG.BAIRRISTAS_BASE_ROLE_ID);
   }
+
   await member.roles.set(newRoleIds, 'Alteração de cargo via webapp');
-  await renameResidentChannel(discordId, toTier).catch(e => warn(`[webhook] Failed to rename resident channel for ${discordId}: ${e.message}`));
+  if (isOperationalTier) {
+    await renameResidentChannel(discordId, toTier).catch(e => warn(`[webhook] Failed to rename resident channel for ${discordId}: ${e.message}`));
+  }
 
   log(`[webhook] Changed ${member.user.tag} to ${toTier} (role ${newRoleId})`);
   return { ok: true };
