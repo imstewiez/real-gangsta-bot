@@ -1,7 +1,7 @@
 'use strict';
 /**
- * Backfill — importa para a DB todos os membros do Discord que têm pelo
- * menos uma role operacional da Ballas.
+ * Backfill — importa para a DB todos os membros do Discord que têm
+ * cargo operacional ou role base de acesso da Ballas.
  */
 
 const CONFIG = require('../config');
@@ -56,6 +56,16 @@ function detectRoleFromGuildMember(gm) {
 
   const bairristaTier = _resolveTier(roles, BAIRRISTA_TIERS);
   if (bairristaTier) return { role: 'bairrista', tier: bairristaTier };
+
+  // Acesso base: estas roles não dão permissões de gestão/inventário,
+  // mas permitem entrar na webapp e manter o membro ativo na DB.
+  if (CONFIG.BAIRRISTAS_BASE_ROLE_ID && roles.has(CONFIG.BAIRRISTAS_BASE_ROLE_ID)) {
+    return { role: 'bairrista', tier: 'bairrista' };
+  }
+
+  if (CONFIG.BALLAS_ROLE_ID && roles.has(CONFIG.BALLAS_ROLE_ID)) {
+    return { role: 'ballas', tier: 'ballas' };
+  }
 
   return null;
 }
@@ -117,7 +127,7 @@ async function backfillMembers(guild, opts = {}) {
           entityId: gm.id,
           actorId: actor,
           afterState: { role: detected.role, tier: detected.tier, display_name: displayName },
-          context: 'backfill from Discord operational roles',
+          context: 'backfill from Discord roles',
         }).catch(() => {});
         report.created += 1;
         continue;
@@ -134,7 +144,7 @@ async function backfillMembers(guild, opts = {}) {
         changes.lifecycle_state = 'active';
         changes.lifecycle_changed_at = new Date();
         changes.lifecycle_changed_by = actor;
-        changes.lifecycle_notes = 'Reativado automaticamente: voltou a ter cargo operacional no Discord';
+        changes.lifecycle_notes = 'Reativado automaticamente: voltou a ter cargo de acesso no Discord';
       }
 
       if (Object.keys(changes).length === 0) {
@@ -151,7 +161,7 @@ async function backfillMembers(guild, opts = {}) {
           actorId: actor,
           beforeState: { role: existing.role, tier: existing.tier, display_name: existing.display_name, username: existing.username, status: existing.status },
           afterState: changes,
-          context: 'backfill from Discord operational roles',
+          context: 'backfill from Discord roles',
         }).catch(() => {});
       }
       report.updated += 1;
@@ -161,7 +171,7 @@ async function backfillMembers(guild, opts = {}) {
     }
   }
 
-  log(`[BACKFILL] scanned=${report.scanned} bot=${report.skippedBot} no_operational_role=${report.skippedNoRole} created=${report.created} updated=${report.updated} unchanged=${report.unchanged} errors=${report.errors.length} fetch_failed=${report.fetch_failed} dry=${dryRun}`);
+  log(`[BACKFILL] scanned=${report.scanned} bot=${report.skippedBot} no_access_role=${report.skippedNoRole} created=${report.created} updated=${report.updated} unchanged=${report.unchanged} errors=${report.errors.length} fetch_failed=${report.fetch_failed} dry=${dryRun}`);
   return report;
 }
 
