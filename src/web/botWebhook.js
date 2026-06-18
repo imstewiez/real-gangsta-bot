@@ -31,6 +31,9 @@ const TIER_TO_ROLE = {
   young_blood: CONFIG.YOUNG_BLOOD_ROLE_ID,
 };
 
+const BAIRRISTA_TIERS = new Set(['young_blood', 'o_gunao', 'gangster_fodido', 'bairrista']);
+const BALLAS_TIERS = new Set(['ballas', 'patrao_di_zona', 'real_gangster', 'og', 'kingpin', 'manda_chuva']);
+
 const ALL_TIER_ROLES = [
   CONFIG.MANDA_CHUVA_ROLE_ID,
   CONFIG.KINGPIN_ROLE_ID,
@@ -42,10 +45,11 @@ const ALL_TIER_ROLES = [
   CONFIG.YOUNG_BLOOD_ROLE_ID,
 ].filter(Boolean);
 
+const BASE_ACCESS_ROLES = [CONFIG.BALLAS_ROLE_ID, CONFIG.BAIRRISTAS_BASE_ROLE_ID].filter(Boolean);
+
 const ALL_ORG_ROLES = [
   ...ALL_TIER_ROLES,
-  CONFIG.BALLAS_ROLE_ID,
-  CONFIG.BAIRRISTAS_BASE_ROLE_ID,
+  ...BASE_ACCESS_ROLES,
   CONFIG.PENDENTE_ROLE_ID,
 ].filter(Boolean);
 
@@ -105,6 +109,12 @@ async function renameResidentChannel(discordId, toTier) {
   return { ok: true, oldName, newName };
 }
 
+function getDesiredBaseRole(toTier) {
+  if (BAIRRISTA_TIERS.has(toTier)) return CONFIG.BAIRRISTAS_BASE_ROLE_ID || null;
+  if (BALLAS_TIERS.has(toTier)) return CONFIG.BALLAS_ROLE_ID || null;
+  return null;
+}
+
 async function handlePromote(discordId, toTier) {
   const member = await resolveGuildMember(discordId);
   if (!member) return { ok: false, error: 'member_not_found' };
@@ -112,17 +122,18 @@ async function handlePromote(discordId, toTier) {
   const newRoleId = TIER_TO_ROLE[toTier];
   if (!newRoleId) return { ok: false, error: `unknown_tier: ${toTier}` };
 
+  const desiredBaseRoleId = getDesiredBaseRole(toTier);
   const currentRoleIds = member.roles.cache.map(r => r.id);
-  const newRoleIds = currentRoleIds.filter(id => !ALL_TIER_ROLES.includes(id));
-  if (!newRoleIds.includes(newRoleId)) newRoleIds.push(newRoleId);
+  const newRoleIds = currentRoleIds.filter(id => !ALL_TIER_ROLES.includes(id) && !BASE_ACCESS_ROLES.includes(id));
 
-  const isOperationalTier = !['ballas', 'bairrista'].includes(toTier);
-  if (isOperationalTier && CONFIG.BAIRRISTAS_BASE_ROLE_ID && !newRoleIds.includes(CONFIG.BAIRRISTAS_BASE_ROLE_ID)) {
-    newRoleIds.push(CONFIG.BAIRRISTAS_BASE_ROLE_ID);
+  if (!newRoleIds.includes(newRoleId)) newRoleIds.push(newRoleId);
+  if (desiredBaseRoleId && desiredBaseRoleId !== newRoleId && !newRoleIds.includes(desiredBaseRoleId)) {
+    newRoleIds.push(desiredBaseRoleId);
   }
 
-  await member.roles.set(newRoleIds, 'Alteração de cargo via webapp');
-  if (isOperationalTier) {
+  await member.roles.set(newRoleIds, 'Alteração de cargo via webapp: Ballas/Bairristas exclusivos');
+
+  if (BAIRRISTA_TIERS.has(toTier) && toTier !== 'bairrista') {
     await renameResidentChannel(discordId, toTier).catch(e => warn(`[webhook] Failed to rename resident channel for ${discordId}: ${e.message}`));
   }
 
