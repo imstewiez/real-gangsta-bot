@@ -11,7 +11,11 @@ module.exports = {
   TROPINHA_DI_ZONA_ROLE_ID: optId('TROPINHA_DI_ZONA_ROLE_ID', '1490397688800477215'),
   O_GUNAO_ROLE_ID: guildId('O_GUNAO_ROLE_ID'),
   GANGSTER_FODIDO_ROLE_ID: guildId('GANGSTER_FODIDO_ROLE_ID'),
+
+  // Roles base que dão acesso à webapp mesmo sem tier operacional.
+  BALLAS_ROLE_ID: optId('BALLAS_ROLE_ID'),
   BAIRRISTAS_BASE_ROLE_ID: guildId('BAIRRISTAS_BASE_ROLE_ID'),
+
   PENDENTE_ROLE_ID: optId('PENDENTE_ROLE_ID'),
   BOT_ROLE_ID: optId('BOT_ROLE_ID'),
 
