@@ -142,16 +142,11 @@ async function findBairristasMissingChannels() {
     `select m.id, m.discord_id, m.username, m.display_name, m.full_name, m.nickname, m.role, m.tier,
             m.status, m.lifecycle_state, m.deleted_at, m.channel_id
        from members m
-       left join resident_channels rc
-         on rc.member_id = m.id
-        and rc.status = 'active'
-        and rc.deleted_at is null
       where m.role = 'bairrista'
         and m.tier = any($1::text[])
         and m.discord_id is not null
         and m.deleted_at is null
         and coalesce(m.lifecycle_state::text, m.status, 'active') in ('active','ativo','promoted')
-        and (m.channel_id is null or rc.id is null)
       order by m.display_name asc
       limit 500`,
     [[...BAIRRISTA_TIERS]]
@@ -177,7 +172,7 @@ async function ensureMissingBairristaChannels(guild, opts = {}) {
     }
   }
 
-  log(`[RESIDENT-CHANNEL] Backfill bairristas sem canal: scanned=${report.scanned} created=${report.created} skipped=${report.skipped} failed=${report.failed} dry=${dryRun}`);
+  log(`[RESIDENT-CHANNEL] Verificação de canais individuais: scanned=${report.scanned} created=${report.created} skipped=${report.skipped} failed=${report.failed} dry=${dryRun}`);
   return report;
 }
 
