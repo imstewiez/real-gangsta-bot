@@ -10,6 +10,7 @@
  *   - a DB é a fonte principal quando já existe membro ativo;
  *   - o Discord é sincronizado para o tier da DB antes do backfill;
  *   - importa para a DB membros do Discord com cargo operacional ou role base Ballas/Bairristas;
+ *   - cria canal individual para bairristas ativos sem tópico;
  *   - qualquer membro ativo na DB que já não existe no Discord fica inativo/removido;
  *   - qualquer membro ativo na DB que existe mas não tem nenhuma role de acesso
  *     também fica inativo/removido.
@@ -21,6 +22,7 @@ const { queueMemberOp } = require('../discordQueue');
 const { logAudit } = require('../audit/auditEngine');
 const { log, warn } = require('../logger');
 const { detectRoleFromGuildMember, backfillMembers } = require('./backfill');
+const { ensureMissingBairristaChannels } = require('./ensureResidentChannel');
 
 const VALID_SYNC_TIERS = new Set([
   'ballas',
@@ -280,10 +282,11 @@ async function reconcileDiscordMembership(guild, opts = {}) {
 
   const dbToDiscord = await syncActiveDbMembersToDiscord(guild, { ...opts, actor, skipFetch: true });
   const backfill = await backfillMembers(guild, { ...opts, actor, skipFetch: true });
+  const channels = await ensureMissingBairristaChannels(guild, { ...opts, actor, reason: 'Ready reconcile: criar canais individuais em falta' });
   const invariants = await reconcileAllMembers(guild, { ...opts, actor, skipFetch: true });
   const missing = await markMissingDbMembersRemoved(guild, { ...opts, actor, skipFetch: true });
 
-  return { dbToDiscord, backfill, invariants, missing };
+  return { dbToDiscord, backfill, channels, invariants, missing };
 }
 
 module.exports = { hasAnyTier, hasBairristasBase, ensureInvariants, syncActiveDbMembersToDiscord, reconcileAllMembers, markMissingDbMembersRemoved, reconcileDiscordMembership };
