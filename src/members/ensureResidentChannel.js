@@ -15,7 +15,6 @@ const BAIRRISTA_TIERS = new Set([
   'young_blood',
   'o_gunao',
   'gangster_fodido',
-  'patrao_di_zona',
 ]);
 
 function isActiveBairrista(row) {
