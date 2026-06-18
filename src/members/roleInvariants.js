@@ -9,9 +9,9 @@
  * Reconciliação DB:
  *   - a DB é a fonte principal quando já existe membro ativo;
  *   - o Discord é sincronizado para o tier da DB antes do backfill;
- *   - importa para a DB membros do Discord com cargo operacional válido;
+ *   - importa para a DB membros do Discord com cargo operacional ou role base Ballas/Bairristas;
  *   - qualquer membro ativo na DB que já não existe no Discord fica inativo/removido;
- *   - qualquer membro ativo na DB que existe mas só tem tags não-operacionais
+ *   - qualquer membro ativo na DB que existe mas não tem nenhuma role de acesso
  *     também fica inativo/removido.
  */
 
@@ -23,6 +23,8 @@ const { log, warn } = require('../logger');
 const { detectRoleFromGuildMember, backfillMembers } = require('./backfill');
 
 const VALID_SYNC_TIERS = new Set([
+  'ballas',
+  'bairrista',
   'young_blood',
   'o_gunao',
   'gangster_fodido',
@@ -176,7 +178,7 @@ async function markMissingDbMembersRemoved(guild, opts = {}) {
   );
 
   const missing = [];
-  const noOperationalRole = [];
+  const noAccessRole = [];
   let checked = 0;
 
   for (const row of active.rows) {
@@ -187,12 +189,12 @@ async function markMissingDbMembersRemoved(guild, opts = {}) {
       continue;
     }
     const detected = detectRoleFromGuildMember(gm);
-    if (!detected) noOperationalRole.push(row);
+    if (!detected) noAccessRole.push(row);
   }
 
-  const toRemove = [...missing, ...noOperationalRole];
+  const toRemove = [...missing, ...noAccessRole];
   if (!toRemove.length) {
-    log(`[RECONCILE:members] DB↔Discord OK: ${checked} ativos verificados, 0 órfãos/sem cargo operacional.`);
+    log(`[RECONCILE:members] DB↔Discord OK: ${checked} ativos verificados, 0 órfãos/sem role de acesso.`);
     return { scanned: checked, missing: 0, no_operational_role: 0, updated: 0, skipped: false };
   }
 
@@ -208,14 +210,14 @@ async function markMissingDbMembersRemoved(guild, opts = {}) {
               lifecycle_changed_at = now(),
               lifecycle_changed_by = $2,
               lifecycle_notes = case
-                when id = any($3::int[]) then 'Removido automaticamente: existe no Discord mas sem cargo operacional da Ballas'
+                when id = any($3::int[]) then 'Removido automaticamente: existe no Discord mas sem role Ballas/Bairristas/operacional'
                 else 'Removido automaticamente: já não está no Discord'
               end,
               deleted_at = now(),
               channel_id = null,
               updated_at = now()
         where id = any($1::int[])`,
-      [ids, actor, noOperationalRole.map(row => row.id)]
+      [ids, actor, noAccessRole.map(row => row.id)]
     );
 
     await query(
@@ -228,13 +230,13 @@ async function markMissingDbMembersRemoved(guild, opts = {}) {
     ).catch(e => warn(`[RECONCILE:members] Falha a limpar user_roles de órfãos: ${e.message}`));
 
     await logAudit({
-      action: 'members_auto_removed_no_operational_discord_role',
+      action: 'members_auto_removed_no_access_discord_role',
       entityType: 'member',
       entityId: 'bulk',
       actorId: actor,
       afterState: {
         missing_count: missing.length,
-        no_operational_role_count: noOperationalRole.length,
+        no_access_role_count: noAccessRole.length,
         members: toRemove.map(m => ({ id: m.id, discord_id: m.discord_id, name: m.display_name, tier: m.tier, role: m.role })),
       },
     }).catch(e => warn(`[RECONCILE:members] Audit falhou: ${e.message}`));
@@ -242,11 +244,11 @@ async function markMissingDbMembersRemoved(guild, opts = {}) {
 
   log(
     `[RECONCILE:members] Marcados como removidos: ${toRemove.length}/${checked} ` +
-      `(missing=${missing.length}, no_operational_role=${noOperationalRole.length}) ` +
+      `(missing=${missing.length}, no_access_role=${noAccessRole.length}) ` +
       toRemove.map(m => `${m.display_name || m.discord_id}#${m.id}`).slice(0, 10).join(', ')
   );
 
-  return { scanned: checked, missing: missing.length, no_operational_role: noOperationalRole.length, updated: dryRun ? 0 : toRemove.length, skipped: false };
+  return { scanned: checked, missing: missing.length, no_operational_role: noAccessRole.length, updated: dryRun ? 0 : toRemove.length, skipped: false };
 }
 
 async function reconcileAllMembers(guild, opts = {}) {
@@ -276,17 +278,9 @@ async function reconcileDiscordMembership(guild, opts = {}) {
   const actor = opts.actor || 'system:discord-reconcile';
   await fetchGuildMembers(guild);
 
-  // 1) A DB manda quando já existe membro ativo.
-  // Isto impede que o Discord antigo (ex.: Young Blood) volte a baixar a DB após uma promoção por XP.
   const dbToDiscord = await syncActiveDbMembersToDiscord(guild, { ...opts, actor, skipFetch: true });
-
-  // 2) Depois importa/reativa quem está no Discord mas ainda não existe na DB.
   const backfill = await backfillMembers(guild, { ...opts, actor, skipFetch: true });
-
-  // 3) Garante invariantes de roles no Discord.
   const invariants = await reconcileAllMembers(guild, { ...opts, actor, skipFetch: true });
-
-  // 4) Por fim remove/inativa da DB quem já não tem cargo operacional.
   const missing = await markMissingDbMembersRemoved(guild, { ...opts, actor, skipFetch: true });
 
   return { dbToDiscord, backfill, invariants, missing };
