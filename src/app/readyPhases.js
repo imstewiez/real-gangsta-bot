@@ -44,8 +44,9 @@ async function membershipReconcilePhase(client) {
   const result = await reconcileDiscordMembership(guild, { actor: 'system:ready-discord-reconcile' });
   log(
     `[RECONCILE:members] Ready sync concluído: scanned=${result.missing?.scanned ?? 0} ` +
-      `missing=${result.missing?.missing ?? 0} no_operational_role=${result.missing?.no_operational_role ?? 0} ` +
-      `updated=${result.missing?.updated ?? 0}`
+      `missing=${result.missing?.missing ?? 0} no_access_role=${result.missing?.no_operational_role ?? 0} ` +
+      `updated=${result.missing?.updated ?? 0} resident_channels_created=${result.channels?.created ?? 0} ` +
+      `resident_channels_failed=${result.channels?.failed ?? 0}`
   );
 }
 
