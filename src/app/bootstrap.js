@@ -106,7 +106,8 @@ async function bootstrap() {
   client.on(Events.InteractionCreate, onInteraction);
   client.on(Events.MessageCreate, trackDiscordMessage);
 
-  client.once(Events.ClientReady, () =>
+  client.once(Events.ClientReady, () => {
+    startDiscordActivityTracker(client);
     runReadyPhases(client, {
       onPreempt: reason => {
         log(`[INSTANCE] Detectada instância mais recente — shutdown controlado (${reason}).`);
@@ -117,14 +118,13 @@ async function bootstrap() {
       },
     })
       .then(() => {
-        startDiscordActivityTracker(client);
         setPhase(BOOT_PHASES.READY_PHASES_COMPLETE);
         setPhase(BOOT_PHASES.FULLY_OPERATIONAL);
       })
       .catch(e => {
         error('[READY] Falha no ready hook:', e);
-      })
-  );
+      });
+  });
 
   await client.login(CONFIG.DISCORD_BOT_TOKEN);
   setPhase(BOOT_PHASES.DISCORD_CONNECTED);
