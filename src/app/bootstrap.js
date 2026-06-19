@@ -17,6 +17,7 @@ const {
 const { log, warn, error, startLogMaintenance, stopLogMaintenance } = require('../logger');
 const { stopAll: stopScheduler, drainActiveJobs } = require('../jobs/scheduler');
 const { createServer } = require('../web/server');
+const { trackDiscordMessage, startDiscordActivityTracker, stopDiscordActivityTracker } = require('../members/discordMessageActivity');
 
 const { createClient } = require('./discord/client');
 const { registerLifecycleListeners } = require('./discord/lifecycle');
@@ -103,6 +104,7 @@ async function bootstrap() {
   client = createClient();
   registerLifecycleListeners(client);
   client.on(Events.InteractionCreate, onInteraction);
+  client.on(Events.MessageCreate, trackDiscordMessage);
 
   client.once(Events.ClientReady, () =>
     runReadyPhases(client, {
@@ -115,6 +117,7 @@ async function bootstrap() {
       },
     })
       .then(() => {
+        startDiscordActivityTracker(client);
         setPhase(BOOT_PHASES.READY_PHASES_COMPLETE);
         setPhase(BOOT_PHASES.FULLY_OPERATIONAL);
       })
@@ -142,6 +145,11 @@ async function shutdown(signal) {
     stopScheduler();
   } catch (err) {
     warn(`[SHUTDOWN] stopScheduler falhou: ${err.message}`);
+  }
+  try {
+    await stopDiscordActivityTracker();
+  } catch (err) {
+    warn(`[SHUTDOWN] stopDiscordActivityTracker falhou: ${err.message}`);
   }
   try {
     stopLogMaintenance();
