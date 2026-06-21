@@ -40,7 +40,9 @@ async function saveState(state) {
 }
 
 function normalizePlatform(value) {
-  const p = String(value || '').trim().toLowerCase();
+  const p = String(value || '')
+    .trim()
+    .toLowerCase();
   if (p === 'tt') return 'tiktok';
   return p;
 }
@@ -230,12 +232,16 @@ async function sendLiveAlert(client, streamer, liveData) {
     .setTitle(`🔴 ${streamer.handle} está live`)
     .setURL(url)
     .setDescription(`O bairro está em live na **${label}**. Entra, dá força e puxa pela stream.`)
-    .addFields({ name: 'Canal', value: `[${streamer.handle}](${url})`, inline: true }, { name: 'Plataforma', value: label, inline: true })
+    .addFields(
+      { name: 'Canal', value: `[${streamer.handle}](${url})`, inline: true },
+      { name: 'Plataforma', value: label, inline: true }
+    )
     .setFooter({ text: '— Ballas Gang', iconURL: icon || undefined });
 
   if (liveData.title) embed.addFields({ name: 'Título', value: String(liveData.title).slice(0, 250), inline: false });
   if (liveData.game) embed.addFields({ name: 'Categoria', value: String(liveData.game).slice(0, 100), inline: true });
-  if (liveData.viewers !== null && liveData.viewers !== undefined) embed.addFields({ name: 'Viewers', value: String(liveData.viewers), inline: true });
+  if (liveData.viewers !== null && liveData.viewers !== undefined)
+    embed.addFields({ name: 'Viewers', value: String(liveData.viewers), inline: true });
   if (icon) embed.setThumbnail(icon);
 
   return channel.send({
@@ -322,7 +328,9 @@ async function handleLiveCommand(message) {
       return true;
     }
     const { created, streamer } = await addStreamer({ platform, handle, addedBy: message.author.id });
-    await message.reply(`${created ? '✅ Registado' : '♻️ Atualizado'}: **${platformLabel(platform)}** · ${streamer.url}`);
+    await message.reply(
+      `${created ? '✅ Registado' : '♻️ Atualizado'}: **${platformLabel(platform)}** · ${streamer.url}`
+    );
     return true;
   }
 
@@ -334,7 +342,9 @@ async function handleLiveCommand(message) {
       return true;
     }
     const ok = await removeStreamer(platform, handle);
-    await message.reply(ok ? `✅ Removido: **${platformLabel(platform)}** · ${handle}` : '⚠️ Não encontrei esse streamer registado.');
+    await message.reply(
+      ok ? `✅ Removido: **${platformLabel(platform)}** · ${handle}` : '⚠️ Não encontrei esse streamer registado.'
+    );
     return true;
   }
 
@@ -344,7 +354,10 @@ async function handleLiveCommand(message) {
       await message.reply('Ainda não há streamers registados.');
       return true;
     }
-    const lines = state.streamers.map(s => `• **${platformLabel(s.platform)}** · ${s.handle} · ${s.enabled === false ? 'off' : 'on'}${s.last_live ? ' · 🔴 live' : ''}`);
+    const lines = state.streamers.map(
+      s =>
+        `• **${platformLabel(s.platform)}** · ${s.handle} · ${s.enabled === false ? 'off' : 'on'}${s.last_live ? ' · 🔴 live' : ''}`
+    );
     await message.reply(lines.join('\n'));
     return true;
   }

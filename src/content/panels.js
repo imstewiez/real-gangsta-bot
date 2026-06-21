@@ -37,8 +37,7 @@ const PANELS = {
   BAIRRISTA_CHANNEL: {
     WELCOME_TITLE: `${E.TAG} Canal de Membro`,
     WELCOME_DESCRIPTION: name =>
-      `Bem-vindo, **${name}**.\n` +
-      'Este canal fica reservado para acompanhamento interno e notas de gestão.',
+      `Bem-vindo, **${name}**.\n` + 'Este canal fica reservado para acompanhamento interno e notas de gestão.',
   },
 };
 

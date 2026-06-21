@@ -295,9 +295,17 @@ async function handleApproveButton(interaction, requestId) {
   if (!tagReq) {
     const check = await query('SELECT status FROM tag_requests WHERE id = $1', [requestId]);
     if (check.rows.length === 0) {
-      return safeReply(interaction, { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.` }, { messageClass: 'ERROR' });
+      return safeReply(
+        interaction,
+        { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.` },
+        { messageClass: 'ERROR' }
+      );
     }
-    return safeReply(interaction, { content: `${EMOJI.BLOQUEADO} Este pedido já foi tratado por outro oficial.` }, { messageClass: 'BANAL' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.BLOQUEADO} Este pedido já foi tratado por outro oficial.` },
+      { messageClass: 'BANAL' }
+    );
   }
 
   const { processApproval } = require('./onboardingEngine');
@@ -357,10 +365,18 @@ async function handleDenyButton(interaction, requestId) {
 
   const r = await query('SELECT status FROM tag_requests WHERE id = $1', [requestId]);
   if (r.rows.length === 0) {
-    return safeReply(interaction, { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.`, flags: MessageFlags.Ephemeral }, { messageClass: 'ERROR' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.NOT_FOUND} Pedido não encontrado.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'ERROR' }
+    );
   }
   if (r.rows[0].status !== 'pending') {
-    return safeReply(interaction, { content: `${EMOJI.BLOQUEADO} Este pedido já foi tratado.`, flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.BLOQUEADO} Este pedido já foi tratado.`, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
   }
 
   const modal = new ModalBuilder()
@@ -407,7 +423,11 @@ async function handleDenyModalSubmit(interaction) {
   );
   const tagReq = claim.rows[0];
   if (!tagReq) {
-    return safeReply(interaction, { content: `${EMOJI.BLOQUEADO} Pedido já foi tratado ou não existe.` }, { messageClass: 'BANAL' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.BLOQUEADO} Pedido já foi tratado ou não existe.` },
+      { messageClass: 'BANAL' }
+    );
   }
 
   await logAudit({
@@ -461,7 +481,8 @@ async function handleDenyModalSubmit(interaction) {
 
   const lines = [ONBOARDING.TAG_DENIED_STAFF_BODY(tagReq.full_name, tagReq.nickname, reason)];
   if (dmDelivery.delivered === 'dm') lines.push(`\n${EMOJI.OK} DM enviada ao user.`);
-  else if (dmDelivery.delivered === 'channel') lines.push(`\n${EMOJI.WARN} DMs fechados — fallback no canal de entrada.`);
+  else if (dmDelivery.delivered === 'channel')
+    lines.push(`\n${EMOJI.WARN} DMs fechados — fallback no canal de entrada.`);
   else lines.push(`\n${EMOJI.ERRO} Não foi possível notificar o user.`);
 
   return safeReply(interaction, { embeds: [errorEmbed('Pedido negado', lines.join('\n'))] }, { messageClass: 'ERROR' });

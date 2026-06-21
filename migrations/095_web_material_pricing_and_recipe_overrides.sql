@@ -1,6 +1,24 @@
 -- Webapp source-of-truth support for Gestão de Materiais.
 -- This repo runs migrations on Railway, so DB-changing webapp migrations must also live here.
 
+CREATE TABLE IF NOT EXISTS item_tier_surcharges (
+  id bigserial PRIMARY KEY,
+  item_id integer NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+  tier text NOT NULL,
+  surcharge numeric NOT NULL DEFAULT 0,
+  price_with_material numeric,
+  price_without_material numeric,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS item_tier_surcharges_unique
+  ON item_tier_surcharges(item_id, tier);
+
+ALTER TABLE items
+  ADD COLUMN IF NOT EXISTS morador_purchase_price NUMERIC(12,2),
+  ADD COLUMN IF NOT EXISTS side TEXT DEFAULT 'ambos';
+
 ALTER TABLE item_tier_surcharges
   ADD COLUMN IF NOT EXISTS price_with_material numeric,
   ADD COLUMN IF NOT EXISTS price_without_material numeric;

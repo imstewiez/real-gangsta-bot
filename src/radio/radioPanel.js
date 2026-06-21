@@ -1,6 +1,13 @@
 'use strict';
 
-const { EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags } = require('discord.js');
+const {
+  EmbedBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ActionRowBuilder,
+  MessageFlags,
+} = require('discord.js');
 const CONFIG = require('../config');
 const { getStateKey, setStateKey } = require('../state');
 const { button, buttonRow } = require('../shared/ui/buttons');
@@ -74,8 +81,7 @@ async function buildRadioPanel() {
     .setColor(0x7b2cbf)
     .setTitle('🟣 Rádio do Bairro')
     .setDescription(
-      'Comunicação limpa, direta e sem confusão. A rádio atual do bairro fica sempre aqui visível.\n\n' +
-        `# 📡 ${freq}`
+      'Comunicação limpa, direta e sem confusão. A rádio atual do bairro fica sempre aqui visível.\n\n' + `# 📡 ${freq}`
     )
     .setFooter({ text: '— Ballas Gang', iconURL: logoUrl || undefined });
 
@@ -121,7 +127,8 @@ async function updateRadioPanelMessage(client) {
 async function handleRadioRandomButton(interaction) {
   if (!canManageRadio(interaction.member)) {
     return safeReply(interaction, {
-      content: '🚫 Não tens permissão para alterar a rádio. Apenas Patrao di Zona, Real Gangster, OG, Kingpin e Manda-Chuva podem trocar.',
+      content:
+        '🚫 Não tens permissão para alterar a rádio. Apenas Patrao di Zona, Real Gangster, OG, Kingpin e Manda-Chuva podem trocar.',
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -140,7 +147,8 @@ async function handleRadioRandomButton(interaction) {
 async function handleRadioManualButton(interaction) {
   if (!canManageRadio(interaction.member)) {
     return safeReply(interaction, {
-      content: '🚫 Não tens permissão para alterar a rádio. Apenas Patrao di Zona, Real Gangster, OG, Kingpin e Manda-Chuva podem trocar.',
+      content:
+        '🚫 Não tens permissão para alterar a rádio. Apenas Patrao di Zona, Real Gangster, OG, Kingpin e Manda-Chuva podem trocar.',
       flags: MessageFlags.Ephemeral,
     });
   }

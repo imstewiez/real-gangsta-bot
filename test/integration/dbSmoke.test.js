@@ -4,7 +4,7 @@
  * e que as CHECK constraints bloqueiam valores legacy (migration 027).
  */
 
-const { describe, it, before } = require('node:test');
+const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { haveDb } = require('./_helpers');
 
@@ -16,6 +16,10 @@ if (!haveDb()) {
 const { pool } = require('../../src/db');
 
 describe('integration/dbSmoke', () => {
+  after(async () => {
+    await pool.end();
+  });
+
   before(async () => {
     // Sanity: pool existe.
     assert.ok(pool, 'pool não inicializado — DATABASE_URL válido?');

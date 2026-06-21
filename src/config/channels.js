@@ -2,7 +2,9 @@
 const { guildId, optId, optList } = require('./_helpers');
 
 const memberChannelsCategoryId =
-  optId('MEMBER_CHANNELS_CATEGORY_ID') || guildId('BAIRRISTA_TOPICOS_CATEGORY_ID', 'categories') || '1495206698791600159';
+  optId('MEMBER_CHANNELS_CATEGORY_ID') ||
+  guildId('BAIRRISTA_TOPICOS_CATEGORY_ID', 'categories') ||
+  '1495206698791600159';
 const memberArchiveCategoryId = optId('MEMBER_ARCHIVE_CATEGORY_ID') || optId('BAIRRISTA_ARQUIVO_CATEGORY_ID');
 
 module.exports = {

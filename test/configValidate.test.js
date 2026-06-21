@@ -10,6 +10,7 @@ const shouldSkip = !process.env.CI && !process.env.DISCORD_BOT_TOKEN;
   function baseConfig(overrides = {}) {
     return {
       DATABASE_URL: 'postgres://localhost:5432/test',
+      DISCORD_GUILD_ID: '12345678901234566',
       MANDA_CHUVA_ROLE_ID: '12345678901234567',
       KINGPIN_ROLE_ID: '12345678901234568',
       OG_ROLE_ID: '12345678901234569',

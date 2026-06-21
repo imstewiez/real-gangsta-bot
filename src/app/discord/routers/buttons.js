@@ -5,10 +5,7 @@ const {
   handleApproveButton,
   handleDenyButton,
 } = require('../../../onboarding/onboardingHandlers');
-const {
-  handlePedirTropinhaButton,
-  handleApproveTropinhaButton,
-} = require('../../../onboarding/tropinhaHandlers');
+const { handlePedirTropinhaButton, handleApproveTropinhaButton } = require('../../../onboarding/tropinhaHandlers');
 const { handleMeuPedido } = require('../../../onboarding/meuPedido');
 const { handleRadioRandomButton, handleRadioManualButton } = require('../../../radio/radioPanel');
 

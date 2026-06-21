@@ -24,7 +24,9 @@ async function claimEvents(limit) {
 }
 
 async function markDone(id) {
-  await query(`UPDATE bot_outbox_events SET status = 'done', processed_at = now(), last_error = NULL WHERE id = $1`, [id]);
+  await query(`UPDATE bot_outbox_events SET status = 'done', processed_at = now(), last_error = NULL WHERE id = $1`, [
+    id,
+  ]);
 }
 
 async function markFailed(id, errorMessage) {
@@ -37,7 +39,9 @@ async function markFailed(id, errorMessage) {
 }
 
 function shouldSync(event) {
-  return ['member.created', 'member.reactivated', 'member.role_changed', 'member.sync_requested'].includes(event.event_type);
+  return ['member.created', 'member.reactivated', 'member.role_changed', 'member.sync_requested'].includes(
+    event.event_type
+  );
 }
 
 async function processPendingOutboxEvents(client, { limit = 5 } = {}) {
@@ -67,7 +71,9 @@ async function processPendingOutboxEvents(client, { limit = 5 } = {}) {
       await markDone(event.id);
       done++;
     } catch (e) {
-      await markFailed(event.id, e.message).catch(err => warn(`[OUTBOX] Falha a marcar erro ${event.id}: ${err.message}`));
+      await markFailed(event.id, e.message).catch(err =>
+        warn(`[OUTBOX] Falha a marcar erro ${event.id}: ${err.message}`)
+      );
     }
   }
 

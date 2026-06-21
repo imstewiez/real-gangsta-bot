@@ -15,7 +15,7 @@ if (!haveDb()) {
   return;
 }
 
-const { query } = require('../../src/db');
+const { query, pool } = require('../../src/db');
 const inventoryRepo = require('../../src/repositories/inventory');
 
 let _itemId, _memberId;
@@ -46,6 +46,7 @@ describe('integration/inventoryLedger', () => {
     await query('DELETE FROM inventory_movements WHERE item_id = $1', [_itemId]);
     await query("DELETE FROM members WHERE discord_id = 'ledger-test-member'");
     await query("DELETE FROM items WHERE name = 'test-item-ledger'");
+    await pool.end();
   });
 
   it('balance = 0 sem movimentos', async () => {

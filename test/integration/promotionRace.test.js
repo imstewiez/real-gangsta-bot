@@ -28,7 +28,7 @@ if (!haveDb()) {
   return;
 }
 
-const { query } = require('../../src/db');
+const { query, pool } = require('../../src/db');
 
 // Stub do guild / client — checkAndPromote tenta fetch members e enviar
 // mensagens; como aqui estamos num ambiente CI sem Discord real,
@@ -100,7 +100,7 @@ describe('integration/promotionRace', () => {
     await query("DELETE FROM members WHERE discord_id LIKE 'race-test%'");
     await query("DELETE FROM items WHERE name = 'race-test-item'");
     await query("DELETE FROM audit_logs WHERE entity_id LIKE 'race-test%'");
-    // Não fechamos pool aqui — pool é partilhado entre todos os integration tests.
+    await pool.end();
   });
 
   it('N invocações concorrentes → só 1 promove, outras retornam null', async () => {

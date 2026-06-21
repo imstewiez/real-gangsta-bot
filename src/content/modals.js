@@ -105,7 +105,12 @@ const MODALS = {
   RADIO_SET: {
     TITLE: label => `${E.RADIO} ${label}`,
     FIELDS: {
-      value: { label: label => `Valor (${label.toLowerCase()})`, placeholder: 'Ex: 1234', maxLength: 10, required: true },
+      value: {
+        label: label => `Valor (${label.toLowerCase()})`,
+        placeholder: 'Ex: 1234',
+        maxLength: 10,
+        required: true,
+      },
     },
   },
 };

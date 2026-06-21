@@ -46,8 +46,7 @@ const ONBOARDING = {
     '— Ballas Gang',
 
   DM_FALLBACK_NOTICE:
-    `${E.WARN} Não consegui enviar-te DM. ` +
-    'Ativa as DMs do servidor para receberes futuras respostas diretamente.',
+    `${E.WARN} Não consegui enviar-te DM. ` + 'Ativa as DMs do servidor para receberes futuras respostas diretamente.',
 
   ALREADY_IN_HOUSE: `${E.WARN} Já tens uma tag ativa. Não precisas de abrir outro pedido.`,
   HAS_PENDING: `${E.PENDENTE} Já tens um pedido em análise. Aguarda resposta.`,

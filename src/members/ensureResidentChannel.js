@@ -11,21 +11,19 @@ const { welcomeChannelEmbed } = require('../shared/embedBuilders');
 const { buildBairristaChannelPanel } = require('../onboarding/onboardingHandlers');
 const memberRepo = require('../repositories/member');
 
-const BAIRRISTA_TIERS = new Set([
-  'young_blood',
-  'o_gunao',
-  'gangster_fodido',
-]);
+const BAIRRISTA_TIERS = new Set(['young_blood', 'o_gunao', 'gangster_fodido']);
 
 function isActiveBairrista(row) {
   const role = String(row?.role || '').toLowerCase();
   const tier = String(row?.tier || '').toLowerCase();
   const state = String(row?.lifecycle_state || row?.status || 'active').toLowerCase();
-  return role === 'bairrista'
-    && BAIRRISTA_TIERS.has(tier)
-    && !row?.deleted_at
-    && ['active', 'ativo', 'promoted'].includes(state)
-    && Boolean(row?.discord_id);
+  return (
+    role === 'bairrista' &&
+    BAIRRISTA_TIERS.has(tier) &&
+    !row?.deleted_at &&
+    ['active', 'ativo', 'promoted'].includes(state) &&
+    Boolean(row?.discord_id)
+  );
 }
 
 function channelNickFromMember(row) {
@@ -49,7 +47,9 @@ async function repairResidentChannelRecord(row, channel) {
            status = 'active',
            deleted_at = null`,
     [row.id, row.discord_id, channel.id, channel.name, channel.parentId || null]
-  ).catch(e => warn(`[RESIDENT-CHANNEL] Falha ao reparar resident_channels para ${row.display_name || row.id}: ${e.message}`));
+  ).catch(e =>
+    warn(`[RESIDENT-CHANNEL] Falha ao reparar resident_channels para ${row.display_name || row.id}: ${e.message}`)
+  );
 }
 
 async function hasUsableResidentChannel(guild, row) {
@@ -88,14 +88,17 @@ async function hasUsableResidentChannel(guild, row) {
 async function createChannelForBairrista(guild, row, opts = {}) {
   const botId = guild.members.me?.id;
   if (!botId) throw new Error('Bot não está registado na guild.');
-  if (!CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID) throw new Error('BAIRRISTA_TOPICOS_CATEGORY_ID/MEMBER_CHANNELS_CATEGORY_ID não está configurado.');
+  if (!CONFIG.BAIRRISTA_TOPICOS_CATEGORY_ID)
+    throw new Error('BAIRRISTA_TOPICOS_CATEGORY_ID/MEMBER_CHANNELS_CATEGORY_ID não está configurado.');
 
   const nickname = channelNickFromMember(row);
   const fullName = row.display_name || row.full_name || nickname;
   const tier = row.tier || 'young_blood';
   const channelName = formatResidentChannelName(tier, nickname);
   const guildMember = await guild.members.fetch(row.discord_id).catch(() => null);
-  const permissionOverwrites = buildBairristaChannelOverwrites(guild, row.discord_id, botId, { ownerPresent: Boolean(guildMember) });
+  const permissionOverwrites = buildBairristaChannelOverwrites(guild, row.discord_id, botId, {
+    ownerPresent: Boolean(guildMember),
+  });
 
   const { channel, categoryId } = await createResidentChannel(guild, {
     name: channelName,
@@ -121,7 +124,9 @@ async function createChannelForBairrista(guild, row, opts = {}) {
     warn(`[RESIDENT-CHANNEL] Welcome/painel em ${channel.id} falhou (non-fatal): ${e.message}`);
   }
 
-  log(`[RESIDENT-CHANNEL] Criado canal individual para ${fullName}#${row.id}: ${channel.id} (${channelName}) em ${categoryId}.`);
+  log(
+    `[RESIDENT-CHANNEL] Criado canal individual para ${fullName}#${row.id}: ${channel.id} (${channelName}) em ${categoryId}.`
+  );
   return { created: true, channelId: channel.id, channelName, categoryId };
 }
 
@@ -160,7 +165,10 @@ async function ensureMissingBairristaChannels(guild, opts = {}) {
 
   for (const row of rows) {
     try {
-      const result = await ensureResidentChannelForMember(guild, row, { dryRun, reason: opts.reason || 'Backfill canais individuais de bairristas' });
+      const result = await ensureResidentChannelForMember(guild, row, {
+        dryRun,
+        reason: opts.reason || 'Backfill canais individuais de bairristas',
+      });
       if (result.created || result.wouldCreate) report.created += 1;
       else report.skipped += 1;
       report.details.push({ memberId: row.id, displayName: row.display_name, ...result });
@@ -171,7 +179,9 @@ async function ensureMissingBairristaChannels(guild, opts = {}) {
     }
   }
 
-  log(`[RESIDENT-CHANNEL] Verificação de canais individuais: scanned=${report.scanned} created=${report.created} skipped=${report.skipped} failed=${report.failed} dry=${dryRun}`);
+  log(
+    `[RESIDENT-CHANNEL] Verificação de canais individuais: scanned=${report.scanned} created=${report.created} skipped=${report.skipped} failed=${report.failed} dry=${dryRun}`
+  );
   return report;
 }
 

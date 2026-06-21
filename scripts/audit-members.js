@@ -49,7 +49,7 @@ async function main() {
   });
 
   await client.login(process.env.DISCORD_BOT_TOKEN);
-  await new Promise((resolve) => client.once('ready', resolve));
+  await new Promise(resolve => client.once('ready', resolve));
 
   const guild = client.guilds.cache.get(CONFIG.DISCORD_GUILD_ID);
   if (!guild) throw new Error(`Guild não encontrada: ${CONFIG.DISCORD_GUILD_ID}`);
@@ -72,7 +72,10 @@ async function main() {
       username: gm.user.username,
       role: detected.role,
       tier: detected.tier,
-      roles: gm.roles.cache.map(r => r.name).filter(Boolean).sort(),
+      roles: gm.roles.cache
+        .map(r => r.name)
+        .filter(Boolean)
+        .sort(),
     });
   }
 
@@ -109,14 +112,18 @@ async function main() {
   if (ghostInApp.length) {
     console.log('\n--- FANTASMAS NA APP / DB ---');
     for (const m of ghostInApp) {
-      console.log(`- ${m.display_name || m.username || m.discord_id} | ${m.discord_id} | role=${m.role} tier=${m.tier} status=${m.status}/${m.lifecycle_state}`);
+      console.log(
+        `- ${m.display_name || m.username || m.discord_id} | ${m.discord_id} | role=${m.role} tier=${m.tier} status=${m.status}/${m.lifecycle_state}`
+      );
     }
   }
 
   if (tierMismatch.length) {
     console.log('\n--- TIER DIFERENTE DISCORD VS DB ---');
     for (const pair of tierMismatch) {
-      console.log(`- ${pair.discord.display_name} | ${pair.discord.discord_id} | Discord=${pair.discord.tier} DB=${pair.db.tier}`);
+      console.log(
+        `- ${pair.discord.display_name} | ${pair.discord.discord_id} | Discord=${pair.discord.tier} DB=${pair.db.tier}`
+      );
     }
   }
 
@@ -125,7 +132,7 @@ async function main() {
 
 main()
   .then(() => process.exit(0))
-  .catch(async (err) => {
+  .catch(async err => {
     console.error(err);
     process.exit(1);
   });
