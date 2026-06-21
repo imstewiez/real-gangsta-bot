@@ -17,7 +17,11 @@ const {
 const { log, warn, error, startLogMaintenance, stopLogMaintenance } = require('../logger');
 const { stopAll: stopScheduler, drainActiveJobs } = require('../jobs/scheduler');
 const { createServer } = require('../web/server');
-const { trackDiscordMessage, startDiscordActivityTracker, stopDiscordActivityTracker } = require('../members/discordMessageActivity');
+const {
+  trackDiscordMessage,
+  startDiscordActivityTracker,
+  stopDiscordActivityTracker,
+} = require('../members/discordMessageActivity');
 
 const { createClient } = require('./discord/client');
 const { registerLifecycleListeners } = require('./discord/lifecycle');

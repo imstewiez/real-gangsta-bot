@@ -11,7 +11,9 @@ async function loadMember({ memberId, discordId }) {
 }
 
 function tierOf(member) {
-  return String(member?.tier || member?.role || '').toLowerCase().trim();
+  return String(member?.tier || member?.role || '')
+    .toLowerCase()
+    .trim();
 }
 
 async function syncMemberDiscordState(_client, { memberId = null, discordId = null } = {}) {
@@ -20,12 +22,15 @@ async function syncMemberDiscordState(_client, { memberId = null, discordId = nu
   if (!member.discord_id) return { ok: false, error: 'discord_id_missing', memberId: member.id };
 
   const result = await processEvent({ action: 'promote', discord_id: member.discord_id, to_tier: tierOf(member) });
-  const nickname = member.display_name || (member.full_name && member.nickname ? `${member.full_name} (${member.nickname})` : null);
+  const nickname =
+    member.display_name || (member.full_name && member.nickname ? `${member.full_name} (${member.nickname})` : null);
   if (result?.ok && nickname) {
     await processEvent({ action: 'rename', discord_id: member.discord_id, new_name: nickname });
   }
 
-  await query('UPDATE members SET last_discord_reconciled_at = now(), updated_at = now() WHERE id = $1', [member.id]).catch(() => {});
+  await query('UPDATE members SET last_discord_reconciled_at = now(), updated_at = now() WHERE id = $1', [
+    member.id,
+  ]).catch(() => {});
   return { ...result, memberId: member.id, discordId: member.discord_id };
 }
 

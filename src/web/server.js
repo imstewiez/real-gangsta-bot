@@ -35,7 +35,14 @@ function createServer(port = 3000) {
 
     if (url === '/health' || url === '/live') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok', ready: _ready, bot: CONFIG.BOT_INTERNAL_NAME, uptimeSec: Math.floor((Date.now() - _bootTime) / 1000) }));
+      res.end(
+        JSON.stringify({
+          status: 'ok',
+          ready: _ready,
+          bot: CONFIG.BOT_INTERNAL_NAME,
+          uptimeSec: Math.floor((Date.now() - _bootTime) / 1000),
+        })
+      );
       return;
     }
 
@@ -44,7 +51,15 @@ function createServer(port = 3000) {
       const phase = getBootPhase ? getBootPhase() : 0;
       const ok = phase >= 7;
       res.writeHead(ok ? 200 : 503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: ok ? 'ready' : 'booting', phase, db: 'ok', discord: _client?.ws?.status === 0 ? 'connected' : 'disconnected', timestamp: new Date().toISOString() }));
+      res.end(
+        JSON.stringify({
+          status: ok ? 'ready' : 'booting',
+          phase,
+          db: 'ok',
+          discord: _client?.ws?.status === 0 ? 'connected' : 'disconnected',
+          timestamp: new Date().toISOString(),
+        })
+      );
       return;
     }
 
@@ -58,7 +73,21 @@ function createServer(port = 3000) {
         metricsSnapshot = metricsLib.toJson();
       } catch {}
       res.writeHead(discordOk && db.ok ? 200 : 503, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status, bot: CONFIG.BOT_INTERNAL_NAME, displayName: CONFIG.BOT_DISPLAY_NAME, uptimeSec: Math.floor((Date.now() - _bootTime) / 1000), checks: { discord: { ok: discordOk, guilds: _client?.guilds?.cache?.size || 0, pingMs: _client?.ws?.ping || null }, db }, metrics: metricsSnapshot, node: process.version, memMB: Math.round(process.memoryUsage().rss / 1024 / 1024) }));
+      res.end(
+        JSON.stringify({
+          status,
+          bot: CONFIG.BOT_INTERNAL_NAME,
+          displayName: CONFIG.BOT_DISPLAY_NAME,
+          uptimeSec: Math.floor((Date.now() - _bootTime) / 1000),
+          checks: {
+            discord: { ok: discordOk, guilds: _client?.guilds?.cache?.size || 0, pingMs: _client?.ws?.ping || null },
+            db,
+          },
+          metrics: metricsSnapshot,
+          node: process.version,
+          memMB: Math.round(process.memoryUsage().rss / 1024 / 1024),
+        })
+      );
       return;
     }
 
@@ -81,7 +110,15 @@ function createServer(port = 3000) {
     if (url === '/version') {
       const pkg = require('../../package.json');
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ name: pkg.name, version: pkg.version, node: process.version, bot: CONFIG.BOT_INTERNAL_NAME, displayName: CONFIG.BOT_DISPLAY_NAME }));
+      res.end(
+        JSON.stringify({
+          name: pkg.name,
+          version: pkg.version,
+          node: process.version,
+          bot: CONFIG.BOT_INTERNAL_NAME,
+          displayName: CONFIG.BOT_DISPLAY_NAME,
+        })
+      );
       return;
     }
 

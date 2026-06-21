@@ -31,7 +31,12 @@ function _touchDebounce(discordId) {
 }
 
 function _pickDisplayName(guildMember) {
-  const candidates = [guildMember.displayName, guildMember.nickname, guildMember.user?.globalName, guildMember.user?.username];
+  const candidates = [
+    guildMember.displayName,
+    guildMember.nickname,
+    guildMember.user?.globalName,
+    guildMember.user?.username,
+  ];
   for (const c of candidates) {
     if (!c) continue;
     const clean = String(c).replace(/[^\p{L}\p{N}]+/gu, '');
@@ -201,7 +206,9 @@ async function _handleMemberRoleChange(oldMember, newMember, client) {
       lifecycle_changed_by: 'system:role-update',
       lifecycle_notes: 'Criado automaticamente ao receber cargo operacional no Discord',
     });
-    log(`[ROLE_UPDATE] Entrada automática: ${dbMember.display_name || newMember.id} role=${resolvedRole} tier=${resolvedTier}`);
+    log(
+      `[ROLE_UPDATE] Entrada automática: ${dbMember.display_name || newMember.id} role=${resolvedRole} tier=${resolvedTier}`
+    );
     return;
   }
 
@@ -218,7 +225,9 @@ async function _handleMemberRoleChange(oldMember, newMember, client) {
       lifecycle_changed_by: 'system:role-update',
       lifecycle_notes: 'Reativado automaticamente ao receber cargo operacional no Discord',
     });
-    log(`[ROLE_UPDATE] Reativação automática: ${dbMember.display_name || newMember.id} role=${resolvedRole} tier=${resolvedTier}`);
+    log(
+      `[ROLE_UPDATE] Reativação automática: ${dbMember.display_name || newMember.id} role=${resolvedRole} tier=${resolvedTier}`
+    );
     return;
   }
 
@@ -244,7 +253,10 @@ async function _handleMemberRoleChange(oldMember, newMember, client) {
       await demoteMember(dbMember.id, resolvedRole, {
         guildMember: newMember,
         client,
-        reason: resolvedRole === 'inativo' ? 'Perdeu todos os cargos operacionais da Ballas' : 'Detetada mudança de role no Discord',
+        reason:
+          resolvedRole === 'inativo'
+            ? 'Perdeu todos os cargos operacionais da Ballas'
+            : 'Detetada mudança de role no Discord',
         actorTag: 'system',
         actorId: 'system',
         changedBy: 'system',

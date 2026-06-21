@@ -9,6 +9,7 @@
 const discord = require('./discord');
 const roles = require('./roles');
 const channels = require('./channels');
+const radio = require('./radio');
 const promotion = require('./promotion');
 const behaviour = require('./behaviour');
 const jobs = require('./jobs');
@@ -20,6 +21,7 @@ const CONFIG = {
   ...discord,
   ...roles,
   ...channels,
+  ...radio,
   ...promotion,
   ...behaviour,
   ...jobs,

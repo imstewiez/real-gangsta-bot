@@ -91,7 +91,9 @@ async function backfillMembers(guild, opts = {}) {
       await guild.members.fetch();
     } catch (e) {
       report.fetch_failed = true;
-      warn(`[BACKFILL] guild.members.fetch falhou; vou usar a cache atual e tentar novamente no próximo reconcile: ${e.message}`);
+      warn(
+        `[BACKFILL] guild.members.fetch falhou; vou usar a cache atual e tentar novamente no próximo reconcile: ${e.message}`
+      );
     }
   }
 
@@ -159,7 +161,13 @@ async function backfillMembers(guild, opts = {}) {
           entityType: 'member',
           entityId: gm.id,
           actorId: actor,
-          beforeState: { role: existing.role, tier: existing.tier, display_name: existing.display_name, username: existing.username, status: existing.status },
+          beforeState: {
+            role: existing.role,
+            tier: existing.tier,
+            display_name: existing.display_name,
+            username: existing.username,
+            status: existing.status,
+          },
           afterState: changes,
           context: 'backfill from Discord roles',
         }).catch(() => {});
@@ -171,7 +179,9 @@ async function backfillMembers(guild, opts = {}) {
     }
   }
 
-  log(`[BACKFILL] scanned=${report.scanned} bot=${report.skippedBot} no_access_role=${report.skippedNoRole} created=${report.created} updated=${report.updated} unchanged=${report.unchanged} errors=${report.errors.length} fetch_failed=${report.fetch_failed} dry=${dryRun}`);
+  log(
+    `[BACKFILL] scanned=${report.scanned} bot=${report.skippedBot} no_access_role=${report.skippedNoRole} created=${report.created} updated=${report.updated} unchanged=${report.unchanged} errors=${report.errors.length} fetch_failed=${report.fetch_failed} dry=${dryRun}`
+  );
   return report;
 }
 

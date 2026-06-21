@@ -154,7 +154,13 @@ async function processApproval(tagRequest, approverMember, client) {
       entityId: discordId,
       actorId: approverMember.id,
       actorName: approverMember.user.username,
-      afterState: { fullName, nickname, entryRole: entry.roleLabel, requestType: entry.requestType, rolesAdded: result.rolesAdded },
+      afterState: {
+        fullName,
+        nickname,
+        entryRole: entry.roleLabel,
+        requestType: entry.requestType,
+        rolesAdded: result.rolesAdded,
+      },
     });
 
     await sendAuditToChannel(client, {
@@ -258,7 +264,15 @@ async function processApproval(tagRequest, approverMember, client) {
     entityId: discordId,
     actorId: approverMember.id,
     actorName: approverMember.user.username,
-    afterState: { fullName, nickname, tier: entry.dbTier, entryRole: entry.roleLabel, requestType: entry.requestType, rolesAdded: result.rolesAdded, channelId: result.channelId },
+    afterState: {
+      fullName,
+      nickname,
+      tier: entry.dbTier,
+      entryRole: entry.roleLabel,
+      requestType: entry.requestType,
+      rolesAdded: result.rolesAdded,
+      channelId: result.channelId,
+    },
   });
 
   const { ONBOARDING } = require('../content');

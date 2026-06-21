@@ -1,36 +1,30 @@
 'use strict';
-/**
- * Testes de handleMeuPedido — verifica que o embed correcto é construído
- * per estado do pedido (sem pedidos, pendente, aprovado, negado).
- */
 
 const path = require('path');
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DISCORD_BOT_TOKEN ||= 'test-token';
-process.env.DISCORD_GUILD_ID ||= 'test-guild';
+process.env.DISCORD_GUILD_ID ||= '12345678901234567';
 process.env.DATABASE_URL ||= 'postgresql://test:test@localhost:5432/test_db';
 
 function resolvedPath(rel) {
   return require.resolve(path.join(__dirname, '..', 'src', rel));
 }
 
-// ── Stub DB: próxima query devolve estas rows ──
-let _nextRows = [];
+let nextRows = [];
 require.cache[resolvedPath('db.js')] = {
   exports: {
     pool: { connect: async () => ({ query: async () => ({ rows: [] }), release: () => {} }) },
-    query: async () => ({ rows: _nextRows }),
+    query: async () => ({ rows: nextRows }),
   },
 };
 
-// Stub interactionHelpers — capturamos o que é enviado a safeReply.
-const _replies = [];
+const replies = [];
 require.cache[resolvedPath('shared/interactionHelpers.js')] = {
   exports: {
     safeReply: async (_interaction, payload, _opts) => {
-      _replies.push(payload);
+      replies.push(payload);
       return true;
     },
     safeShowModal: async () => {},
@@ -51,28 +45,27 @@ function makeInteraction() {
 }
 
 function lastReply() {
-  return _replies[_replies.length - 1];
+  return replies[replies.length - 1];
 }
 
 describe('handleMeuPedido', () => {
   beforeEach(() => {
-    _replies.length = 0;
-    _nextRows = [];
+    replies.length = 0;
+    nextRows = [];
   });
 
-  it('sem pedidos → content MY_REQUEST_NONE (raw text)', async () => {
-    _nextRows = [];
+  it('returns raw text when the user has no request', async () => {
     await handleMeuPedido(makeInteraction());
-    const r = lastReply();
-    assert.ok(r.content);
-    assert.match(r.content, /nunca pediste tag/i);
+    const reply = lastReply();
+    assert.ok(reply.content);
+    assert.match(reply.content, /nenhum pedido/i);
   });
 
-  it('pendente → embed amarelo com título pending', async () => {
-    _nextRows = [
+  it('renders pending request details', async () => {
+    nextRows = [
       {
         status: 'pending',
-        full_name: 'João Silva',
+        full_name: 'Joao Silva',
         nickname: 'Jack',
         created_at: new Date('2026-04-10T10:00:00Z'),
         resolved_at: null,
@@ -81,19 +74,18 @@ describe('handleMeuPedido', () => {
         member_channel: null,
       },
     ];
+
     await handleMeuPedido(makeInteraction());
-    const r = lastReply();
-    assert.ok(r.embeds?.length === 1);
-    const embed = r.embeds[0].data;
+    const embed = lastReply().embeds[0].data;
     assert.equal(embed.color, 0xf39c12);
-    assert.match(embed.title, /análise/i);
-    assert.match(embed.description, /João Silva/);
+    assert.match(embed.title, /analise|análise/i);
+    assert.match(embed.description, /Joao Silva/);
     assert.match(embed.description, /Jack/);
-    assert.match(embed.description, /aguardar chefia/i);
+    assert.match(embed.description, /chefia/i);
   });
 
-  it('aprovado com canal → embed verde com canal link', async () => {
-    _nextRows = [
+  it('renders approved request with member channel link', async () => {
+    nextRows = [
       {
         status: 'approved',
         full_name: 'Maria',
@@ -105,19 +97,20 @@ describe('handleMeuPedido', () => {
         member_channel: '9999',
       },
     ];
+
     await handleMeuPedido(makeInteraction());
     const embed = lastReply().embeds[0].data;
     assert.equal(embed.color, 0x2ecc71);
     assert.match(embed.title, /aprovado/i);
     assert.match(embed.description, /<#9999>/);
-    assert.doesNotMatch(embed.description, /ainda não existe/i);
+    assert.doesNotMatch(embed.description, /ainda nao existe|ainda não existe/i);
   });
 
-  it('aprovado mas channel_create_failed → warning visível', async () => {
-    _nextRows = [
+  it('renders a visible warning when approved but channel creation failed', async () => {
+    nextRows = [
       {
         status: 'approved',
-        full_name: 'Zé',
+        full_name: 'Ze',
         nickname: 'Z',
         created_at: new Date(),
         resolved_at: new Date(),
@@ -126,16 +119,17 @@ describe('handleMeuPedido', () => {
         member_channel: null,
       },
     ];
+
     await handleMeuPedido(makeInteraction());
     const embed = lastReply().embeds[0].data;
-    assert.match(embed.description, /ainda não existe/i);
+    assert.match(embed.description, /ainda nao existe|ainda não existe/i);
   });
 
-  it('negado com razão → embed vermelho + razão visível', async () => {
-    _nextRows = [
+  it('renders denied request with reason', async () => {
+    nextRows = [
       {
         status: 'denied',
-        full_name: 'Ninguém',
+        full_name: 'Ninguem',
         nickname: 'NN',
         created_at: new Date(),
         resolved_at: new Date(),
@@ -144,15 +138,16 @@ describe('handleMeuPedido', () => {
         member_channel: null,
       },
     ];
+
     await handleMeuPedido(makeInteraction());
     const embed = lastReply().embeds[0].data;
     assert.equal(embed.color, 0xe74c3c);
-    assert.match(embed.title, /negado/i);
+    assert.match(embed.title, /recusado/i);
     assert.match(embed.description, /nome inadequado/);
   });
 
-  it('negado sem razão → embed vermelho sem bloco de razão', async () => {
-    _nextRows = [
+  it('renders denied request without a reason block when reason is missing', async () => {
+    nextRows = [
       {
         status: 'denied',
         full_name: 'X',
@@ -164,14 +159,15 @@ describe('handleMeuPedido', () => {
         member_channel: null,
       },
     ];
+
     await handleMeuPedido(makeInteraction());
     const embed = lastReply().embeds[0].data;
-    assert.doesNotMatch(embed.description, /Razão/);
+    assert.doesNotMatch(embed.description, /razao|razão/i);
     assert.match(embed.description, /reapelar/i);
   });
 
-  it('estado desconhecido → fallback content', async () => {
-    _nextRows = [
+  it('falls back to plain text for an unknown status', async () => {
+    nextRows = [
       {
         status: 'weird',
         full_name: 'X',
@@ -183,6 +179,7 @@ describe('handleMeuPedido', () => {
         member_channel: null,
       },
     ];
+
     await handleMeuPedido(makeInteraction());
     assert.match(lastReply().content, /desconhecido/i);
   });

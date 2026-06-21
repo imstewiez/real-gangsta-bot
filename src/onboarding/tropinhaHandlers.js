@@ -35,12 +35,20 @@ async function handlePedirTropinhaButton(interaction) {
   const discordId = interaction.user.id;
 
   if (!rateLimiter.allow(discordId, 'onboard::tropinha', { limit: 5, windowMs: 5 * 60_000 })) {
-    return safeReply(interaction, { content: ONBOARDING.COOLDOWN, flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
+    return safeReply(
+      interaction,
+      { content: ONBOARDING.COOLDOWN, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
   }
 
   const existing = await query("SELECT id FROM tag_requests WHERE discord_id = $1 AND status = 'pending'", [discordId]);
   if (existing.rows.length > 0) {
-    return safeReply(interaction, { content: ONBOARDING.HAS_PENDING, flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
+    return safeReply(
+      interaction,
+      { content: ONBOARDING.HAS_PENDING, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
   }
 
   const operationalRoleIds = [
@@ -50,7 +58,11 @@ async function handlePedirTropinhaButton(interaction) {
     ...CONFIG.PATRAO_DI_ZONA_ROLE_IDS,
   ].filter(Boolean);
   if (operationalRoleIds.some(id => interaction.member.roles.cache.has(id))) {
-    return safeReply(interaction, { content: ONBOARDING.ALREADY_IN_HOUSE, flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
+    return safeReply(
+      interaction,
+      { content: ONBOARDING.ALREADY_IN_HOUSE, flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
   }
 
   const memberRecord = await query(
@@ -108,7 +120,11 @@ async function handleTropinhaModal(interaction) {
   const logoUrl = await getLogoUrl();
 
   if (!fullName || !nickname) {
-    return safeReply(interaction, { content: `${EMOJI.WARN} Nome e alcunha são obrigatórios.` }, { messageClass: 'BANAL' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.WARN} Nome e alcunha são obrigatórios.` },
+      { messageClass: 'BANAL' }
+    );
   }
 
   let requestId;
@@ -128,7 +144,11 @@ async function handleTropinhaModal(interaction) {
 
   const tagChannel = await interaction.client.channels.fetch(CONFIG.TAG_REQUEST_CHANNEL_ID).catch(() => null);
   if (!tagChannel) {
-    return safeReply(interaction, { content: ERRORS.GENERIC() + ' Canal de aprovação em falta.' }, { messageClass: 'ERROR' });
+    return safeReply(
+      interaction,
+      { content: ERRORS.GENERIC() + ' Canal de aprovação em falta.' },
+      { messageClass: 'ERROR' }
+    );
   }
 
   const embed = new EmbedBuilder()
@@ -166,7 +186,9 @@ async function handleTropinhaModal(interaction) {
   const confirm = new EmbedBuilder()
     .setColor(0x7b2cbf)
     .setTitle('💜 Pedido recebido')
-    .setDescription(`Recebemos o teu pedido de **Tag Tropinha** para **${fullName}** _(${nickname})_.\n\nA equipa vai analisar e responder assim que possível.`)
+    .setDescription(
+      `Recebemos o teu pedido de **Tag Tropinha** para **${fullName}** _(${nickname})_.\n\nA equipa vai analisar e responder assim que possível.`
+    )
     .setFooter(footer(logoUrl));
 
   return safeReply(interaction, { embeds: [confirm] }, { messageClass: 'BANAL' });
@@ -174,7 +196,11 @@ async function handleTropinhaModal(interaction) {
 
 async function handleApproveTropinhaButton(interaction) {
   if (!canManageOnboarding(interaction.member)) {
-    return safeReply(interaction, { content: ERRORS.NO_PERMISSION('aprovar tags'), flags: MessageFlags.Ephemeral }, { messageClass: 'BANAL' });
+    return safeReply(
+      interaction,
+      { content: ERRORS.NO_PERMISSION('aprovar tags'), flags: MessageFlags.Ephemeral },
+      { messageClass: 'BANAL' }
+    );
   }
 
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -193,7 +219,11 @@ async function handleApproveTropinhaButton(interaction) {
   );
   const tagReq = claim.rows[0];
   if (!tagReq) {
-    return safeReply(interaction, { content: `${EMOJI.BLOQUEADO} Este pedido já foi tratado ou não existe.` }, { messageClass: 'BANAL' });
+    return safeReply(
+      interaction,
+      { content: `${EMOJI.BLOQUEADO} Este pedido já foi tratado ou não existe.` },
+      { messageClass: 'BANAL' }
+    );
   }
   tagReq.request_type = 'tropinha';
 
@@ -202,7 +232,9 @@ async function handleApproveTropinhaButton(interaction) {
   try {
     result = await processApproval(tagReq, interaction.member, interaction.client);
   } catch (e) {
-    await query("UPDATE tag_requests SET approved_by = NULL WHERE id = $1 AND status = 'pending'", [requestId]).catch(() => {});
+    await query("UPDATE tag_requests SET approved_by = NULL WHERE id = $1 AND status = 'pending'", [requestId]).catch(
+      () => {}
+    );
     throw e;
   }
 

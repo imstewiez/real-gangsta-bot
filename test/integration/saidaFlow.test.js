@@ -28,7 +28,7 @@ if (!haveDb()) {
   return;
 }
 
-const { query } = require('../../src/db');
+const { query, pool } = require('../../src/db');
 
 // Stubs Discord — saidaEngine emite eventos + usa client para notificações.
 // Substituir os getters no engine evita chamadas reais à Discord API.
@@ -91,6 +91,7 @@ describe('integration/saidaFlow — end-to-end', () => {
     await query('DELETE FROM audit_logs WHERE entity_id::text IN ($1, $2, $3)', [STAFF_ID, PART_A_ID, PART_B_ID]);
     await query('DELETE FROM members WHERE discord_id IN ($1, $2, $3)', [STAFF_ID, PART_A_ID, PART_B_ID]);
     await query("DELETE FROM items WHERE name = 'saidaflow-item'");
+    await pool.end();
   });
 
   it('1. createSaida cria row em operations + inicia cooldown do spot', async () => {

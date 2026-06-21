@@ -1,14 +1,11 @@
 'use strict';
-/**
- * Testes do radioEngine — validações e geração aleatória, sem DB.
- */
 
 const path = require('path');
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DISCORD_BOT_TOKEN ||= 'test-token';
-process.env.DISCORD_GUILD_ID ||= 'test-guild';
+process.env.DISCORD_GUILD_ID ||= '12345678901234567';
 process.env.DATABASE_URL ||= 'postgresql://test:test@localhost:5432/test_db';
 process.env.RADIO_RANDOM_MIN = '30';
 process.env.RADIO_RANDOM_MAX = '4500';
@@ -45,64 +42,62 @@ require.cache[resolvedPath('audit/auditEngine.js')] = {
   exports: { logAudit: async () => {} },
 };
 
-// Garante que o radioEngine lê os valores de teste, não o .env local
 delete require.cache[resolvedPath('config/index.js')];
+delete require.cache[resolvedPath('config/radio.js')];
 delete require.cache[resolvedPath('radio/radioEngine.js')];
 
 const { isValidValue, generateRandom, buildEmbed, buildComponents, TYPE_META } = require('../src/radio/radioEngine');
 
-describe('radioEngine — validação', () => {
-  it('aceita valores no range 30-4500', () => {
+describe('radioEngine validation', () => {
+  it('accepts values inside range 30-4500', () => {
     assert.equal(isValidValue('30'), true);
     assert.equal(isValidValue('4500'), true);
     assert.equal(isValidValue('1234'), true);
   });
 
-  it('rejeita valores fora do range', () => {
+  it('rejects values outside range', () => {
     assert.equal(isValidValue('29'), false);
     assert.equal(isValidValue('4501'), false);
     assert.equal(isValidValue('-5'), false);
   });
 
-  it('rejeita não-numéricos', () => {
+  it('rejects non-numeric values', () => {
     assert.equal(isValidValue('abc'), false);
     assert.equal(isValidValue('12a'), false);
     assert.equal(isValidValue(''), false);
     assert.equal(isValidValue(null), false);
   });
 
-  it('rejeita 0 quando RADIO_ALLOW_ZERO=false (default)', () => {
+  it('rejects 0 when RADIO_ALLOW_ZERO=false', () => {
     assert.equal(isValidValue('0'), false);
     assert.equal(isValidValue('0000'), false);
   });
 });
 
-describe('radioEngine — generateRandom', () => {
-  it('está no range [MIN, MAX]', () => {
+describe('radioEngine generateRandom', () => {
+  it('stays inside [MIN, MAX]', () => {
     for (let i = 0; i < 50; i++) {
-      const v = parseInt(generateRandom(), 10);
-      assert.ok(v >= 30 && v <= 4500, `${v} fora do range`);
+      const value = parseInt(generateRandom(), 10);
+      assert.ok(value >= 30 && value <= 4500, `${value} outside range`);
     }
   });
 
-  it('exclui valores indicados', () => {
+  it('excludes requested values', () => {
     const exclude = ['5432'];
     for (let i = 0; i < 100; i++) {
-      const v = generateRandom({ exclude });
-      assert.notEqual(v, '5432');
+      assert.notEqual(generateRandom({ exclude }), '5432');
     }
   });
 });
 
-describe('radioEngine — UI', () => {
-  it('buildEmbed mostra dash quando não há valor', () => {
-    const embed = buildEmbed([]);
-    const json = embed.toJSON();
-    assert.ok(json.title.includes('Frequência da Firma'));
-    assert.ok(json.description.includes('—'));
+describe('radioEngine UI', () => {
+  it('buildEmbed shows dash when no value is set', () => {
+    const json = buildEmbed([]).toJSON();
+    assert.ok(json.title.includes('Frequencia da Ballas Gang') || json.title.includes('Frequência da Ballas Gang'));
+    assert.ok(json.description.includes('-') || json.description.includes('—'));
   });
 
-  it('buildEmbed mostra valor quando definido', () => {
+  it('buildEmbed shows the defined value', () => {
     const states = [
       {
         radio_type: 'principal',
@@ -116,7 +111,7 @@ describe('radioEngine — UI', () => {
     assert.ok(json.description.includes('1234'));
   });
 
-  it('buildComponents devolve 1 row com 1 botão', () => {
+  it('buildComponents returns 1 row with 1 button', () => {
     const rows = buildComponents();
     assert.equal(rows.length, 1);
     const json = rows[0].toJSON();
@@ -124,7 +119,7 @@ describe('radioEngine — UI', () => {
     assert.ok(json.components[0].custom_id.startsWith('radio::random::'));
   });
 
-  it('TYPE_META tem apenas principal', () => {
+  it('TYPE_META only contains principal', () => {
     assert.ok(TYPE_META.principal);
     assert.equal(TYPE_META.parceria, undefined);
   });

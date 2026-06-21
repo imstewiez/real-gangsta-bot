@@ -15,7 +15,7 @@ if (!haveDb()) {
   return;
 }
 
-const { query } = require('../../src/db');
+const { query, pool } = require('../../src/db');
 const memberRepo = require('../../src/repositories/member');
 
 describe('integration/memberLifecycle', () => {
@@ -26,6 +26,7 @@ describe('integration/memberLifecycle', () => {
   beforeEach(async () => {
     await query("DELETE FROM member_role_history WHERE changed_by = 'admin-test'");
     await query("DELETE FROM members WHERE discord_id LIKE 'lifecycle-%'");
+    await pool.end();
   });
 
   after(async () => {

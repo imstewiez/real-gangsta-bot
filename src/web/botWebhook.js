@@ -47,11 +47,7 @@ const ALL_TIER_ROLES = [
 
 const BASE_ACCESS_ROLES = [CONFIG.BALLAS_ROLE_ID, CONFIG.BAIRRISTAS_BASE_ROLE_ID].filter(Boolean);
 
-const ALL_ORG_ROLES = [
-  ...ALL_TIER_ROLES,
-  ...BASE_ACCESS_ROLES,
-  CONFIG.PENDENTE_ROLE_ID,
-].filter(Boolean);
+const ALL_ORG_ROLES = [...ALL_TIER_ROLES, ...BASE_ACCESS_ROLES, CONFIG.PENDENTE_ROLE_ID].filter(Boolean);
 
 async function resolveGuildMember(discordId) {
   if (!_client) return null;
@@ -134,7 +130,9 @@ async function handlePromote(discordId, toTier) {
   await member.roles.set(newRoleIds, 'Alteração de cargo via webapp: Ballas/Bairristas exclusivos');
 
   if (BAIRRISTA_TIERS.has(toTier) && toTier !== 'bairrista') {
-    await renameResidentChannel(discordId, toTier).catch(e => warn(`[webhook] Failed to rename resident channel for ${discordId}: ${e.message}`));
+    await renameResidentChannel(discordId, toTier).catch(e =>
+      warn(`[webhook] Failed to rename resident channel for ${discordId}: ${e.message}`)
+    );
   }
 
   log(`[webhook] Changed ${member.user.tag} to ${toTier} (role ${newRoleId})`);

@@ -18,7 +18,11 @@ async function handle(interaction) {
 
   const member = res.rows[0];
   if (!member) {
-    return safeReply(interaction, { content: 'Ainda não existe perfil associado ao teu Discord.' }, { messageClass: 'BANAL' });
+    return safeReply(
+      interaction,
+      { content: 'Ainda não existe perfil associado ao teu Discord.' },
+      { messageClass: 'BANAL' }
+    );
   }
 
   const embed = brandEmbed('SHORT')

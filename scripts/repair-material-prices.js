@@ -128,14 +128,16 @@ async function main() {
   const report = await query(expectedSql);
   console.log('\n[repair:material-prices] Verificação:');
   for (const row of report.rows) {
-    const status = row.name ? `${row.name} => civil=${row.civil ?? 'NULL'} moradores=${row.moradores ?? 'NULL'} esperado=${row.price}` : 'NÃO EXISTE NA DB';
+    const status = row.name
+      ? `${row.name} => civil=${row.civil ?? 'NULL'} moradores=${row.moradores ?? 'NULL'} esperado=${row.price}`
+      : 'NÃO EXISTE NA DB';
     console.log(` - ${row.display}: ${status}`);
   }
 }
 
 main()
   .then(() => process.exit(0))
-  .catch((err) => {
+  .catch(err => {
     console.error(err);
     process.exit(1);
   });

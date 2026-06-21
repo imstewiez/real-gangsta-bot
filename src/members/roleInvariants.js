@@ -61,7 +61,13 @@ async function ensureInvariants(guildMember, opts = {}) {
       try {
         await queueMemberOp(() => guildMember.roles.add(CONFIG.BAIRRISTAS_BASE_ROLE_ID, reason));
         fixes.push('added_bairristas_base');
-        await logAudit({ action: 'invariant_fix', entityType: 'member', entityId: guildMember.id, actorId: actor, context: 'tier_without_bairristas_base → added Bairristas base' });
+        await logAudit({
+          action: 'invariant_fix',
+          entityType: 'member',
+          entityId: guildMember.id,
+          actorId: actor,
+          context: 'tier_without_bairristas_base → added Bairristas base',
+        });
       } catch (e) {
         warn(`[INVARIANT] Falha ao aplicar base Bairristas em ${guildMember.id}: ${e.message}`);
       }
@@ -83,7 +89,13 @@ async function ensureInvariants(guildMember, opts = {}) {
           warn(`[INVARIANT] Falha ao remover tier duplicado ${id}: ${e.message}`);
         }
       }
-      await logAudit({ action: 'invariant_fix', entityType: 'member', entityId: guildMember.id, actorId: actor, context: `multiple_tiers → kept ${keep}` });
+      await logAudit({
+        action: 'invariant_fix',
+        entityType: 'member',
+        entityId: guildMember.id,
+        actorId: actor,
+        context: `multiple_tiers → kept ${keep}`,
+      });
     }
   }
 
@@ -133,7 +145,9 @@ async function syncActiveDbMembersToDiscord(guild, opts = {}) {
 
   for (const row of active.rows) {
     scanned++;
-    const tier = String(row.tier || row.role || '').toLowerCase().trim();
+    const tier = String(row.tier || row.role || '')
+      .toLowerCase()
+      .trim();
     if (!VALID_SYNC_TIERS.has(tier)) {
       skipped++;
       continue;
@@ -160,7 +174,9 @@ async function syncActiveDbMembersToDiscord(guild, opts = {}) {
     }
   }
 
-  log(`[RECONCILE:members] DB→Discord: scanned=${scanned} synced=${synced} skipped=${skipped} missing=${missing} errors=${errors.length} actor=${actor}`);
+  log(
+    `[RECONCILE:members] DB→Discord: scanned=${scanned} synced=${synced} skipped=${skipped} missing=${missing} errors=${errors.length} actor=${actor}`
+  );
   return { scanned, synced, skipped, missing, errors };
 }
 
@@ -239,7 +255,13 @@ async function markMissingDbMembersRemoved(guild, opts = {}) {
       afterState: {
         missing_count: missing.length,
         no_access_role_count: noAccessRole.length,
-        members: toRemove.map(m => ({ id: m.id, discord_id: m.discord_id, name: m.display_name, tier: m.tier, role: m.role })),
+        members: toRemove.map(m => ({
+          id: m.id,
+          discord_id: m.discord_id,
+          name: m.display_name,
+          tier: m.tier,
+          role: m.role,
+        })),
       },
     }).catch(e => warn(`[RECONCILE:members] Audit falhou: ${e.message}`));
   }
@@ -247,10 +269,19 @@ async function markMissingDbMembersRemoved(guild, opts = {}) {
   log(
     `[RECONCILE:members] Marcados como removidos: ${toRemove.length}/${checked} ` +
       `(missing=${missing.length}, no_access_role=${noAccessRole.length}) ` +
-      toRemove.map(m => `${m.display_name || m.discord_id}#${m.id}`).slice(0, 10).join(', ')
+      toRemove
+        .map(m => `${m.display_name || m.discord_id}#${m.id}`)
+        .slice(0, 10)
+        .join(', ')
   );
 
-  return { scanned: checked, missing: missing.length, no_operational_role: noAccessRole.length, updated: dryRun ? 0 : toRemove.length, skipped: false };
+  return {
+    scanned: checked,
+    missing: missing.length,
+    no_operational_role: noAccessRole.length,
+    updated: dryRun ? 0 : toRemove.length,
+    skipped: false,
+  };
 }
 
 async function reconcileAllMembers(guild, opts = {}) {
@@ -268,11 +299,18 @@ async function reconcileAllMembers(guild, opts = {}) {
     if (result.needsFix) {
       report.violations++;
       if (result.applied) report.fixed++;
-      report.details.push({ member: gm.id, displayName: gm.displayName, violations: result.violations, fixes: result.fixes });
+      report.details.push({
+        member: gm.id,
+        displayName: gm.displayName,
+        violations: result.violations,
+        fixes: result.fixes,
+      });
     }
   }
 
-  log(`[INVARIANT] Reconciliação: ${report.scanned} scan, ${report.violations} violações, ${report.fixed} corrigidas (dry=${dryRun})`);
+  log(
+    `[INVARIANT] Reconciliação: ${report.scanned} scan, ${report.violations} violações, ${report.fixed} corrigidas (dry=${dryRun})`
+  );
   return report;
 }
 
@@ -282,11 +320,23 @@ async function reconcileDiscordMembership(guild, opts = {}) {
 
   const dbToDiscord = await syncActiveDbMembersToDiscord(guild, { ...opts, actor, skipFetch: true });
   const backfill = await backfillMembers(guild, { ...opts, actor, skipFetch: true });
-  const channels = await ensureMissingBairristaChannels(guild, { ...opts, actor, reason: 'Ready reconcile: criar canais individuais em falta' });
+  const channels = await ensureMissingBairristaChannels(guild, {
+    ...opts,
+    actor,
+    reason: 'Ready reconcile: criar canais individuais em falta',
+  });
   const invariants = await reconcileAllMembers(guild, { ...opts, actor, skipFetch: true });
   const missing = await markMissingDbMembersRemoved(guild, { ...opts, actor, skipFetch: true });
 
   return { dbToDiscord, backfill, channels, invariants, missing };
 }
 
-module.exports = { hasAnyTier, hasBairristasBase, ensureInvariants, syncActiveDbMembersToDiscord, reconcileAllMembers, markMissingDbMembersRemoved, reconcileDiscordMembership };
+module.exports = {
+  hasAnyTier,
+  hasBairristasBase,
+  ensureInvariants,
+  syncActiveDbMembersToDiscord,
+  reconcileAllMembers,
+  markMissingDbMembersRemoved,
+  reconcileDiscordMembership,
+};
